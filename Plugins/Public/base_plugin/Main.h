@@ -622,6 +622,9 @@ extern uint set_tick_time;
 /// If the shield is up then damage to the base is changed by this multiplier.
 extern float set_shield_damage_multiplier;
 
+/// List of commodities forbidden to store on POBs
+extern set<uint> forbidden_player_base_commodity_set;
+
 /// Holiday mode
 extern bool set_holiday_mode;
 

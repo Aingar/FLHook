@@ -1197,12 +1197,12 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"OK Factories stopped");
 			}
 			else {
-				uint productToStop = FactoryModule::GetFactoryProduct(GetParamToEnd(args, ' ', 2));
+				RECIPE* productToStop = FactoryModule::GetFactoryProductRecipe(GetParamToEnd(args, ' ', 2));
 				if (productToStop) {
 					PrintUserCmdText(client, L"ERR item not recognized");
 					return;
 				}
-				FactoryModule *factory = FactoryModule::FindModuleByProductInProduction(base, productToStop);
+				FactoryModule *factory = FactoryModule::FindModuleByProductInProduction(base, productToStop->nickname);
 				if (factory) {
 					factory->ClearQueue();
 					factory->ClearRecipe();
@@ -1228,8 +1228,6 @@ namespace PlayerCommands
                 return;
 			}
 
-			// The 3 parameters are as follows: Product hash, Product factory type hash
-			// I'm taking advantage of the fact both building recipes and commodity recipes are stored in the same Map
 			if (factory->AddToQueue(productRecipe->nickname, recipeMap[productRecipe->nickname].factory_type, recipeNumberModuleMap[factory->type].factory_type))
 				PrintUserCmdText(client, L"OK Item added to build queue");
 			else
@@ -1356,11 +1354,9 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"ERR Refinery module not found!");
                 return;
 			}
-			uint productKey = FactoryModule::GetRefineryProduct(GetParamToEnd(args, ' ', 2));
+			RECIPE* productRecipe = FactoryModule::GetRefineryProductRecipe(GetParamToEnd(args, ' ', 2));
 
-			// The 3 parameters are as follows: Product hash, Product factory type hash
-			// I'm taking advantage of the fact both building recipes and commodity recipes are stored in the same Map
-			if (refinery->AddToQueue(productKey, recipeMap[productKey].factory_type, recipeNumberModuleMap[refinery->type].factory_type))
+			if (refinery->AddToQueue(productRecipe->nickname, recipeMap[productRecipe->nickname].factory_type, recipeNumberModuleMap[refinery->type].factory_type))
 				PrintUserCmdText(client, L"OK Item added to build queue");
 			else
 				PrintUserCmdText(client, L"ERR Item add to build queue failed");

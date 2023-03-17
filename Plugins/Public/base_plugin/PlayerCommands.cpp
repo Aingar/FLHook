@@ -1217,7 +1217,7 @@ namespace PlayerCommands
 			}
 			base->Save();
 		}
-		else if (cmd == L"start")
+		else if (cmd == L"add")
 		{
 			RECIPE* productRecipe = FactoryModule::GetFactoryProductRecipe(GetParamToEnd(args, ' ', 2));
             if(productRecipe == nullptr){
@@ -1248,7 +1248,7 @@ namespace PlayerCommands
 
 			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
-				PrintUserCmdText(client, L"ERR Appropriate factory module not found!");
+				PrintUserCmdText(client, L"ERR Product not in production!");
 				return;
 			}
 
@@ -1271,7 +1271,7 @@ namespace PlayerCommands
 
 			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
-				PrintUserCmdText(client, L"ERR Appropriate factory module not found!");
+				PrintUserCmdText(client, L"ERR Product not in production!");
 				return;
 			}
 
@@ -1286,14 +1286,14 @@ namespace PlayerCommands
 		else {
 			PrintUserCmdText(client, L"ERR Invalid parameters");
 			PrintUserCmdText(client, L"/factory [list|clear|cancel|add|pause|resume]");
-			PrintUserCmdText(client, L"|  list - show factory modules and build status");
-			PrintUserCmdText(client, L"|  stop <name/itemNr> - stop production of the item");
-			PrintUserCmdText(client, L"|  start <name/itemNr> - start production of the item");
+			PrintUserCmdText(client, L"|  list - show factory modules and production status");
+			PrintUserCmdText(client, L"|  stop <name/itemNr/all> - stop production of the item/all items im queue");
+			PrintUserCmdText(client, L"|  add <name/itemNr> - adds the item to production queue");
 			for (vector<wstring>::iterator i = facmod_recipe_list.begin(); i != facmod_recipe_list.end(); ++i) {
 				PrintUserCmdText(client, *i);
 			}
-			PrintUserCmdText(client, L"|  pause <index> - pause factory module at <index>");
-			PrintUserCmdText(client, L"|  resume <index> - resume factory module at <index>");
+			PrintUserCmdText(client, L"|  pause <name/itemNr> - pauses production of specified factory item");
+			PrintUserCmdText(client, L"|  resume <name/itemNr> - resumes production of specified factory item");
 		}
 	}
 
@@ -1334,7 +1334,7 @@ namespace PlayerCommands
 
 			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
-				PrintUserCmdText(client, L"ERR Refinery module not found!");
+				PrintUserCmdText(client, L"ERR Product not in production!");
 				return;
 			}
 
@@ -1357,7 +1357,7 @@ namespace PlayerCommands
 
 			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
-				PrintUserCmdText(client, L"ERR Refinery module not found!");
+				PrintUserCmdText(client, L"ERR Product not in production!");
 				return;
 			}
 
@@ -1412,9 +1412,9 @@ namespace PlayerCommands
 		else {
 			PrintUserCmdText(client, L"ERR Invalid parameters");
 			PrintUserCmdText(client, L"/refinery [list|stop|start]");
-			PrintUserCmdText(client, L"|  list - show modules and build status");
-			PrintUserCmdText(client, L"|  stop <name/itemNr> - stop production of <name>, accepts number or name");
-			PrintUserCmdText(client, L"|  start <name/itemNr> - start production of <name>, accepts number or name");
+			PrintUserCmdText(client, L"|  list - show refinery modules and build status");
+			PrintUserCmdText(client, L"|  stop <name/itemNr/all> - stop production of the item/all items");
+			PrintUserCmdText(client, L"|  add <name/itemNr> - adds the item to the production queue");
 			for (vector<wstring>::iterator i = refinery_recipe_list.begin(); i != refinery_recipe_list.end(); ++i) {
 				PrintUserCmdText(client, *i);
 			}

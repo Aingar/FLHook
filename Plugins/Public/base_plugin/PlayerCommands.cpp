@@ -1225,7 +1225,7 @@ namespace PlayerCommands
                 return;
             }
             
-			FactoryModule* factory = FactoryModule::FindFirstFreeModuleByTypeWStr(base, productRecipe->factory_type);
+			FactoryModule* factory = FactoryModule::FindFirstModuleByTypeWStr(base, productRecipe->factory_type);
 			if (!factory) {
 				PrintUserCmdText(client, L"ERR Appropriate factory module not found!");
                 return;
@@ -1246,7 +1246,7 @@ namespace PlayerCommands
 				return;
 			}
 
-			FactoryModule* factory = FactoryModule::FindFirstFreeModuleByTypeWStr(base, productRecipe->factory_type);
+			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
 				PrintUserCmdText(client, L"ERR Appropriate factory module not found!");
 				return;
@@ -1269,7 +1269,7 @@ namespace PlayerCommands
 				return;
 			}
 
-			FactoryModule* factory = FactoryModule::FindFirstFreeModuleByTypeWStr(base, productRecipe->factory_type);
+			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
 				PrintUserCmdText(client, L"ERR Appropriate factory module not found!");
 				return;
@@ -1332,7 +1332,7 @@ namespace PlayerCommands
 				return;
 			}
 
-			FactoryModule* factory = FactoryModule::FindFirstFreeModuleByTypeWStr(base, productRecipe->factory_type);
+			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
 				PrintUserCmdText(client, L"ERR Refinery module not found!");
 				return;
@@ -1355,7 +1355,7 @@ namespace PlayerCommands
 				return;
 			}
 
-			FactoryModule* factory = FactoryModule::FindFirstFreeModuleByTypeWStr(base, productRecipe->factory_type);
+			FactoryModule* factory = FactoryModule::FindModuleByProductInProduction(base, productRecipe->nickname);
 			if (!factory) {
 				PrintUserCmdText(client, L"ERR Refinery module not found!");
 				return;
@@ -1396,7 +1396,7 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"start")
 		{
-			FactoryModule* refinery = FactoryModule::FindFirstFreeModuleByTypeInt(base, Module::TYPE_M_OREREFINERY);
+			FactoryModule* refinery = FactoryModule::FindFirstModuleByTypeInt(base, Module::TYPE_M_OREREFINERY);
 			if (!refinery) {
 				PrintUserCmdText(client, L"ERR Refinery module not found!");
                 return;

@@ -260,8 +260,8 @@ public:
 	void SaveState(FILE *file);
 	bool Timer(uint time);
 	static FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct);
-	static FactoryModule* FactoryModule::FindFirstFreeModuleByTypeInt(PlayerBase* pb, uint searchedType);
-	static FactoryModule* FactoryModule::FindFirstFreeModuleByTypeWStr(PlayerBase* pb, wstring searchedType);
+	static FactoryModule* FactoryModule::FindFirstModuleByTypeInt(PlayerBase* pb, uint searchedType);
+	static FactoryModule* FactoryModule::FindFirstModuleByTypeWStr(PlayerBase* pb, wstring searchedType);
 	static RECIPE* FactoryModule::GetRefineryProductRecipe(wstring product);
 	static RECIPE* FactoryModule::GetFactoryProductRecipe(wstring product);
 	static void FactoryModule::StopAllModulesOfType(PlayerBase* pb, uint searchedType);

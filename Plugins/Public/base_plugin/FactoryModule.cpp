@@ -237,22 +237,22 @@ FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, ui
 	return 0;
 }
 
-FactoryModule* FactoryModule::FindFirstFreeModuleByTypeInt(PlayerBase* pb, uint searchedType){
+FactoryModule* FactoryModule::FindFirstModuleByTypeInt(PlayerBase* pb, uint searchedType){
 	FactoryModule* facModPtr = 0;
 	for (std::vector<Module*>::iterator i = pb->modules.begin(); i < pb->modules.end(); ++i) {
 		facModPtr = dynamic_cast<FactoryModule*>(*i);
-		if (facModPtr && facModPtr->type == searchedType && facModPtr->build_queue.empty()) {
+		if (facModPtr && facModPtr->type == searchedType) {
 			return facModPtr;
 		}
 	}
 	return 0;
 }
 
-FactoryModule* FactoryModule::FindFirstFreeModuleByTypeWStr(PlayerBase* pb, wstring searchedType){
+FactoryModule* FactoryModule::FindFirstModuleByTypeWStr(PlayerBase* pb, wstring searchedType){
 	FactoryModule* facModPtr = 0;
 	for (std::vector<Module*>::iterator i = pb->modules.begin(); i < pb->modules.end(); ++i) {
 		facModPtr = dynamic_cast<FactoryModule*>(*i);
-		if (facModPtr && recipeNumberModuleMap[facModPtr->type].factory_type == searchedType && facModPtr->build_queue.empty()) {
+		if (facModPtr && recipeNumberModuleMap[facModPtr->type].factory_type == searchedType) {
 			return facModPtr;
 		}
 	}

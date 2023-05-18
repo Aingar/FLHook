@@ -84,7 +84,7 @@ uint GetClientIdByShip(uint shipId)
 /** @ingroup KillTracker
  * @brief Hook on ShipDestroyed. Increments the number of kills of a player if there is one.
  */
-void ShipDestroyed(DamageList* dmg, DWORD* ecx, uint kill)
+void __stdcall ShipDestroyed(DamageList* dmg, DWORD* ecx, uint kill)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (kill == 1)
@@ -107,7 +107,7 @@ void ShipDestroyed(DamageList* dmg, DWORD* ecx, uint kill)
 	}
 }
 
-void AddDamageEntry(DamageList* damageList, ushort subObjId, float& newHitPoints, enum DamageEntry::SubObjFate fate)
+void __stdcall AddDamageEntry(DamageList* damageList, ushort subObjId, float& newHitPoints, enum DamageEntry::SubObjFate fate)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (iDmgTo && subObjId == 1)
@@ -134,7 +134,7 @@ void clearDamageDone(uint inflictor)
 		damageArray[i][inflictor] = 0.0f;
 }
 
-void SendDeathMessage(const std::wstring& message, uint system, uint clientVictim, uint clientKiller)
+void __stdcall SendDeathMessage(const std::wstring& message, uint system, uint clientVictim, uint clientKiller)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -177,14 +177,14 @@ void SendDeathMessage(const std::wstring& message, uint system, uint clientVicti
 	}
 }
 
-void Disconnect(uint client, enum EFLConnection conn)
+void __stdcall Disconnect(uint client, enum EFLConnection conn)
 {
 	returncode = DEFAULT_RETURNCODE;
 	clearDamageTaken(client);
 	clearDamageDone(client);
 }
 
-void PlayerLaunch(uint shipId, uint client)
+void __stdcall PlayerLaunch(uint shipId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	clearDamageTaken(client);
@@ -193,7 +193,7 @@ void PlayerLaunch(uint shipId, uint client)
 	lastPlayerHealth[client] = maxHp * Players[client].fRelativeHealth;
 }
 
-void CharacterSelect(CHARACTER_ID const& cid, uint client)
+void __stdcall CharacterSelect(CHARACTER_ID const& cid, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	clearDamageTaken(client);
@@ -201,7 +201,7 @@ void CharacterSelect(CHARACTER_ID const& cid, uint client)
 }
 
 
-bool UserCmd_Process(uint client, const wstring &wscCmd)
+bool __stdcall UserCmd_Process(uint client, const wstring &wscCmd)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -213,7 +213,7 @@ bool UserCmd_Process(uint client, const wstring &wscCmd)
 }
 
 // Load Settings
-void LoadSettings()
+void __stdcall LoadSettings()
 {
 	for (auto& subArray : damageArray)
 		subArray.fill(0.0f);

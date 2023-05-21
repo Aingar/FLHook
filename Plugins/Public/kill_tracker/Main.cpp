@@ -208,6 +208,7 @@ bool __stdcall UserCmd_Process(uint client, const wstring &wscCmd)
 	if (wscCmd.find(L"/kills") == 0)
 	{
 		UserCmd_Kills(client, wscCmd);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 	}
 	return true;
 }
@@ -215,6 +216,7 @@ bool __stdcall UserCmd_Process(uint client, const wstring &wscCmd)
 // Load Settings
 void __stdcall LoadSettings()
 {
+	returncode = DEFAULT_RETURNCODE;
 	for (auto& subArray : damageArray)
 		subArray.fill(0.0f);
 }

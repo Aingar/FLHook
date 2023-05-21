@@ -75,9 +75,14 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "tax", "Plugins\Public\tax\t
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "kill_tracker", "Plugins\Public\kill_tracker\kill_tracker.vcxproj", "{91E8438D-F413-4A2C-8A9B-6CE3544116DB}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "deathpenalty", "Plugins\Public\death_penalty\death_penalty.vcxproj", "{C822B92E-305D-4559-A320-3A9B09309702}"
+EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "betting", "Plugins\Public\betting\betting.vcxproj", "{1BAA2979-95DD-441C-96AE-8E45EA56B48A}"
+EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{097bffbb-2bbe-4e16-b2fb-3ed8e90ecbd7}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{1baa2979-95dd-441c-96ae-8e45ea56b48a}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{22d02598-f2d3-495f-bba9-72dc156da723}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{24081a28-c502-48c5-9805-746e45de830d}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{2853796f-8aaf-4e93-a210-08ea11c63d6b}*SharedItemsImports = 4
@@ -96,6 +101,7 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{9ed72c7d-81fc-49f5-8709-0ab542113d3f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{b92d0fa9-093b-4db0-9afd-3af72bd87aae}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c26da99f-10f7-421b-ac31-eed1623e7b04}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c822b92e-305d-4559-a320-3a9b09309702}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{db39d53f-d243-4c8c-95cd-2101cca7d20f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7008ba7-4f75-4af7-b25c-3a9a3287a88f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7dfb061-5e6a-47dc-94c5-ccb169ea410a}*SharedItemsImports = 4
@@ -464,6 +470,34 @@ Global
 		{91E8438D-F413-4A2C-8A9B-6CE3544116DB}.ReleaseWithDebug|Win32.Build.0 = Release|Win32
 		{91E8438D-F413-4A2C-8A9B-6CE3544116DB}.ReleaseWithDebug|x64.ActiveCfg = Debug|Win32
 		{91E8438D-F413-4A2C-8A9B-6CE3544116DB}.ReleaseWithDebug|x64.Build.0 = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Debug|Win32.ActiveCfg = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Debug|Win32.Build.0 = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Debug|x64.ActiveCfg = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.DebugDONOTUSE|x64.ActiveCfg = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.DebugDONOTUSE|x64.Build.0 = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Release|Win32.ActiveCfg = Release|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Release|Win32.Build.0 = Release|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.Release|x64.ActiveCfg = Release|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.ReleaseWithDebug|Win32.ActiveCfg = Release|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.ReleaseWithDebug|Win32.Build.0 = Release|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.ReleaseWithDebug|x64.ActiveCfg = Debug|Win32
+		{C822B92E-305D-4559-A320-3A9B09309702}.ReleaseWithDebug|x64.Build.0 = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Debug|Win32.ActiveCfg = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Debug|Win32.Build.0 = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Debug|x64.ActiveCfg = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.DebugDONOTUSE|x64.ActiveCfg = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.DebugDONOTUSE|x64.Build.0 = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Release|Win32.ActiveCfg = Release|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Release|Win32.Build.0 = Release|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.Release|x64.ActiveCfg = Release|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.ReleaseWithDebug|Win32.ActiveCfg = Release|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.ReleaseWithDebug|Win32.Build.0 = Release|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.ReleaseWithDebug|x64.ActiveCfg = Debug|Win32
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A}.ReleaseWithDebug|x64.Build.0 = Debug|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -496,6 +530,8 @@ Global
 		{22D02598-F2D3-495F-BBA9-72DC156DA723} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{24081A28-C502-48C5-9805-746E45DE830D} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{91E8438D-F413-4A2C-8A9B-6CE3544116DB} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{C822B92E-305D-4559-A320-3A9B09309702} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{1BAA2979-95DD-441C-96AE-8E45EA56B48A} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}

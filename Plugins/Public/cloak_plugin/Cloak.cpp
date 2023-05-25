@@ -107,7 +107,6 @@ static map<uint, CLIENTCDSTRUCT> mapClientsCD;
 static map<uint, CLOAK_ARCH> mapCloakingDevices;
 static map<uint, CDSTRUCT> mapCloakDisruptors;
 
-static uint CloakAlertSound = CreateID("cloak_osiris");
 static unordered_set<uint> setJumpingClients;
 
 void LoadSettings();

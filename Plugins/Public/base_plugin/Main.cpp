@@ -2258,7 +2258,7 @@ void BaseDestroyed(uint space_obj, uint client)
 	customSolarList.erase(space_obj);
 }
 
-void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short p1, float& damage, enum DamageEntry::SubObjFate& fate)
+void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newHealth, enum DamageEntry::SubObjFate& fate)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (!iDmgToSpaceID || !dmg->get_inflictor_id())
@@ -2318,6 +2318,19 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short p1, float& damag
 	if (newHealth == curr) {
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
+	}
+
+	returncode = SKIPPLUGINS;
+
+	if (newHealth <= 0 && sID == 1)
+	{
+		uint iType;
+		pub::SpaceObj::GetType(iDmgToSpaceID, iType);
+		uint iClientIDKiller = HkGetClientIDByShip(dmg->get_inflictor_id());
+		if (set_plugin_debug)
+			ConPrint(L"HkCb_AddDmgEntry[2]: iType is %u, iClientIDKiller is %u\n", iType, iClientIDKiller);
+		if (iClientIDKiller && iType & (OBJ_DOCKING_RING | OBJ_STATION | OBJ_WEAPONS_PLATFORM))
+			BaseDestroyed(iDmgToSpaceID, iClientIDKiller);
 	}
 
 	returncode = SKIPPLUGINS;

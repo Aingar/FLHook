@@ -34,6 +34,18 @@ int set_plugin_debug = 0;
 /// The ship used to construct and upgrade bases
 uint set_construction_shiparch = 0;
 
+/// Mininmum distances for base deployment
+float minMiningDistance = 30000;
+float minPlanetDistance = 2500;
+float minStationDistance = 10000;
+float minLaneDistance = 5000;
+float minJumpDistance = 15000;
+float minDistanceMisc = 2500;
+
+/// Deployment command cooldown trackimg
+unordered_map<uint, uint> deploymentCooldownMap;
+uint deploymentCooldownDuration = 60;
+
 /// Map of good to quantity for items required by construction ship
 map<uint, uint> construction_items;
 
@@ -610,6 +622,34 @@ void LoadSettingsActual()
 					{
 						jump_lockout_duration = ini.get_value_int(0);
 					}
+					else if (ini.is_value("min_mining_distance"))
+					{
+						minMiningDistance = ini.get_value_float(0);
+					}
+					else if (ini.is_value("min_planet_distance"))
+					{
+						minPlanetDistance = ini.get_value_float(0);
+					}
+					else if (ini.is_value("min_station_distance"))
+					{
+						minStationDistance = ini.get_value_float(0);
+					}
+					else if (ini.is_value("min_trade_lane_distance"))
+					{
+						minLaneDistance = ini.get_value_float(0);
+					}
+					else if (ini.is_value("min_distance_misc"))
+					{
+						minDistanceMisc = ini.get_value_float(0);
+					}
+					else if (ini.is_value("min_jump_distance"))
+					{
+						minJumpDistance = ini.get_value_float(0);
+					}
+					else if(ini.is_value("deployment_cooldown"))
+					{
+						deploymentCooldownDuration = ini.get_value_int(0);
+					}
 				}
 			}
 		}
@@ -976,6 +1016,13 @@ void HkTimerCheckKick()
 		if (--jumpBan.second == 0) {
 			mapJumpLockout.erase(jumpBan.first);
 		}
+	}
+
+	for (auto& cooldown : deploymentCooldownMap)
+	{
+		cooldown.second--;
+		if(!cooldown.second)
+			deploymentCooldownMap.erase(cooldown.first);
 	}
 }
 
@@ -2281,57 +2328,19 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newH
 		iDmgToSpaceID = 0;
 		return;
 	}
+
+	// If this is an NPC hit then suppress the call completely
+	if (!dmg->is_inflictor_a_player())
+	{
+		if (set_plugin_debug)
+			ConPrint(L"HkCb_AddDmgEntry[2] suppressed - npc\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		iDmgToSpaceID = 0;
+		return;
+	}
+
 	float curr, max;
 	pub::SpaceObj::GetHealth(iDmgToSpaceID, curr, max);
-
-	if (set_plugin_debug)
-		ConPrint(L"HkCb_AddDmgEntry iDmgToSpaceID=%u get_inflictor_id=%u curr=%0.2f max=%0.0f newHealth=%0.2f cause=%u is_player=%u player_id=%u fate=%u\n",
-			iDmgToSpaceID, dmg->get_inflictor_id(), curr, max, newHealth, dmg->get_cause(), dmg->is_inflictor_a_player(), dmg->get_inflictor_owner_player(), fate);
-
-	// A work around for an apparent bug where mines/missiles at the base
-	// causes the base damage to jump down to 0 even if the base is
-	// otherwise healthy.
-	if (newHealth == 0.0f /*&& dmg->get_cause()==7*/ && curr > 200000)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		if (set_plugin_debug)
-			ConPrint(L"HkCb_AddDmgEntry[1] - invalid damage?\n");
-		return;
-	}
-
-	// Ask the combat magic plugin if we need to do anything differently
-	COMBAT_DAMAGE_OVERRIDE_STRUCT info;
-	info.iMunitionID = iDmgMunitionID;
-	info.fDamageMultiplier = 0.0f;
-	Plugin_Communication(COMBAT_DAMAGE_OVERRIDE, &info);
-
-	if (info.fDamageMultiplier != 0.0f)
-	{
-		newHealth = (curr - (curr - newHealth) * info.fDamageMultiplier);
-		if (newHealth < 0.0f)
-			newHealth = 0.0f;
-	}
-
-	// This call is for us, skip all plugins.
-	iDmgToSpaceID = 0;
-	newHealth = damagedModule->SpaceObjDamaged(iDmgToSpaceID, dmg->get_inflictor_id(), curr, newHealth);
-	if (newHealth == curr) {
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return;
-	}
-
-	returncode = SKIPPLUGINS;
-
-	if (newHealth <= 0 && sID == 1)
-	{
-		uint iType;
-		pub::SpaceObj::GetType(iDmgToSpaceID, iType);
-		uint iClientIDKiller = HkGetClientIDByShip(dmg->get_inflictor_id());
-		if (set_plugin_debug)
-			ConPrint(L"HkCb_AddDmgEntry[2]: iType is %u, iClientIDKiller is %u\n", iType, iClientIDKiller);
-		if (iClientIDKiller && iType & (OBJ_DOCKING_RING | OBJ_STATION | OBJ_WEAPONS_PLATFORM))
-			BaseDestroyed(iDmgToSpaceID, iClientIDKiller);
-	}
 
 	returncode = SKIPPLUGINS;
 

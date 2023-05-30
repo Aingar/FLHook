@@ -43,6 +43,7 @@ L"<TEXT>Set the master password for the base.</TEXT><PARA/><PARA/>"
 L"<TRA bold=\"true\"/><TEXT>/base rep [clear]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Set or clear the faction that this base is affiliated with. When setting the affiliation, the affiliation will be that of the player executing the command.</TEXT>",
 
+
 L"<TRA bold=\"true\"/><TEXT>/bank withdraw [credits], /bank deposit [credits], /bank status</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Withdraw, deposit or check the status of the credits held by the base's bank.</TEXT><PARA/><PARA/>"
 
@@ -58,6 +59,7 @@ L"<TEXT>Remove the item from the stock list. It cannot be sold to the base by do
 
 L"<TRA bold=\"true\"/><TEXT>/shop [page]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items shown per page.</TEXT>",
+
 
 L"<TRA bold=\"true\"/><TEXT>/base defensemode</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control the defense mode for the base.</TEXT><PARA/>"
@@ -83,7 +85,7 @@ L"<TRA bold=\"true\"/><TEXT>/base rep [clear]</TEXT><TRA bold=\"false\"/><PARA/>
 L"<TEXT>Set or clear the faction that this base is affiliated with. When setting the affiliation, the affiliation will be that of the player executing the command.</TEXT><PARA/><PARA/>"
 			
 L"<TRA bold=\"true\"/><TEXT>/base supplies</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT>";
+L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT>"
 
 L"<TRA bold=\"true\"/><TEXT>/base defmod</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control defense modules.</TEXT><PARA/><PARA/>"

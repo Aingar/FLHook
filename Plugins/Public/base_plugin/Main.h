@@ -631,10 +631,14 @@ extern uint set_crew_check_frequency;
 
 extern map<string, ARCHTYPE_STRUCT> mapArchs;
 
+/// List of banned systems
+extern set<uint> bannedSystemList;
+
 /// The ship used to construct and upgrade bases
 extern uint set_construction_shiparch;
 
 /// Mininmum distances for base deployment
+extern bool enableDistanceCheck;
 extern float minMiningDistance;
 extern float minPlanetDistance;
 extern float minStationDistance;

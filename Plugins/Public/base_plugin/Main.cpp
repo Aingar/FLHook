@@ -628,27 +628,27 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("min_mining_distance"))
 					{
-						minMiningDistance = ini.get_value_float(0);
+						minMiningDistance = max(0.0f, ini.get_value_float(0));
 					}
 					else if (ini.is_value("min_planet_distance"))
 					{
-						minPlanetDistance = ini.get_value_float(0);
+						minPlanetDistance = max(0.0f, ini.get_value_float(0));
 					}
 					else if (ini.is_value("min_station_distance"))
 					{
-						minStationDistance = ini.get_value_float(0);
+						minStationDistance = max(0.0f, ini.get_value_float(0));
 					}
 					else if (ini.is_value("min_trade_lane_distance"))
 					{
-						minLaneDistance = ini.get_value_float(0);
+						minLaneDistance = max(0.0f, ini.get_value_float(0));
 					}
 					else if (ini.is_value("min_distance_misc"))
 					{
-						minDistanceMisc = ini.get_value_float(0);
+						minDistanceMisc = max(0.0f, ini.get_value_float(0));
 					}
 					else if (ini.is_value("min_jump_distance"))
 					{
-						minJumpDistance = ini.get_value_float(0);
+						minJumpDistance = max(0.0f, ini.get_value_float(0));
 					}
 					else if(ini.is_value("deployment_cooldown"))
 					{
@@ -1032,13 +1032,6 @@ void HkTimerCheckKick()
 		if (--jumpBan.second == 0) {
 			mapJumpLockout.erase(jumpBan.first);
 		}
-	}
-
-	for (auto& cooldown : deploymentCooldownMap)
-	{
-		cooldown.second--;
-		if(!cooldown.second)
-			deploymentCooldownMap.erase(cooldown.first);
 	}
 }
 
@@ -1546,7 +1539,7 @@ void RandomizeCoords(Vector& vec) {
 // an update to set the base arrival text, base economy and change the
 // infocards.
 
-int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int iCancel, enum DOCK_HOST_RESPONSE response)
+int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& iCancel, enum DOCK_HOST_RESPONSE& response)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1583,8 +1576,8 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int i
 					if (foundid == false)
 					{
 						PrintUserCmdText(client, L"ERR Unable to dock with this ID.");
-						pub::Player::SendNNMessage(client, pub::GetNicknameId("info_access_denied"));
-						returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+						iCancel = -1;
+						response = ACCESS_DENIED;
 						return 0;
 					}
 				}
@@ -1611,8 +1604,8 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int i
 					if (foundclass == false)
 					{
 						PrintUserCmdText(client, L"ERR Unable to dock with a vessel of this type.");
-						pub::Player::SendNNMessage(client, pub::GetNicknameId("info_access_denied"));
-						returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+						iCancel = -1;
+						response = ACCESS_DENIED;
 						return 0;
 					}
 				}
@@ -1637,8 +1630,8 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int i
 				jumpData.jumpType = JUMPHOLE_JUMPTYPE;
 
 				Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_JUMP_CALLOUT, &jumpData);
-
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				iCancel = -1;
+				response = DOCK;
 				return 1;
 			}
 
@@ -1646,16 +1639,16 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int i
 			if (pbase->shield_active_time)
 			{
 				PrintUserCmdText(client, L"Docking failed because base shield is active");
-				pub::Player::SendNNMessage(client, pub::GetNicknameId("info_access_denied"));
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				iCancel = -1;
+				response = ACCESS_DENIED;
 				return 0;
 			}
 
 			if (!IsDockingAllowed(pbase, client))
 			{
 				PrintUserCmdText(client, L"Docking at this base is restricted");
-				pub::Player::SendNNMessage(client, pub::GetNicknameId("info_access_denied"));
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				iCancel = -1;
+				response = ACCESS_DENIED;
 				return 0;
 			}
 

@@ -55,11 +55,9 @@ float set_fSpinImpulseMultiplier;
 // set of ships which cannot use TradeLane, and are blocked
 // from forming on other ships to bypass the block
 unordered_set<uint> setLaneAndFormationBannedShips;
+
 unordered_set<uint> setDumbProjectiles;
 
-// set of ships which cannot use TradeLane, and are blocked
-// from forming on other ships to bypass the block
-unordered_set<uint> setLaneAndFormationBannedShips;
 /** A return code to indicate to FLHook if we want the hook processing to continue. */
 PLUGIN_RETURNCODE returncode;
 
@@ -328,7 +326,7 @@ string GetUserFilePath(const wstring &wscCharname, const string &scExtension)
 
 namespace HkIEngine
 {
-	int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int iCancel, enum DOCK_HOST_RESPONSE response)
+	int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int& iCancel, enum DOCK_HOST_RESPONSE& response)
 	{
 		returncode = DEFAULT_RETURNCODE;
 
@@ -342,8 +340,8 @@ namespace HkIEngine
 		else
 		{
 			if (Players[iClientID].fRelativeHealth == 0.0f && (iCancel != -1)) {
-				pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("dock_disallowed"));
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				iCancel = -1;
+				response = ACCESS_DENIED;
 				return 0;
 			}
 			uint iTypeID;
@@ -353,8 +351,9 @@ namespace HkIEngine
 				if (!IsDockingAllowed(iShip, iDockTarget, iClientID))
 				{
 					//AddLog("INFO: Docking suppressed docktarget=%u charname=%s", iDockTarget, wstos(Players.GetActiveCharacterName(iClientID)).c_str());
-					returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-					return 0;
+					iCancel = -1;
+					response = ACCESS_DENIED;
+					return 1;
 				}
 
 				if (response == PROCEED_DOCK)
@@ -443,27 +442,6 @@ namespace HkIServerImpl
 		{
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			Server.CharacterInfoReq(iClientID, true);
-		}
-	}
-
-	void __stdcall CreateGuided(uint iClientID, FLPACKET_CREATEGUIDED& createGuidedPacket)
-	{
-		uint targetType;
-		pub::SpaceObj::GetType(createGuidedPacket.iOwner, targetType);
-		if (!(targetType & (OBJ_FIGHTER | OBJ_FREIGHTER | OBJ_TRANSPORT | OBJ_GUNBOAT | OBJ_CRUISER | OBJ_CAPITAL))) //GetTarget throws an exception for non-ship entities.
-			return;
-		uint targetId;
-		pub::SpaceObj::GetTarget(createGuidedPacket.iOwner, targetId);
-		if (!targetId)
-		{
-			//disable both tracking and incoming-missile alert
-			const auto& projectile = reinterpret_cast<CGuided*>(CObject::Find(createGuidedPacket.iProjectileId, CObject::CGUIDED_OBJECT));
-			projectile->set_target(nullptr);
-			createGuidedPacket.iTargetId = 0;
-		}
-		else if (setDumbProjectiles.count(createGuidedPacket.iMunitionId))
-		{
-			createGuidedPacket.iTargetId = 0; // prevents the 'incoming missile' warning client-side
 		}
 	}
 
@@ -1780,7 +1758,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::StopTradelane, PLUGIN_HkIServerImpl_StopTradelane, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::CreateNewCharacter, PLUGIN_HkIServerImpl_CreateNewCharacter, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::DestroyCharacter, PLUGIN_HkIServerImpl_DestroyCharacter, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIEngine::Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_SendChat, PLUGIN_HkCb_SendChat, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

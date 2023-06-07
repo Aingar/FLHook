@@ -267,7 +267,7 @@ void LoadSettings()
 				{
 					if (ini.is_value("tr"))
 					{
-						notradelist[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
+						notradelist[CreateID(ini.get_value_string(0))] = min(1.0f, max( 0.0f, ini.get_value_float(1)));
 					}
 				}
 			}
@@ -1150,7 +1150,7 @@ void JettisonCargo(unsigned int iClientID, struct XJettisonCargo const &jc)
 			uint amountToJettison = static_cast<uint>(jc.iCount * noTradeGood->second);
 			PrintUserCmdText(iClientID, L"%u units of %ls jettisoned, %u units lost in the process.", jc.iCount, goodName.c_str(), jc.iCount - amountToJettison);
 			pub::Player::RemoveCargo(iClientID, static_cast<ushort>(jc.iSlot), jc.iCount);
-			if (amountToJettison) {
+			if (amountToJettison > 0) {
 				uint shipId;
 				uint sysId;
 				Vector pos;
@@ -1229,7 +1229,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int client)
 	SCI::UpdatePlayerID(client);
 }
 
-int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int iCancel, enum DOCK_HOST_RESPONSE response)
+int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int& iCancel, enum DOCK_HOST_RESPONSE& response)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1239,12 +1239,14 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 	{
 		if (!ADOCK::IsDockAllowed(iShip, iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			iCancel = -1;
+			response = DOCK_DENIED;
 			return 0;
 		}
 		if (!SCI::CanDock(iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			iCancel = -1;
+			response = DOCK_DENIED;
 			return 0;
 		}
 	}

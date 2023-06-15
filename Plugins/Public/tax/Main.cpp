@@ -14,8 +14,12 @@ map<uint, Tax> taxMap;
 boolean killDisconnectingPlayers = true;
 
 wstring cannotPayMsg = L"You can't pay, they're out to kill you!";
-wstring killMessage = L"%player decided to kill you, run!";
+wstring attackMessage = L"%player decided to kill you, run!";
+wstring attackMessageConfirmation = L"The hunt is on";
 wstring ransomMessage = L"%player issued a demand for %pay credits";
+
+wstring atackMessageStyle = L"0x0000CC09";
+wstring attackMessageConfirmationStyle = L"0x0000CC09";
 
 PLUGIN_RETURNCODE returncode;
 
@@ -47,9 +51,21 @@ void LoadSettings()
 					{
 						cannotPayMsg = stows(ini.get_value_string());
 					}
-					else if (ini.is_value("killMessage"))
+					else if (ini.is_value("attackMessage"))
 					{
-						killMessage = stows(ini.get_value_string());
+						attackMessage = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("attackMessageStyle"))
+					{
+						atackMessageStyle = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("attackMessageConfirmation"))
+					{
+						attackMessageConfirmation = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("attackMessageConfirmationStyle"))
+					{
+						attackMessageConfirmationStyle = stows(ini.get_value_string());
 					}
 					else if (ini.is_value("ransomMessage"))
 					{
@@ -144,10 +160,13 @@ bool UserCmdTax(uint client, const wstring& cmd, const wstring &wscParam, const 
 	}
 	else
 	{
-		wstring message = killMessage;
-		message = ReplaceStr(message, L"%player", characterName);
-		PrintUserCmdText(targetPlayer, message);
-		PrintUserCmdText(client, L"The hunt is on");
+		wstring huntedMessage = attackMessage;
+		huntedMessage = ReplaceStr(attackMessage, L"%player", characterName);
+		huntedMessage = L"<TRA data=\"" + atackMessageStyle + L"\" mask=\"-1\"/> <TEXT>" + XMLText(huntedMessage) + L"</TEXT>";
+		HkFMsg(targetPlayer, huntedMessage);
+
+		wstring huntConfirmation = L"<TRA data=\"" + atackMessageStyle + L"\" mask=\"-1\"/> <TEXT>" + XMLText(attackMessageConfirmation) + L"</TEXT>";
+		HkFMsg(client, huntConfirmation);
 	}
 
 	return true;

@@ -145,7 +145,7 @@ bool UserCmdStartFreeForAll(uint client, const wstring &wscCmd, const wstring &w
 	int amount = ToInt(GetParam(wscParam, ' ', 0));
 
 	// Check its a valid amount of cash
-	if (amount == 0)
+	if (amount <= 0)
 	{
 		PrintUserCmdText(client, L"Must specify a cash amount. Usage: /ffa <amount> e.g. /ffa 5000");
 		return true;
@@ -325,7 +325,7 @@ bool UserCmd_Duel(uint client, const wstring &wscCmd, const wstring &wscParam, c
 	const int amount = ToInt(GetParam(wscParam, ' ', 0));
 
 	// Check its a valid amount of cash
-	if (amount == 0)
+	if (amount <= 0)
 	{
 		PrintUserCmdText(client,
 			L"Must specify a cash amount. Usage: /duel "

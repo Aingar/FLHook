@@ -134,8 +134,6 @@ float siege_mode_damage_trigger_level = 8000000;
 //the distance between bases to share siege mod activation
 float siege_mode_chain_reaction_trigger_distance = 8000;
 
-unordered_map<uint, AICONFIG> defPlatformAIConfig;
-
 set<uint> customSolarList;
 
 uint GetAffliationFromClient(uint client)
@@ -420,6 +418,7 @@ void LoadSettingsActual()
 	shield_power_items.clear();
 
 	HookExt::ClearMiningObjData();
+	DefenseModule::LoadSettings(string(szCurDir) + "\\flhook_plugins\\base_wp_ai.cfg");
 
 	INI_Reader ini;
 	if (ini.open(cfg_file.c_str(), false))

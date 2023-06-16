@@ -228,6 +228,8 @@ public:
 	bool SpaceObjDestroyed(uint space_obj);
 	void SetReputation(int player_rep, float attitude);
 	void Reset();
+
+	static void LoadSettings(const string& path);
 };
 
 class BuildModule : public Module
@@ -672,6 +674,4 @@ extern float siege_mode_damage_trigger_level;
 extern float siege_mode_chain_reaction_trigger_distance;
 
 extern set<uint> customSolarList;
-
-extern unordered_map<uint, AICONFIG> defPlatformAIConfig;
 #endif

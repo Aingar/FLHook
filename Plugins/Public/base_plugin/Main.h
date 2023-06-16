@@ -13,12 +13,20 @@
 #include <FLHook.h>
 #include <plugin.h>
 #include <PluginUtilities.h>
+#include <unordered_map>
 
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
 void LogCheater(uint client, const wstring &reason);
 uint GetAffliationFromClient(uint client);
+
+struct AICONFIG
+{
+	pub::AI::Personality::GunUseStruct gunUse;
+	pub::AI::Personality::MissileUseStruct missileUse;
+	pub::AI::Personality::JobStruct job;
+};
 
 struct RECIPE
 {
@@ -664,4 +672,6 @@ extern float siege_mode_damage_trigger_level;
 extern float siege_mode_chain_reaction_trigger_distance;
 
 extern set<uint> customSolarList;
+
+extern unordered_map<uint, AICONFIG> defPlatformAIConfig;
 #endif

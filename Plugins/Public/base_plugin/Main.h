@@ -21,6 +21,13 @@ static uint STORAGE_MODULE_CAPACITY = 40000;
 void LogCheater(uint client, const wstring &reason);
 uint GetAffliationFromClient(uint client);
 
+struct AICONFIG
+{
+	pub::AI::Personality::GunUseStruct gunUse;
+	pub::AI::Personality::MissileUseStruct missileUse;
+	pub::AI::Personality::JobStruct job;
+};
+
 struct RECIPE
 {
 	RECIPE() : produced_item(0), cooking_rate(0), credit_cost(0) {}
@@ -223,6 +230,8 @@ public:
 	bool SpaceObjDestroyed(uint space_obj);
 	void SetReputation(int player_rep, float attitude);
 	void Reset();
+
+	static void LoadSettings(const string& path);
 };
 
 class BuildModule : public Module

@@ -1,17 +1,18 @@
 #include "Main.h"
 
-FactoryModule::FactoryModule(PlayerBase *the_base)
+FactoryModule::FactoryModule(PlayerBase* the_base)
 	: Module(0), base(the_base)
 {
 	active_recipe.nickname = 0;
 }
 
 // Find the recipe for this building_type and start construction.
-FactoryModule::FactoryModule(PlayerBase *the_base, uint nickname)
+FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 	: Module(Module::TYPE_FACTORY), factoryNickname(nickname), base(the_base)
 {
 	active_recipe.nickname = 0;
-	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname]) {
+	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
+	{
 		base->availableCraftList.insert(craftType);
 	}
 }
@@ -26,108 +27,93 @@ wstring FactoryModule::GetInfo(bool xml)
 
 	info += recipeMap[factoryNickname].infotext;
 
+	wstring openLine;
+	wstring closeLine;
 	if (xml)
 	{
-		info += L"</TEXT><PARA/><TEXT>      Pending " + stows(itos(build_queue.size())) + L" items</TEXT>";
-		if (active_recipe.nickname)
-		{
-			info += L"<PARA/><TEXT>      Crafting " + Status + active_recipe.infotext + (active_recipe.produced_amount ? L" x%u" + active_recipe.produced_amount : L"") + L". Waiting for:</TEXT>";
-
-			for (auto& i = active_recipe.consumed_items.begin();
-				i != active_recipe.consumed_items.end(); ++i)
-			{
-				uint good = i->first;
-				uint quantity = i->second;
-
-				const GoodInfo *gi = GoodList::find_by_id(good);
-				if (gi)
-				{
-					info += L"<PARA/><TEXT>      - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-					if (quantity > 0 && base->HasMarketItem(good) < active_recipe.cooking_rate)
-						info += L" [Out of stock]";
-					info += L"</TEXT>";
-				}
-			}
-			if (active_recipe.credit_cost)
-			{
-				info += L"<PARA/><TEXT>      - Credits x" + stows(itos(active_recipe.credit_cost));
-				if (base->money < active_recipe.credit_cost)
-				{
-					info += L" [Insufficient cash]";
-				}
-				info += L"</TEXT>";
-			}
-			if (!active_recipe.catalyst_items.empty())
-			{
-				info += L"<PARA/><TEXT>      Needed catalysts:</TEXT>";
-				for (const auto& catalyst : active_recipe.catalyst_items)
-				{
-					uint good = catalyst.first;
-					uint quantity = catalyst.second;
-
-					const GoodInfo* gi = GoodList::find_by_id(good);
-					if (gi)
-					{
-						info += L"<PARA/><TEXT>      - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-						uint presentAmount = base->HasMarketItem(good);
-						if (presentAmount < quantity)
-							info += L" [Need " + stows(itos(quantity - presentAmount)) + L" more]";
-						info += L"</TEXT>";
-					}
-				}
-			}
-		}
+		openLine = L"</TEXT><PARA/><TEXT>      ";
+		closeLine = L"</TEXT>";
 	}
 	else
 	{
-		if (active_recipe.nickname)
+		openLine = L" - ";
+		closeLine = L"\n";
+	}
+	info += openLine + L"Pending " + stows(itos(build_queue.size())) + L" items";
+	if (active_recipe.nickname)
+	{
+		info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
+
+		for (auto& i : active_recipe.consumed_items)
 		{
-			info += L" - Building " + Status + active_recipe.infotext + L". Waiting for:";
+			uint good = i.first;
+			uint quantity = i.second;
 
-			for (auto& i = active_recipe.consumed_items.begin();
-				i != active_recipe.consumed_items.end(); ++i)
+			const GoodInfo* gi = GoodList::find_by_id(good);
+			if (gi)
 			{
-				uint good = i->first;
-				uint quantity = i->second;
+				info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				if (quantity > 0 && base->HasMarketItem(good) < active_recipe.cooking_rate)
+				{
+					info += L" [Out of stock]";
+				}
+			}
+		}
+		if (active_recipe.credit_cost)
+		{
+			info += openLine + L" - Credits x" + stows(itos(active_recipe.credit_cost));
+			if (base->money < active_recipe.credit_cost)
+			{
+				info += L" [Insufficient cash]";
+			}
+		}
+		vector<pair<uint, uint>> neededWorkforce;
+		if (!active_recipe.catalyst_items.empty())
+		{
+			info += openLine + L"Needed catalysts:";
+			for (const auto& catalyst : active_recipe.catalyst_items)
+			{
+				if (humanCargoList.count(catalyst.first))
+				{
+					neededWorkforce.emplace_back(catalyst);
+					continue;
+				}
+				uint good = catalyst.first;
+				uint quantity = catalyst.second;
 
-				const GoodInfo *gi = GoodList::find_by_id(good);
+				const GoodInfo* gi = GoodList::find_by_id(good);
 				if (gi)
 				{
-					info += stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-					if (base->HasMarketItem(good) < quantity)
-						info += L" [Out of stock]";
-				}
-				if (active_recipe.credit_cost)
-				{
-					info += L"Credits x" + stows(itos(active_recipe.credit_cost));
-					if (base->money < active_recipe.credit_cost)
+					info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+					uint presentAmount = base->HasMarketItem(good);
+					if (presentAmount < quantity)
 					{
-						info += L" [Insufficient cash]";
-					}
-				}
-				if (!active_recipe.catalyst_items.empty())
-				{
-					info += L"Needed catalysts:";
-					for (const auto& catalyst : active_recipe.catalyst_items)
-					{
-						uint good = catalyst.first;
-						uint quantity = catalyst.second;
-
-						const GoodInfo* gi = GoodList::find_by_id(good);
-						if (gi)
-						{
-							info += L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-							uint presentAmount = base->HasMarketItem(good);
-							if (presentAmount < quantity)
-								info += L" [Need " + stows(itos(quantity - presentAmount)) + L" more]";
-						}
+						info += L" [Need " + stows(itos(quantity - presentAmount)) + L" more]";
 					}
 				}
 			}
 		}
-		else {
-			info += L" - Pending " + stows(itos(build_queue.size())) + L" items ";
+		if (!neededWorkforce.empty())
+		{
+			info += openLine + L"Needed workforce:";
+			for (const auto& worker : neededWorkforce)
+			{
+				uint good = worker.first;
+				uint quantity = worker.second;
+
+				const GoodInfo* gi = GoodList::find_by_id(good);
+				if (gi)
+				{
+					info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+					uint presentAmount = base->HasMarketItem(good);
+					if (presentAmount < quantity)
+					{
+						info += L" [Need " + stows(itos(quantity - presentAmount)) + L" more]";
+					}
+				}
+			}
 		}
+		info += closeLine; 
 	}
 
 	return info;
@@ -139,8 +125,10 @@ wstring FactoryModule::GetInfo(bool xml)
 bool FactoryModule::Timer(uint time)
 {
 
-	if ((time%set_tick_time) != 0)
+	if ((time % set_tick_time) != 0)
+	{
 		return false;
+	}
 
 	// Get the next item to make from the build queue.
 	if (!active_recipe.nickname && !build_queue.empty())
@@ -151,7 +139,9 @@ bool FactoryModule::Timer(uint time)
 
 	// Nothing to do.
 	if (!active_recipe.nickname || !base->isCrewSupplied || Paused)
+	{
 		return false;
+	}
 
 	// Consume goods at the cooking rate.
 	bool cooked = true;
@@ -159,18 +149,17 @@ bool FactoryModule::Timer(uint time)
 	for (const auto& catalyst : active_recipe.catalyst_items)
 	{
 		uint good = catalyst.first;
-		uint quantity = catalyst.second;
+		uint quantityNeeded = catalyst.second;
 
-		const GoodInfo* gi = GoodList::find_by_id(good);
-		if (gi)
+		uint presentAmount = base->HasMarketItem(good);
+		if ((presentAmount - base->reservedCatalystMap[good]) < quantityNeeded)
 		{
-			uint presentAmount = base->HasMarketItem(good);
-			if (presentAmount < quantity)
-				return false;
+			return false;
 		}
+		base->reservedCatalystMap[good] += quantityNeeded;
 	}
 
-	if(active_recipe.credit_cost)
+	if (active_recipe.credit_cost)
 	{
 		uint moneyToRemove = min(active_recipe.cooking_rate * 10, active_recipe.credit_cost);
 		if (base->money >= moneyToRemove)
@@ -178,40 +167,50 @@ bool FactoryModule::Timer(uint time)
 			base->money -= moneyToRemove;
 			active_recipe.credit_cost -= moneyToRemove;
 		}
-		if (active_recipe.credit_cost) {
+		if (active_recipe.credit_cost)
+		{
 			cooked = false;
 		}
 	}
 
-	for (auto& i = active_recipe.consumed_items.begin();
-		i != active_recipe.consumed_items.end(); ++i)
+	for (auto& i : active_recipe.consumed_items)
 	{
-		uint good = i->first;
-		uint quantity = i->second > active_recipe.cooking_rate ? active_recipe.cooking_rate : i->second;
-		if (quantity)
+		uint good = i.first;
+		uint quantity = min(active_recipe.cooking_rate, i.second);
+		if (!quantity)
 		{
-			cooked = false;
-			map<uint, MARKET_ITEM>::iterator market_item = base->market_items.find(good);
-			if (market_item != base->market_items.end())
-			{
-				if (market_item->second.quantity >= quantity)
-				{
-					i->second -= quantity;
-					base->RemoveMarketGood(good, quantity);
-					return false;
-				}
-			}
+			continue;
+		}
+		cooked = false;
+		auto market_item = base->market_items.find(good);
+		if (market_item != base->market_items.end()
+			&& market_item->second.quantity >= quantity)
+		{
+			i.second -= quantity;
+			base->RemoveMarketGood(good, quantity);
+			return false;
 		}
 	}
 
 	// Do nothing if cooking is not finished
 	if (!cooked)
+	{
 		return false;
+	}
 
 	// Add the newly produced item to the market. If there is insufficient space
 	// to add the item, wait until there is space.
-	if (!base->AddMarketGood(active_recipe.produced_item, active_recipe.produced_amount))
-		return false;
+	for (auto& item : active_recipe.produced_items)
+	{
+		if (!base->AddMarketGood(item.first, item.second))
+		{
+			return false;
+		}
+		else
+		{
+			item.second = 0;
+		}
+	}
 
 	if (active_recipe.loop_production)
 	{
@@ -232,15 +231,17 @@ bool FactoryModule::Timer(uint time)
 	return false;
 }
 
-void FactoryModule::LoadState(INI_Reader &ini)
+void FactoryModule::LoadState(INI_Reader& ini)
 {
 	active_recipe.nickname = 0;
 	RECIPE foundRecipe;
 	while (ini.read_value())
 	{
-		if (ini.is_value("type")) {
+		if (ini.is_value("type"))
+		{
 			factoryNickname = moduleNumberRecipeMap[ini.get_value_int(0)].nickname;
-			for (auto& craftType : factoryNicknameToCraftTypeMap[factoryNickname]) {
+			for (auto& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
+			{
 				base->availableCraftList.insert(craftType);
 				base->craftTypeTofactoryModuleMap[craftType] = this;
 			}
@@ -257,7 +258,7 @@ void FactoryModule::LoadState(INI_Reader &ini)
 		}
 		else if (ini.is_value("consumed"))
 		{
-			active_recipe.consumed_items.push_back(make_pair(ini.get_value_int(0), ini.get_value_int(1)));
+			active_recipe.consumed_items.emplace_back(make_pair(ini.get_value_int(0), ini.get_value_int(1)));
 		}
 		else if (ini.is_value("credit_cost"))
 		{
@@ -265,36 +266,35 @@ void FactoryModule::LoadState(INI_Reader &ini)
 		}
 		else if (ini.is_value("build_queue"))
 		{
-			build_queue.push_back(ini.get_value_int(0));
+			build_queue.emplace_back(ini.get_value_int(0));
 		}
 	}
 }
 
-void FactoryModule::SaveState(FILE *file)
+void FactoryModule::SaveState(FILE* file)
 {
 	fprintf(file, "[FactoryModule]\n");
 	fprintf(file, "type = %u\n", recipeMap[factoryNickname].shortcut_number);
 	fprintf(file, "nickname = %u\n", active_recipe.nickname);
 	fprintf(file, "paused = %d\n", Paused);
-	if (active_recipe.nickname) {
+	if (active_recipe.nickname)
+	{
 		if (active_recipe.credit_cost)
 			fprintf(file, "credit_cost = %u\n", active_recipe.credit_cost);
-		for (auto& i = active_recipe.consumed_items.begin();
-			i != active_recipe.consumed_items.end(); ++i)
+		for (auto& i : active_recipe.consumed_items)
 		{
-			fprintf(file, "consumed = %u, %u\n", i->first, i->second);
+			fprintf(file, "consumed = %u, %u\n", i.first, i.second);
 		}
 	}
-	for (list<uint>::iterator i = build_queue.begin();
-		i != build_queue.end(); ++i)
+	for (uint i : build_queue)
 	{
-		fprintf(file, "build_queue = %u\n", *i);
+		fprintf(file, "build_queue = %u\n", i);
 	}
 }
 
 void FactoryModule::SetActiveRecipe(uint product)
 {
-	active_recipe = recipeMap[product];
+	active_recipe = RECIPE(recipeMap[product]);
 	if (active_recipe.affiliationBonus.count(base->affiliation))
 	{
 		float productionModifier = active_recipe.affiliationBonus.at(base->affiliation);
@@ -313,7 +313,7 @@ void FactoryModule::AddToQueue(uint product)
 	}
 	else
 	{
-		build_queue.push_back(product);
+		build_queue.emplace_back(product);
 	}
 }
 
@@ -336,37 +336,47 @@ bool FactoryModule::ToggleQueuePaused(bool NewState)
 	return RememberState != NewState;
 }
 
-FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct) {
-	for (std::vector<Module*>::iterator i = pb->modules.begin(); i < pb->modules.end(); ++i) {
-		FactoryModule* facModPtr = dynamic_cast<FactoryModule*>(*i);
-		if(facModPtr && facModPtr->active_recipe.nickname == searchedProduct){
+FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct)
+{
+	for (auto& module : pb->modules)
+	{
+		FactoryModule* facModPtr = dynamic_cast<FactoryModule*>(module);
+		if (facModPtr && facModPtr->active_recipe.nickname == searchedProduct)
+		{
 			return facModPtr;
 		}
 	}
 	return nullptr;
 }
 
-void FactoryModule::StopAllProduction(PlayerBase* pb) {
-	for (std::vector<Module*>::iterator i = pb->modules.begin(); i < pb->modules.end(); ++i) {
-		FactoryModule* facModPtr = dynamic_cast<FactoryModule*>(*i);
-		if (facModPtr){
+void FactoryModule::StopAllProduction(PlayerBase* pb)
+{
+	for (auto& i : pb->modules)
+	{
+		FactoryModule* facModPtr = dynamic_cast<FactoryModule*>(i);
+		if (facModPtr)
+		{
 			facModPtr->ClearQueue();
 			facModPtr->ClearRecipe();
 		}
 	}
 }
 
-bool FactoryModule::IsFactoryModule(Module* module) {
+bool FactoryModule::IsFactoryModule(Module* module)
+{
 	return module->type == Module::TYPE_FACTORY;
 }
 
-RECIPE* FactoryModule::GetFactoryProductRecipe(wstring craftType, wstring product) {
-	transform(product.begin(), product.end(), product.begin(), ::tolower);
+const RECIPE* FactoryModule::GetFactoryProductRecipe(wstring& craftType, wstring& product)
+{
+	product = ToLower(product);
 	int shortcut_number = ToInt(product);
-	if (recipeCraftTypeNumberMap[craftType].count(shortcut_number)) {
+	if (recipeCraftTypeNumberMap[craftType].count(shortcut_number))
+	{
 		return &recipeCraftTypeNumberMap[craftType][shortcut_number];
 	}
-	else if (recipeCraftTypeNameMap[craftType].count(product)){
+	else if (recipeCraftTypeNameMap[craftType].count(product))
+	{
 		return &recipeCraftTypeNameMap[craftType][product];
 	}
 	return nullptr;

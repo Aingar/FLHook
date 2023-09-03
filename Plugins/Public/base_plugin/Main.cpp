@@ -16,13 +16,11 @@
 #include <hookext_exports.h>
 
 // Clients
-map<uint, CLIENT_DATA> clients;
+unordered_map<uint, CLIENT_DATA> clients;
 
 // Bases
-map<uint, PlayerBase*> player_bases;
-map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
-
-map<uint, bool> mapPOBShipPurchases;
+unordered_map<uint, PlayerBase*> player_bases;
+unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
 
 /// 0 = HTML, 1 = JSON, 2 = Both
 int ExportType = 0;
@@ -31,7 +29,7 @@ int ExportType = 0;
 int set_plugin_debug = 0;
 
 /// List of banned systems
-set<uint> bannedSystemList;
+unordered_set<uint> bannedSystemList;
 
 /// The ship used to construct and upgrade bases
 uint set_construction_shiparch = 0;
@@ -68,6 +66,8 @@ uint set_crew_check_frequency = 43200;
 /// The commodity used as crew for the base
 uint set_base_crew_type;
 
+unordered_set<uint> humanCargoList;
+
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
@@ -103,7 +103,7 @@ uint set_damage_per_tick = 600;
 
 /// Damage multiplier for damaged/abandoned stations
 /// In case of overlapping modifiers, only the first one specified in .cfg file will apply
-list<WEAR_N_TEAR_MODIFIER> wear_n_tear_mod_list;
+vector<WEAR_N_TEAR_MODIFIER> wear_n_tear_mod_list;
 
 /// Additional damage penalty for stations without proper crew
 float no_crew_damage_multiplier = 1;
@@ -181,24 +181,29 @@ uint GetAffliationFromClient(uint client)
 
 PlayerBase *GetPlayerBase(uint base)
 {
-	map<uint, PlayerBase*>::iterator i = player_bases.find(base);
+	const auto& i = player_bases.find(base);
 	if (i != player_bases.end())
+	{
 		return i->second;
-	return 0;
+	}
+	return nullptr;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 PlayerBase *GetPlayerBaseForClient(uint client)
 {
-	map<uint, CLIENT_DATA>::iterator j = clients.find(client);
+	auto& j = clients.find(client);
 	if (j == clients.end())
-		return 0;
+	{
+		return nullptr;
+	}
 
-	map<uint, PlayerBase*>::iterator i = player_bases.find(j->second.player_base);
+	auto i = player_bases.find(j->second.player_base);
 	if (i == player_bases.end())
-		return 0;
-
+	{
+		return nullptr;
+	}
 	return i->second;
 }
 
@@ -206,14 +211,16 @@ PlayerBase *GetPlayerBaseForClient(uint client)
 
 PlayerBase *GetLastPlayerBaseForClient(uint client)
 {
-	map<uint, CLIENT_DATA>::iterator j = clients.find(client);
+	auto& j = clients.find(client);
 	if (j == clients.end())
-		return 0;
-
-	map<uint, PlayerBase*>::iterator i = player_bases.find(j->second.last_player_base);
+	{
+		return nullptr;
+	}
+	auto& i = player_bases.find(j->second.last_player_base);
 	if (i == player_bases.end())
-		return 0;
-
+	{
+		return nullptr;
+	}
 	return i->second;
 }
 
@@ -352,20 +359,18 @@ void SyncReputationForClientShip(uint ship, uint client)
 	uint system;
 	pub::SpaceObj::GetSystem(ship, system);
 
-	map<uint, PlayerBase*>::iterator base = player_bases.begin();
-	for (; base != player_bases.end(); base++)
+	for (auto& base : player_bases)
 	{
-		if (base->second->system == system)
+		if (base.second->system == system)
 		{
-			float attitude = base->second->GetAttitudeTowardsClient(client);
+			float attitude = base.second->GetAttitudeTowardsClient(client);
 			if (set_plugin_debug > 1)
-				ConPrint(L"SyncReputationForClientShip:: ship=%u attitude=%f base=%08x\n", ship, attitude, base->first);
-			for (vector<Module*>::iterator module = base->second->modules.begin();
-				module != base->second->modules.end(); ++module)
+				ConPrint(L"SyncReputationForClientShip:: ship=%u attitude=%f base=%08x\n", ship, attitude, base.first);
+			for (auto module : base.second->modules)
 			{
-				if (*module)
+				if (module)
 				{
-					(*module)->SetReputation(player_rep, attitude);
+					module->SetReputation(player_rep, attitude);
 				}
 			}
 		}
@@ -440,19 +445,19 @@ void LoadSettingsActual()
 	// The path to the configuration file.
 	char szCurDir[MAX_PATH];
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
-	string cfg_file = string(szCurDir) + "\\flhook_plugins\\base.cfg";
-	string cfg_fileitems = string(szCurDir) + "\\flhook_plugins\\base_recipe_items.cfg";
-	string cfg_filemodules = string(szCurDir) + "\\flhook_plugins\\base_recipe_modules.cfg";
-	string cfg_filearch = string(szCurDir) + "\\flhook_plugins\\base_archtypes.cfg";
-	string cfg_fileforbiddencommodities = string(szCurDir) + "\\flhook_plugins\\base_forbidden_cargo.cfg";
+	string cfg_file = string(szCurDir) + R"(flhook_plugins\base.cfg)";
+	string cfg_fileitems = string(szCurDir) + R"(\flhook_plugins\base_recipe_items.cfg)";
+	string cfg_filemodules = string(szCurDir) + R"(\flhook_plugins\base_recipe_modules.cfg)";
+	string cfg_filearch = string(szCurDir) + R"(\flhook_plugins\base_archtypes.cfg)";
+	string cfg_fileforbiddencommodities = string(szCurDir) + R"(\flhook_plugins\base_forbidden_cargo.cfg)";
 	uint bmapLoadHyperspaceHubConfig = 0;
 
-	map<uint, PlayerBase*>::iterator base = player_bases.begin();
-	for (; base != player_bases.end(); base++)
+	for (auto base : player_bases)
 	{
-		delete base->second;
+		delete base.second;
 	}
 
+	player_bases.clear();
 	construction_items.clear();
 	set_base_repair_items.clear();
 	set_base_crew_consumption_items.clear();
@@ -515,7 +520,7 @@ void LoadSettingsActual()
 						mod.fromHP = ini.get_value_float(0);
 						mod.toHP = ini.get_value_float(1);
 						mod.modifier = ini.get_value_float(2);
-						wear_n_tear_mod_list.push_back(mod);
+						wear_n_tear_mod_list.emplace_back(mod);
 					}
 					else if (ini.is_value("no_crew_damage_multiplier"))
 					{
@@ -550,7 +555,7 @@ void LoadSettingsActual()
 						BASE_VULNERABILITY_WINDOW damageWindow;
 						damageWindow.start = ini.get_value_int(0);
 						damageWindow.end = ini.get_value_int(1);
-						baseVulnerabilityWindows.push_back(damageWindow);
+						baseVulnerabilityWindows.emplace_back(damageWindow);
 					}
 					else if (ini.is_value("construction_shiparch"))
 					{
@@ -570,12 +575,16 @@ void LoadSettingsActual()
 					{
 						set_base_crew_type = CreateID(ini.get_value_string(0));
 					}
+					else if (ini.is_value("human_cargo_item"))
+					{
+						humanCargoList.insert(CreateID(ini.get_value_string(0)));
+					}
 					else if (ini.is_value("base_repair_item"))
 					{
 						REPAIR_ITEM item;
 						item.good = CreateID(ini.get_value_string(0));
 						item.quantity = ini.get_value_int(1);
-						set_base_repair_items.push_back(item);
+						set_base_repair_items.emplace_back(item);
 					}
 					else if (ini.is_value("base_crew_consumption_item"))
 					{
@@ -697,7 +706,7 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("craft_list"))
 					{
-						craft_types.push_back(stows(ToLower(ini.get_value_string(0))));
+						craft_types.emplace_back(stows(ToLower(ini.get_value_string(0))));
 					}
 					else if (ini.is_value("build_type"))
 					{
@@ -721,7 +730,7 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("consumed"))
 					{
-						recipe.consumed_items.push_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
 					else if (ini.is_value("reqlevel"))
 					{
@@ -750,11 +759,7 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("produced_item"))
 					{
-						recipe.produced_item = CreateID(ini.get_value_string(0));
-					}
-					else if (ini.is_value("produced_amount"))
-					{
-						recipe.produced_amount = ini.get_value_int(0);
+						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
 					else if (ini.is_value("loop_production"))
 					{
@@ -782,11 +787,11 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("consumed"))
 					{
-						recipe.consumed_items.push_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
 					else if (ini.is_value("catalyst"))
 					{
-						recipe.catalyst_items.push_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.catalyst_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
 					else if (ini.is_value("reqlevel"))
 					{
@@ -843,15 +848,15 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("allowedshipclasses"))
 					{
-						archstruct.allowedshipclasses.push_back(ini.get_value_int(0));
+						archstruct.allowedshipclasses.emplace_back(ini.get_value_int(0));
 					}
 					else if (ini.is_value("allowedids"))
 					{
-						archstruct.allowedids.push_back(CreateID(ini.get_value_string(0)));
+						archstruct.allowedids.emplace_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("module"))
 					{
-						archstruct.modules.push_back(ini.get_value_string(0));
+						archstruct.modules.emplace_back(ini.get_value_string(0));
 					}
 					else if (ini.is_value("display"))
 					{
@@ -1002,23 +1007,23 @@ void HkTimerCheckKick()
 
 	uint curr_time = (uint)time(0);
 	isGlobalBaseInvulnerabilityActive = checkBaseVulnerabilityStatus();
-	map<uint, PlayerBase*>::iterator iter = player_bases.begin();
-	while (iter != player_bases.end())
+	for(auto& iter : player_bases)
 	{
-		PlayerBase *base = iter->second;
-		// Advance to next base in case base is deleted in timer dispatcher
-		++iter;
-		// Dispatch timer but we can safely ignore the return
+		PlayerBase *base = iter.second;
 		base->Timer(curr_time);
 	}
-	if (!player_bases.empty() && !set_holiday_mode) {
-		if (baseSaveIterator == player_bases.end()) {
+	if (!player_bases.empty() && !set_holiday_mode)
+	{
+		if (baseSaveIterator == player_bases.end())
+		{
 			baseSaveIterator = player_bases.begin();
 		}
 		bool saveSuccessful = false;
-		while (!saveSuccessful && baseSaveIterator != player_bases.end()) {
+		while (!saveSuccessful && baseSaveIterator != player_bases.end())
+		{
 			auto& pb = baseSaveIterator->second;
-			if (pb->logic == 1 || pb->invulnerable == 0) {
+			if (pb->logic == 1 || pb->invulnerable == 0)
+			{
 				pb->Save();
 				saveSuccessful = true;
 			}
@@ -1229,10 +1234,9 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 			}
 		}
 
-		map<uint, PlayerBase*>::iterator base = player_bases.begin();
-		for (; base != player_bases.end(); base++)
+		for (auto& base : player_bases)
 		{
-			delete base->second;
+			delete base.second;
 		}
 
 		for (uint customSolar : customSolarList)
@@ -1629,11 +1633,10 @@ void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int clie
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	// Sync base names for the 
-	map<uint, PlayerBase*>::iterator base = player_bases.begin();
-	for (; base != player_bases.end(); base++)
+	// Sync base names for the new player
+	for (auto& base : player_bases)
 	{
-		HkChangeIDSString(client, base->second->solar_ids, base->second->basename);
+		HkChangeIDSString(client, base.second->solar_ids, base.second->basename);
 	}
 }
 
@@ -1884,8 +1887,8 @@ uint lastTransactionArchID = 0;
 int lastTransactionCount = 0;
 uint lastTransactionClientID = 0;
 
-bool checkIfCommodityForbidden(uint goodId) {
-	
+bool CheckIfCommodityForbidden(uint goodId)
+{
 	return forbidden_player_base_commodity_set.find(goodId) != forbidden_player_base_commodity_set.end();
 }
 
@@ -1908,7 +1911,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 			return;
 		}
 
-		if (checkIfCommodityForbidden(gsi.iArchID)) {
+		if (CheckIfCommodityForbidden(gsi.iArchID))
+		{
 
 			PrintUserCmdText(client, L"ERR: Cargo is not allowed on Player Bases");
 			clients[client].reverse_sell = true;
@@ -2296,12 +2300,14 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newH
 		return;
 	}
 	
-	if (!spaceobj_modules.count(iDmgToSpaceID)) {
+	if (!spaceobj_modules.count(iDmgToSpaceID))
+	{
 		return;
 	}
 
 	Module* damagedModule = spaceobj_modules[iDmgToSpaceID];
-	if(damagedModule->mining){
+	if(damagedModule->mining)
+	{
 		return;
 	}
 	
@@ -2343,7 +2349,8 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newH
 	// This call is for us, skip all plugins.
 	iDmgToSpaceID = 0;
 	newHealth = damagedModule->SpaceObjDamaged(iDmgToSpaceID, dmg->get_inflictor_id(), curr, newHealth);
-	if (newHealth == curr) {
+	if (newHealth == curr)
+	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
 	}
@@ -2511,24 +2518,24 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		}
 
 		// Search for an match at the start of the name
-		for (map<uint, PlayerBase*>::iterator i = player_bases.begin(); i != player_bases.end(); ++i)
+		for (auto& i : player_bases)
 		{
-			if (ToLower(i->second->basename).find(ToLower(basename)) == 0)
+			if (ToLower(i.second->basename).find(ToLower(basename)) == 0)
 			{
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-				ForcePlayerBaseDock(info.iClientID, i->second);
+				ForcePlayerBaseDock(info.iClientID, i.second);
 				cmd->Print(L"OK");
 				return true;
 			}
 		}
 
 		// Exact match failed, try a for an partial match
-		for (map<uint, PlayerBase*>::iterator i = player_bases.begin(); i != player_bases.end(); ++i)
+		for (auto& i : player_bases)
 		{
-			if (ToLower(i->second->basename).find(ToLower(basename)) != -1)
+			if (ToLower(i.second->basename).find(ToLower(basename)) != -1)
 			{
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-				ForcePlayerBaseDock(info.iClientID, i->second);
+				ForcePlayerBaseDock(info.iClientID, i.second);
 				cmd->Print(L"OK");
 				return true;
 			}
@@ -2545,15 +2552,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
-		//return SpaceObjDestroyed(space_obj);
-		//alleynote1
 		int billythecat = 0;
 		PlayerBase *base;
-		for (map<uint, PlayerBase*>::iterator i = player_bases.begin(); i != player_bases.end(); ++i)
+		for (auto& i : player_bases)
 		{
-			if (i->second->basename == cmd->ArgStrToEnd(1))
+			if (i.second->basename == cmd->ArgStrToEnd(1))
 			{
-				base = i->second;
+				base = i.second;
 				billythecat = 1;
 			}
 		}
@@ -2587,11 +2592,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		//alleynote1
 		int billythecat = 0;
 		PlayerBase *base;
-		for (map<uint, PlayerBase*>::iterator i = player_bases.begin(); i != player_bases.end(); ++i)
+		for (auto& i : player_bases)
 		{
-			if (i->second->basename == cmd->ArgStrToEnd(2))
+			if (i.second->basename == cmd->ArgStrToEnd(2))
 			{
-				base = i->second;
+				base = i.second;
 				billythecat = 1;
 				break;
 			}
@@ -2987,7 +2992,8 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		if (lastTransactionBase)
 		{
 			CUSTOM_REVERSE_TRANSACTION_STRUCT* info = reinterpret_cast<CUSTOM_REVERSE_TRANSACTION_STRUCT*>(data);
-			if (info->iClientID != lastTransactionClientID) {
+			if (info->iClientID != lastTransactionClientID)
+			{
 				ConPrint(L"base: CUSTOM_REVERSE_TRANSACTION: Something is very wrong! Expected client ID %d but got %d\n", lastTransactionClientID, info->iClientID);
 				return;
 			}
@@ -3062,7 +3068,8 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	return;
 }
 
-void AddFactoryRecipeToMaps(RECIPE recipe, wstring craft_type){
+void AddFactoryRecipeToMaps(RECIPE recipe, wstring craft_type)
+{
 
 	wstring recipeNameKey = recipe.infotext;
 	//convert to lowercase
@@ -3073,14 +3080,16 @@ void AddFactoryRecipeToMaps(RECIPE recipe, wstring craft_type){
 	recipeCraftTypeNameMap[craft_type][recipeNameKey] = recipe;
 }
 
-void AddModuleRecipeToMaps(RECIPE recipe, vector<wstring> craft_types, wstring build_type, uint recipe_number) {
+void AddModuleRecipeToMaps(RECIPE recipe, vector<wstring> craft_types, wstring build_type, uint recipe_number)
+{
 
 	wstring recipeNameKey = recipe.infotext;
 	//convert to lowercase
 	transform(recipeNameKey.begin(), recipeNameKey.end(), recipeNameKey.begin(), ::tolower);
 
-	for (wstring craftType : craft_types) {
-		factoryNicknameToCraftTypeMap[recipe.nickname].push_back(craftType);
+	for (wstring craftType : craft_types)
+	{
+		factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(craftType);
 	}
 	recipeMap[recipe.nickname] = recipe;
 	moduleNameRecipeMap[recipeNameKey] = recipe;
@@ -3100,53 +3109,59 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayPause = true;
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&RequestEvent, PLUGIN_HkIServerImpl_RequestEvent, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LaunchPosHook, PLUGIN_LaunchPosHook, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete, PLUGIN_HkIServerImpl_JumpInComplete, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&RequestEvent, PLUGIN_HkIServerImpl_RequestEvent, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LaunchPosHook, PLUGIN_LaunchPosHook, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete, PLUGIN_HkIServerImpl_JumpInComplete, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SystemSwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete, 0));
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem_AFTER, PLUGIN_HkIServerImpl_ReqRemoveItem_AFTER, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy_AFTER, PLUGIN_HkIServerImpl_GFGoodBuy_AFTER, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem_AFTER, PLUGIN_HkIServerImpl_ReqAddItem_AFTER, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem_AFTER, PLUGIN_HkIServerImpl_ReqRemoveItem_AFTER, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy_AFTER, PLUGIN_HkIServerImpl_GFGoodBuy_AFTER, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem_AFTER, PLUGIN_HkIServerImpl_ReqAddItem_AFTER, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CShip_destroy, PLUGIN_HkIEngine_CShip_destroy, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_AddDmgEntry, PLUGIN_HkCb_AddDmgEntry, 15));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CShip_destroy, PLUGIN_HkIEngine_CShip_destroy, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_AddDmgEntry, PLUGIN_HkCb_AddDmgEntry, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	return p_PI;
 }
 
-void ResetAllBasesShieldStrength() {
-	for (map<uint, PlayerBase*>::iterator i = player_bases.begin(); i != player_bases.end(); ++i) {
-		i->second->shield_strength_multiplier = base_shield_strength;
-		i->second->damage_taken_since_last_threshold = 0;
+void ResetAllBasesShieldStrength()
+{
+	for (auto& i : player_bases)
+	{
+		i.second->shield_strength_multiplier = base_shield_strength;
+		i.second->damage_taken_since_last_threshold = 0;
 	}
 }
 
 //return value:
 // false = all bases vulnerable, true = invulnerable
-bool checkBaseVulnerabilityStatus() {
+bool checkBaseVulnerabilityStatus()
+{
 
-	if (baseVulnerabilityWindows.empty()) {
+	if (baseVulnerabilityWindows.empty())
+	{
 		return false;
 	}
 
@@ -3156,13 +3171,16 @@ bool checkBaseVulnerabilityStatus() {
 	// iterate over configured vulnerability periods to check if we're in one.
 	// - in case of timeStart < timeEnd, eg. 5-10, the base will be vulnerable between 5AM and 10AM.
 	// - in case of timeStart > timeEnd, eg. 23-2, the base will be vulnerable after 11PM or before 2AM.
-	for (list<BASE_VULNERABILITY_WINDOW>::iterator i = baseVulnerabilityWindows.begin(); i != baseVulnerabilityWindows.end(); ++i){
+	for (list<BASE_VULNERABILITY_WINDOW>::iterator i = baseVulnerabilityWindows.begin(); i != baseVulnerabilityWindows.end(); ++i)
+	{
 		if((i->start < i->end 
 			&& i->start <= currHour && i->end > currHour)
 		|| (i->start > i->end
-			&& (i->start <= currHour || i->end > currHour))) {
+			&& (i->start <= currHour || i->end > currHour)))
+		{
 			// if bases are going vulnerable in this tick, reset their damage resistance to default
-			if (isGlobalBaseInvulnerabilityActive) {
+			if (isGlobalBaseInvulnerabilityActive)
+			{
 				ResetAllBasesShieldStrength();
 			}
 			return false;

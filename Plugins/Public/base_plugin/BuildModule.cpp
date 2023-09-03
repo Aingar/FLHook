@@ -1,15 +1,14 @@
 #include "Main.h"
 
-BuildModule::BuildModule(PlayerBase *the_base)
+BuildModule::BuildModule(PlayerBase* the_base)
 	: Module(TYPE_BUILD), base(the_base)
 {
 }
 
 // Find the recipe for this building_type and start construction.
-BuildModule::BuildModule(PlayerBase *the_base, RECIPE* module_recipe)
-	: Module(TYPE_BUILD), base(the_base)
+BuildModule::BuildModule(PlayerBase* the_base, const RECIPE* module_recipe)
+	: Module(TYPE_BUILD), base(the_base), active_recipe(RECIPE(*module_recipe))
 {
-	active_recipe = *module_recipe;
 }
 
 wstring BuildModule::GetInfo(bool xml)
@@ -29,7 +28,7 @@ wstring BuildModule::GetInfo(bool xml)
 			uint good = i->first;
 			uint quantity = i->second;
 
-			const GoodInfo *gi = GoodList::find_by_id(good);
+			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
 				info += L"<PARA/><TEXT>      - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
@@ -58,7 +57,7 @@ wstring BuildModule::GetInfo(bool xml)
 			uint good = i->first;
 			uint quantity = i->second;
 
-			const GoodInfo *gi = GoodList::find_by_id(good);
+			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
 				info += stows(itos(quantity)) + L"x" + HkGetWStringFromIDS(gi->iIDSName) + L" ";
@@ -85,7 +84,7 @@ wstring BuildModule::GetInfo(bool xml)
 bool BuildModule::Timer(uint time)
 {
 
-	if ((time%set_tick_time) != 0)
+	if ((time % set_tick_time) != 0)
 		return false;
 
 	if (Paused || !base->isCrewSupplied)
@@ -101,7 +100,8 @@ bool BuildModule::Timer(uint time)
 			base->money -= moneyToRemove;
 			active_recipe.credit_cost -= moneyToRemove;
 		}
-		if (active_recipe.credit_cost) {
+		if (active_recipe.credit_cost)
+		{
 			cooked = false;
 		}
 	}
@@ -115,15 +115,13 @@ bool BuildModule::Timer(uint time)
 		if (quantity)
 		{
 			cooked = false;
-			map<uint, MARKET_ITEM>::iterator market_item = base->market_items.find(good);
-			if (market_item != base->market_items.end())
+			auto market_item = base->market_items.find(good);
+			if (market_item != base->market_items.end()
+			&& (market_item->second.quantity >= quantity))
 			{
-				if (market_item->second.quantity >= quantity)
-				{
-					i->second -= quantity;
-					base->RemoveMarketGood(good, quantity);
-					return false;
-				}
+				i->second -= quantity;
+				base->RemoveMarketGood(good, quantity);
+				return false;
 			}
 		}
 	}
@@ -169,7 +167,8 @@ bool BuildModule::Timer(uint time)
 					break;
 				default:
 					//check if factory
-					if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname)) {
+					if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname))
+					{
 						base->modules[i] = new FactoryModule(base, active_recipe.nickname);
 						break;
 					}
@@ -186,7 +185,7 @@ bool BuildModule::Timer(uint time)
 	return false;
 }
 
-void BuildModule::LoadState(INI_Reader &ini)
+void BuildModule::LoadState(INI_Reader& ini)
 {
 	while (ini.read_value())
 	{
@@ -198,7 +197,7 @@ void BuildModule::LoadState(INI_Reader &ini)
 		}
 		else if (ini.is_value("consumed"))
 		{
-			active_recipe.consumed_items.push_back(make_pair(ini.get_value_int(0), ini.get_value_int(1)));
+			active_recipe.consumed_items.emplace_back(make_pair(ini.get_value_int(0), ini.get_value_int(1)));
 		}
 		else if (ini.is_value("credit_cost"))
 		{
@@ -207,7 +206,7 @@ void BuildModule::LoadState(INI_Reader &ini)
 	}
 }
 
-void BuildModule::SaveState(FILE *file)
+void BuildModule::SaveState(FILE* file)
 {
 	fprintf(file, "[BuildModule]\n");
 	fprintf(file, "build_type = %u\n", active_recipe.shortcut_number);
@@ -223,13 +222,16 @@ void BuildModule::SaveState(FILE *file)
 	}
 }
 
-RECIPE* BuildModule::GetModuleRecipe(wstring module_name, wstring build_list) {
-	transform(module_name.begin(), module_name.end(), module_name.begin(), ::tolower);
+const RECIPE* BuildModule::GetModuleRecipe(wstring& module_name, wstring& build_list)
+{
+	module_name = ToLower(module_name);
 	uint shortcut_number = ToInt(module_name);
-	if (craftListNumberModuleMap.count(build_list) && craftListNumberModuleMap[build_list].count(shortcut_number)) {
+	if (craftListNumberModuleMap.count(build_list) && craftListNumberModuleMap[build_list].count(shortcut_number))
+	{
 		return &craftListNumberModuleMap[build_list][shortcut_number];
 	}
-	else if (moduleNameRecipeMap.count(module_name)){
+	else if (moduleNameRecipeMap.count(module_name))
+	{
 		return &moduleNameRecipeMap[module_name];
 	}
 	return 0;

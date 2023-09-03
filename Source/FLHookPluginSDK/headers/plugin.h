@@ -391,12 +391,6 @@ struct CUSTOM_REVERSE_TRANSACTION_STRUCT
 	uint iClientID;
 };
 
-struct CUSTOM_MOBILE_DOCK_CHECK_STRUCT
-{
-	uint iClientID;
-	bool isMobileDocked = false;
-};
-
 struct LAST_PLAYER_BASE_NAME_STRUCT
 {
 	uint clientID;

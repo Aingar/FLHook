@@ -509,8 +509,19 @@ namespace HkIServerImpl
 			pub::SpaceObj::GetShieldHealth(iTargetObj, shieldHp, shieldMax, shieldUp);
 			if (!shieldUp)
 			{
-				pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnvoice_trade_lane_disrupted"));
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				float shieldHp, shieldMax;
+				bool shieldUp;
+				pub::SpaceObj::GetShieldHealth(iTargetObj, shieldHp, shieldMax, shieldUp);
+				if (shieldMax > 0.0f && !shieldUp)
+				{
+					pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnvoice_trade_lane_disrupted"));
+					returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				}
+				else if (setLaneAndFormationBannedShips.find(Players[iClientID].iShipArchetype) != setLaneAndFormationBannedShips.end())
+				{
+					pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_trade_lane_access_denied"));
+					returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				}
 			}
 			else if (setLaneAndFormationBannedShips.find(Players[iClientID].iShipArchetype) != setLaneAndFormationBannedShips.end())
 			{

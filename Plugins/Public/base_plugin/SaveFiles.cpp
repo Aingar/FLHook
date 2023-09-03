@@ -31,7 +31,8 @@ void DeleteBase(PlayerBase* base, bool moveFile)
 	// Remove the base.
 	//_unlink(base->path.c_str());
 
-	if (moveFile) {
+	if (moveFile)
+	{
 		//Edit by Alley: Don't remove the base, instead move it to an archive folder
 		char datapath[MAX_PATH];
 		GetUserDataPath(datapath);
@@ -44,13 +45,14 @@ void DeleteBase(PlayerBase* base, bool moveFile)
 		char namehash[16];
 		sprintf(namehash, "%08x", base->base);
 
-	string fullpath = basesvdir + "base_" + namehash + "." + timestamp + ".ini";
-	if (!MoveFile(base->path.c_str(), fullpath.c_str()))
-	{
-		AddLog(
-			"ERROR: Base destruction MoveFile FAILED! Error code: %s",
-			boost::lexical_cast<std::string>(GetLastError()).c_str()
-		);
+		string fullpath = basesvdir + "base_" + namehash + "." + timestamp + ".ini";
+		if (!MoveFile(base->path.c_str(), fullpath.c_str()))
+		{
+			AddLog(
+				"ERROR: Base destruction MoveFile FAILED! Error code: %s",
+				boost::lexical_cast<std::string>(GetLastError()).c_str()
+			);
+		}
 	}
 
 	player_bases.erase(base->base);

@@ -14,6 +14,7 @@
 #include <plugin.h>
 #include <PluginUtilities.h>
 #include <unordered_map>
+#include <unordered_set>
 
 using namespace std;
 
@@ -587,12 +588,14 @@ namespace PlayerCommands
 	void Aff_initer();
 }
 
-namespace Log {
+namespace Log
+{
 	void LogBaseAction(string basename, const char *message);
 	void LogGenericAction(string message);
 }
 
-namespace CreateSolar {
+namespace CreateSolar
+{
 	pub::AI::SetPersonalityParams MakePersonality();
 	void SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo const& solarInfo);
 	void CreateSolarCallout(SPAWN_SOLAR_STRUCT* info);
@@ -729,7 +732,7 @@ extern float siege_mode_damage_trigger_level;
 
 extern float siege_mode_chain_reaction_trigger_distance;
 
-extern set<uint> customSolarList;
+extern unordered_set<uint> customSolarList;
 
 extern unordered_map<uint, float> siegeWeaponryMap;
 

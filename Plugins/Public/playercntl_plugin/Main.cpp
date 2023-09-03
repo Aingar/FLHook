@@ -643,6 +643,9 @@ namespace HkIServerImpl
 	{
 		AntiJumpDisconnect::SystemSwitchOut(iClientID);
 		HyperJump::SystemSwitchOut(iClientID);
+		uint packetClient = HkGetClientIDByShip(switchOutPacket.shipId);
+		if(packetClient)
+			AntiJumpDisconnect::SystemSwitchOut(packetClient);
 	}
 
 	void __stdcall SPObjCollision(struct SSPObjCollisionInfo const &ci, unsigned int iClientID)

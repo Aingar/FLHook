@@ -14,7 +14,6 @@
 #include "Main.h"
 #include <sstream>
 #include <hookext_exports.h>
-#include <unordered_map>
 
 // Clients
 map<uint, CLIENT_DATA> clients;
@@ -162,7 +161,7 @@ float siege_mode_damage_trigger_level = 8000000;
 //the distance between bases to share siege mod activation
 float siege_mode_chain_reaction_trigger_distance = 8000;
 
-set<uint> customSolarList;
+unordered_set<uint> customSolarList;
 
 //siege weaponry definitions
 unordered_map<uint, float> siegeWeaponryMap;
@@ -1238,9 +1237,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 
 		for (uint customSolar : customSolarList)
 		{
-			int isAlive = pub::SpaceObj::ExistsAndAlive(customSolar);
-			if(isAlive == 0)
-				pub::SpaceObj::Destroy(customSolar, DestroyType::VANISH);
+			if (pub::SpaceObj::ExistsAndAlive(customSolar) == 0) // this method returns -2 for dead, 0 for alive
+			{
+				pub::SpaceObj::Destroy(customSolar, DestroyType::FUSE);
+			}
 		}
 		customSolarList.clear();
 
@@ -3030,6 +3030,28 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		SPAWN_SOLAR_STRUCT* info = reinterpret_cast<SPAWN_SOLAR_STRUCT*>(data);
 		CreateSolar::CreateSolarCallout(info);
 		returncode = SKIPPLUGINS;
+	}
+    else if (msg == CUSTOM_BASE_LAST_DOCKED)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		LAST_PLAYER_BASE_NAME_STRUCT* info = reinterpret_cast<LAST_PLAYER_BASE_NAME_STRUCT*>(data);
+		if (clients.count(info->clientID))
+		{
+			uint lastBaseID = clients[info->clientID].last_player_base;
+			if (player_bases.count(lastBaseID))
+			{
+				info->lastBaseName = player_bases[lastBaseID]->basename;
+			}
+			else
+			{
+				info->lastBaseName = L"Destroyed Player Base";
+			}
+		}
+		else
+		{
+			info->lastBaseName = L"Object Unknown";
+		}
+
 	}
 	else if (msg == CUSTOM_DESPAWN_SOLAR)
 	{

@@ -419,6 +419,11 @@ struct SPAWN_SOLAR_STRUCT
 	uint creatorSystem = 0;
 	float percentageHp = 1.0f;
 };
+struct CUSTOM_MOBILE_DOCK_CHECK_STRUCT
+{
+	uint iClientID;
+	bool isMobileDocked = false;
+};
 
 struct CUSTOM_IN_WARP_CHECK_STRUCT
 {

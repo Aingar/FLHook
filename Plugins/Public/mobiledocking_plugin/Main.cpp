@@ -151,7 +151,7 @@ void LoadSettings()
 				CARRIERINFO ci;
 				wstring carrierName;
 				boolean doLoad = true;
-				while (ini.read_value() && doLoad)
+				while (ini.read_value())
 				{
 					if (ini.is_value("carrier"))
 					{
@@ -269,7 +269,7 @@ wstring GetLastBaseName(uint client)
 	{
 		LAST_PLAYER_BASE_NAME_STRUCT pobName;
 		pobName.clientID = client;
-		Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_BASE_GET_NAME, &pobName);
+		Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_BASE_LAST_DOCKED, &pobName);
 		baseName = L"Player base " + pobName.lastBaseName;
 	}
 	else
@@ -312,11 +312,7 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	else
 	{
 		//player offline, edit their character file to put them on last docked solar
-		CAccount* acc = HkGetAccountByCharname(dockedShipName);
-		if (acc)
-		{
-			MoveOfflineShipToLastDockedSolar(dockedShipName);
-		}
+		MoveOfflineShipToLastDockedSolar(dockedShipName);
 	}
 
 	wstring& carrierName = nameToDockedInfoMap[dockedShipName].carrierName;
@@ -369,6 +365,7 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 		if (!shipAlreadyDocked)
 		{
 			PrintUserCmdText(dockingID, L"Carrier has no free docking capacity");
+			pub::Player::SendNNMessage(dockingID, pub::GetNicknameId("info_access_denied"));
 			return;
 		}
 	}
@@ -394,7 +391,7 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 
 	// Land the ship on the designated base
 	HkBeamById(dockingID, mobileDockingProxyBase);
-	PrintUserCmdText(carrierID, L"Ship docked");
+	PrintUserCmdText(carrierID, L"%ls successfully docked", dockingName);
 }
 
 void HkTimerCheckKick()
@@ -415,8 +412,9 @@ void HkTimerCheckKick()
 		pub::SpaceObj::GetMotion(dockingShipID, V1mov, V1rot);
 		if (V1mov.x > 5 || V1mov.y > 5 || V1mov.z > 5)
 		{
-			PrintUserCmdText(dd.dockingID, L"Docking aborted due to craft movement");
-			PrintUserCmdText(dd.carrierID, L"Docking aborted due to craft movement");
+			auto dockingName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(dd.dockingID));
+			PrintUserCmdText(dd.dockingID, L"Docking aborted due to your movement");
+			PrintUserCmdText(dd.carrierID, L"Docking aborted due to %ls's movement", dockingName);
 			dockdata = dockingInProgress.erase(dockdata);
 			continue;
 		}
@@ -436,13 +434,14 @@ void HkTimerCheckKick()
 		if (!dd.timeLeft)
 		{
 			Vector pos;
-			Matrix _;
-			pub::SpaceObj::GetLocation(dockingShipID, pos, _);
+			Matrix dummy;
+			pub::SpaceObj::GetLocation(dockingShipID, pos, dummy);
 			float distance = HkDistance3D(pos, dd.startPosition);
 			if (distance > maxDockingDistanceTolerance)
 			{
-				PrintUserCmdText(dd.dockingID, L"Docking aborted due to craft movement");
-				PrintUserCmdText(dd.carrierID, L"Docking aborted due to craft movement");
+				auto dockingName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(dd.dockingID));
+				PrintUserCmdText(dd.dockingID, L"Docking aborted due to your movement");
+				PrintUserCmdText(dd.carrierID, L"Docking aborted due to %ls's movement", dockingName);
 				dockdata = dockingInProgress.erase(dockdata);
 				continue;
 			}
@@ -506,14 +505,20 @@ void StartDockingProcedure(uint dockingID, uint carrierID)
 	if (dockingPeriod)
 	{
 		uint shipId = Players[dockingID].iShipID;
+		if (!shipId)
+		{
+			PrintUserCmdText(carrierID, L"ERR Docking procedure impossible, target ship is docked");
+			PrintUserCmdText(dockingID, L"ERR Carrier docking procedure aborted, you're already docked");
+			return;
+		}
 		if (disableShieldsOnDockAttempt)
 		{
 			pub::SpaceObj::DrainShields(shipId);
 		}
 
 		Vector pos;
-		Matrix _;
-		pub::SpaceObj::GetLocation(shipId, pos, _);
+		Matrix dummy;
+		pub::SpaceObj::GetLocation(shipId, pos, dummy);
 
 		DELAYEDDOCK dd;
 		dd.carrierID = carrierID;
@@ -521,8 +526,9 @@ void StartDockingProcedure(uint dockingID, uint carrierID)
 		dd.timeLeft = dockingPeriod;
 		dd.startPosition = pos;
 		dockingInProgress[dockingID] = dd;
-		PrintUserCmdText(carrierID, L"Docking procedure in progress", dockingPeriod);
-		PrintUserCmdText(dockingID, L"Dock request accepted, stand still for %u second(s)", dockingPeriod);
+		auto dockingName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(dockingID));
+		PrintUserCmdText(carrierID, L"%ls docking procedure is in progress", dockingName);
+		PrintUserCmdText(dockingID, L"Dock request accepted, hold position for %u second(s)", dockingPeriod);
 	}
 	else
 	{
@@ -639,7 +645,8 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 	returncode = DEFAULT_RETURNCODE;
 
 	// If not docked on another ship, skip processing.
-	if (!idToDockedInfoMap.count(client) && !jettisonedShipsQueue.count(client))
+	if (Players[client].iLastBaseID != mobileDockingProxyBase || 
+		(!idToDockedInfoMap.count(client) && !jettisonedShipsQueue.count(client)))
 	{
 		return;
 	}
@@ -820,7 +827,7 @@ void __stdcall BaseEnter(uint iBaseID, uint client)
 			wstring& systemName = HkGetWStringFromIDS(sysInfo->strid_name);
 			status += L", " + systemName;
 		}
-		status += L"</TEXT><PARA/><PARA/>";
+		status += L"</TEXT>";
 		status += L"<POP/></RDL>";
 		SendSetBaseInfoText2(client, status);
 	}
@@ -905,20 +912,12 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 			PrintUserCmdText(client, L"Usage: /jettisonship <charName/charNr>");
 			return true;
 		}
-		uint charNumber = ToInt(selectedShip);
+		uint charNumber = ToUInt(selectedShip);
 		const auto& dockedShipList = idToCarrierInfoMap[client]->dockedShipList;
 
-		if (charNumber > 0)
+		if (charNumber != 0 && charNumber <= dockedShipList.size())
 		{
-			if (charNumber <= dockedShipList.size())
-			{
-				selectedShip = dockedShipList.at(charNumber - 1);
-			}
-			else
-			{
-				PrintUserCmdText(client, L"Invalid ship index selected");
-				return true;
-			}
+			selectedShip = dockedShipList.at(charNumber - 1);
 		}
 		JettisonResult jettisonResult = RemoveShipFromLists(selectedShip, true);
 		switch (jettisonResult)
@@ -1071,7 +1070,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 		{
 			const auto& shipInfo = Archetype::GetShip(Players[iClientID].iShipArchetype);
 			wstring& shipName = HkGetWStringFromIDS(shipInfo->iIdsName);
-			PrintUserCmdText(carrierClientID, L"INFO: Docked %ls, %ls is standing by for launch", shipName.c_str(), charname);
+			PrintUserCmdText(carrierClientID, L"INFO: %ls, %ls is standing by for launch", shipName.c_str(), charname);
 
 			const auto& carrierInfo = Players[carrierClientID];
 			const auto& sysInfo = Universe::get_system(carrierInfo.iSystemID);
@@ -1107,13 +1106,12 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (disableRegensOnDockAttempt && !dockingInProgress.count(iClientID))
+	if (disableRegensOnDockAttempt && dockingInProgress.count(iClientID))
 	{
-		return;
+		static uint rejectSound = CreateID("ui_select_reject");
+		pub::Audio::PlaySoundEffect(iClientID, rejectSound);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 	}
-	static uint rejectSound = CreateID("ui_select_reject");
-	pub::Audio::PlaySoundEffect(iClientID, rejectSound);
-	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 }
 
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)

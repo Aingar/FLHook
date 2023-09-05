@@ -1858,6 +1858,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 	returncode = DEFAULT_RETURNCODE;
 	SyncReputationForClientShip(ship, client);
 
+	HyperJump::CheckForDisconnectedUnchartedLogin(ship, client);
 	if (player_launch_base && !system_match)
 	{
 		ForcePlayerBaseDock(client, player_launch_base);

@@ -656,11 +656,12 @@ namespace HkIServerImpl
 
 	void __stdcall SystemSwitchOut(uint iClientID, FLPACKET_SYSTEM_SWITCH_OUT& switchOutPacket)
 	{
-		AntiJumpDisconnect::SystemSwitchOut(iClientID);
+		if (iClientID != HkGetClientIDByShip(switchOutPacket.shipId))
+		{
+			return;
+		}
 		HyperJump::SystemSwitchOut(iClientID);
-		uint packetClient = HkGetClientIDByShip(switchOutPacket.shipId);
-		if(packetClient)
-			AntiJumpDisconnect::SystemSwitchOut(packetClient);
+		AntiJumpDisconnect::SystemSwitchOut(iClientID);
 	}
 
 	void __stdcall SPObjCollision(struct SSPObjCollisionInfo const &ci, unsigned int iClientID)

@@ -437,11 +437,6 @@ struct CUSTOM_CLOAK_ALERT_STRUCT
 	vector<uint> alertedGroupMembers;
 };
 
-struct DISCONNECT_NOTIFICATION_STRUCT
-{
-	uint clientId;
-};
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif

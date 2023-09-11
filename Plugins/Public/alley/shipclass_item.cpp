@@ -294,6 +294,7 @@ bool SCI::CanBuyItem(uint iArchID, uint iClientID) {
 	return true;
 }
 
+#pragma optimize( "", off )
 // based on conn plugin
 void SCI::StoreReturnPointForClient(unsigned int client)
 {
@@ -311,7 +312,7 @@ void SCI::StoreReturnPointForClient(unsigned int client)
 
 	player_last_base[client] = base;
 }
-
+#pragma optimize( "", on )
 // based on conn plugin
 uint SCI::GetCustomLastBaseForClient(unsigned int client)
 {

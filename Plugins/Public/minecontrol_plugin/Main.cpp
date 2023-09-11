@@ -591,13 +591,13 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 		return;
 	}
 
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+	for (auto& item : Players[iClientID].equipDescList.equip)
 	{
-		if (item->sID != jc.iSlot)
+		if (item.sID != jc.iSlot)
 		{
 			continue;
 		}
-		if (item->iArchID != set_deployableContainerCommodity)
+		if (item.iArchID != set_deployableContainerCommodity)
 		{
 			return;
 		}
@@ -655,6 +655,41 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 			}
 			break;
 		}
+
+		if (!lootId)
+		{
+			PrintUserCmdText(iClientID, L"ERR Not in a mineable field!");
+			return;
+		}
+
+		SPAWN_SOLAR_STRUCT data;
+		data.iSystemId = systemId;
+		data.pos = pos;
+		data.ori = ori;
+		data.overwrittenName = commodityName + L" Container";
+		data.nickname = "player_mining_container_" + itos(iClientID);
+		data.solar_ids = 540999 + iClientID;
+		data.solarArchetypeId = set_containerSolarArchetypeID;
+		data.loadoutArchetypeId = set_containerLoadoutArchetypeID;
+
+		Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_SPAWN_SOLAR, &data);
+		if (data.iSpaceObjId)
+		{
+			CONTAINER_DATA cd;
+			cd.systemId = systemId;
+			pos.y -= 30;
+			cd.jettisonPos = pos;
+			cd.lootId = lootId;
+			cd.nameIDS = data.solar_ids;
+			cd.solarName = data.overwrittenName;
+			cd.clientId = iClientID;
+			cd.lootCrateId = Archetype::GetEquipment(lootId)->get_loot_appearance()->iArchID;
+			mapMiningContainers[data.iSpaceObjId] = cd;
+			mapClients[iClientID].deployedContainerId = data.iSpaceObjId;
+			pub::Player::RemoveCargo(iClientID, item.sID, 1);
+		}
+
+		return;
 	}
 }
 

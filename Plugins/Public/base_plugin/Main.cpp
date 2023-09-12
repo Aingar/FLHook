@@ -672,10 +672,6 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("siege_gun"))
 					{
-						bmapLoadHyperspaceHubConfig = ini.get_value_int(0);
-          }
-					else if (ini.is_value("siege_gun"))
-					{
 						siegeWeaponryMap[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
 					}
 				}

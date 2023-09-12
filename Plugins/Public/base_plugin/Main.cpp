@@ -3010,7 +3010,13 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 			base->Save();
 		}
 	}
-	else if (msg == CUSTOM_BASE_GET_NAME)
+
+	else if (msg == CUSTOM_SPAWN_SOLAR)
+	{
+		SPAWN_SOLAR_STRUCT* info = reinterpret_cast<SPAWN_SOLAR_STRUCT*>(data);
+		CreateSolar::CreateSolarCallout(info);	
+  }
+	else if (msg == CUSTOM_BASE_LAST_DOCKED)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		LAST_PLAYER_BASE_NAME_STRUCT* info = reinterpret_cast<LAST_PLAYER_BASE_NAME_STRUCT*>(data);

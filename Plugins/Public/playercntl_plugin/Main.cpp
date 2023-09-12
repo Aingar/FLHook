@@ -507,7 +507,7 @@ namespace HkIServerImpl
 			float shieldHp, shieldMax;
 			bool shieldUp;
 			pub::SpaceObj::GetShieldHealth(iTargetObj, shieldHp, shieldMax, shieldUp);
-			if (!shieldUp)
+			if (shieldMax > 0.0f && !shieldUp)
 			{
 				float shieldHp, shieldMax;
 				bool shieldUp;

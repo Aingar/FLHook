@@ -1456,7 +1456,7 @@ namespace PlayerCommands
 				}
 				if (!recipe->catalyst_items.empty())
 				{
-					PrintUserCmdText(client, L"Production catalysts (not consumed):");
+					PrintUserCmdText(client, L"Production catalysts:");
 					for (const auto& catalyst : recipe->catalyst_items)
 					{
 						const GoodInfo* gi = GoodList::find_by_id(catalyst.first);

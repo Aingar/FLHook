@@ -2671,6 +2671,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
 		newbase->defense_mode = 1;
+		newbase->isCrewSupplied = true;
 
 		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
 		newbase->logic = mapArchs[newbase->basetype].logic;
@@ -2885,6 +2886,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->baseloadout = wstos(loadout);
 		newbase->defense_mode = 2;
 		newbase->base_health = 10000000000;
+		newbase->isCrewSupplied = true;
 
 		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
 		newbase->logic = mapArchs[newbase->basetype].logic;

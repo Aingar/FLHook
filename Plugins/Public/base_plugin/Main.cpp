@@ -3026,35 +3026,12 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		{
 			info->lastBaseName = L"Object Unknown";
 		}
-		returncode = SKIPPLUGINS;
+
 	}
 	else if (msg == CUSTOM_SPAWN_SOLAR)
 	{
 		SPAWN_SOLAR_STRUCT* info = reinterpret_cast<SPAWN_SOLAR_STRUCT*>(data);
 		CreateSolar::CreateSolarCallout(info);
-		returncode = SKIPPLUGINS;
-	}
-    else if (msg == CUSTOM_BASE_LAST_DOCKED)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		LAST_PLAYER_BASE_NAME_STRUCT* info = reinterpret_cast<LAST_PLAYER_BASE_NAME_STRUCT*>(data);
-		if (clients.count(info->clientID))
-		{
-			uint lastBaseID = clients[info->clientID].last_player_base;
-			if (player_bases.count(lastBaseID))
-			{
-				info->lastBaseName = player_bases[lastBaseID]->basename;
-			}
-			else
-			{
-				info->lastBaseName = L"Destroyed Player Base";
-			}
-		}
-		else
-		{
-			info->lastBaseName = L"Object Unknown";
-		}
-
 	}
 	else if (msg == CUSTOM_DESPAWN_SOLAR)
 	{

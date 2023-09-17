@@ -93,9 +93,7 @@ void ExportData::ToHTML()
 
 			fprintf(file, "<td class=\"column0\">%s</td>", thewhitelist.c_str());
 
-				fprintf(file, "</tr>\n");
-				++iter;
-			}
+			fprintf(file, "</tr>\n");
 		}
 
 

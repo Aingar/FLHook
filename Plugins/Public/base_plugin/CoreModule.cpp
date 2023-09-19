@@ -213,16 +213,11 @@ void CoreModule::SetShieldState(const int shieldState)
 bool CoreModule::Timer(uint time)
 {
 	// Disable shield if time elapsed
-	if (base->shield_active_time < time)
+	if (base->shield_timeout < time)
 	{
+		base->shield_timeout = 0;
 		base->shield_state = PlayerBase::SHIELD_STATE_ONLINE;
-		SetShieldState(PlayerBase::SHIELD_STATE_ONLINE);
-		base->shield_active_time = 0;
-	}
-	else if (base->shield_active_time && base->shield_state == PlayerBase::SHIELD_STATE_ONLINE)
-	{
-		base->shield_state = PlayerBase::SHIELD_STATE_ACTIVE;
-		SetShieldState(PlayerBase::SHIELD_STATE_ACTIVE);
+		SetShieldState(base->shield_state);
 	}
 
 	if ((time % set_tick_time) != 0 || set_holiday_mode)

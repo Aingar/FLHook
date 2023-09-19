@@ -1484,6 +1484,15 @@ static bool IsDockingAllowed(PlayerBase *base, uint client)
 		}
 	}
 
+	//Hostile listed can't dock even if they are friendly faction listed
+	for (list<wstring>::iterator i = base->perma_hostile_tags.begin(); i != base->perma_hostile_tags.end(); ++i)
+	{
+		if (charname.find(*i) == 0)
+		{
+			return false;
+		}
+	}
+
 	uint playeraff = GetAffliationFromClient(client);
 	//Do not allow dock if player is on the hostile faction list.
 	if (base->hostile_factions.find(playeraff) != base->hostile_factions.end())
@@ -1589,7 +1598,7 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 			}
 
 			// Shield is up, docking is not possible.
-			if (pbase->shield_active_time)
+			if (pbase->shield_timeout)
 			{
 				PrintUserCmdText(client, L"Docking failed because base shield is active");
 				iCancel = -1;
@@ -1763,7 +1772,7 @@ void __stdcall RequestEvent(int iIsFormationRequest, unsigned int iShip, unsigne
 			if (base)
 			{
 				// Shield is up, docking is not possible.
-				if (base->shield_active_time)
+				if (base->shield_timeout)
 				{
 					PrintUserCmdText(client, L"Docking failed because base shield is active");
 					pub::Player::SendNNMessage(client, pub::GetNicknameId("info_access_denied"));

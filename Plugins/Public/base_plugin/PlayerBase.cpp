@@ -1,11 +1,11 @@
 #include "Main.h"
 
-PlayerBase::PlayerBase(uint client, const wstring& password, const wstring& the_basename)
-	: affiliation(0),
-	basename(the_basename), base_level(1), money(0),
-	base_health(0), base(0), defense_mode(0), shield_strength_multiplier(base_shield_strength),
-	damage_taken_since_last_threshold(0), proxy_base(0), isCrewSupplied(false),
-	shield_state(PlayerBase::SHIELD_STATE_ONLINE), shield_active_time(0)
+PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
+	: basename(the_basename),
+	base(0), money(0), base_health(0),
+	base_level(1), defense_mode(0), proxy_base(0), affiliation(0), siege_mode(false),
+	repairing(false), shield_timeout(0), shield_state(PlayerBase::SHIELD_STATE_ONLINE),
+	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
 	nickname = CreateBaseNickname(wstos(basename));
 	base = CreateID(nickname.c_str());
@@ -36,12 +36,11 @@ PlayerBase::PlayerBase(uint client, const wstring& password, const wstring& the_
 	save_timer = rand() % 60;
 }
 
-PlayerBase::PlayerBase(const string& the_path)
-	: affiliation(0), base_level(0), money(0),
-	base_health(0), base(0), defense_mode(0),
-	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0),
-	path(the_path), proxy_base(0), isCrewSupplied(false),
-	shield_state(PlayerBase::SHIELD_STATE_ONLINE), shield_active_time(0)
+PlayerBase::PlayerBase(const string &the_path)
+	: path(the_path), base(0), money(0),
+	base_health(0), base_level(0), defense_mode(0), proxy_base(0), affiliation(0), siege_mode(false),
+	repairing(false), shield_timeout(0), shield_state(PlayerBase::SHIELD_STATE_ONLINE),
+	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
 	// Load and spawn base modules
 	Load();
@@ -315,6 +314,12 @@ void PlayerBase::Load()
 						// TODO: enable this to load hostile tags hostile_tags[tag] = tag;
 						//Useless as perma hostile tags have been implemented
 					}
+					else if (ini.is_value("perma_hostile_tag"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						perma_hostile_tags.push_back(tag);
+					}
 					else if (ini.is_value("faction_ally_tag"))
 					{
 						ally_factions.insert(ini.get_value_int(0));
@@ -466,6 +471,10 @@ void PlayerBase::Save()
 		{
 			ini_write_wstring(file, "hostile_tag", const_cast<wstring&>(i.first));
 		}
+		foreach(perma_hostile_tags, wstring, i)
+		{
+			ini_write_wstring(file, "perma_hostile_tag", *i);
+		}
 		foreach(passwords, BasePassword, i)
 		{
 			BasePassword bp = *i;
@@ -585,6 +594,17 @@ float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode
 	float attitude = -1.0;
 	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 
+	
+	// Make base hostile if player is on the perma hostile list. First check so it overrides everything.
+	if (siege_mode || emulated_siege_mode)
+		for (std::list<wstring>::const_iterator i = perma_hostile_tags.begin(); i != perma_hostile_tags.end(); ++i)
+		{
+			if (charname.find(*i) == 0)
+			{
+				return -1.0;
+			}
+		}
+
 	// Make base friendly if player is on the friendly list.
 	for (auto& i : ally_tags)
 	{
@@ -595,26 +615,26 @@ float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode
 	}
 
 	// Make base hostile if player is on the hostile list.
-	if (hostile_tags.count(charname))
+	if (!emulated_siege_mode && hostile_tags.find(charname) != hostile_tags.end())
 	{
 		return -1.0;
 	}
 
 	uint playeraff = GetAffliationFromClient(client);
 	// Make base hostile if player is on the hostile faction list.
-	if (hostile_factions.count(playeraff))
+	if ((siege_mode || emulated_siege_mode) && hostile_factions.find(playeraff) != hostile_factions.end())
 	{
 		return -1.0;
 	}
 
 	// Make base friendly if player is on the friendly faction list.
-	if (ally_factions.count(playeraff))
+	if (ally_factions.find(playeraff) != ally_factions.end())
 	{
 		return 1.0;
 	}
 
 	// if defense mode 3, at this point if player doesn't match any criteria, give him fireworks
-	if (defense_mode == 3)
+	if ((siege_mode || emulated_siege_mode) && defense_mode == 3)
 	{
 		return -1.0;
 	}
@@ -629,7 +649,11 @@ float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode
 			pub::Player::GetRep(client, rep);
 			pub::Reputation::GetGroupFeelingsTowards(rep, affiliation, attitude);
 
-			return attitude;
+			// if in siege mode, return true affiliation, otherwise clamp to minimum neutralNoDock rep
+			if (siege_mode || emulated_siege_mode)
+				return attitude;
+			else
+				return max(-0.59f, attitude);
 		}
 	}
 
@@ -672,8 +696,6 @@ void PlayerBase::SyncReputationForBaseObject(uint space_obj)
 			pub::SpaceObj::GetRep(pd->iShipID, player_rep);
 			float attitude = GetAttitudeTowardsClient(pd->iOnlineID);
 
-			ConPrint(L"att %f\n", attitude);
-
 			int obj_rep;
 			pub::SpaceObj::GetRep(space_obj, obj_rep);
 			pub::Reputation::SetAttitude(obj_rep, player_rep, attitude);
@@ -701,6 +723,35 @@ void ReportAttack(wstring basename, wstring charname, uint system, wstring alert
 	BaseLogging("%s", scText.c_str());
 
 	return;
+}
+
+// For all players in the base's system, resync their reps towards all objects
+// of this base.
+void PlayerBase::SiegeModChainReaction(uint client)
+{
+	map<uint, PlayerBase*>::iterator it;
+	for (it = player_bases.begin(); it != player_bases.end(); it++)
+	{
+		if (it->second->system == this->system)
+		{
+			if (HkDistance3D(it->second->position, this->position) < siege_mode_chain_reaction_trigger_distance)
+			{
+				if (!(it->second->siege_mode))
+				{
+					float attitude = it->second->GetAttitudeTowardsClient(client, true);
+					if (attitude < -0.55f)
+					{
+						it->second->siege_mode = true;
+
+						const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+						ReportAttack(it->second->basename, charname, it->second->system, L"has detected hostile activity at a nearby base by");
+
+						it->second->SyncReputationForBase();
+					}
+				}
+			}
+		}
+	}
 }
 
 // Return true if 
@@ -743,23 +794,36 @@ float PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 				ReportAttack(this->basename, charname, this->system, L"has activated self-defense against");
 
 				SyncReputationForBase();
+
+				if (siege_mode)
+					SiegeModChainReaction(client);
 			}
 		}
 
+		if (!siege_mode && (hostile_tags_damage[charname]) > siege_mode_damage_trigger_level)
+		{
+			const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+			ReportAttack(this->basename, charname, this->system, L"siege mode triggered by");
+
+			siege_mode = true;
+			SiegeModChainReaction(client);
+		}
+
+
 		// If the shield is not active but could be set a time 
 		// to request that it is activated.
-		if (!this->shield_active_time && this->shield_state == SHIELD_STATE_ONLINE
+		if (!this->shield_timeout && this->shield_state == SHIELD_STATE_ONLINE
 			&& !isGlobalBaseInvulnerabilityActive)
 		{
 			const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 			ReportAttack(this->basename, charname, this->system);
 			if (set_plugin_debug > 1)
 			{
-				ConPrint(L"PlayerBase::damaged shield active=%u\n", this->shield_active_time);
+				ConPrint(L"PlayerBase::damaged shield active=%u\n", this->shield_timeout);
 			}
 		}
 
-		this->shield_active_time = static_cast<uint>(time(nullptr) + 60);
+		this->shield_timeout = time(nullptr) + 60;
 	}
 
 	return 0.0f;

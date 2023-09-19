@@ -308,6 +308,7 @@ public:
 
 	float GetAttitudeTowardsClient(uint client, bool emulated_siege_mode = false);
 	void SyncReputationForBase();
+	void SiegeModChainReaction(uint client);
 	void SyncReputationForBaseObject(uint space_obj);
 
 	float SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float curr_hitpoints, float new_hitpoints);
@@ -378,6 +379,9 @@ public:
 	// If 2 then base is neutral to all ships and any ship may dock.
 	int defense_mode;
 
+	//changes how defense mod act depending on the amount of damage made to base in the last hours
+	bool siege_mode;
+
 	//shield strength parameters
 	float shield_strength_multiplier;
 	float base_shield_reinforcement_threshold;
@@ -395,6 +399,9 @@ public:
 	// List of ships that are hostile to this base
 	unordered_map<wstring, wstring> hostile_tags;
 	unordered_map<wstring, float> hostile_tags_damage;
+
+	// List of ships that are permanently hostile to this base
+	list<wstring> perma_hostile_tags;
 
 	// Modules for base
 	vector<Module*> modules;
@@ -420,7 +427,7 @@ public:
 	int shield_state;
 
 	// The number of seconds that shield will be active
-	uint shield_active_time;
+	uint shield_timeout;
 
 	// When this timer drops to less than 0 the base is saved	 
 	int save_timer;
@@ -702,6 +709,8 @@ extern string set_status_path_html;
 extern string set_status_path_json;
 
 extern float damage_threshold;
+
+extern float siege_mode_damage_trigger_level;
 
 extern float siege_mode_chain_reaction_trigger_distance;
 

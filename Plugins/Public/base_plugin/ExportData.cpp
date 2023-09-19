@@ -100,9 +100,8 @@ void ExportData::ToHTML()
 				theblacklist.append("\n");
 			}
 			fprintf(file, "<td class=\"column0\">%s</td>", theblacklist.c_str());
-			fprintf(file, "</tr>\n");}
+			fprintf(file, "</tr>\n");
 		}
-
 
 		fprintf(file, "</table>\n\n</body></html>\n");
 		fclose(file);

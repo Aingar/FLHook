@@ -1851,10 +1851,6 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 	{
 		ForcePlayerBaseDock(client, player_launch_base);
 	}
-	else
-	{
-		HyperJump::CheckForDisconnectedUnchartedLogin(ship, client);
-	}
 }
 
 void __stdcall JumpInComplete(unsigned int system, unsigned int ship)

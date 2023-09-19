@@ -210,6 +210,23 @@ void CoreModule::SetShieldState(const int shieldState)
 	}
 }
 
+void CoreModule::SetShieldState(const int shieldState)
+{
+	if (space_obj)
+	{
+		uint dummy;
+		IObjInspectImpl* inspect;
+		if (GetShipInspect(space_obj, inspect, dummy))
+		{
+			HkUnLightFuse((IObjRW*)inspect, shield_fuse, 0);
+			if (base->shield_state == PlayerBase::SHIELD_STATE_ACTIVE)
+			{
+				HkLightFuse((IObjRW*)inspect, shield_fuse, 0.0f, 0.0f, 0.0f);
+			}
+		}
+	}
+}
+
 bool CoreModule::Timer(uint time)
 {
 	// Disable shield if time elapsed

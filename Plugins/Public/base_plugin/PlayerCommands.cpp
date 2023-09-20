@@ -875,7 +875,7 @@ namespace PlayerCommands
 		}
 
 
-		base->perma_hostile_tags.push_back(tag);
+		base->perma_hostile_tags.emplace_back(tag);
 
 		// Logging
 		wstring thecharname = (const wchar_t*)Players.GetActiveCharacterName(client);

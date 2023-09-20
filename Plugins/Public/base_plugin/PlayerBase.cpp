@@ -318,7 +318,7 @@ void PlayerBase::Load()
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						perma_hostile_tags.push_back(tag);
+						perma_hostile_tags.emplace_back(tag);
 					}
 					else if (ini.is_value("faction_ally_tag"))
 					{
@@ -471,9 +471,9 @@ void PlayerBase::Save()
 		{
 			ini_write_wstring(file, "hostile_tag", const_cast<wstring&>(i.first));
 		}
-		foreach(perma_hostile_tags, wstring, i)
+		for(auto& i : perma_hostile_tags)
 		{
-			ini_write_wstring(file, "perma_hostile_tag", *i);
+			ini_write_wstring(file, "perma_hostile_tag", i);
 		}
 		foreach(passwords, BasePassword, i)
 		{
@@ -594,12 +594,11 @@ float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode
 	float attitude = -1.0;
 	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 
-	
 	// Make base hostile if player is on the perma hostile list. First check so it overrides everything.
 	if (siege_mode || emulated_siege_mode)
-		for (std::list<wstring>::const_iterator i = perma_hostile_tags.begin(); i != perma_hostile_tags.end(); ++i)
+		for (auto& i : perma_hostile_tags)
 		{
-			if (charname.find(*i) == 0)
+			if (charname.find(i) == 0)
 			{
 				return -1.0;
 			}
@@ -651,9 +650,13 @@ float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode
 
 			// if in siege mode, return true affiliation, otherwise clamp to minimum neutralNoDock rep
 			if (siege_mode || emulated_siege_mode)
+			{
 				return attitude;
+			}
 			else
+			{
 				return max(-0.59f, attitude);
+			}
 		}
 	}
 
@@ -729,26 +732,22 @@ void ReportAttack(wstring basename, wstring charname, uint system, wstring alert
 // of this base.
 void PlayerBase::SiegeModChainReaction(uint client)
 {
-	for (auto it = player_bases.begin(); it != player_bases.end(); it++)
+	for (auto& it : player_bases)
 	{
-		if (it->second->system == this->system)
+		if (it.second->system != this->system || it.second->siege_mode || 
+			HkDistance3D(it.second->position, this->position) >= siege_mode_chain_reaction_trigger_distance)
 		{
-			if (HkDistance3D(it->second->position, this->position) < siege_mode_chain_reaction_trigger_distance)
-			{
-				if (!(it->second->siege_mode))
-				{
-					float attitude = it->second->GetAttitudeTowardsClient(client, true);
-					if (attitude < -0.55f)
-					{
-						it->second->siege_mode = true;
+			continue;
+		}
+		float attitude = it.second->GetAttitudeTowardsClient(client, true);
+		if (attitude < -0.55f)
+		{
+			it.second->siege_mode = true;
 
-						const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-						ReportAttack(it->second->basename, charname, it->second->system, L"has detected hostile activity at a nearby base by");
+			const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+			ReportAttack(it.second->basename, charname, it.second->system, L"has detected hostile activity at a nearby base by");
 
-						it->second->SyncReputationForBase();
-					}
-				}
-			}
+			it.second->SyncReputationForBase();
 		}
 	}
 }

@@ -2989,6 +2989,12 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		DESPAWN_SOLAR_STRUCT* info = reinterpret_cast<DESPAWN_SOLAR_STRUCT*>(data);
 		CreateSolar::DespawnSolarCallout(info);
 	}
+	else if (msg == CUSTOM_SPAWN_SOLAR)
+	{
+		returncode = SKIPPLUGINS;
+		SPAWN_SOLAR_STRUCT* info = reinterpret_cast<SPAWN_SOLAR_STRUCT*>(data);
+		CreateSolar::CreateSolarCallout(info);
+	}
 	return;
 }
 

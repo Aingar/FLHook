@@ -687,7 +687,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 		data.pos = pos;
 		data.ori = ori;
 		data.overwrittenName = commodityName + L" Container";
-		data.nickname = "player_mining_container_" + itos(iClientID);
+		data.nickname = "player_mining_container_"+itos(iClientID);
 		data.solar_ids = 540999 + iClientID;
 		data.solarArchetypeId = set_containerSolarArchetypeID;
 		data.loadoutArchetypeId = set_containerLoadoutArchetypeID;

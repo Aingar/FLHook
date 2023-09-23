@@ -267,12 +267,12 @@ void BaseLogging(const char *szString, ...)
 	}
 }
 
-void RespawnBase(PlayerBase * base)
+void RespawnBase(PlayerBase* base)
 {
 	string filepath = base->path;
 	player_bases.erase(base->base);
 	delete base;
-	PlayerBase *newBase = new PlayerBase(filepath);
+	PlayerBase* newBase = new PlayerBase(filepath);
 	player_bases[newBase->base] = newBase;
 	newBase->Spawn();
 }
@@ -943,7 +943,7 @@ void LoadSettingsActual()
 		time_t tNow = time(0);
 		struct tm *t = localtime(&tNow);
 		uint currWeekday = (t->tm_wday + 6)%7; // conversion from sunday-week-start to monday-start
-		if (bmapLoadHyperspaceHubConfig & (1 << currWeekday))
+		if (bmapLoadHyperspaceHubConfig & (1 << currWeekday)) // 1 - monday, 2 - tuesday, 4 - wednesday and so on
 		{
 			HyperJump::LoadHyperspaceHubConfig(string(szCurDir));
 		}
@@ -1033,8 +1033,10 @@ void HkTimerCheckKick()
 	{
 		uint type;
 		pub::SpaceObj::GetType(customSolar, type);
-		if(type & (OBJ_JUMP_GATE | OBJ_JUMP_HOLE))
+		if (type & (OBJ_JUMP_GATE | OBJ_JUMP_HOLE))
+		{
 			pub::SpaceObj::SetRelativeHealth(customSolar, 1);
+		}
 	}
 
 	if (ExportType == 0 || ExportType == 2)
@@ -1059,7 +1061,9 @@ void HkTimerCheckKick()
 bool __stdcall HkCb_IsDockableError(uint dock_with, uint base)
 {
 	if (GetPlayerBase(base) || customSolarList.count(base))
+	{
 		return false;
+	}
 	ConPrint(L"ERROR: Base not found dock_with=%08x base=%08x\n", dock_with, base);
 	return true;
 }
@@ -2890,7 +2894,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 void DelayedDisconnect(uint clientId, uint shipId)
 {
-	HyperJump::CheckForDisconnectedUnchartedDisconnect(clientId, shipId);
+	HyperJump::CheckForUnchartedDisconnect(clientId, shipId);
 }
 
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)

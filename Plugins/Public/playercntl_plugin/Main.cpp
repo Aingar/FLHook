@@ -1781,6 +1781,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	}
 	else if (msg == CUSTOM_IN_WARP_CHECK)
 	{
+		returncode = SKIPPLUGINS;
 		CUSTOM_IN_WARP_CHECK_STRUCT* checkData = reinterpret_cast<CUSTOM_IN_WARP_CHECK_STRUCT*>(data);
 		checkData->inWarp = AntiJumpDisconnect::IsInWarp(checkData->clientId);
 	}

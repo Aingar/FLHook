@@ -1132,6 +1132,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 
 	if (msg == CUSTOM_MOBILE_DOCK_CHECK)
 	{
+		returncode = SKIPPLUGINS;
 		CUSTOM_MOBILE_DOCK_CHECK_STRUCT* mobileDockCheck = reinterpret_cast<CUSTOM_MOBILE_DOCK_CHECK_STRUCT*>(data);
 		if (idToDockedInfoMap.count(mobileDockCheck->iClientID))
 		{

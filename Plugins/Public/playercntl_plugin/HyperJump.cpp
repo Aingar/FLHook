@@ -377,7 +377,7 @@ namespace HyperJump
 						{
 							uint fuel = CreateValidID(ini.get_value_string(0));
 							int rate;
-							for (uint i = 0; i <= set_maxJumpRange; ++i)
+							for (uint i = 1; i <= set_maxJumpRange + 1; ++i)
 							{
 								rate = ini.get_value_int(i);
 								jd.mapFuelToUsagePerDistance[fuel].push_back(rate);
@@ -808,7 +808,7 @@ namespace HyperJump
 		shipToJumpObjMap.erase(ship);
 	}
 
-	void HyperJump::RequestCancel(int iType, unsigned int iShip, unsigned int dockObjId, unsigned long p4)
+	void HyperJump::RequestCancel(int iType, uint iShip, uint dockObjId)
 	{
 		if (iType == 0 && jumpObjMap.count(dockObjId)) // dock type request
 		{

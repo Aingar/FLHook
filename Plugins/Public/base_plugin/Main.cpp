@@ -670,6 +670,24 @@ void LoadSettingsActual()
 					{
 						bannedSystemList.insert(CreateID(ini.get_value_string(0)));
 					}
+					else if (ini.is_value("enable_hyperspace_hub_bitmap"))
+					{
+						string typeStr = ToLower(ini.get_value_string(0));
+						if (typeStr.find("monday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 0;
+						if (typeStr.find("tuesday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 1;
+						if (typeStr.find("wednesday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 2;
+						if (typeStr.find("thursday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 3;
+						if (typeStr.find("friday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 4;
+						if (typeStr.find("saturday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 5;
+						if (typeStr.find("sunday") != string::npos)
+							bmapLoadHyperspaceHubConfig |= 1 << 6;
+					}
 					else if (ini.is_value("siege_gun"))
 					{
 						siegeWeaponryMap[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
@@ -851,11 +869,11 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("allowedshipclasses"))
 					{
-						archstruct.allowedshipclasses.emplace_back(ini.get_value_int(0));
+						archstruct.allowedshipclasses.insert(ini.get_value_int(0));
 					}
 					else if (ini.is_value("allowedids"))
 					{
-						archstruct.allowedids.emplace_back(CreateID(ini.get_value_string(0)));
+						archstruct.allowedids.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("module"))
 					{
@@ -1551,18 +1569,10 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 					bool foundid = false;
 					for (list<EquipDesc>::iterator item = Players[client].equipDescList.equip.begin(); item != Players[client].equipDescList.equip.end(); item++)
 					{
-						if (item->bMounted)
+						if (item->bMounted &&mapArchs[pbase->basetype].allowedids.count(item->iArchID))
 						{
-							list<uint>::iterator iditer = mapArchs[pbase->basetype].allowedids.begin();
-							while (iditer != mapArchs[pbase->basetype].allowedids.end())
-							{
-								if (*iditer == item->iArchID)
-								{
-									foundid = true;
-									break;
-								}
-								iditer++;
-							}
+							foundid = true;
+							break;
 						}
 					}
 					if (foundid == false)
@@ -1582,18 +1592,7 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 					Archetype::Ship* TheShipArch = Archetype::GetShip(Players[client].iShipArchetype);
 					uint shipclass = TheShipArch->iShipClass;
 
-					list<uint>::iterator iditer = mapArchs[pbase->basetype].allowedshipclasses.begin();
-					while (iditer != mapArchs[pbase->basetype].allowedshipclasses.end())
-					{
-						if (*iditer == shipclass)
-						{
-							foundclass = true;
-							break;
-						}
-						iditer++;
-					}
-
-					if (foundclass == false)
+					if(!mapArchs[pbase->basetype].allowedshipclasses.count(shipclass))
 					{
 						PrintUserCmdText(client, L"ERR Unable to dock with a vessel of this type.");
 						iCancel = -1;
@@ -2690,8 +2689,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			PrintUserCmdText(client, usage.c_str());
 			return true;
 		}
-		wstring destsystem = cmd->ArgStr(4);
-		if (!destsystem.length())
+		wstring destobject = cmd->ArgStr(4);
+		if (!destobject.length())
 		{
 			PrintUserCmdText(client, L"ERR No destination object");
 			PrintUserCmdText(client, usage.c_str());
@@ -2741,7 +2740,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->defense_mode = 4;
 		newbase->base_health = 10000000000;
 
-		newbase->destObject = CreateID(wstos(destsystem).c_str());
+		newbase->destObject = CreateID(wstos(destobject).c_str());
 
 		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
 		newbase->logic = mapArchs[newbase->basetype].logic;

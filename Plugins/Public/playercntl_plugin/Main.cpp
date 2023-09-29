@@ -479,7 +479,7 @@ namespace HkIServerImpl
 		if (!iClientID)
 			return;
 
-		HyperJump::RequestCancel(iType, iShip, p3, p4);
+		HyperJump::RequestCancel(iType, iShip, p3);
 	}
 
 	void __stdcall RequestEvent(int iEventType, unsigned int iShip, unsigned int iTargetObj, unsigned int p4, unsigned long p5, unsigned int iClientID)

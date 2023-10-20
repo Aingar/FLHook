@@ -1049,7 +1049,6 @@ void HkTimerCheckKick()
 	{
 		PlayerBase *base = iter.second;
 		base->Timer(curr_time);
-		counter++;
 	}
 	if (!player_bases.empty())
 	{

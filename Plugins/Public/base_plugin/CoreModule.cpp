@@ -232,11 +232,6 @@ bool CoreModule::Timer(uint time)
 		base->isShieldOn = false;
 		EnableShieldFuse(false);
 	}
-	
-	// we need to periodically set the health of all POBs to trigger a clientside 'refresh'
-	// this allows clients to perceive those objects as dockable
-	float rhealth = base->base_health / base->max_base_health;
-	pub::SpaceObj::SetRelativeHealth(space_obj, rhealth);
 
 	// we need to periodically set the health of all POBs to trigger a clientside 'refresh'
 	// this allows clients to perceive those objects as dockable

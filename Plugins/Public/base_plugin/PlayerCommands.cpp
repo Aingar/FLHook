@@ -1507,10 +1507,10 @@ namespace PlayerCommands
 		else if (cmd == L"pause")
 		{
 			if (factory->ToggleQueuePaused(true))
-				PrintUserCmdText(client, L"OK Build queue resumed");
+				PrintUserCmdText(client, L"OK Build queue paused");
 			else
 			{
-				PrintUserCmdText(client, L"ERR Build queue is already ongoing");
+				PrintUserCmdText(client, L"ERR Build queue is already paused");
 				return;
 			}
 		}

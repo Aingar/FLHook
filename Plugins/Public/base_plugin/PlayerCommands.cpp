@@ -1324,6 +1324,11 @@ namespace PlayerCommands
 				delete base->modules[index];
 				base->modules.resize(base->modules.size() - 1);
 			}
+			else
+			{
+				delete base->modules[index];
+				base->modules[index] = nullptr;
+			}
 		}
 		else
 		{

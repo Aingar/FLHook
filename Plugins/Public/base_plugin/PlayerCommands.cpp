@@ -1193,6 +1193,7 @@ namespace PlayerCommands
 						{
 							buildmod->Paused = false;
 							PrintUserCmdText(client, L"Module construction resumed");
+							base->Save();
 						}
 						else
 						{
@@ -1214,6 +1215,7 @@ namespace PlayerCommands
 						{
 							buildmod->Paused = true;
 							PrintUserCmdText(client, L"Module construction paused");
+							base->Save();
 						}
 						else
 						{
@@ -2423,10 +2425,12 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"ERR Can only change vulnerability windows once every %u days, %u days left", vulnerability_window_change_cooldown / (3600 * 24), 1 + ((base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown - currTime) / (3600 * 24)));
 			return;
 		}
+		wstring param1Str = GetParam(cmd, ' ', 2);
+		wstring param2Str = GetParam(cmd, ' ', 3);
 
 		int param1 = ToInt(GetParam(cmd, ' ', 2));
 		int param2 = ToInt(GetParam(cmd, ' ', 3));
-		if (param1 < 0 || param1 > 23
+		if (param1Str.empty() || param1 < 0 || param1 > 23
 			|| (!single_vulnerability_window && (param2 < 0 || param2 > 23)))
 		{
 			PrintUserCmdText(client, L"ERR Vulnerability windows can only be set to full hour values between 0 and 23");

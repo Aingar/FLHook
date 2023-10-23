@@ -1,7 +1,7 @@
 #include "Main.h"
 
 FactoryModule::FactoryModule(PlayerBase* the_base)
-	: Module(0), base(the_base)
+	: Module(Module::TYPE_FACTORY), base(the_base)
 {
 	active_recipe.nickname = 0;
 }
@@ -200,6 +200,10 @@ bool FactoryModule::Timer(uint time)
 		if (!i->second)
 		{
 			active_recipe.consumed_items.erase(i);
+			if (!active_recipe.consumed_items.empty())
+			{
+				cooked = false;
+			}
 		}
 		else
 		{

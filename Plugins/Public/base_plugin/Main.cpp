@@ -2373,7 +2373,7 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newH
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			uint clientID = HkGetClientIDByShip(dmg->get_inflictor_id());
 			const wchar_t* playerName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(clientID));
-			AddLog("%s dealt impossible damage to base %s: %0.0f\n", wstos(playerName).c_str(), wstos(coreModule->base->basename).c_str(), curr - newHealth);
+			AddLog("%s dealt impossible damage to base %s: %0.2f\n", wstos(playerName).c_str(), wstos(coreModule->base->basename).c_str(), curr - newHealth);
 			return;
 		}
 	}
@@ -2491,7 +2491,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		wstring basename = cmd->ArgStrToEnd(2);
 
 		// Fall back to default behaviour.
-		if (cmd->rights != RIGHT_SUPERADMIN)
+		if (!(cmd->rights & RIGHT_BEAMKILL))
 		{
 			return false;
 		}
@@ -3040,11 +3040,6 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_SUPERADMIN);
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
-		if (client == -1)
-		{
-			ConPrint(L"Only usable ingame\n");
-			return true;
-		}
 
 		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (base)
@@ -3052,8 +3047,6 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			clients[client].admin = true;
 			clients[client].admin = true;
 		}
-
-		PrintUserCmdText(client, L"Logged in as admin");
 		return true;
 	}
 	return false;

@@ -315,6 +315,8 @@ public:
 
 	bool isFreshlyBuilt;
 
+	bool isFreshlyBuilt;
+
 	// The base nickname
 	string nickname;
 

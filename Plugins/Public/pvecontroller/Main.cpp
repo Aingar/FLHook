@@ -295,6 +295,7 @@ void LoadSettingsNPCDrops()
 						{
 							drop.uAmountDroppedMin = 1;
 						}
+						drop.uAmountDroppedMax = ini.get_value_int(4);
 						mmapDropInfo.insert(make_pair(iClass, drop));
 						++iLoadedNPCDropClasses;
 						if (set_iPluginDebug)
@@ -732,8 +733,8 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 	const auto& iterEnd = mmapDropInfo.upper_bound(victimShiparch->iShipClass);
 	while (iter != iterEnd)
 	{
+		const auto& dropData = iter->second;
 		float roll = static_cast<float>(rand()) / RAND_MAX;
-		auto& dropData = iter->second;
 		if (roll < dropData.fChance)
 		{
 			Vector vLoc;

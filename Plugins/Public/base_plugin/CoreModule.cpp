@@ -198,9 +198,9 @@ void CoreModule::RepairDamage(float max_base_health)
 		if (base->base_health >= max_base_health)
 			return;
 
-		if (base->HasMarketItem(item.good) >= item.quantity * base->base_level)
+		if (base->HasMarketItem(item.good) >= item.quantity)
 		{
-			base->RemoveMarketGood(item.good, item.quantity * base->base_level);
+			base->RemoveMarketGood(item.good, item.quantity);
 			base->base_health += repair_per_repair_cycle * base->base_level;
 		}
 	}
@@ -245,14 +245,6 @@ bool CoreModule::Timer(uint time)
 	{
 		return false;
 	}
-	
-	// we need to periodically set the health of all POBs to trigger a clientside 'refresh'
-	// this allows clients to perceive those objects as dockable
-	if ((time % 5) == 0)
-	{
-		float rhealth = base->base_health / base->max_base_health;
-		pub::SpaceObj::SetRelativeHealth(space_obj, rhealth);
-	}
 
 	if ((time % set_tick_time) != 0)
 	{
@@ -286,7 +278,7 @@ bool CoreModule::Timer(uint time)
 		float no_crew_penalty = isCrewSufficient ? 1.0f : no_crew_damage_multiplier;
 		// Reduce hitpoints to reflect wear and tear. This will eventually
 		// destroy the base unless it is able to repair itself.
-		float damage_taken = (set_damage_per_tick + (set_damage_per_tick * base->base_level)) * no_crew_penalty;
+		float damage_taken = (set_damage_per_tick * base->base_level) * no_crew_penalty;
 		base->base_health -= damage_taken;
 	}
 

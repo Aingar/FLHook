@@ -1068,8 +1068,8 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"/build list - lists available module lists");
 			PrintUserCmdText(client, L"/build <moduleList> list - lists modules available on the selected module list");
 			PrintUserCmdText(client, L"/build <moduleList> start <moduleName/Nr> - starts constructon of selected module");
-			PrintUserCmdText(client, L"/build <moduleList> resume <moduleName/Nr> - pauses selected module construction");
-			PrintUserCmdText(client, L"/build <moduleList> pause <moduleName/Nr> - resumes selected module construction");
+			PrintUserCmdText(client, L"/build <moduleList> resume <moduleName/Nr> - resumes selected module construction");
+			PrintUserCmdText(client, L"/build <moduleList> pause <moduleName/Nr> - pauses selected module construction");
 			PrintUserCmdText(client, L"/build <moduleList> info <moduleName/Nr> - provides construction material info for selected module");
 		}
 		if (cmd == L"list")

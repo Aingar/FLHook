@@ -88,7 +88,6 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 	{
 		if (!vulnerableWindowStatus)
 		{
-			vulnerableWindowStatus = true;
 			siege_mode = true;
 			SyncReputationForBase();
 			shield_strength_multiplier = base_shield_strength;

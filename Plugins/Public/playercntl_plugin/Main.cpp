@@ -562,7 +562,7 @@ namespace HkIServerImpl
 	bool __stdcall Base_Land(uint iClientID, FLPACKET_LAND& pLand)
 	{
 		returncode = DEFAULT_RETURNCODE;
-		
+
 		uint landingClientId = HkGetClientIDByShip(pLand.iShip);
 		if (landingClientId && landingClientId == iClientID)
 		{

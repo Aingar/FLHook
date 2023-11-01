@@ -256,7 +256,6 @@ bool CoreModule::Timer(uint time)
 		return false;
 	}
 
-
 	// if health is 0 then the object will be destroyed but we won't
 	// receive a notification of this so emulate it.
 	if (base->base_health < 1)

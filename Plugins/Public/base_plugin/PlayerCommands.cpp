@@ -2441,7 +2441,7 @@ namespace PlayerCommands
 		int vulnerabilityWindowOneEnd = (vulnerabilityWindowOneStart + vulnerability_window_length) % (60 * 24); // 
 
 		int vulnerabilityWindowTwoStart = param2 * 60;
-		int vulnerabilityWindowTwoEnd = vulnerabilityWindowTwoStart + vulnerability_window_length % (60 * 24);
+		int vulnerabilityWindowTwoEnd = (vulnerabilityWindowTwoStart + vulnerability_window_length) % (60 * 24);
 
 		if (single_vulnerability_window)
 		{
@@ -2498,11 +2498,14 @@ namespace PlayerCommands
 
 		if (single_vulnerability_window)
 		{
-			PrintUserCmdText(client, L"This base has its vulnerability window starting at %u:00", pb->vulnerabilityWindow1.start / 60);
+			PrintUserCmdText(client, L"This base has its vulnerability window between %u:00-%u:%u", 
+				pb->vulnerabilityWindow1.start / 60, pb->vulnerabilityWindow1.end / 60, pb->vulnerabilityWindow1.end % 60);
 		}
 		else
 		{
-			PrintUserCmdText(client, L"This base has its vulnerability windows starting at %u:00 and %u:00", pb->vulnerabilityWindow1.start / 60, pb->vulnerabilityWindow2.start / 60);
+			PrintUserCmdText(client, L"This base has its vulnerability windows between %u:00-%u:%u and %u:00-%u:%u", 
+				pb->vulnerabilityWindow1.start / 60, pb->vulnerabilityWindow1.end / 60, pb->vulnerabilityWindow1.end % 60,
+				pb->vulnerabilityWindow2.start / 60, pb->vulnerabilityWindow2.end / 60, pb->vulnerabilityWindow2.end % 60);
 		}
 	}
 }

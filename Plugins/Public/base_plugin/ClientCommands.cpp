@@ -208,21 +208,6 @@ void SendBaseStatus(uint client, PlayerBase* base)
 		base_status += buf;
 	}
 
-	if (single_vulnerability_window)
-	{
-		wchar_t buf[75];
-		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", base->vulnerabilityWindow1.start/60, base->vulnerabilityWindow1.end/60, base->vulnerabilityWindow1.end%60);
-		base_status += buf;
-	}
-	else
-	{
-		wchar_t buf[125];
-		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>", 
-			base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60,
-			base->vulnerabilityWindow2.start / 60, base->vulnerabilityWindow2.end / 60, base->vulnerabilityWindow2.end % 60);
-		base_status += buf;
-	}
-
 	if (set_holiday_mode)
 	{
 		base_status += L"<TEXT>Crew Status: ALL I WANT FOR CHRISTMAS IS YOU</TEXT><PARA/>";

@@ -322,15 +322,15 @@ namespace HkIEngine
 	{
 		returncode = DEFAULT_RETURNCODE;
 
-		uint iClientID = HkGetClientIDByShip(iShip);
-
-		if (iClientID == 0)
-		{
-			// NPC call, let the game handle it
-			return 0;
-		}
 		if ((response == PROCEED_DOCK || response == DOCK) && dockPort != -1)
 		{
+			uint iClientID = HkGetClientIDByShip(iShip);
+
+			if (iClientID == 0)
+			{
+				// NPC call, let the game handle it
+				return 0;
+			}
 			if (Players[iClientID].fRelativeHealth == 0.0f) {
 				dockPort = -1;
 				response = ACCESS_DENIED;
@@ -362,6 +362,13 @@ namespace HkIEngine
 		}
 		if (response == DOCK && dockPort == -1)
 		{
+			uint iClientID = HkGetClientIDByShip(iShip);
+
+			if (iClientID == 0)
+			{
+				// NPC call, let the game handle it
+				return 0;
+			}
 			if (supressDockMsg[iClientID])
 			{
 				supressDockMsg[iClientID] = false;

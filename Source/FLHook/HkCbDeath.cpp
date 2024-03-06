@@ -118,6 +118,8 @@ Called when ship was destroyed
 void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 
+	CALL_PLUGINS_V(PLUGIN_ShipDestroyed, __stdcall, (DamageList *_dmg, DWORD *ecx, uint iKill), (_dmg, ecx, iKill));
+
 	LOG_CORE_TIMER_START
 	TRY_HOOK {
 		if (isKill)

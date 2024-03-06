@@ -122,6 +122,7 @@ struct CLIENT_DATA
 
 	bool initialized = false;
 	uint equippedID = 0;
+	float equippedVolume = 0.0f;
 	uint lootID = 0;
 	uint itemCount = 0;
 	uint miningEvents = 0;
@@ -158,6 +159,8 @@ float GetMiningYieldBonus(const uint id, const uint lootId)
 void CheckClientSetup(const uint iClientID)
 {
 	const auto& equipDesc = Players[iClientID].equipDescList.equip;
+	bool processedID = false;
+	float mountedEquipmentVolume = 0.0f;
 	for (auto& equip : equipDesc)
 	{
 		if (!equip.bMounted || !equip.is_internal())
@@ -167,6 +170,7 @@ void CheckClientSetup(const uint iClientID)
 		const Archetype::Equipment* itemPtr = Archetype::GetEquipment(equip.iArchID);
 		if (itemPtr->get_class_type() == Archetype::TRACTOR)
 		{
+			processedID = true;
 			mapClients[iClientID].equippedID = equip.iArchID;
 			break;
 		}

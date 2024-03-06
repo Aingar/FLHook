@@ -45,6 +45,7 @@ struct RECIPE
 	uint credit_cost = 0;
 	uint reqlevel = 0;
 	unordered_map<uint, float> affiliationBonus;
+	uint moduleCargoStorage = 0;
 };
 
 struct BASE_VULNERABILITY_WINDOW {
@@ -71,6 +72,9 @@ struct ARCHTYPE_STRUCT
 	bool ishubreturn = false;
 	bool display = false;
 	bool mining = false;
+	bool hasShield = false;
+	bool siegeGunOnly = false;
+	bool vulnerabilityWindowUse = false;
 	string miningevent;
 };
 
@@ -106,6 +110,7 @@ class Module
 {
 public:
 	int type;
+	int cargoSpace = 0;
 	int mining;
 	static const int TYPE_BUILD = 0;
 	static const int TYPE_CORE = 1;
@@ -116,7 +121,7 @@ public:
 	static const int TYPE_DEFENSE_3 = 10;
 
 
-	Module(uint the_type) : type(the_type) {}
+	Module(uint the_type) : type(the_type){}
 	virtual ~Module() {}
 	virtual void Spawn() {}
 	virtual wstring GetInfo(bool xml) = 0;
@@ -298,7 +303,7 @@ public:
 	void RemoveMarketGood(uint good, uint quantity);
 	void ChangeMoney(INT64 quantity);
 	uint GetRemainingCargoSpace();
-	uint GetMaxCargoSpace();
+	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
 
 	static string CreateBaseNickname(const string& basename);
@@ -309,6 +314,7 @@ public:
 
 	void SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float curr_hitpoints, float new_hitpoints);
 	void CheckVulnerabilityWindow(uint currTime);
+	void LogDamageDealers();
 
 	bool isFreshlyBuilt;
 
@@ -352,6 +358,9 @@ public:
 	// The basic armour and commodity storage available on this base->
 	uint base_level;
 
+	// Total storage space capacity
+	uint storage_space;
+
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 
@@ -383,6 +392,14 @@ public:
 
 	//changes how defense mod act depending on the amount of damage made to base in the last hours
 	bool siege_mode;
+
+	bool has_shield = false;
+
+	bool siege_gun_only = false;
+
+	bool use_vulnerability_window = false;
+
+	unordered_map<wstring, float> damageTakenMap;
 
 	//shield strength parameters
 	float shield_strength_multiplier;
@@ -527,6 +544,7 @@ namespace HyperJump
 	void LoadHyperspaceHubConfig(const string& configPath);
 	void InitJumpHoleConfig();
 	void CheckForUnchartedDisconnect(uint client, uint ship);
+	void KillAllUnchartedOnShutdown();
 	void ClearClientInfo(uint iClientID);
 }
 
@@ -549,7 +567,7 @@ namespace PlayerCommands
 	void BaseLstAllyFac(uint client, const wstring& args, bool HostileFactionMod = false);
 	void BaseViewMyFac(uint client, const wstring& args);
 	void BaseAddHostileTag(uint client, const wstring& args);
-	void BaseRmHostileTag(uint client, const wstring& args);
+	void BaseRmHostileTag(uint client, const wstring& args, bool printError = true);
 	void BaseLstHostileTag(uint client, const wstring& args);
 	void BaseRep(uint client, const wstring& args);
 
@@ -570,6 +588,7 @@ namespace PlayerCommands
 	void BaseCheckVulnerabilityWindow(uint client);
 
 	void BaseDeploy(uint client, const wstring& args);
+	void BaseTestDeploy(uint client, const wstring& args);
 
 	void Aff_initer();
 }
@@ -594,6 +613,8 @@ extern unordered_map<uint, Module*> spaceobj_modules;
 
 extern unordered_map<uint, uint> core_upgrade_recipes;
 
+extern unordered_map<uint, uint> core_upgrade_storage;
+
 // Map of ingame hash to info
 extern unordered_map<uint, class PlayerBase*> player_bases;
 extern unordered_map<uint, PlayerBase*>::iterator baseSaveIterator;
@@ -614,6 +635,7 @@ struct POBSOUNDS
 extern POBSOUNDS pbsounds;
 
 extern int set_plugin_debug;
+extern int set_plugin_debug_special;
 
 /// Global recipe map
 extern unordered_map<uint, RECIPE> recipeMap;

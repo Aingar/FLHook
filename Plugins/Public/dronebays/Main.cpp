@@ -191,38 +191,35 @@ void ClearClientInfo(uint iClientID)
 
 }
 
-void __stdcall ShipDestroyed(DamageList *_dmg, DWORD *ecx, uint iKill)
+void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (iKill)
-	{
-		CShip *cship = reinterpret_cast<CShip*>(ecx[4]);
+	CShip *cship = reinterpret_cast<CShip*>(iobj->cobj);
 
-		// Check if this is a drone or carrier being destroyed
-		for (auto drone = clientDroneInfo.begin(); drone != clientDroneInfo.end(); ++drone)
+	// Check if this is a drone or carrier being destroyed
+	for (auto drone = clientDroneInfo.begin(); drone != clientDroneInfo.end(); ++drone)
+	{
+		if (cship->get_id() == drone->second.deployedInfo.deployedDroneObj)
 		{
-			if (cship->get_id() == drone->second.deployedInfo.deployedDroneObj)
+			// If so, clear the carriers map and alert them
+			clientDroneInfo.erase(drone->first);
+
+			PrintUserCmdText(drone->first, L"Your drone has been destroyed.");
+		}
+
+		// If the carrier is being destroyed, destroy the drone as well
+		else if (cship->get_id() == drone->second.carrierShipobj)
+		{
+			if (!drone->second.deployedInfo.deployedDroneObj != 0)
 			{
-				// If so, clear the carriers map and alert them
+				pub::SpaceObj::Destroy(drone->second.deployedInfo.deployedDroneObj, DestroyType::FUSE);
 				clientDroneInfo.erase(drone->first);
 
+				// Erase any drones in the deployment queue
+				buildTimerMap.erase(drone->first);
+
 				PrintUserCmdText(drone->first, L"Your drone has been destroyed.");
-			}
 
-			// If the carrier is being destroyed, destroy the drone as well
-			else if (cship->get_id() == drone->second.carrierShipobj)
-			{
-				if (!drone->second.deployedInfo.deployedDroneObj != 0)
-				{
-					pub::SpaceObj::Destroy(drone->second.deployedInfo.deployedDroneObj, DestroyType::FUSE);
-					clientDroneInfo.erase(drone->first);
-
-					// Erase any drones in the deployment queue
-					buildTimerMap.erase(drone->first);
-
-					PrintUserCmdText(drone->first, L"Your drone has been destroyed.");
-
-				}
 			}
 		}
 	}

@@ -325,6 +325,10 @@ namespace HyperJump
 						{
 							set_banJumpSystems.insert(CreateID(ini.get_value_string()));
 						}
+						else if (ini.is_value("CargoJumpLimit"))
+						{
+							jumpLimitMap[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
+						}
 					}
 				}
 				else if (ini.is_header("shiprestrictions"))
@@ -394,17 +398,17 @@ namespace HyperJump
 							uint types = 0;
 							string typeStr = ToLower(ini.get_value_string(0));
 							if (typeStr.find("fighter") != string::npos)
-								types |= OBJ_FIGHTER;
+								types |= Fighter;
 							if (typeStr.find("freighter") != string::npos)
-								types |= OBJ_FREIGHTER;
+								types |= Freighter;
 							if (typeStr.find("transport") != string::npos)
-								types |= OBJ_TRANSPORT;
+								types |= Transport;
 							if (typeStr.find("gunboat") != string::npos)
-								types |= OBJ_GUNBOAT;
+								types |= Gunboat;
 							if (typeStr.find("cruiser") != string::npos)
-								types |= OBJ_CRUISER;
+								types |= Cruiser;
 							if (typeStr.find("capital") != string::npos)
-								types |= OBJ_CAPITAL;
+								types |= Capital;
 
 							jd.available_ship_classes = types;
 						}
@@ -688,7 +692,7 @@ namespace HyperJump
 		Matrix ori;
 		pub::SpaceObj::GetLocation(Players[iClientID].iShipID, pos, ori);
 		Rotate180(ori);
-		TranslateX(pos, ori, 1000);
+		TranslateX(pos, ori, 1450);
 
 		//create exit first so entry has an existing solar to point to
 		auto systemInfo = Universe::get_system(jd.iTargetSystem);
@@ -1719,13 +1723,13 @@ namespace HyperJump
 		pub::Player::SetInitialPos(iClientID, pos);
 	}
 
-	void HyperJump::MissileTorpHit(uint iClientID, DamageList *dmg)
+	void HyperJump::ExplosionHit(uint iClientID, DamageList *dmg)
 	{
 		if (mapJumpDrives.find(iClientID) != mapJumpDrives.end())
 		{
 			if (mapJumpDrives[iClientID].charging_on && mapJumpDrives[iClientID].arch->cd_disrupts_charge)
 			{
-				if (dmg->get_cause() == 6 || dmg->get_cause() == 0x15)
+				if (dmg->get_cause() == DamageCause::CruiseDisrupter || dmg->get_cause() == DamageCause::UnkDisrupter)
 				{
 					PrintUserCmdText(iClientID, L"Jump drive disrupted. Charging failed.");
 					ShutdownJumpDrive(iClientID);

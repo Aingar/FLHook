@@ -140,7 +140,7 @@ bool UserCmd_Rep(uint iClientID, const wstring &wscCmd, const wstring &wscParam,
 	for each(pair<string, float> Vector in mapVector) {
 		string FactionFinal = Vector.first;
 		float RepFinal = Vector.second;
-		PrintUserCmdText(iClientID, L"Faction: %s — %0.2f", stows(FactionFinal).c_str(), RepFinal);
+		PrintUserCmdText(iClientID, L"Faction: %s ï¿½ %0.2f", stows(FactionFinal).c_str(), RepFinal);
 	}
 
 	return true;

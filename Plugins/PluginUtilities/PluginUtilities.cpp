@@ -1134,24 +1134,26 @@ void PrintLocalMsgAroundObject(uint spaceObjId, const wstring &wscMsg, float fDi
 	while (pPD = Players.traverse_active(pPD))
 	{
 		// Get the this player's current system and location in the system.
-		uint iClientID2 = HkGetClientIdFromPD(pPD);
-		uint iSystem2 = 0;
-		pub::Player::GetSystem(iClientID2, iSystem2);
-		if (iSystem != iSystem2)
+		const CShip* cship = ClientInfo[pPD->iOnlineID].cship;
+		if (!cship)
+		{
 			continue;
+		}
 
-		uint iShip2;
-		pub::Player::GetShip(iClientID2, iShip2);
+		if (iSystem != cship->system)
+		{
+			continue;
+		}
 
-		Vector pos2;
-		Matrix rot2;
-		pub::SpaceObj::GetLocation(iShip2, pos2, rot2);
+		const Vector& cshipPos = cship->vPos;
 
 		// Is player within the specified range of the sending char.
-		if (HkDistance3D(pos, pos2) > fDistance)
+		if (HkDistance3D(pos, cshipPos) > fDistance)
+		{
 			continue;
+		}
 
-		PrintUserCmdText(iClientID2, L"%s", wscMsg.c_str());
+		PrintUserCmdText(pPD->iOnlineID, L"%s", wscMsg.c_str());
 	}
 }
 

@@ -11,6 +11,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 	: Module(Module::TYPE_FACTORY), factoryNickname(nickname), base(the_base)
 {
 	active_recipe.nickname = 0;
+	cargoSpace = recipeMap[nickname].moduleCargoStorage;
 	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 	{
 		base->availableCraftList.insert(craftType);
@@ -150,7 +151,7 @@ bool FactoryModule::Timer(uint time)
 	}
 
 	// Nothing to do.
-	if (!active_recipe.nickname || !base->isCrewSupplied || Paused)
+	if (!active_recipe.nickname || (!base->isCrewSupplied && !set_holiday_mode) || Paused)
 	{
 		return false;
 	}
@@ -292,6 +293,8 @@ void FactoryModule::LoadState(INI_Reader& ini)
 		if (ini.is_value("type"))
 		{
 			factoryNickname = CreateID(ini.get_value_string(0));
+
+			cargoSpace = recipeMap[factoryNickname].moduleCargoStorage;
 			for (auto& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 			{
 				base->availableCraftList.insert(craftType);

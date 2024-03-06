@@ -79,7 +79,7 @@ void CreateSolar::CreateSolarCallout(SPAWN_SOLAR_STRUCT* info)
 	}
 	uint type;
 	pub::SpaceObj::GetType(spaceObjId, type);
-	if (type & (OBJ_JUMP_GATE | OBJ_JUMP_HOLE))
+	if (type & (JumpGate | JumpHole))
 	{
 		HyperJump::InitJumpHole(spaceObjId, info->destSystem, info->destObj);
 	}

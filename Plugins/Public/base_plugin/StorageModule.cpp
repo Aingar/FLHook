@@ -4,6 +4,7 @@
 StorageModule::StorageModule(PlayerBase* the_base)
 	: Module(TYPE_STORAGE), base(the_base)
 {
+	cargoSpace = 40000;
 }
 
 StorageModule::~StorageModule()

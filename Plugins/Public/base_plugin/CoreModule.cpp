@@ -15,6 +15,7 @@
 CoreModule::CoreModule(PlayerBase* the_base) : Module(TYPE_CORE), base(the_base), space_obj(0), dont_eat(false),
 dont_rust(false), wasDamagedSinceLastUpdate(false), undergoingDestruction(false)
 {
+	cargoSpace = core_upgrade_storage[the_base->base_level];
 }
 
 CoreModule::~CoreModule()
@@ -354,22 +355,25 @@ bool CoreModule::Timer(uint time)
 
 float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float curr_hitpoints, float new_hitpoints)
 {
-
+	if (!base->has_shield)
+	{
+		return new_hitpoints;
+	}
 	base->shield_timeout = time(nullptr) + 60;
 	if (!base->isShieldOn)
 	{
 		base->isShieldOn = true;
 		EnableShieldFuse(true);
 	}
-
-	if (!base->vulnerableWindowStatus || base->invulnerable == 1 || base->shield_strength_multiplier >= 1.0f)
+	if ((base->use_vulnerability_window && !base->vulnerableWindowStatus) || base->invulnerable == 1 || base->shield_strength_multiplier >= 1.0f)
 	{
 		// base invulnerable, keep current health value
 		return curr_hitpoints;
 	}
 
 	float damageTaken;
-	if (!siegeWeaponryMap.empty())
+
+	if (base->siege_gun_only)
 	{
 		const auto& siegeDamageIter = siegeWeaponryMap.find(iDmgMunitionID);
 		if (siegeDamageIter == siegeWeaponryMap.end())
@@ -385,7 +389,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 	}
 	else
 	{
-		damageTaken = ((curr_hitpoints - new_hitpoints) * (1.0f - base->shield_strength_multiplier));
+		damageTaken = curr_hitpoints - new_hitpoints;
 	}
 
 	base->damage_taken_since_last_threshold += damageTaken;
@@ -452,6 +456,8 @@ bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcast
 		{
 			msg += (player + "; ");
 		}
+
+		base->LogDamageDealers();
 		Log::LogBaseAction(wstos(base->basename), msg.c_str());
 
 		ConPrint(L"BASE: Base %s destroyed\n", base->basename.c_str());

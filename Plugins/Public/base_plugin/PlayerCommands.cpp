@@ -898,7 +898,7 @@ namespace PlayerCommands
 	}
 
 
-	void BaseRmHostileTag(uint client, const wstring& args)
+	void BaseRmHostileTag(uint client, const wstring& args, bool printError)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
 
@@ -915,7 +915,10 @@ namespace PlayerCommands
 
 		if (!base->perma_hostile_tags.count(tag))
 		{
-			PrintUserCmdText(client, L"ERR Tag does not exist");
+			if (printError)
+			{
+				PrintUserCmdText(client, L"ERR Tag does not exist");
+			}
 			return;
 		}
 
@@ -933,7 +936,7 @@ namespace PlayerCommands
 
 		base->Save();
 
-		PrintUserCmdText(client, L"OK");
+		PrintUserCmdText(client, L"Tag removed from blacklist");
 	}
 
 	void BaseLstHostileTag(uint client, const wstring& cmd)
@@ -1127,6 +1130,11 @@ namespace PlayerCommands
 		{
 			if (buildRecipe->shortcut_number == Module::TYPE_CORE)
 			{
+				if (set_holiday_mode)
+				{
+					PrintUserCmdText(client, L"ERR Cannot upgrade base's core during holiday mode!");
+					return;
+				}
 				if (!base->affiliation)
 				{
 					PrintUserCmdText(client, L"ERR Base needs to have a defined affiliation to upgrade its core!");
@@ -1300,20 +1308,9 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (base->modules[index]->type == Module::TYPE_STORAGE && base->GetRemainingCargoSpace() < STORAGE_MODULE_CAPACITY)
+		if (base->GetRemainingCargoSpace() < base->modules[index]->cargoSpace)
 		{
-			PrintUserCmdText(client, L"ERR Need %d free space to destroy a storage module", STORAGE_MODULE_CAPACITY);
-
-			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-			pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
-			wstring wscMsgU = L"KITTY ALERT: Possible type 5 POB cheating by %name (Index = %index, RemainingSpace = %space)\n";
-			wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-			wscMsgU = ReplaceStr(wscMsgU, L"%index", stows(itos(index)).c_str());
-			wscMsgU = ReplaceStr(wscMsgU, L"%space", stows(itos((int)base->GetRemainingCargoSpace())).c_str());
-
-			ConPrint(wscMsgU);
-			LogCheater(client, wscMsgU);
-
+			PrintUserCmdText(client, L"ERR Need %d free space to destroy this module", base->modules[index]->cargoSpace);
 			return;
 		}
 
@@ -1353,6 +1350,7 @@ namespace PlayerCommands
 			delete base->modules[index];
 			base->modules[index] = nullptr;
 		}
+		base->RecalculateCargoSpace();
 		base->Save();
 		PrintUserCmdText(client, L"OK Module destroyed");
 	}
@@ -1842,7 +1840,7 @@ namespace PlayerCommands
 		}
 
 		const wstring& cmd = GetParam(args, ' ', 1);
-		if (!clients[client].admin && (!clients[client].viewshop || (cmd == L"price" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
+		if (!clients[client].admin && (!clients[client].viewshop || (cmd == L"price" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
 		{
 			PrintUserCmdText(client, L"ERROR: Access denied");
 			return;
@@ -2161,7 +2159,7 @@ namespace PlayerCommands
 			solar = dynamic_cast<CSolar*>(CObject::FindNext()))
 		{
 			//solars are iterated on per system, we can stop once we're done scanning the last solar in the system we're looking for.
-			if (solar->iSystem != systemID)
+			if (solar->system != systemID)
 			{
 				if (foundSystemMatch)
 					break;
@@ -2173,10 +2171,10 @@ namespace PlayerCommands
 			}
 
 			float distance = HkDistance3D(solar->get_position(), pos);
-			switch (solar->iType)
+			switch (solar->type)
 			{
-				case OBJ_PLANET:
-				case OBJ_MOON:
+				case Planet:
+				case Moon:
 				{
 					if (distance < (minPlanetDistance + solar->get_radius())) // In case of planets, we only care about distance from actual surface, since it can vary wildly
 					{
@@ -2184,7 +2182,7 @@ namespace PlayerCommands
 						if (!idsName) idsName = solar->get_archetype()->iIdsName;
 						if (client)
 						{
-							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minPlanetDistance));
+							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance - solar->get_radius()), static_cast<uint>(minPlanetDistance));
 						}
 						else
 						{
@@ -2194,8 +2192,8 @@ namespace PlayerCommands
 					}
 					break;
 				}
-				case OBJ_DOCKING_RING:
-				case OBJ_STATION:
+				case DockingRing:
+				case Station:
 				{
 					if (distance < minStationDistance)
 					{
@@ -2213,7 +2211,7 @@ namespace PlayerCommands
 					}
 					break;
 				}
-				case OBJ_TRADELANE_RING:
+				case TradelaneRing:
 				{
 					if (distance < minLaneDistance)
 					{
@@ -2229,8 +2227,8 @@ namespace PlayerCommands
 					}
 					break;
 				}
-				case OBJ_JUMP_GATE:
-				case OBJ_JUMP_HOLE:
+				case JumpGate:
+				case JumpHole:
 				{
 					if (distance < minJumpDistance)
 					{
@@ -2249,11 +2247,10 @@ namespace PlayerCommands
 					}
 					break;
 				}
-				case OBJ_SATELLITE:
-				case OBJ_WEAPONS_PLATFORM:
-				case OBJ_DESTROYABLE_DEPOT:
-				case OBJ_NON_TARGETABLE:
-				case OBJ_MISSION_SATELLITE:
+				case Satellite:
+				case WeaponPlatform:
+				case DestructibleDepot:
+				case MissionSatellite:
 				{
 					if (distance < minDistanceMisc)
 					{
@@ -2271,10 +2268,89 @@ namespace PlayerCommands
 					}
 					break;
 				}
+				case NonTargetable:
+				{
+
+					if (distance < minDistanceMisc)
+					{
+						uint idsName = solar->get_name();
+						if (!idsName) idsName = solar->get_archetype()->iIdsName;
+						if (client)
+						{
+							PrintUserCmdText(client, L"Untargetable object too close. Current: %um, Minimum distance: %um", static_cast<uint>(distance), static_cast<uint>(minDistanceMisc));
+						}
+						else
+						{
+							ConPrint(L"Base too close to an untargetable object, distance: %um", static_cast<uint>(distance));
+						}
+						return false;
+					}
+					break;
+				}
 			}
 		}
 
 		return true;
+	}
+
+	void BaseTestDeploy(uint client, const wstring& args)
+	{
+		if (!enableDistanceCheck)
+		{
+			PrintUserCmdText(client, L"Bases can be deployed anywhere!");
+			return;
+		}
+
+		uint systemId;
+		pub::Player::GetSystem(client, systemId);
+		if (bannedSystemList.count(systemId))
+		{
+			PrintUserCmdText(client, L"ERR Deploying base in this system is not possible");
+			return;
+		}
+
+		uint ship;
+		pub::Player::GetShip(client, ship);
+		if (!ship)
+		{
+			PrintUserCmdText(client, L"ERR Not in space");
+			return;
+		}
+
+		// If the ship is moving, abort the processing.
+		Vector dir1;
+		Vector dir2;
+		pub::SpaceObj::GetMotion(ship, dir1, dir2);
+		if (dir1.x > 5 || dir1.y > 5 || dir1.z > 5)
+		{
+			PrintUserCmdText(client, L"ERR Ship is moving");
+			return;
+		}
+
+		Vector position;
+		Matrix rotation;
+		pub::SpaceObj::GetLocation(ship, position, rotation);
+		Rotate180(rotation);
+		TranslateX(position, rotation, 1000);
+		auto& cooldown = deploymentCooldownMap.find(client);
+		if (cooldown != deploymentCooldownMap.end() && (uint)time(0) < cooldown->second)
+		{
+			PrintUserCmdText(client, L"Command still on cooldown, %us remaining.", cooldown->second);
+			return;
+		}
+		else
+		{
+			deploymentCooldownMap[client] = (uint)time(0) + deploymentCooldownDuration;
+		}
+
+		if (!CheckSolarDistances(client, systemId, position))
+		{
+			PrintUserCmdText(client, L"Base cannot be deployed here");
+		}
+		else
+		{
+			PrintUserCmdText(client, L"Base can be deployed at current location. Use /pos to record it for later use.");
+		}
 	}
 
 	void BaseDeploy(uint client, const wstring& args)

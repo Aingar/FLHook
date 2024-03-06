@@ -227,7 +227,7 @@ void MoveClient(unsigned int client, unsigned int targetBase)
 			return;
 		}
 		PrintUserCmdText(client, L"Player base renamed/destroyed, ship redirected to a proxy base");
-		HkBeamById(client, targetBase);
+		HkBeamById(client, proxyBaseID);
 	}
 
 }

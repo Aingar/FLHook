@@ -23,6 +23,7 @@ bool extern set_bLocalTime;
 bool extern set_bEnableDeathMsg;
 float extern set_iLocalChatRange;
 unordered_set<uint> extern doNotDisturbClients;
+unordered_map<uint, float> extern jumpLimitMap;
 
 
 bool GetUserFilePath(string &path, const wstring &wscCharname, const string &extension);
@@ -83,6 +84,7 @@ namespace MiscCmds
 	void BaseEnter(unsigned int iBaseID, unsigned int iClientID);
 	void CharacterInfoReq(unsigned int iClientID, bool p2);
 	void Timer();
+	void PlayerLaunch(uint client);
 
 	bool UserCmd_Pos(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_Stuck(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
@@ -142,7 +144,7 @@ namespace HyperJump
 	bool SystemSwitchOutComplete(unsigned int iShip, unsigned int iClientID);
 	void ClearClientInfo(uint iClientID);
 	void PlayerLaunch(unsigned int iShip, unsigned int iClientID);
-	void MissileTorpHit(uint iClientID, DamageList *dmg);
+	void ExplosionHit(uint iClientID, DamageList *dmg);
 	bool CheckForBeacon(uint iClientID);
 	bool InitJumpDriveInfo(uint iClientID, bool fullCheck);
 	void ClientCloakCallback(CLIENT_CLOAK_STRUCT* info);

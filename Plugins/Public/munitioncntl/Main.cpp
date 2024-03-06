@@ -21,9 +21,13 @@ PLUGIN_RETURNCODE returncode;
 unordered_set<uint> setNoTrackingAlertProjectiles;
 
 unordered_map<uint, uint> mapTrackingByObjTypeBlacklistBitmap;
+
+unordered_set<uint> selfDetonatingMines;
+unordered_map<uint, float> guidedArmingTimesMap;
+
 uint lastProcessedProjectile = 0;
 
-constexpr uint shipObjType = (OBJ_FIGHTER | OBJ_FREIGHTER | OBJ_TRANSPORT | OBJ_GUNBOAT | OBJ_CRUISER | OBJ_CAPITAL);
+constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
 enum TRACKING_STATE {
 	TRACK_ALERT,
@@ -101,21 +105,21 @@ void LoadSettings()
 				{
 					string typeStr = ToLower(ini.get_value_string(0));
 					if (typeStr.find("fighter") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_FIGHTER;
+						blacklistedTrackingTypesBitmap |= Fighter;
 					if (typeStr.find("freighter") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_FREIGHTER;
+						blacklistedTrackingTypesBitmap |= Freighter;
 					if (typeStr.find("transport") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_TRANSPORT;
+						blacklistedTrackingTypesBitmap |= Transport;
 					if (typeStr.find("gunboat") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_GUNBOAT;
+						blacklistedTrackingTypesBitmap |= Gunboat;
 					if (typeStr.find("cruiser") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_CRUISER;
+						blacklistedTrackingTypesBitmap |= Cruiser;
 					if (typeStr.find("capital") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_CAPITAL;
+						blacklistedTrackingTypesBitmap |= Capital;
 					if (typeStr.find("guided") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_GUIDED;
+						blacklistedTrackingTypesBitmap |= Guided;
 					if (typeStr.find("mine") != string::npos)
-						blacklistedTrackingTypesBitmap |= OBJ_MINE;
+						blacklistedTrackingTypesBitmap |= Mine;
 				}
 			}
 			if (missileArch && blacklistedTrackingTypesBitmap)
@@ -125,6 +129,26 @@ void LoadSettings()
 			else
 			{
 				ConPrint(L"MunitionCntl: Error! Incomplete [TrackingBlacklist] definition in config files!\n");
+			}
+		}
+		else if (ini.is_header("SelfDetonatingMines"))
+		{
+			while (ini.read_value())
+			{
+				if (ini.is_value("mine"))
+				{
+					selfDetonatingMines.insert(CreateID(ini.get_value_string()));
+				}
+			}
+		}
+		else if (ini.is_header("ArmingMissiles"))
+		{
+			while (ini.read_value())
+			{
+				if (ini.is_value("missile"))
+				{
+					guidedArmingTimesMap[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
+				}
 			}
 		}
 	}
@@ -188,13 +212,41 @@ void __stdcall CreateGuided(uint& iClientID, FLPACKET_CREATEGUIDED& createGuided
 	returncode = DEFAULT_RETURNCODE;
 
 	//Packet hooks are executed once for every player in range, but we only need to process the missile packet once, since it's passed by reference.
-	if (lastProcessedProjectile == createGuidedPacket.iProjectileId)
+	if (lastProcessedProjectile != createGuidedPacket.iProjectileId)
 	{
-		return;
+		lastProcessedProjectile = createGuidedPacket.iProjectileId;
+		ProcessGuided(createGuidedPacket);
 	}
 
-	lastProcessedProjectile = createGuidedPacket.iProjectileId;
-	ProcessGuided(createGuidedPacket); 
+}
+
+bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (selfDetonatingMines.count(iobj->cobj->archetype->iArchID))
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return false;
+	}
+	return true;
+}
+
+bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (guidedArmingTimesMap.count(iobj->cobj->archetype->iArchID))
+	{
+		float armingTime = guidedArmingTimesMap.at(iobj->cobj->archetype->iArchID);
+		CGuided* guided = (CGuided*)iobj->cobj;
+		if (guided->lifetime < armingTime)
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return false;
+		}
+	}
+	return true;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,6 +264,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 
 	return p_PI;
 }

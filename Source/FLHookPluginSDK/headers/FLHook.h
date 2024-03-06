@@ -251,7 +251,8 @@ struct CLIENT_INFO
 	uint		iShipOld;
 	mstime		tmProtectedUntil;
 
-	DamageList	dmgLast;
+	uint dmgLastPlayerId;
+	DamageCause dmgLastCause;
 
 	// money cmd
 	list<MONEY_FIX> lstMoneyFix;
@@ -312,6 +313,7 @@ struct CLIENT_INFO
 
 	bool		bSpawnProtected;
 	bool		bUseServersideHitDetection; //used by AC Plugin
+	CShip*		cship;
 	byte		unused_data[128];
 };
 

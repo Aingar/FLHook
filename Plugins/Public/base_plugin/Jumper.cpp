@@ -47,15 +47,27 @@ void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 	}
 }
 
+void HyperJump::KillAllUnchartedOnShutdown()
+{
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd))
+	{
+		if (unchartedSystems.count(pd->iSystemID))
+		{
+			pub::SpaceObj::SetRelativeHealth(pd->iShipID, 0.0f);
+		}
+	}
+}
+
 void HyperJump::InitJumpHole(uint baseId, uint destSystem, uint destObject)
 {
 	uint dunno;
 	IObjInspectImpl* inspect;
 	GetShipInspect(baseId, inspect, dunno);
-	const CObject* solar = inspect->cobject();
+	CSolar* solar = (CSolar*)inspect->cobject();
 
-	memcpy((uint*)solar + 0x6d, &destSystem, 4);
-	memcpy((uint*)solar + 0x6e, &destObject, 4);
+	solar->jumpDestSystem = destSystem;
+	solar->jumpDestObj = destObject;
 }
 
 bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJumpHoleLoadout, uint exitJumpHoleArchetype)
@@ -92,10 +104,10 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	uint dunno;
 	IObjInspectImpl* inspect;
 	GetShipInspect(info.iSpaceObjId, inspect, dunno);
-	const CObject* solar = inspect->cobject();
+	CSolar* solar = (CSolar*)inspect->cobject();
 
-	memcpy((uint*)solar + 0x6d, &pb->destSystem, 4);
-	memcpy((uint*)solar + 0x6e, &pb->destObject, 4);
+	solar->jumpDestSystem = pb->destSystem;
+	solar->jumpDestObj = pb->destObject;
 
 	customSolarList.insert(info.iSpaceObjId);
 	AddLog("ReturnJH to %s created\n", ((string)systemInfo->nickname).c_str());

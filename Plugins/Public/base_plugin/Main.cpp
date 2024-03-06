@@ -27,6 +27,7 @@ int ExportType = 0;
 
 /// The debug mode
 int set_plugin_debug = 0;
+int set_plugin_debug_special = 0;
 
 /// List of banned systems
 unordered_set<uint> bannedSystemList;
@@ -92,6 +93,9 @@ unordered_map<uint, Module*> spaceobj_modules;
 
 /// Map of core upgrade recipes
 unordered_map<uint, uint> core_upgrade_recipes;
+
+/// Map of core level to default storage capacity:
+unordered_map<uint, uint> core_upgrade_storage;
 
 /// Path to shield status html page
 string set_status_path_html;
@@ -431,6 +435,11 @@ void ClearClientInfo(uint client)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void Shutdown()
+{
+	HyperJump::KillAllUnchartedOnShutdown();
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -706,6 +715,10 @@ void LoadSettingsActual()
 					{
 						core_upgrade_recipes[ini.get_value_int(0)] = CreateID(ini.get_value_string(1));
 					}
+					else if (ini.is_value("core_storage"))
+					{
+						core_upgrade_storage[ini.get_value_int(0)] = ini.get_value_int(1);
+					}
 				}
 			}
 		}
@@ -765,6 +778,10 @@ void LoadSettingsActual()
 					else if (ini.is_value("reqlevel"))
 					{
 						recipe.reqlevel = ini.get_value_int(0);
+					}
+					else if(ini.is_value("cargo_storage"))
+					{
+						recipe.moduleCargoStorage = ini.get_value_int(0);
 					}
 				}
 				AddModuleRecipeToMaps(recipe, craft_types, build_type, recipe_number);
@@ -895,10 +912,6 @@ void LoadSettingsActual()
 					{
 						archstruct.allowedids.insert(CreateID(ini.get_value_string(0)));
 					}
-					else if (ini.is_value("module"))
-					{
-						archstruct.modules.emplace_back(ini.get_value_string(0));
-					}
 					else if (ini.is_value("display"))
 					{
 						archstruct.display = ini.get_value_bool(0);
@@ -910,6 +923,18 @@ void LoadSettingsActual()
 					else if (ini.is_value("miningevent"))
 					{
 						archstruct.miningevent = ini.get_value_string(0);
+					}
+					else if (ini.is_value("shield"))
+					{
+						archstruct.hasShield = ini.get_value_int(0);
+					}
+					else if (ini.is_value("siegegunonly"))
+					{
+						archstruct.siegeGunOnly = ini.get_value_int(0);
+					}
+					else if (ini.is_value("vulnerabilitywindow"))
+					{
+						archstruct.vulnerabilityWindowUse = ini.get_value_int(0);
 					}
 				}
 				mapArchs[nickname] = archstruct;
@@ -1051,6 +1076,12 @@ void HkTimerCheckKick()
 		PlayerBase *base = iter.second;
 		base->Timer(curr_time);
 	}
+
+	if (set_plugin_debug_special && (curr_time % 60 == 0))
+	{
+		AddLog("Finished\n");
+	}
+
 	if (!player_bases.empty())
 	{
 		if (baseSaveIterator == player_bases.end())
@@ -1077,7 +1108,7 @@ void HkTimerCheckKick()
 		{
 			uint type;
 			pub::SpaceObj::GetType(customSolar, type);
-			if (type & (OBJ_JUMP_GATE | OBJ_JUMP_HOLE))
+			if (type & (JumpGate | JumpHole))
 			{
 				pub::SpaceObj::SetRelativeHealth(customSolar, 1);
 			}
@@ -1329,9 +1360,7 @@ bool UserCmd_Process(uint client, const wstring &args)
 	else if (args.find(L"/base addtag") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PrintUserCmdText(client, L"Checking if ship/tag exist in blacklist...");
-		PlayerCommands::BaseRmHostileTag(client, args);
-		PrintUserCmdText(client, L"Proceeding...");
+		PlayerCommands::BaseRmHostileTag(client, args, false);
 		PlayerCommands::BaseAddAllyTag(client, args);
 		return true;
 	}
@@ -1438,6 +1467,12 @@ bool UserCmd_Process(uint client, const wstring &args)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseDeploy(client, args);
+		return true;
+	}
+	else if (args.find(L"/base testdeploy") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		PlayerCommands::BaseTestDeploy(client, args);
 		return true;
 	}
 	else if (args.find(L"/shop") == 0)
@@ -2309,9 +2344,10 @@ void __stdcall CShip_destroy(CShip* ship)
 	}
 }
 
-void BaseDestroyed(uint space_obj, uint client)
+void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 {
 	returncode = DEFAULT_RETURNCODE;
+	uint space_obj = iobj->get_id();
 	auto& i = spaceobj_modules.find(space_obj);
 	if (i != spaceobj_modules.end())
 	{
@@ -2322,77 +2358,39 @@ void BaseDestroyed(uint space_obj, uint client)
 	customSolarList.erase(space_obj);
 }
 
-void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& newHealth, enum DamageEntry::SubObjFate& fate)
+void __stdcall HkCb_AddDmgEntry(IObjRW* iobj, float incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (!iDmgToSpaceID || !dmg->get_inflictor_id())
+	if (!dmg->iInflictorPlayerID)
 	{
 		return;
 	}
-	
-	if (!spaceobj_modules.count(iDmgToSpaceID))
+
+	CSolar* base = (CSolar*)iobj->cobj;
+	if (!spaceobj_modules.count(base->id))
 	{
 		return;
 	}
+
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 	Module* damagedModule = spaceobj_modules[iDmgToSpaceID];
-	if(damagedModule->mining)
-	{
-		return;
-	}
 
-	// If this is an NPC hit then suppress the call completely
-	if (!dmg->is_inflictor_a_player())
-	{
-		if (set_plugin_debug)
-			ConPrint(L"HkCb_AddDmgEntry[2] suppressed - npc\n");
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		iDmgToSpaceID = 0;
-		return;
-	}
+	float curr = base->hitPoints;
+	float max = base->solararch()->fHitPoints;
 
-	float curr, max;
-	pub::SpaceObj::GetHealth(iDmgToSpaceID, curr, max);
-
-	if (set_plugin_debug)
-		ConPrint(L"HkCb_AddDmgEntry iDmgToSpaceID=%u get_inflictor_id=%u curr=%0.2f max=%0.0f newHealth=%0.2f cause=%u is_player=%u player_id=%u fate=%u\n",
-			iDmgToSpaceID, dmg->get_inflictor_id(), curr, max, newHealth, dmg->get_cause(), dmg->is_inflictor_a_player(), dmg->get_inflictor_owner_player(), fate);
-
-	// A work around for an apparent bug where mines/missiles at the base
-	// causes the base damage to jump down to 0 even if the base is
-	// otherwise healthy.
-	if (newHealth == 0.0f /*&& dmg->get_cause()==7*/ && curr > 200000)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		if (set_plugin_debug)
-			ConPrint(L"HkCb_AddDmgEntry[1] - invalid damage?\n");
-		return;
-	}
-	if (curr - newHealth > 1500000)
-	{
-		CoreModule* coreModule = dynamic_cast<CoreModule*>(damagedModule);
-		if (coreModule)
-		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			uint clientID = HkGetClientIDByShip(dmg->get_inflictor_id());
-			const wchar_t* playerName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(clientID));
-			AddLog("%s dealt impossible damage to base %s: %0.0f\n", wstos(playerName).c_str(), wstos(coreModule->base->basename).c_str(), curr - newHealth);
-			return;
-		}
-	}
 	// This call is for us, skip all plugins.
-	newHealth = damagedModule->SpaceObjDamaged(iDmgToSpaceID, dmg->get_inflictor_id(), curr, newHealth);
+	float newHealth = damagedModule->SpaceObjDamaged(iDmgToSpaceID, dmg->get_inflictor_id(), curr, newHealth);
 	if (newHealth == curr)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
 	}
 	if (newHealth == 0.0f)
 	{
-		damagedModule->SpaceObjDestroyed(iDmgToSpaceID);
+		((CoreModule*)damagedModule)->SpaceObjDestroyed(iDmgToSpaceID);
 	}
 
-	returncode = SKIPPLUGINS;
+	dmg->add_damage_entry(1, newHealth, (DamageEntry::SubObjFate)0);
 }
 
 #define IS_CMD(a) !args.compare(L##a)
@@ -2401,7 +2399,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (args.find(L"testmodulerecipe") == 0)
+	if (args.find(L"setdebugspecial") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		set_plugin_debug_special = cmd->ArgInt(1);
+		return true;
+	}
+	else if (args.find(L"testmodulerecipe") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
@@ -2481,7 +2485,6 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	}
 	else if (args.compare(L"beam") == 0)
 	{
-		returncode = DEFAULT_RETURNCODE;
 		wstring charname = cmd->ArgCharname(1);
 		wstring basename = cmd->ArgStrToEnd(2);
 
@@ -2614,56 +2617,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		if (pub::SpaceObj::ExistsAndAlive(baseNickname) == 0) // -2 for nonexistant object, 0 for existing and alive
 		{
-			cmd->Print(L"ERR Base already spwawned!\n");
-			return true;
-		}
-
-		PlayerBase* base = new PlayerBase(path);
-
-		FindClose(h);
-		if (base && !base->nickname.empty())
-		{
-			player_bases[base->base] = base;
-			base->Spawn();
-			cmd->Print(L"Base respawned!\n");
-		}
-		else
-		{
-			cmd->Print(L"ERROR POB file corrupted: %ls\n", stows(path).c_str());
-		}
-
-
-		return true;
-	}
-	else if (args.find(L"baserespawn") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
-		RIGHT_CHECK(RIGHT_BASES)
-
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
-
-		char datapath[MAX_PATH];
-		GetUserDataPath(datapath);
-
-		wstring baseName = cmd->ArgStrToEnd(1);
-
-		// Load and spawn all bases
-		string path = string(datapath) + R"(\Accts\MultiPlayer\player_bases\)" + wstos(baseName) + ".ini";
-
-		WIN32_FIND_DATA findfile;
-		HANDLE h = FindFirstFile(path.c_str(), &findfile);
-		if (h == INVALID_HANDLE_VALUE)
-		{
-			cmd->Print(L"ERR Base file not found\n");
-			return true;
-		}
-
-		uint baseNicknameHash = CreateID(IniGetS(path, "Base", "nickname", "").c_str());
-
-		if (pub::SpaceObj::ExistsAndAlive(baseNicknameHash) == 0) // function returns -2 for nonexistant object, 0 for existing one
-		{
-			cmd->Print(L"ERR Base already spwawned!\n");
+			cmd->Print(L"ERR Base already spawned!\n");
 			return true;
 		}
 
@@ -3063,6 +3017,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	}
 	else if (args.find(L"baselogin") == 0)
 	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
 		RIGHT_CHECK(RIGHT_SUPERADMIN);
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		if (client == -1)
@@ -3235,6 +3191,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
   
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Shutdown, PLUGIN_HkIServerImpl_Shutdown, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));
@@ -3267,7 +3224,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CShip_destroy, PLUGIN_HkIEngine_CShip_destroy, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_AddDmgEntry, PLUGIN_HkCb_AddDmgEntry, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_AddDmgEntry, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	return p_PI;
 }

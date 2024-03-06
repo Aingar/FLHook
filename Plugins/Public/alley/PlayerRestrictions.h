@@ -64,4 +64,11 @@ namespace AP
 	void Timer();
 }
 
+struct scistruct
+{
+	unordered_set<uint> canmount;
+	unordered_set<uint> nomount;
+};
+
+extern unordered_map <uint, scistruct> shipclassitems;
 #endif

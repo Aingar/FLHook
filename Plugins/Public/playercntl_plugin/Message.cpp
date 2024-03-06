@@ -70,7 +70,14 @@ void SendLocalSystemChat(uint iFromClientID, const wstring &wscText)
 
 	Vector vFromShipLoc;
 	Matrix mFromShipDir;
-	pub::SpaceObj::GetLocation(iFromShip, vFromShipLoc, mFromShipDir);
+	if (iFromShip)
+	{
+		pub::SpaceObj::GetLocation(iFromShip, vFromShipLoc, mFromShipDir);
+	}
+	else
+	{
+		vFromShipLoc = Players[iFromClientID].vPosition;
+	}
 
 	// For all players in system...
 	struct PlayerData *pPD = 0;
@@ -88,8 +95,14 @@ void SendLocalSystemChat(uint iFromClientID, const wstring &wscText)
 
 		Vector vShipLoc;
 		Matrix mShipDir;
-		pub::SpaceObj::GetLocation(iShip, vShipLoc, mShipDir);
-
+		if (iShip)
+		{
+			pub::SpaceObj::GetLocation(iShip, vShipLoc, mShipDir);
+		}
+		else
+		{
+			vShipLoc = pPD->vPosition;
+		}
 		//Is player within scanner range (15K) of the sending char.
 		if (HkDistance3D(vShipLoc, vFromShipLoc) > set_iLocalChatRange)
 			continue;

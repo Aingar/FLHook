@@ -114,6 +114,7 @@ copy /Y $(OutDir)$(TargetName).pdb  ..\..\..\Binaries\bin-vc14\flhook_plugins\pu
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\cloak_plugin\minijson_writer.hpp" />
     <ClInclude Include="Main.h" />
     <ClInclude Include="minijson_writer.hpp" />
   </ItemGroup>

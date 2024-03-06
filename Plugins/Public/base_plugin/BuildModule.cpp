@@ -87,7 +87,7 @@ bool BuildModule::Timer(uint time)
 	if ((time % set_tick_time) != 0)
 		return false;
 
-	if (Paused || !base->isCrewSupplied)
+	if (Paused || (!base->isCrewSupplied && !set_holiday_mode))
 		return false;
 
 	bool cooked = true;
@@ -160,10 +160,12 @@ bool BuildModule::Timer(uint time)
 
 					base->modules[0] = new CoreModule(base);
 					base->modules[0]->Spawn();
+					base->RecalculateCargoSpace();
 
 					break;
 				case Module::TYPE_STORAGE:
 					base->modules[i] = new StorageModule(base);
+					base->RecalculateCargoSpace();
 					break;
 				case Module::TYPE_DEFENSE_1:
 					base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_1);
@@ -179,6 +181,7 @@ bool BuildModule::Timer(uint time)
 					if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname))
 					{
 						base->modules[i] = new FactoryModule(base, active_recipe.nickname);
+						base->RecalculateCargoSpace();
 						break;
 					}
 					base->modules[i] = nullptr;

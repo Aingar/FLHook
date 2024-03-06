@@ -27,7 +27,6 @@
 #include <boost/date_time/posix_time/posix_time.hpp>
 #include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/lexical_cast.hpp>
-#include <unordered_map>
 
 static uint maxJettisonCount = 25;
 static uint maxJettisonCountNoOwner = 100;
@@ -168,7 +167,7 @@ void Init()
 #define POPUPDIALOG_BUTTONS_RIGHT_LATER 4
 #define POPUPDIALOG_BUTTONS_CENTER_OK 8
 
-static map<uint, float> notradelist;
+static unordered_map<uint, float> notradelist;
 static list<uint> MarkedPlayers;
 //Added this due to idiocy
 static list<uint> MarkUsageTimer;
@@ -703,7 +702,7 @@ void RemoveSurplusJettisonItems()
 	auto cObj = dynamic_cast<CLoot*>(CObject::FindFirst(CObject::CLOOT_OBJECT));
 	for (; cObj; cObj = dynamic_cast<CLoot*>(CObject::FindNext()))
 	{
-		jettisonedItemsMap[cObj->get_owner()].emplace_back(cObj->iSpaceID);
+		jettisonedItemsMap[cObj->get_owner()].emplace_back(cObj->id);
 	}
 	for (const auto& jettisonData : jettisonedItemsMap)
 	{
@@ -752,22 +751,19 @@ bool UserCmd_JettisonAll(uint iClientID, const wstring &wscCmd, const wstring &w
 	bool isFirstJettisonItem = true;
 	if (HkEnumCargo(wscCharname, lstCargo, iRemainingHoldSize) == HKE_OK)
 	{
+		uint shipClass = Archetype::GetShip(Players[iClientID].iShipArchetype)->iShipClass;
 		foreach(lstCargo, CARGO_INFO, item)
 		{
 			bool flag = false;
 			pub::IsCommodity(item->iArchID, flag);
 			if (!item->bMounted && flag)
 			{
-				bool skipItem = false;
-				for (map<uint, float>::iterator i = notradelist.begin(); i != notradelist.end(); ++i)
+				if (notradelist.count(item->iArchID))
 				{
-					if (i->first == item->iArchID)
-					{
-						skipItem = true;
-						break;
-					}
+					continue;
 				}
-				if (skipItem) {
+				if (shipclassitems.count(item->iArchID) && !shipclassitems.at(item->iArchID).canmount.empty())
+				{
 					continue;
 				}
 
@@ -1093,29 +1089,25 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	return false;
 }
 
-void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& damage, enum DamageEntry::SubObjFate& fate)
+void __stdcall HkCb_AddDmgEntry(IObjRW* iobj, float incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	if (iDmgMunitionID != repairMunitionId
-		|| !iDmgTo
-		|| !dmg->is_inflictor_a_player()
-		|| sID == 65521) //shield hit
+		|| !iobj->is_player()
+		|| !dmg->iInflictorPlayerID)
 		return;
 
-	if (!iDmgToSpaceID)
-	{
-		pub::Player::GetShip(iDmgTo, iDmgToSpaceID);
-	}
+	CShip* cship = (CShip*)iobj->cobj;
 
-	Archetype::Ship* TheShipArchHealed = Archetype::GetShip(Players[iDmgTo].iShipArchetype);
+	const Archetype::Ship* TheShipArchHealed = cship->shiparch();
 
 	const auto& healingData = healingMultipliers.find(TheShipArchHealed->iShipClass);
 	if (healingData == healingMultipliers.end())
 		return;
 
-	float curr, maxHP;
-	pub::SpaceObj::GetHealth(iDmgToSpaceID, curr, maxHP);
+	float curr = cship->hitPoints;
+	float maxHP = cship->archetype->fHitPoints;
 
 	const HEALING_DATA& healing = healingData->second;
 
@@ -1123,20 +1115,8 @@ void __stdcall HkCb_AddDmgEntry(DamageList *dmg, unsigned short sID, float& dama
 		return;
 
 	float healedHP = curr + healing.healingStatic + ((healing.healingMultiplier / 100) * maxHP) ;
-	float newHP = min(maxHP * healing.maxHeal, healedHP);
+	dmg->add_damage_entry(1, min(maxHP * healing.maxHeal, healedHP), (DamageEntry::SubObjFate) 0);
 
-	if (sID == 1) // hull hit
-	{
-		damage = newHP;
-	}
-	else // not a hull hit, stop processing this event and add a hull-repairing one.
-	{
-		iDmgTo = 0;
-		iDmgMunitionID = 0;
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		//Adding 'damage entry' that will heal the main hull. 1 stands for hull internal id. Fate 0 means alive.
-		dmg->add_damage_entry(1, newHP, static_cast<DamageEntry::SubObjFate>(0));
-	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code
@@ -1165,14 +1145,22 @@ void JettisonCargo(unsigned int iClientID, struct XJettisonCargo const &jc)
 {
 	returncode = DEFAULT_RETURNCODE;
 	
-	for (const EquipDesc& item : Players[iClientID].equipDescList.equip)
+	CShip* cship = ClientInfo[iClientID].cship;
+	if (!cship)
 	{
-		if (item.sID != jc.iSlot)
+		return;
+	}
+	CECargo* cargo;
+	CEquipTraverser tr(EquipmentClass::Cargo);
+
+	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
+	{
+		if (cargo->iSubObjId != jc.iSlot)
 		{
-			continue;
+			return;
 		}
 
-		const auto& noTradeGood = notradelist.find(item.iArchID);
+		const auto& noTradeGood = notradelist.find(cargo->archetype->iArchID);
 		if (noTradeGood == notradelist.end()) {
 			return;
 		}
@@ -1198,21 +1186,18 @@ void JettisonCargo(unsigned int iClientID, struct XJettisonCargo const &jc)
 				pub::Player::GetShip(iClientID, shipId);
 				pub::SpaceObj::GetLocation(shipId, pos, ori);
 				pos.x += 30.0;
-				Server.MineAsteroid(sysId, pos, CreateID("lootcrate_ast_loot_metal"), item.iArchID, amountToJettison, iClientID);
+				Server.MineAsteroid(sysId, pos, CreateID("lootcrate_ast_loot_metal"), cargo->archetype->iArchID, amountToJettison, iClientID);
 			}
 		}
 		return;
 	}
-	// no match found, something went VERY wrong
-	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-	PrintUserCmdText(iClientID, L"ERR couldn't verify cargo, please try again.");
 }
 
 void AddTradeEquip(unsigned int iClientID, struct EquipDesc const &ed)
 {
 	if (notradelist.find(ed.iArchID) != notradelist.end())
 	{
-		for (map<uint, float>::iterator i = notradelist.begin(); i != notradelist.end(); ++i)
+		for (auto i = notradelist.begin(); i != notradelist.end(); ++i)
 		{
 			if (i->first == ed.iArchID)
 			{
@@ -1430,7 +1415,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SystemSwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
-	//	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));

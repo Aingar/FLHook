@@ -151,6 +151,18 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 		pAddress = (void*)((char*)GetModuleHandle(0) + ADDR_SHUTDOWN);
 		WriteProcMem(pAddress, &fpShutdown, 4);
 
+		hModCommon = GetModuleHandle("common");
+
+		BYTE patch3[] = { 0x04 };
+		BYTE patch4[] = { 0x08 };
+		BYTE patch5[] = { 0x10 };
+		BYTE patch6[] = { 0x20 };
+
+		WriteProcMem((char*)hModCommon + 0x18c8b6, patch3, 1);
+		WriteProcMem((char*)hModCommon + 0x18c8be, patch4, 1);
+		WriteProcMem((char*)hModCommon + 0x18c8c6, patch5, 1);
+		WriteProcMem((char*)hModCommon + 0x18c8ce, patch6, 1);
+
 		// create log dirs
 		CreateDirectoryA("./flhook_logs/", NULL);
 		CreateDirectoryA("./flhook_logs/debug", NULL);

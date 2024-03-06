@@ -674,6 +674,8 @@ HK_ERROR HkKill(const wstring &wscCharname)
 	if (!iShip)
 		return HKE_PLAYER_NOT_IN_SPACE;
 
+	ClientInfo[iClientID].dmgLastPlayerId = 0;
+	ClientInfo[iClientID].dmgLastCause = DamageCause::Admin;
 	pub::SpaceObj::SetRelativeHealth(iShip, 0.0f);
 	return HKE_OK;
 }

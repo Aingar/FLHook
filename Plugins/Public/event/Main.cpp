@@ -176,6 +176,8 @@ void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	LoadIDs();
+
 	string File_FLHook = "..\\exe\\flhook_plugins\\events.cfg";
 	string File_FLHookStatus = "..\\exe\\flhook_plugins\\events_status.cfg";
 	string File_FLHookTracker = "..\\exe\\flhook_plugins\\events_tracker.cfg";
@@ -196,7 +198,9 @@ void LoadSettings()
 			{
 				TRADE_EVENT te;
 				string id;
-
+				
+				bool invalidData = false;
+				string invalidDataReason;
 				while (ini.read_value())
 				{
 					if (ini.is_value("id"))
@@ -214,11 +218,25 @@ void LoadSettings()
 					}
 					else if (ini.is_value("startbase"))
 					{
-						te.uStartBase = CreateID(ini.get_value_string(0));
+						uint baseHash = CreateID(ini.get_value_string(0));
+						if (!Universe::get_base(baseHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
+						te.uStartBase = baseHash;
 					}
 					else if (ini.is_value("endbase"))
 					{
-						te.uEndBase = CreateID(ini.get_value_string(0));
+						uint baseHash = CreateID(ini.get_value_string(0));
+						if (!Universe::get_base(baseHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
+						te.uEndBase = baseHash;
 					}
 					else if (ini.is_value("bonus"))
 					{
@@ -230,6 +248,13 @@ void LoadSettings()
 					}
 					else if (ini.is_value("commodity"))
 					{
+						uint commodityHash = CreateID(ini.get_value_string(0));
+						if (!Archetype::GetEquipment(commodityHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
 						pub::GetGoodID(te.uCommodityID, ini.get_value_string(0));
 					}
 					else if (ini.is_value("limited"))
@@ -238,6 +263,13 @@ void LoadSettings()
 					}
 					else if (ini.is_value("allowedid"))
 					{
+						uint idHash = CreateID(ini.get_value_string(0));
+						if (!mapIDs.count(idHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
 						te.lAllowedIDs.push_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("flhookbase"))
@@ -249,16 +281,23 @@ void LoadSettings()
 						te.sFLHookBaseName = ini.get_value_string(0);
 					}
 				}
-
-				mapTradeEvents[id] = te;
-				++iLoaded;
-
+				if (invalidData)
+				{
+					ConPrint(L"ERROR Event '%ls' failed to load due to nickname '%ls'\n", stows(te.sEventName).c_str(), stows(invalidDataReason).c_str());
+				}
+				else
+				{
+					mapTradeEvents[id] = te;
+					++iLoaded;
+				}
 			}
 			//Combat Events
 			else if (ini.is_header("CombatEvent"))
 			{
 				COMBAT_EVENT ce;
 				string id;
+				bool invalidData = false;
+				string invalidDataReason;
 
 				while (ini.read_value())
 				{
@@ -286,14 +325,36 @@ void LoadSettings()
 					}
 					else if (ini.is_value("allowedid"))
 					{
+						uint idHash = CreateID(ini.get_value_string(0));
+						if (!mapIDs.count(idHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
 						ce.lAllowedIDs.push_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("targetid"))
 					{
+						uint idHash = CreateID(ini.get_value_string(0));
+						if (!mapIDs.count(idHash))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
 						ce.lTargetIDs.push_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("system"))
 					{
+						uint sysHash = CreateID(ini.get_value_string());
+						auto sysInfo = Universe::get_system(sysHash);
+						if (!sysInfo)
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
 						ce.lSystems.push_back(CreateID(ini.get_value_string(0)));
 					}
 					//Bonus values
@@ -325,9 +386,15 @@ void LoadSettings()
 					}
 				}
 
-				mapCombatEvents[id] = ce;
-				++iLoaded;
-
+				if (invalidData)
+				{
+					ConPrint(L"ERROR Event '%ls' failed to load due to nickname '%ls'\n", stows(ce.sEventName).c_str(), stows(invalidDataReason).c_str());
+				}
+				else
+				{
+					mapCombatEvents[id] = ce;
+					++iLoaded;
+				}
 			}
 			//Mining Events
 			else if (ini.is_header("MiningEvent"))
@@ -555,8 +622,6 @@ void LoadSettings()
 	ConPrint(L"EVENT DEBUG: Loaded %u event data\n", iLoaded2);
 	ConPrint(L"EVENT DEBUG: Loaded %u event player data\n", iLoaded3);
 
-	LoadIDs();
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -660,177 +725,197 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 
 void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iClientID)
 {
+	if (mapTradeEvents.empty())
+	{
+		return;
+	}
+
+	bool firstRun = true;
+	bool eventEnabled;
+	for (map<string, TRADE_EVENT>::iterator i = mapTradeEvents.begin(); i != mapTradeEvents.end(); ++i)
+	{
+		if (firstRun)
+		{
+			firstRun = false;
+			eventEnabled = HookExt::IniGetB(iClientID, "event.enabled");
+		}
+		//check if it's one of the commodities undergoing an event
+		if (gbi.iGoodID != i->second.uCommodityID)
+		{
+			continue;
+		}
+		//this if is if we are interacting with this commodity and already in event mode
+		if (eventEnabled)
+		{
+			string eventid = wstos(HookExt::IniGetWS(iClientID, "event.eventid"));
+
+			//leave event mode
+			HookExt::IniSetB(iClientID, "event.enabled", false);
+			HookExt::IniSetWS(iClientID, "event.eventid", L"");
+			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
+			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
+			HookExt::IniSetI(iClientID, "event.quantity", 0);
+			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(mapTradeEvents[eventid].sEventName).c_str());
+			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Interacted with commodity on non-event station");
+		}
+
+		//this is as an if so if the player exited event mode he can reenter event mode
+		//check if this is the event's stating point
+		if (gbi.iBaseID != i->second.uStartBase)
+		{
+			continue;
+		}
+
+		if (i->second.bLimited)
+		{
+			uint pID = HookExt::IniGetI(iClientID, "event.shipid");
+			bool bFoundID = false;
+
+			for (list<uint>::iterator i2 = i->second.lAllowedIDs.begin(); i2 != i->second.lAllowedIDs.end(); ++i2)
+			{
+				if (*i2 == pID)
+				{
+					bFoundID = true;
+					break;
+				}
+			}
+
+			if (!bFoundID)
+			{
+				continue;
+			}
+		}
+
+		HookExt::IniSetB(iClientID, "event.enabled", true);
+		HookExt::IniSetWS(iClientID, "event.eventid", stows(i->first));
+
+		if (i->second.bFLHookBase == true)
+		{
+			HookExt::IniSetWS(iClientID, "event.eventpob", stows(i->second.sFLHookBaseName));
+			HookExt::IniSetI(iClientID, "event.eventpobcommodity", i->second.uCommodityID);
+		}
+		else
+		{
+			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
+			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
+		}
+
+		HookExt::IniSetI(iClientID, "event.quantity", gbi.iCount);
+
+		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
+		PrintUserCmdText(iClientID, L"You have entered the event: %s", stows(i->second.sEventName).c_str());
+		Notify_TradeEvent_Start(iClientID, i->second.sEventName);
+
+		continue;
+	}
+}
+
+void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
+{
+	if (mapTradeEvents.empty() || !HookExt::IniGetB(iClientID, "event.enabled"))
+	{
+		return;
+	}
+	string eventid = wstos(HookExt::IniGetWS(iClientID, "event.eventid"));
 	for (map<string, TRADE_EVENT>::iterator i = mapTradeEvents.begin(); i != mapTradeEvents.end(); ++i)
 	{
 		//check if it's one of the commodities undergoing an event
-		if (gbi.iGoodID == i->second.uCommodityID)
+		if (eventid != i->first)
 		{
-			//this if is if we are interacting with this commodity and already in event mode
-			if (HookExt::IniGetB(iClientID, "event.enabled"))
-			{
-				string eventid = wstos(HookExt::IniGetWS(iClientID, "event.eventid"));
+			continue;
+		}
+		//this if is if we are interacting with this commodity and already in event mode
+		if (gsi.iArchID != i->second.uCommodityID)
+		{
+			continue;
+		}
+		uint iBaseID;
+		pub::Player::GetBase(iClientID, iBaseID);
 
+		//check if this is the event's end point
+		if (iBaseID == i->second.uEndBase)
+		{
+			int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
+
+			if (gsi.iCount > iInitialCount)
+			{
 				//leave event mode
 				HookExt::IniSetB(iClientID, "event.enabled", false);
 				HookExt::IniSetWS(iClientID, "event.eventid", L"");
 				HookExt::IniSetWS(iClientID, "event.eventpob", L"");
 				HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 				HookExt::IniSetI(iClientID, "event.quantity", 0);
-				PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(mapTradeEvents[eventid].sEventName).c_str());
-				Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Interacted with commodity on non-event station");
+				PrintUserCmdText(iClientID, L"You have been unregistered from the event for having more cargo than you bought: %s", stows(i->second.sEventName).c_str());
+				Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Delivered more cargo than bought at start point");
+				return;
 			}
-
-			//this is as an if so if the player exited event mode he can reenter event mode
-			//check if this is the event's stating point
-			if ((gbi.iBaseID == i->second.uStartBase) && (!HookExt::IniGetB(iClientID, "event.enabled")))
+			else
 			{
-				if (i->second.bLimited)
+				if (i->second.bFLHookBase)
 				{
-					uint pID = HookExt::IniGetI(iClientID, "event.shipid");
-					bool bFoundID = false;
-
-					for (list<uint>::iterator i2 = i->second.lAllowedIDs.begin(); i2 != i->second.lAllowedIDs.end(); ++i2)
-					{
-						if (*i2 == pID)
-						{
-							bFoundID = true;
-						}
-					}
-
-					if (!bFoundID)
-					{
-						return;
-					}
+					//do nothing as FLHook base rewards are handled differently.
+					continue;
 				}
 
-				HookExt::IniSetB(iClientID, "event.enabled", true);
-				HookExt::IniSetWS(iClientID, "event.eventid", stows(i->first));
+				HookExt::IniSetB(iClientID, "event.enabled", false);
+				HookExt::IniSetWS(iClientID, "event.eventid", L"");
+				HookExt::IniSetWS(iClientID, "event.eventpob", L"");
+				HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
+				HookExt::IniSetI(iClientID, "event.quantity", 0);
 
-				if (i->second.bFLHookBase == true)
+				int bonus = 0;
+
+				pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
+				PrintUserCmdText(iClientID, L"You have finished the event: %s", stows(i->second.sEventName).c_str());
+
+				wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+
+				if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
 				{
-					HookExt::IniSetWS(iClientID, "event.eventpob", stows(i->second.sFLHookBaseName));
-					HookExt::IniSetI(iClientID, "event.eventpobcommodity", i->second.uCommodityID);
+					PrintUserCmdText(iClientID, L"Sorry, this event is currently completed.");
+					Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Completed trade run but event is completed");
+					return;
+				}
+				else if ((i->second.iObjectiveCurrent + gsi.iCount) >= i->second.iObjectiveMax)
+				{
+					int amount = (i->second.iObjectiveCurrent + gsi.iCount) - i->second.iObjectiveMax;
+					bonus = i->second.iBonusCash * amount;
+					mapEventTracking[i->first].PlayerEventData[wscCharname] += amount;
+
+					i->second.iObjectiveCurrent = i->second.iObjectiveMax;
+
+					PrintUserCmdText(iClientID, L"You have completed the final delivery. Congratulations !");
+					Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "NOTIFICATION: Final Delivery");
 				}
 				else
 				{
-					HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-					HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
+					bonus = i->second.iBonusCash * gsi.iCount;
+					i->second.iObjectiveCurrent += gsi.iCount;
+					mapEventTracking[i->first].PlayerEventData[wscCharname] += gsi.iCount;
 				}
 
-				HookExt::IniSetI(iClientID, "event.quantity", gbi.iCount);
 
-				pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-				PrintUserCmdText(iClientID, L"You have entered the event: %s", stows(i->second.sEventName).c_str());
-				Notify_TradeEvent_Start(iClientID, i->second.sEventName);
 
-				return;
+
+				HkAddCash(wscCharname, bonus);
+
+				PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
+				Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
+
+
+
 			}
 		}
-	}
-}
-
-void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
-{
-	if (HookExt::IniGetB(iClientID, "event.enabled"))
-	{
-		for (map<string, TRADE_EVENT>::iterator i = mapTradeEvents.begin(); i != mapTradeEvents.end(); ++i)
+		else if (!i->second.bFLHookBase)
 		{
-			//check if it's one of the commodities undergoing an event
-			if (wstos(HookExt::IniGetWS(iClientID, "event.eventid")) == i->first)
-			{
-				//this if is if we are interacting with this commodity and already in event mode
-				if (gsi.iArchID == i->second.uCommodityID)
-				{
-					uint iBaseID;
-					pub::Player::GetBase(iClientID, iBaseID);
-
-					//check if this is the event's end point
-					if ((iBaseID == i->second.uEndBase))
-					{
-						int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
-
-						if (gsi.iCount > iInitialCount)
-						{
-							//leave event mode
-							HookExt::IniSetB(iClientID, "event.enabled", false);
-							HookExt::IniSetWS(iClientID, "event.eventid", L"");
-							HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-							HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
-							HookExt::IniSetI(iClientID, "event.quantity", 0);
-							PrintUserCmdText(iClientID, L"You have been unregistered from the event for having more cargo than you bought: %s", stows(i->second.sEventName).c_str());
-							Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Delivered more cargo than bought at start point");
-							return;
-						}
-						else
-						{
-							if (i->second.bFLHookBase)
-							{
-								//do nothing as FLHook base rewards are handled differently.
-								continue;
-							}
-
-							HookExt::IniSetB(iClientID, "event.enabled", false);
-							HookExt::IniSetWS(iClientID, "event.eventid", L"");
-							HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-							HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
-							HookExt::IniSetI(iClientID, "event.quantity", 0);
-
-							int bonus = 0;
-
-							pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-							PrintUserCmdText(iClientID, L"You have finished the event: %s", stows(i->second.sEventName).c_str());
-
-							wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-
-							if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
-							{
-								PrintUserCmdText(iClientID, L"Sorry, this event is currently completed.");
-								Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Completed trade run but event is completed");
-								return;
-							}
-							else if ((i->second.iObjectiveCurrent + gsi.iCount) >= i->second.iObjectiveMax)
-							{
-								int amount = (i->second.iObjectiveCurrent + gsi.iCount) - i->second.iObjectiveMax;
-								bonus = i->second.iBonusCash * amount;
-								mapEventTracking[i->first].PlayerEventData[wscCharname] += amount;
-
-								i->second.iObjectiveCurrent = i->second.iObjectiveMax;
-
-								PrintUserCmdText(iClientID, L"You have completed the final delivery. Congratulations !");
-								Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "NOTIFICATION: Final Delivery");
-							}
-							else
-							{
-								bonus = i->second.iBonusCash * gsi.iCount;
-								i->second.iObjectiveCurrent += gsi.iCount;
-								mapEventTracking[i->first].PlayerEventData[wscCharname] += gsi.iCount;
-							}
-
-
-
-
-							HkAddCash(wscCharname, bonus);
-
-							PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
-							Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
-
-
-
-						}
-					}
-					else if (!i->second.bFLHookBase)
-					{
-						//leave event mode
-						HookExt::IniSetB(iClientID, "event.enabled", false);
-						HookExt::IniSetWS(iClientID, "event.eventid", L"");
-						HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-						HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
-						HookExt::IniSetI(iClientID, "event.quantity", 0);
-						PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
-						Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
-					}
-				}
-			}
+			//leave event mode
+			HookExt::IniSetB(iClientID, "event.enabled", false);
+			HookExt::IniSetWS(iClientID, "event.eventid", L"");
+			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
+			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
+			HookExt::IniSetI(iClientID, "event.quantity", 0);
+			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
+			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
 		}
 	}
 }
@@ -1543,7 +1628,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
 	p_PI->sName = "Events by Alley";
-	p_PI->sShortName = "events";
+	p_PI->sShortName = "event";
 	p_PI->bMayPause = true;
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;

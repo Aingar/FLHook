@@ -319,7 +319,14 @@ namespace HkIServerImpl
 				HkGetPlayerSystem(iClientID).c_str());
 		}
 
+		pub::SpaceObj::SetInvincible2(iShip, false, false, 0.0f);
+
+		CShip* playerCship = reinterpret_cast<CShip*>(CObject::Find(iShip, CObject::CSHIP_OBJECT));
+		ClientInfo[iClientID].cship = playerCship;
+		playerCship->Release();
+
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));
+
 	}
 
 	/**************************************************************************************************************
@@ -542,6 +549,7 @@ namespace HkIServerImpl
 
 			CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
 
+		ClientInfo[iClientID].cship = nullptr;
 		/*
 		try {
 			// autobuy
@@ -2047,7 +2055,7 @@ namespace HkIServerImpl
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 
-	void __stdcall TractorObjects(unsigned int iClientID, struct XTractorObjects const &p2)
+	void __stdcall TractorObjects(unsigned int iClientID, XTractorObjects const &p2)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);

@@ -28,18 +28,12 @@
 //Structures and shit yo
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-struct scistruct
-{
-	list<uint> canmount;
-	list<uint> nomount;
-};
+unordered_map <uint, wstring> shipclassnames;
+unordered_map <uint, wstring> itemnames;
+unordered_map <uint, scistruct> shipclassitems;
+unordered_map <uint, wstring> owned;
 
-map <uint, wstring> shipclassnames;
-map <uint, wstring> itemnames;
-map <uint, scistruct> shipclassitems;
-map <uint, wstring> owned;
-
-map<uint, uint> mapIDs;
+unordered_map<uint, uint> mapIDs;
 
 //we store these here as it's more efficient than constantly requested what id the player is flying with.
 struct pinfo
@@ -50,7 +44,7 @@ struct pinfo
 	uint shiparch;
 };
 
-map <uint, pinfo> clientplayerid;
+unordered_map <uint, pinfo> clientplayerid;
 
 //the struct
 struct iddockinfo
@@ -112,11 +106,11 @@ void SCI::LoadSettings()
 					}
 					else if (ini.is_value("canmount"))
 					{
-						sci.canmount.push_back(ini.get_value_int(0));
+						sci.canmount.insert(ini.get_value_int(0));
 					}
 					else if (ini.is_value("nomount"))
 					{
-						sci.nomount.push_back(CreateID(ini.get_value_string(0)));
+						sci.nomount.insert(CreateID(ini.get_value_string(0)));
 					}
 				}
 				shipclassitems[itemarchid] = sci;
@@ -201,7 +195,7 @@ void SCI::CheckItems(unsigned int iClientID)
 			if (item->bMounted)
 			{
 				//more efficent to find out if the item we want is mounted first, then we get the data for the error message if necessary.
-				for (map<uint, scistruct>::iterator iter = shipclassitems.begin(); iter != shipclassitems.end(); iter++)
+				for (auto iter = shipclassitems.begin(); iter != shipclassitems.end(); iter++)
 				{
 					if (iter->first == item->iArchID)
 					{
@@ -211,19 +205,7 @@ void SCI::CheckItems(unsigned int iClientID)
 						bool foundclass = false;
 
 						// find if the ship class match
-						list<uint>::iterator iterclass = iter->second.canmount.begin();
-						while (iterclass != iter->second.canmount.end())
-						{
-							if (*iterclass == TheShipArch->iShipClass)
-							{
-								foundclass = true;
-								//PrintUserCmdText(iClientID, L"DEBUG: This ship class is OK for item %s.", itemnames.find(iter->first)->second.c_str());
-								break;
-							}
-							iterclass++;
-						}
-
-						if (foundclass == false)
+						if (!iter->second.canmount.count(TheShipArch->iShipClass))
 						{
 							//PrintUserCmdText(iClientID, L"DEBUG: Tagged for ownage");
 							wstring wscMsg = L"ERR you can't undock with %item mounted. This item can't be mounted on a %shipclass.";
@@ -242,19 +224,7 @@ void SCI::CheckItems(unsigned int iClientID)
 								{
 									bool founditernostack = false;
 									// find if a mounted item match the non-stack list
-									list<uint>::iterator iternostack = iter->second.nomount.begin();
-									while (iternostack != iter->second.nomount.end())
-									{
-										if (*iternostack == itemstack->iArchID)
-										{
-											founditernostack = true;
-											//PrintUserCmdText(iClientID, L"DEBUG: Found non-stackable item %s.", itemnames.find(itemstack->equip.iArchID)->second.c_str());
-											break;
-										}
-										iternostack++;
-									}
-
-									if (founditernostack == true)
+									if (iter->second.nomount.count(TheShipArch->iShipClass))
 									{
 										wstring wscMsg = L"ERR You are not allowed to have %item and %second mounted at the same time.";
 										wscMsg = ReplaceStr(wscMsg, L"%item", itemnames.find(iter->first)->second.c_str());
@@ -442,7 +412,7 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 			uint iTypeID;
 			pub::SpaceObj::GetType(iDockTarget, iTypeID);
 
-			if (iTypeID & (OBJ_DOCKING_RING | OBJ_STATION))
+			if (iTypeID & (DockingRing | Station))
 			{
 				//we check the cargo restriction first as that should iron out a good chunk of them
 				if (clientplayerid[iClientID].maxholdsize > iddock[id].cargo)

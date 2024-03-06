@@ -1071,7 +1071,7 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 		wstring wscCmd = ToLower(GetParam(wscCmdStr, ' ', 0));
 		if (wscCmd.length() == 0)
 		{
-			Print(L"ERR unknown command\n");
+			Print(L"ERR unknown command input\n");
 			return;
 		}
 

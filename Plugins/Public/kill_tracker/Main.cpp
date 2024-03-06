@@ -104,17 +104,17 @@ void __stdcall LoadSettings()
 					{
 						string typeStr = ToLower(ini.get_value_string(0));
 						if (typeStr == "fighter")
-							shipClass = OBJ_FIGHTER;
+							shipClass = Fighter;
 						else if (typeStr == "freighter")
-							shipClass = OBJ_FREIGHTER;
+							shipClass = Freighter;
 						else if (typeStr == "transport")
-							shipClass = OBJ_TRANSPORT;
+							shipClass = Transport;
 						else if (typeStr == "gunboat")
-							shipClass = OBJ_GUNBOAT;
+							shipClass = Gunboat;
 						else if (typeStr == "cruiser")
-							shipClass = OBJ_CRUISER;
+							shipClass = Cruiser;
 						else if (typeStr == "capital")
-							shipClass = OBJ_CAPITAL;
+							shipClass = Capital;
 						else
 							ConPrint(L"KillTracker: Error reading config for Death Messages, value %ls not recognized\n", stows(typeStr).c_str());
 					}
@@ -176,15 +176,15 @@ void UserCmd_SetDeathMsg(const uint client, const wstring& wscParam)
 	PrintUserCmdText(client, L"OK");
 }
 
-void __stdcall AddDamageEntry(DamageList* damageList, ushort subObjId, float& newHitPoints, enum DamageEntry::SubObjFate fate)
+void __stdcall AddDamageEntry(IObjRW* iobj, float incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (iDmgTo && subObjId == 1 && g_LastHitPts < 100'000'000.0f && g_LastHitPts > newHitPoints) //ignore impossible HP values (cause unknown) and negative hp events such as repair ship
+	if (dmg->iInflictorPlayerID) //ignore impossible HP values (cause unknown) and negative hp events such as repair ship
 	{
-		const auto& inflictor = damageList->iInflictorPlayerID;
-		if (inflictor && inflictor != iDmgTo)
+		uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
+		if (targetClient)
 		{
-			damageArray[iDmgTo][inflictor].currDamage += g_LastHitPts - newHitPoints;
+			damageArray[targetClient][dmg->iInflictorPlayerID].currDamage += incDmg;
 		}
 	}
 }

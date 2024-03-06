@@ -400,14 +400,15 @@ EQ_TYPE HkGetEqType(Archetype::Equipment *eq)
 	uint iVFTable = *((uint*)eq);
 	if (iVFTable == iVFTableGun) {
 		Archetype::Gun *gun = (Archetype::Gun *)eq;
-		Archetype::Equipment *eqAmmo = Archetype::GetEquipment(gun->iProjectileArchID);
+		Archetype::Equipment *eqAmmo = (Archetype::Munition*)Archetype::GetEquipment(gun->iProjectileArchID);
+		Archetype::Munition *eqAmmoMunition = (Archetype::Munition*)eqAmmo;
 		int iMissile;
 		memcpy(&iMissile, (char*)eqAmmo + 0x90, 4);
 		uint iGunType = gun->get_hp_type_by_index(0);
-		if (iGunType == 36)
-			return ET_TORPEDO;
-		else if (iGunType == 35)
+		if (eqAmmoMunition && eqAmmoMunition->bCruiseDisruptor)
 			return ET_CD;
+		else if (iGunType == 36)
+			return ET_TORPEDO;
 		else if (iMissile)
 			return ET_MISSILE;
 		else

@@ -29,5 +29,8 @@
     <ClInclude Include="minijson_writer.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\cloak_plugin\minijson_writer.hpp">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

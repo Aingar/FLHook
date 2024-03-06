@@ -172,7 +172,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 
 	base_status += base->infocard;
 
-	base_status += L"<TEXT>Cargo Storage: " + Int64ToPrettyStr(base->GetRemainingCargoSpace()) + L" free of " + Int64ToPrettyStr(base->GetMaxCargoSpace()) + L"</TEXT><PARA/>";
+	base_status += L"<TEXT>Cargo Storage: " + Int64ToPrettyStr(base->GetRemainingCargoSpace()) + L" free of " + Int64ToPrettyStr(base->storage_space) + L"</TEXT><PARA/>";
 	base_status += L"<TEXT>Money: " + Int64ToPrettyStr(base->money) + L"</TEXT><PARA/>";
 	if (!base->invulnerable)
 	{

@@ -467,14 +467,10 @@ void Notify_TradeEvent_Completed(uint iClientID, string eventname, int iCargoCou
 }
 */
 
-void __stdcall ShipDestroyed(DamageList *_dmg, DWORD *ecx, uint iKill)
+void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (iKill)
-	{
-		CShip *cship = (CShip*)ecx[4];
-		IsFLHookNPC(cship);
-	}
+	IsFLHookNPC((CShip*)iobj->cobj);
 }
 
 void CreateNPC(wstring name, Vector pos, Matrix rot, uint iSystem)

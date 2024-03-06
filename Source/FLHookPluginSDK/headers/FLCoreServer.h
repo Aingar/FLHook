@@ -23,8 +23,6 @@
 
 #include "FLCoreDefs.h"
 #include "FLCoreCommon.h"
-#define ST6_ALLOCATION_DEFINED
-#include "st6.h"
 
 #pragma comment( lib, "FLCoreServer.lib" )
 
@@ -102,15 +100,6 @@ struct XActivateThrusters
 	bool	bActivate;
 };
 
-struct XTractorObjects
-{
-	int iDunno[3];
-	// This points to the start of the array of space IDs
-	int *pArraySpaceID;
-	// This points to the end of the array of space IDs
-	int *pArraySpaceIDEnd;
-};
-
 struct SGFGoodSellInfo
 {
 	long	l1;
@@ -151,6 +140,14 @@ struct XSetTarget
 	ushort iSubObjID;
 };
 
+struct SSPObjUpdateInfoSimple
+{
+	uint iShip;
+	Quaternion vDir;
+	Vector vPos;
+	float fTimestamp;
+};
+
 struct SSPObjUpdateInfo
 {
 	uint iShip;
@@ -164,8 +161,16 @@ struct SSPObjUpdateInfo
 struct XJettisonCargo
 {
 	uint iShip;
-	uint iSlot;
-	uint iCount;
+	ushort iSlot;
+	ushort dunno;
+	ushort iCount;
+};
+
+struct XTractorObjects
+{
+	uint shipId;
+	uint dunno;
+	st6::vector<uint> tractoredLootIds;
 };
 
 struct XGoTradelane
@@ -202,7 +207,7 @@ public:
 	void InitFromFolder(char const *);
 
 public:
-	uint iDunno1;
+	uint vftable;
 	wchar_t *wszAccID;
 	uint iDunno2[7];
 	CAccountListNode *pFirstListNode;
@@ -246,7 +251,6 @@ public:
 	void SetMissionObjectives(struct CMissionObjectives &);
 	void StoreMemberList(std::vector<unsigned int> &);
 
-protected:
 	static class std::map<unsigned int const, class CPlayerGroup *, struct std::less<unsigned int const>, class std::allocator<class CPlayerGroup *>>  s_GroupIDToGroupPtrMap;
 	static unsigned int  s_uiGroupID;
 

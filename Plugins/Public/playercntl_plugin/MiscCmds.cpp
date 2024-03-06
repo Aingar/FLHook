@@ -28,17 +28,17 @@ namespace MiscCmds
 {
 	struct INFO
 	{
-		INFO() : bLightsOn(false), bShieldsDown(false), bSelfDestruct(false)
-		{}
-
 		/// Lights on/off
-		bool bLightsOn;
+		bool bLightsOn = false;
 
 		/// Shields up/down
-		bool bShieldsDown;
+		bool bShieldsUp = true;
+		bool bShieldsDropped = false;
 
 		/// Self destruct
-		bool bSelfDestruct;
+		bool bSelfDestruct = false;
+
+		mstime shieldTimer = 0;
 	};
 
 	/** An enum list for each mathamatical operation usable for the dice command */
@@ -76,6 +76,8 @@ namespace MiscCmds
 	/// Local chat range
 	float set_iLocalChatRange = 9999;
 
+	uint set_shieldSwapCooldown = 5;
+
 	/// Load the configuration
 	void MiscCmds::LoadSettings(const string &scPluginCfgFile)
 	{
@@ -84,6 +86,7 @@ namespace MiscCmds
 		set_iResetrepCost = IniGetI(scPluginCfgFile, "General", "ResetrepCost", 10000000);
 		set_iResetrepTimeLimit = IniGetI(scPluginCfgFile, "General", "ResetrepTimeLimit", 1209600);
 		set_iLocalChatRange = IniGetF(scPluginCfgFile, "General", "LocalChatRange", 0);
+		set_shieldSwapCooldown = IniGetI(scPluginCfgFile, "General", "ShieldToggleCooldown", set_shieldSwapCooldown);
 
 		set_wscStuckMsg = stows(IniGetS(scPluginCfgFile, "General", "StuckMsg", "Attention! Stand clear. Towing %player"));
 		set_wscDiceMsg = stows(IniGetS(scPluginCfgFile, "General", "DiceMsg", "%player rolled %number of %max"));
@@ -113,23 +116,6 @@ namespace MiscCmds
 			mapInfo[iClientID].bSelfDestruct = false;
 			uint dummy[3] = { 0 };
 			pub::Player::SetShipAndLoadout(iClientID, CreateID("dsy_ge_fighter"), (const EquipDescVector&)dummy);
-		}
-	}
-
-	/** One second timer */
-	void MiscCmds::Timer()
-	{
-		// Drop player sheilds and keep them down.
-		for (mapInfo_map_iter_t iter = mapInfo.begin(); iter != mapInfo.end(); iter++)
-		{
-			if (iter->second.bShieldsDown)
-			{
-				HKPLAYERINFO p;
-				if (HkGetPlayerInfo((const wchar_t*)Players.GetActiveCharacterName(iter->first), p, false) == HKE_OK && p.iShip)
-				{
-					pub::SpaceObj::DrainShields(p.iShip);
-				}
-			}
 		}
 	}
 
@@ -190,7 +176,7 @@ namespace MiscCmds
 		if (iTarget)
 		{
 			pub::SpaceObj::GetType(iTarget, iTargetType);
-			if (iTargetType == OBJ_TRADELANE_RING)
+			if (iTargetType == TradelaneRing)
 			{
 				pub::SpaceObj::GetHardpoint(iTarget, "HpLeftLane", &tpos, &trot);
 				if (HkDistance3D(pos, tpos) < fTradeLaneRingRadiusSafeDistance)
@@ -622,7 +608,7 @@ namespace MiscCmds
 			music.iMusicID = set_iSmiteMusicID;
 			pub::Audio::SetMusic(iClientID, music);
 
-			mapInfo[iClientID].bShieldsDown = true;
+			mapInfo[iClientID].bShieldsUp = true;
 
 			if (bKillAll)
 			{
@@ -641,6 +627,22 @@ namespace MiscCmds
 	/** Bob Command */
 	void MiscCmds::AdminCmd_Bob(CCmds* cmds, const wstring &wscCharname)
 	{
+		struct RepGroup {
+			uint nameLength;
+			char name[16];
+			uint nameIds;
+			uint infocardIds;
+			uint shortNameIds;
+		};
+
+		auto group1 = reinterpret_cast<flmap<RepGroup>*>(0x64018EC);
+		auto listItem = group1->begin();
+		while (listItem != group1->end())
+		{
+			ConPrint(L"%u - %u - %ls\n", *listItem.key(), stows(listItem.value()->name).c_str());
+			listItem.Inc();
+		}
+
 		if (cmds->rights != RIGHT_SUPERADMIN)
 		{
 			cmds->Print(L"ERR No permission\n");
@@ -667,6 +669,7 @@ namespace MiscCmds
 		}
 		return;
 	}
+
 	static void SetLights(uint iClientID, bool bOn)
 	{
 		uint iShip;
@@ -708,6 +711,12 @@ namespace MiscCmds
 
 	void MiscCmds::BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 	{
+		ConPrint(L"%0.0f %0.0f %0.0f\n", Players[iClientID].vPosition.x, Players[iClientID].vPosition.y, Players[iClientID].vPosition.z);
+		Universe::IBase* ibase = Universe::get_base(iBaseID);
+		CObject* solar = CObject::Find((uint)ibase->lSpaceObjID, CObject::CSOLAR_OBJECT);
+		solar->Release();
+		Players[iClientID].vPosition = solar->get_position();
+		ConPrint(L"%0.0f %0.0f %0.0f\n", Players[iClientID].vPosition.x, Players[iClientID].vPosition.y, Players[iClientID].vPosition.z);
 	}
 
 	bool MiscCmds::UserCmd_SelfDestruct(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
@@ -744,9 +753,57 @@ namespace MiscCmds
 
 	bool MiscCmds::UserCmd_Shields(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
-		mapInfo[iClientID].bShieldsDown = !mapInfo[iClientID].bShieldsDown;
-		PrintUserCmdText(iClientID, L"Shields %s", mapInfo[iClientID].bShieldsDown ? L"Disabled" : L"Enabled");
+		CShip* ship = ClientInfo[iClientID].cship;
+		if (!ship)
+		{
+			PrintUserCmdText(iClientID, L"ERR Not in space!");
+			return true;
+		}
+		mstime currTime = timeInMS();
+		auto& clientInfo = mapInfo[iClientID];
+		if (set_shieldSwapCooldown && currTime - clientInfo.shieldTimer < set_shieldSwapCooldown)
+		{
+			pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_select_reject"));
+			return true;
+		}
+		clientInfo.shieldTimer = currTime;
+
+		if (wscParam == L"drop")
+		{
+			pub::SpaceObj::DrainShields(ship->id);
+			clientInfo.bShieldsDropped = true;
+			if (!clientInfo.bShieldsUp)
+			{
+				return true;
+			}
+		}
+		clientInfo.bShieldsUp = !clientInfo.bShieldsUp;
+		if (clientInfo.bShieldsUp)
+		{
+			clientInfo.bShieldsDropped = false;
+		}
+		
+		CEquipTraverser tr(EquipmentClass::ShieldGenerator);
+		CEquip* shield;
+		while (shield = ship->equip_manager.Traverse(tr))
+		{
+			XActivateEquip ActivateEq;
+			ActivateEq.bActivate = clientInfo.bShieldsUp;
+			ActivateEq.iSpaceID = ship->id;
+			ActivateEq.sID = shield->GetID();
+			Server.ActivateEquip(iClientID, ActivateEq);
+			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iClientID, ActivateEq);
+		}
+
+		PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
 		return true;
+	}
+
+	void MiscCmds::PlayerLaunch(uint client)
+	{
+		auto& info =  mapInfo[client];
+		info.bShieldsUp = true;
+		info.bShieldsDropped = false;
 	}
 
 	void AdminCmd_PlayMusic(CCmds* cmds, const wstring &wscMusicname)

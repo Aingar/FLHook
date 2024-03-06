@@ -543,7 +543,8 @@ struct CLIENT_INFO
 	uint		iShipOld;
 	mstime		tmProtectedUntil;
 
-	DamageList	dmgLast;
+	uint dmgLastPlayerId;
+	DamageCause dmgLastCause;
 
 	// money cmd
 	list<MONEY_FIX> lstMoneyFix;
@@ -604,7 +605,8 @@ struct CLIENT_INFO
 
 	bool		bSpawnProtected;
 	bool		bUseServersideHitDetection; //used by AC Plugin
-	byte		unused_data[128];
+	CShip*		cship;
+	char		unused_data[128];
 };
 
 // taken from directplay
@@ -811,6 +813,9 @@ EXPORT wstring HkErrGetText(HK_ERROR hkErr);
 void ClearClientInfo(uint iClientID);
 void LoadUserSettings(uint iClientID);
 
+
+EXPORT FARPROC PatchCallAddr(char* hMod, DWORD dwInstallAddress, char* dwHookFunction);
+
 // HkCbUserCmd
 bool UserCmd_Process(uint iClientID, const wstring &wscCmd);
 EXPORT void UserCmd_SetDieMsg(uint iClientID, wstring &wscParam);
@@ -818,16 +823,24 @@ EXPORT void UserCmd_SetChatFont(uint iClientID, wstring &wscParam);
 EXPORT void PrintUserCmdText(uint iClientID, wstring wscText, ...);
 
 // HkDeath
-void ShipDestroyedHook();
+void ShipDestroyedNaked();
+void SolarDestroyedNaked();
+void MineDestroyedNaked();
+void GuidedDestroyedNaked();
 void BaseDestroyed(uint iObject, uint iClientIDBy);
+void ShipColGrpDestroyedHookNaked();
+void SolarColGrpDestroyedHookNaked();
+extern FARPROC ColGrpDeathOrigFunc;
 
 // HkDamage
-void _HookMissileTorpHit();
+void HookExplosionHitNaked();
 void _HkCb_AddDmgEntry();
-void _HkCb_GeneralDmg();
-void _HkCb_GeneralDmg2();
-bool AllowPlayerDamage(uint iClientID, uint iClientIDTarget);
+void ShipHullDamageNaked();
+void SolarHullDamageNaked();
+bool AllowPlayerDamageIds(const uint clientVictim, const uint clientAttacker);
 void _HkCb_NonGunWeaponHitsBase();
+void AllowPlayerDamageNaked();
+extern FARPROC AllowPlayerDamageOrigFunc;
 extern FARPROC fpOldNonGunWeaponHitsBase;
 EXPORT extern bool g_gNonGunHitsBase;
 EXPORT extern float g_LastHitPts;
@@ -899,8 +912,11 @@ extern EXPORT bool g_bMsgS;
 extern EXPORT bool g_bMsgU;
 
 extern FARPROC fpOldShipDestroyed;
-extern FARPROC fpOldMissileTorpHit;
-extern FARPROC fpOldGeneralDmg, fpOldGeneralDmg2;
+extern FARPROC fpOldSolarDestroyed;
+extern FARPROC MineDestroyedOrigFunc;
+extern FARPROC GuidedDestroyedOrigFunc;
+extern FARPROC fpOldExplosionHit;
+extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
 
 extern EXPORT CDPClientProxy **g_cClientProxyArray;
 extern EXPORT void *pClient;

@@ -153,9 +153,103 @@ bool UserCmd_RefreshCharacters(uint iClientID, const wstring &wscCmd, const wstr
 	return true;
 }
 
+
+template <typename T>
+struct BinarySearchTree;
+
+template <typename T>
+struct Node
+{
+	Node* prev;
+	Node* left;
+	Node* right;
+	unsigned int key;
+	T value;
+	bool unknown;
+	bool isEnd;
+
+	class Iterator
+	{
+		friend BinarySearchTree<T>;
+		Node* node;
+		explicit Iterator(Node* node) { this->node = node; }
+
+	public:
+		Iterator& operator++()
+		{
+			node = node->Traverse();
+			return *this;
+		}
+
+		Node* operator->() const { return node; }
+
+		friend bool operator==(const Iterator& a, const Iterator& b) { return a.node == b.node; }
+		friend bool operator!=(const Iterator& a, const Iterator& b) { return a.node != b.node; }
+	};
+
+private:
+	Node* Traverse()
+	{
+		Node* node = this;
+		Node** nodeRef = &node;
+
+		Node* v1 = (*nodeRef)->right;
+		Node* result;
+
+		if (v1->isEnd)
+		{
+			for (result = (*nodeRef)->left; (*nodeRef) == result->right; result = result->left)
+			{
+				(*nodeRef) = result;
+			}
+
+			if ((*nodeRef)->right != result)
+			{
+				(*nodeRef) = result;
+			}
+		}
+		else
+		{
+			for (result = v1->prev; !result->isEnd; result = result->prev)
+			{
+				v1 = result;
+			}
+
+			(*nodeRef) = v1;
+		}
+
+		return *nodeRef;
+	}
+};
+
+template <typename ValType>
+struct BinarySearchTree
+{
+	using Iter = typename Node<ValType>::Iterator;
+	unsigned int size() { return _size; }
+	Iter begin() { return Iter(headNode->left); }
+	Iter end() { return Iter(headNode); }
+
+	// Specialize for different types!
+	void Insert(uint key, ValType val) = delete;
+
+private:
+	Node<ValType>* nextNode = nullptr;
+	Node<ValType>* headNode = nullptr; // headnode stores min/max in left/right and upmost node in parent
+	Node<ValType>* endNode = nullptr;
+	void* dunno2 = nullptr;
+	// ReSharper disable once CppInconsistentNaming
+	unsigned int _size = 0u;
+};
+
+#pragma optimize("", off);
 // /frelancer - gives the user a freelancer IFF
 bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
+	pub::Player::AddCargo(iClientID, CreateID("shield02_mark10_hf"), 1, 1.0f, false);
+	IObjRW* obj = reinterpret_cast<IObjRW*>(HkGetInspect(iClientID));
+	obj->sub_6CE8F50(, )
+
 	if (!CheckIsInBase(iClientID))
 		return true;
 
@@ -169,6 +263,7 @@ bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring 
 	PrintUserCmdText(iClientID, L"Freelancer IFF granted. You may need to /droprep if your old IFF exists after logging out/in and undocking.");
 	return true;
 }
+#pragma optimize("", on);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code

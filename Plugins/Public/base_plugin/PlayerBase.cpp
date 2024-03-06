@@ -70,6 +70,13 @@ void PlayerBase::Spawn()
 		}
 	}
 
+	if (mapArchs.count(basetype))
+	{
+		has_shield = mapArchs.at(basetype).hasShield;
+		siege_gun_only = mapArchs.at(basetype).siegeGunOnly;
+		use_vulnerability_window = mapArchs.at(basetype).vulnerabilityWindowUse;
+	}
+
 	SyncReputationForBase();
 }
 
@@ -130,6 +137,22 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 		vulnerableWindowStatus = false;
 		siege_mode = false;
 		SyncReputationForBase();
+		LogDamageDealers();
+	}
+}
+
+void PlayerBase::LogDamageDealers()
+{
+	if (!damageTakenMap.empty())
+	{
+		string siegeMsg = wstos(basename) + "Damage taken: \n";
+		for (auto& item : damageTakenMap)
+		{
+			char buf[50];
+			sprintf(buf, "%s - %0.0f\n", wstos(item.first).c_str(), item.second);
+			siegeMsg += buf;
+		}
+		BaseLogging(siegeMsg.c_str());
 	}
 }
 
@@ -137,6 +160,10 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 // that this base has been deleted.
 bool PlayerBase::Timer(uint curr_time)
 {
+	if (set_plugin_debug_special && (curr_time % 60 == 0))
+	{
+		AddLog("Started processing %s\n", wstos(this->basename).c_str());
+	}
 	if ((curr_time % set_tick_time) == 0 && logic)
 	{
 		reservedCatalystMap.clear();
@@ -216,6 +243,8 @@ void PlayerBase::SetupDefaults()
 	{
 		modules.resize((base_level * 3) + 1);
 	}
+
+	RecalculateCargoSpace();
 }
 
 void PlayerBase::Load()
@@ -648,24 +677,23 @@ uint PlayerBase::GetRemainingCargoSpace()
 		used += (uint)((float)i->second.quantity * vol);
 	}
 
-	if (used > GetMaxCargoSpace())
+	if (used > storage_space)
 	{
 		return 0;
 	}
-	return GetMaxCargoSpace() - used;
+	return storage_space - used;
 }
 
-uint PlayerBase::GetMaxCargoSpace()
+void PlayerBase::RecalculateCargoSpace()
 {
-	uint base_max_capacity = 30000;
-	for (auto i : modules)
+	storage_space = 0;
+	for (Module* mod : modules)
 	{
-		if (i && i->type == Module::TYPE_STORAGE)
+		if (mod)
 		{
-			base_max_capacity += STORAGE_MODULE_CAPACITY;
+			storage_space += mod->cargoSpace;
 		}
 	}
-	return base_max_capacity;
 }
 
 string PlayerBase::CreateBaseNickname(const string& basename)
@@ -845,4 +873,6 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 		hostile_tags.insert(charname);
 		ReportAttack(this->basename, charname, this->system);
 	}
+
+	damageTakenMap[charname] += curr_hitpoints - new_hitpoints;
 }

@@ -41,7 +41,6 @@
 #include <FLHook.h>
 #include <plugin.h>
 #include <PluginUtilities.h>
-#include <unordered_map>
 #include <array>
 
 static int set_iPluginDebug = 0;
@@ -62,7 +61,15 @@ const uint insufficientCargoSoundId = CreateID("insufficient_cargo_space");
 
 extern void PrintZones();
 
+struct MiningNodeInfo {
+	uint itemArchId = 0;
+	uint lootArchId;
+	uint countMin;
+	uint countMax;
+};
+
 unordered_map<uint, map<uint, float>> idBonusMap;
+unordered_map<uint, array<MiningNodeInfo, 32>> miningSolarMap;
 
 struct ZONE_BONUS
 {
@@ -115,7 +122,6 @@ struct CLIENT_DATA
 
 	bool initialized = false;
 	uint equippedID = 0;
-	float equippedVolume = 0.0f;
 	uint lootID = 0;
 	uint itemCount = 0;
 	uint miningEvents = 0;
@@ -152,23 +158,19 @@ float GetMiningYieldBonus(const uint id, const uint lootId)
 void CheckClientSetup(const uint iClientID)
 {
 	const auto& equipDesc = Players[iClientID].equipDescList.equip;
-	bool processedID = false;
-	float mountedEquipmentVolume = 0.0f;
 	for (auto& equip : equipDesc)
 	{
-		if (!equip.bMounted && equip.is_internal())
+		if (!equip.bMounted || !equip.is_internal())
 		{
 			continue;
 		}
 		const Archetype::Equipment* itemPtr = Archetype::GetEquipment(equip.iArchID);
-		mountedEquipmentVolume += itemPtr->fVolume;
-		if (!processedID && itemPtr->get_class_type() == Archetype::TRACTOR)
+		if (itemPtr->get_class_type() == Archetype::TRACTOR)
 		{
-			processedID = true;
 			mapClients[iClientID].equippedID = equip.iArchID;
+			break;
 		}
 	}
-	mapClients[iClientID].equippedVolume = mountedEquipmentVolume;
 }
 
 void DestroyContainer(const uint clientID)
@@ -265,6 +267,7 @@ EXPORT void LoadSettings()
 	char szCurDir[MAX_PATH];
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 	string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\minecontrol.cfg";
+	string solarArchFile = string(szCurDir) + "..\\DATA\\SOLAR\\solararch.ini";
 
 	set_shipClassModifiers.fill(1.0f);
 
@@ -302,7 +305,26 @@ EXPORT void LoadSettings()
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("PlayerBonus"))
+			uint solarArch;
+			if (ini.is_header("MiningSolar"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						solarArch = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("node"))
+					{
+						MiningNodeInfo& node = miningSolarMap[solarArch][ini.get_value_int(0)];
+						node.itemArchId = CreateID(ini.get_value_string(1));
+						node.lootArchId = Archetype::GetEquipment(node.itemArchId)->get_loot_appearance()->iArchID;
+						node.countMin = ini.get_value_int(2);
+						node.countMax = ini.get_value_int(3);
+					}
+				}
+			}
+			else if (ini.is_header("PlayerBonus"))
 			{
 				while (ini.read_value())
 				{
@@ -565,7 +587,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const & ci, u
 		{
 			uint objType;
 			pub::SpaceObj::GetType(iTargetObj, objType);
-			if ((objType & (OBJ_FIGHTER | OBJ_FREIGHTER | OBJ_TRANSPORT | OBJ_GUNBOAT | OBJ_CRUISER | OBJ_CAPITAL | OBJ_DESTROYABLE_DEPOT)) && HkDistance3DByShip(iShip, iTargetObj) < 1000.0f)
+			if ((objType & (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital | DestructibleDepot)) && HkDistance3DByShip(iShip, iTargetObj) < 1000.0f)
 			{
 
 				CONTAINER_DATA* container = nullptr;
@@ -650,8 +672,12 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const & ci, u
 
 		float fHoldRemaining;
 		pub::Player::GetRemainingHoldSize(iSendToClientID, fHoldRemaining);
-		fHoldRemaining -= cd.equippedVolume;
-		if (fHoldRemaining < static_cast<float>(miningYieldInt) * lootInfo->fVolume)
+		
+		if (fHoldRemaining <= 0.0f)
+		{
+			miningYieldInt = 0;
+		}
+		else if (fHoldRemaining < static_cast<float>(miningYieldInt) * lootInfo->fVolume)
 		{
 			miningYieldInt = static_cast<uint>(fHoldRemaining / lootInfo->fVolume);
 		}
@@ -694,18 +720,27 @@ void __stdcall MineAsteroid(uint iClientSystemID, class Vector const& vPos, uint
 void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const& jc)
 {
 	returncode = DEFAULT_RETURNCODE;
+
 	if (jc.iCount != 1)
 	{
 		return;
 	}
 
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+	CEquipTraverser tr(EquipmentClass::Cargo);
+	CShip* cship = ClientInfo[iClientID].cship;
+	if (!cship)
 	{
-		if (item->sID != jc.iSlot)
+		return;
+	}
+
+	CEquip* equip;
+	while (equip = cship->equip_manager.Traverse(tr))
+	{
+		if (equip->iSubObjId != jc.iSlot)
 		{
 			continue;
 		}
-		if (item->iArchID != set_deployableContainerCommodity)
+		if (equip->archetype->iArchID != set_deployableContainerCommodity)
 		{
 			return;
 		}
@@ -800,7 +835,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 		data.pos = pos;
 		data.ori = ori;
 		data.overwrittenName = fullContainerName;
-		data.nickname = "player_mining_container_"+itos(iClientID);
+		data.nickname = "player_mining_container_" + itos(iClientID);
 		data.solar_ids = 540999 + iClientID;
 		data.solarArchetypeId = set_containerSolarArchetypeID;
 		data.loadoutArchetypeId = set_containerLoadoutArchetypeID;
@@ -827,11 +862,12 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 			cd.clientId = iClientID;
 			mapMiningContainers[data.iSpaceObjId] = cd;
 			mapClients[iClientID].deployedContainerId = data.iSpaceObjId;
-			pub::Player::RemoveCargo(iClientID, item->sID, 1);
+			pub::Player::RemoveCargo(iClientID, equip->iSubObjId, 1);
 		}
 
-		return;
+		break;
 	}
+
 }
 
 void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)
@@ -872,9 +908,10 @@ void __stdcall BaseEnter(uint base, uint iClientID)
 	}
 }
 
-void BaseDestroyed(uint space_obj, uint client)
+void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
+	uint space_obj = iobj->get_id();
 	const auto& i = mapMiningContainers.find(space_obj);
 	if (i != mapMiningContainers.end())
 	{
@@ -899,6 +936,67 @@ void PlayerLaunch_AFTER(uint shipID, uint clientID)
 	mapClients.erase(clientID);
 }
 
+inline uint GetNodeMiningYield(const MiningNodeInfo& node, const uint clientId)
+{
+	uint baseNumber = (rand() % (node.countMax - node.countMin)) + node.countMin;
+
+	return baseNumber;
+}
+
+void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFate fate, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (!dmg->iInflictorPlayerID)
+	{
+		return;
+	}
+	if (!miningSolarMap.count(iobj->cobj->archetype->iArchID))
+	{
+		return;
+	}
+	auto& nodeArray = miningSolarMap.at(iobj->cobj->archetype->iArchID);
+	const MiningNodeInfo& node = nodeArray.at(colGrp->colGrp->id);
+	if (!node.itemArchId)
+	{
+		return;
+	}
+	Vector colGrpCenter;
+	colGrp->GetCenterOfMass(colGrpCenter);
+
+	uint miningClient = dmg->iInflictorPlayerID;
+	IObjRW* minerTarget = ClientInfo[miningClient].cship->target;
+
+	uint minedAmount = GetNodeMiningYield(node, dmg->iInflictorPlayerID);
+
+	if (minerTarget)
+	{
+
+		//if (minerTarget->cobj->objectClass == CObject::CSHIP_OBJECT)
+		//{
+		//	CShip* cship = reinterpret_cast<CShip*>(minerTarget->cobj);
+		//	if (cship->ownerPlayer)
+		//	{
+		//		//AddCargoToPlayer(cship->ownerPlayer, node.itemArchId, minedAmount);
+		//		return;
+		//	}
+		//
+		//}
+		//else if (minerTarget->cobj->objectClass == CObject::CSOLAR_OBJECT)
+		//{
+		//	CSolar* csolar = reinterpret_cast<CSolar*>(minerTarget->cobj);
+		//	if (mapMiningContainers.count(csolar->id))
+		//	{
+		//		//AddCargoToContainer(mapMiningContainers.at(csolar->id));
+		//		return;
+		//	}
+		//
+		//}
+	}
+	Server.MineAsteroid(iobj->cobj->system, colGrpCenter, node.lootArchId, node.itemArchId, minedAmount, 0);
+
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -921,6 +1019,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineAsteroid, PLUGIN_HkIServerImpl_MineAsteroid, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollision, PLUGIN_HkIServerImpl_SPMunitionCollision, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JettisonCargo, PLUGIN_HkIServerImpl_JettisonCargo, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SolarColGrpDestroyed, PLUGIN_SolarColGrpDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	return p_PI;

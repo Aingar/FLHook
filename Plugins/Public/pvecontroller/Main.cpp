@@ -567,36 +567,16 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 //Functions to hook
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
+void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!iKill)
+	CShip* cship = (CShip*)iobj->cobj;
+	if (cship->ownerPlayer)
 		return;
-	CShip* cship = (CShip*)ecx[4];
-	if (cship->GetOwnerPlayer())
-		return;
-	uint iVictimShipId = cship->iSpaceID;
+	uint iVictimShipId = cship->id;
 
-	//unknown and mutating(??) datatype. Casted to FLPACKET_UNKNOWN for ease of access to individual elements
-	FLPACKET_UNKNOWN* data = reinterpret_cast<FLPACKET_UNKNOWN*>(dmg);
-
-	//First argument is some unknown datatype pointer, not DamageList
-	//In case of ship having died to a death fuse, [2] is equal to 1 and actual killer spaceObjId is in [5]
-	//When death fuse has a duration > 0, both events fire, in case of an instant death fuse, only the fuse death is broadcasted.
-	//As such, we need to handle all 3 scenarios (no fuse, long fuse, instant fuse) by checking for both events and avoiding paying out the bounty twice.
-	
-	uint iKillerShipId;
-	if (data->iDunno[4]) // Represents death's damage cause in case of fuse death
-	{
-		iKillerShipId = data->iDunno[5]; // in case of fuse death, killerId is held here
-	}
-	else
-	{
-		iKillerShipId = data->iDunno[2]; // in case of fuse death equals an indetermined non-zero value, otherwise it is killerId.
-	}
-
-	uint iKillerClientId = HkGetClientIDByShip(iKillerShipId);
+	uint iKillerClientId = HkGetClientIDByShip(killerId);
 
 	if (!iVictimShipId || !iKillerClientId)
 		return;
@@ -636,17 +616,17 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 
 	// Process bounties if enabled.
 	if (set_bBountiesEnabled) {
-		int iBountyPayout = 0;
+		float fBountyPayout = 0;
 
 		// Determine bounty payout.
 		const auto& iter = mapBountyShipPayouts.find(uArchID);
 		if (iter != mapBountyShipPayouts.end()) {
-			iBountyPayout = iter->second.iBasePayout;
+			fBountyPayout = static_cast<float>(iter->second.iBasePayout);
 		}
 		else {
 			const auto& iter = mapBountyPayouts.find(victimShiparch->iShipClass);
 			if (iter != mapBountyPayouts.end()) {
-				iBountyPayout = iter->second.iBasePayout;
+				fBountyPayout = static_cast<float>(iter->second.iBasePayout);
 				if (victimShiparch->iShipClass < 5) {
 					unsigned int iDunno = 0;
 					IObjInspectImpl* obj = NULL;
@@ -660,7 +640,7 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 							if (cearmor) {
 								const auto& iter = mapBountyArmorScales.find(cearmor->archetype->iArchID);
 								if (iter != mapBountyArmorScales.end())
-									iBountyPayout = (int)((float)iBountyPayout * iter->second);
+									fBountyPayout *= iter->second;
 							}
 						}
 					}
@@ -673,7 +653,7 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 			if (iter != mmapBountyWarzoneScales.end())
 			{
 				if ((iter->second.uFaction1 == uKillerAffiliation && iter->second.uFaction2 == uTargetAffiliation) || (iter->second.uFaction2 == uKillerAffiliation && iter->second.uFaction1 == uTargetAffiliation)) {
-					iBountyPayout *= iter->second.fMultiplier;
+					fBountyPayout *= iter->second.fMultiplier;
 				}
 			}
 		}
@@ -682,7 +662,7 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 		if (iLoadedNPCBountySystemScales) {
 			const auto& itSystemScale = mapBountySystemScales.find(uKillerSystem);
 			if (itSystemScale != mapBountySystemScales.end())
-				iBountyPayout *= itSystemScale->second;
+				fBountyPayout *= itSystemScale->second;
 		}
 
 		// Multiply by class diff multiplier if applicable.
@@ -697,14 +677,14 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 
 			const auto& itDiffMultiplier = mapClassDiffMultipliers.lower_bound(classDiff);
 			if (itDiffMultiplier != mapClassDiffMultipliers.end())
-				iBountyPayout *= itDiffMultiplier->second;
+				fBountyPayout *= itDiffMultiplier->second;
 		}
 
 		// If we've turned bounties off, don't pay it.
 		if (!set_bBountiesEnabled)
-			iBountyPayout = 0;
+			fBountyPayout = 0;
 
-		if (iBountyPayout) {
+		if (fBountyPayout) {
 			list<GROUP_MEMBER> lstMembers;
 			HkGetGroupMembers((const wchar_t*)Players.GetActiveCharacterName(iKillerClientId), lstMembers);
 
@@ -716,12 +696,12 @@ void __stdcall HkCb_ShipDestroyed(DamageList* dmg, DWORD* ecx, uint iKill)
 			}
 
 			if (mapBountyGroupScale.count(lstMembers.size()))
-				iBountyPayout = (int)((float)iBountyPayout * mapBountyGroupScale[lstMembers.size()]);
+				fBountyPayout *= mapBountyGroupScale[lstMembers.size()];
 			else
-				iBountyPayout = (int)((float)iBountyPayout / lstMembers.size());
+				fBountyPayout /= static_cast<float>(lstMembers.size());
 
 			foreach(lstMembers, GROUP_MEMBER, gm) {
-				NPCBountyAddToPool(gm->iClientID, iBountyPayout, set_iPoolPayoutTimer);
+				NPCBountyAddToPool(gm->iClientID, static_cast<int>(fBountyPayout), set_iPoolPayoutTimer);
 				if (!set_iPoolPayoutTimer)
 					NPCBountyPayout(gm->iClientID);
 			}

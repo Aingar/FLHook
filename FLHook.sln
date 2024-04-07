@@ -46,11 +46,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "event", "Plugins\Public\eve
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "JSONBuddy", "Plugins\Public\JSONBuddy\JSONBuddy.vcxproj", "{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7}"
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MarketFucker", "Plugins\Public\MarketFucker\MarketFucker.vcxproj", "{9ED72C7D-81FC-49F5-8709-0AB542113D3F}"
-	ProjectSection(ProjectDependencies) = postProject
-		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
-	EndProjectSection
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MiningControl Plugin", "Plugins\Public\minecontrol_plugin\MineControl Plugin.vc14.vcxproj", "{367D5EDC-F360-49E0-B652-587B9E22CF6C}"
 	ProjectSection(ProjectDependencies) = postProject
 		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
@@ -251,17 +246,6 @@ Global
 		{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7}.Release|Win32.ActiveCfg = Release|Win32
 		{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7}.Release|Win32.Build.0 = Release|Win32
 		{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7}.Release|x64.ActiveCfg = Release|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Debug|Win32.ActiveCfg = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Debug|Win32.Build.0 = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Debug|x64.ActiveCfg = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Debug|x64.Build.0 = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.DebugDONOTUSE|x64.ActiveCfg = Release|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.DebugDONOTUSE|x64.Build.0 = Release|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Release|Win32.ActiveCfg = Release|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Release|Win32.Build.0 = Release|Win32
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F}.Release|x64.ActiveCfg = Release|Win32
 		{367D5EDC-F360-49E0-B652-587B9E22CF6C}.Debug|Win32.ActiveCfg = Debug|Win32
 		{367D5EDC-F360-49E0-B652-587B9E22CF6C}.Debug|Win32.Build.0 = Debug|Win32
 		{367D5EDC-F360-49E0-B652-587B9E22CF6C}.Debug|x64.ActiveCfg = Debug|Win32
@@ -470,7 +454,6 @@ Global
 		{81D33B95-1CDD-4F58-A24C-E2EC47143DD0} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{4B9AB78F-085B-4F29-8E03-99FCF081F273} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
-		{9ED72C7D-81FC-49F5-8709-0AB542113D3F} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{367D5EDC-F360-49E0-B652-587B9E22CF6C} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{81A35B95-1CDD-4F58-A24C-E2DC47D43DD0} = {B802515E-816B-4FC3-AF09-4684613A7425}
 		{7C84F18C-FE8C-4731-882D-05C237753A54} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
@@ -513,7 +496,6 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{91e8438d-f413-4a2c-8a9b-6ce3544116db}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{985915af-e158-45e7-bbdd-bcd4642e5574}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{9e084a9e-a8b9-4f64-8048-f3357839683e}*SharedItemsImports = 4
-		Plugins\PluginUtilities\PluginUtilities.vcxitems*{9ed72c7d-81fc-49f5-8709-0ab542113d3f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{b92d0fa9-093b-4db0-9afd-3af72bd87aae}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c26da99f-10f7-421b-ac31-eed1623e7b04}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{db39d53f-d243-4c8c-95cd-2101cca7d20f}*SharedItemsImports = 4

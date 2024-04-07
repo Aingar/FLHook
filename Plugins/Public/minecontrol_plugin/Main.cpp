@@ -1149,7 +1149,6 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			const MiningNodeInfo& node = nodeArray.at(1);
 			uint minedAmount = GetAsteroidMiningYield(node, clientKiller, false);
 			Server.MineAsteroid(iobj->cobj->system, iobj->get_position(), node.lootArchId, node.itemArchId, minedAmount, 0);
-			ConPrint(L"BodyDrop %u\n", clientKiller);
 		}
 
 		auto& nodeDb = miningNodeMap.at(space_obj);

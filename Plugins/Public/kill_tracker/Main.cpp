@@ -182,7 +182,7 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	if (dmg->iInflictorPlayerID)
 	{
 		uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
-		if (targetClient && targetClient != dmg->iInflictorPlayerID)
+		if (targetClient && targetClient != dmg->iInflictorPlayerID && incDmg > 0.0f)
 		{
 			damageArray[targetClient][dmg->iInflictorPlayerID].currDamage += incDmg;
 		}

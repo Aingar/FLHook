@@ -340,6 +340,7 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 
 		cloakInfo.iState = iNewState;
 		cloakInfo.tmCloakTime = timeInMS();
+		cloakInfo.fuelUsageCounter = 0.0f;
 		CLIENT_CLOAK_STRUCT communicationInfo;
 		switch (iNewState)
 		{

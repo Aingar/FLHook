@@ -81,8 +81,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Rep", "Plugins\Public\getre
 		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Balance Magic Plugin", "Plugins\Public\balancemagic\Balance Magic Plugin.vc14.vcxproj", "{2853796F-8AAF-4E93-A210-08EA11C63D6B}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MiscellaneousCommands", "Plugins\Public\MiscellaneousCommands\MiscellaneousCommands.vcxproj", "{C26DA99F-10F7-421B-AC31-EED1623E7B04}"
 	ProjectSection(ProjectDependencies) = postProject
 		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
@@ -333,16 +331,6 @@ Global
 		{E7EB5672-90CC-4B88-A8A0-55BB6BBAE7F7}.Release|Win32.ActiveCfg = Release|Win32
 		{E7EB5672-90CC-4B88-A8A0-55BB6BBAE7F7}.Release|Win32.Build.0 = Release|Win32
 		{E7EB5672-90CC-4B88-A8A0-55BB6BBAE7F7}.Release|x64.ActiveCfg = Release|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Debug|Win32.ActiveCfg = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Debug|Win32.Build.0 = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Debug|x64.ActiveCfg = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Debug|x64.Build.0 = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.DebugDONOTUSE|x64.ActiveCfg = Release|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.DebugDONOTUSE|x64.Build.0 = Release|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Release|Win32.ActiveCfg = Release|Win32
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B}.Release|x64.ActiveCfg = Release|Win32
 		{C26DA99F-10F7-421B-AC31-EED1623E7B04}.Debug|Win32.ActiveCfg = Debug|Win32
 		{C26DA99F-10F7-421B-AC31-EED1623E7B04}.Debug|Win32.Build.0 = Debug|Win32
 		{C26DA99F-10F7-421B-AC31-EED1623E7B04}.Debug|x64.ActiveCfg = Debug|Win32
@@ -463,7 +451,6 @@ Global
 		{63F35E63-664C-46D5-8897-D0EB32610F96} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{8CBF9EF0-324A-4699-8A26-C2999B99B225} = {63F35E63-664C-46D5-8897-D0EB32610F96}
 		{E7EB5672-90CC-4B88-A8A0-55BB6BBAE7F7} = {63F35E63-664C-46D5-8897-D0EB32610F96}
-		{2853796F-8AAF-4E93-A210-08EA11C63D6B} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{C26DA99F-10F7-421B-AC31-EED1623E7B04} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{22D02598-F2D3-495F-BBA9-72DC156DA723} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{F1EC36FB-0262-4EDD-B582-FE77872D3820} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
@@ -480,7 +467,6 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{01ac67e5-0a10-42fa-9d7d-03a3edd97c22}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{097bffbb-2bbe-4e16-b2fb-3ed8e90ecbd7}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{22d02598-f2d3-495f-bba9-72dc156da723}*SharedItemsImports = 4
-		Plugins\PluginUtilities\PluginUtilities.vcxitems*{2853796f-8aaf-4e93-a210-08ea11c63d6b}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{367d5edc-f360-49e0-b652-587b9e22cf6c}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{45d41acc-2c3c-43d2-bc10-02aa73ffc7c7}*SharedItemsImports = 9
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{4b9ab78f-085b-4f29-8e03-99fcf081f273}*SharedItemsImports = 4

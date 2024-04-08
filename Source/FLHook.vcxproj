@@ -99,7 +99,8 @@ copy /Y  $(OutDir)$(TargetName).lib  $(SolutionDir)\Source\FLHookPluginSDK\libs\
       <Command>copy /Y  $(OutDir)$(TargetName).dll  $(SolutionDir)\Binaries\bin-vc14\
 copy /Y  $(OutDir)$(TargetName).pdb  $(SolutionDir)\Binaries\bin-vc14\
 copy /Y  $(OutDir)$(TargetName).lib  $(SolutionDir)\Source\FLHookPluginSDK\libs\$(TargetName).lib
-</Command>
+copy /Y $(OutDir)$(TargetName).dll  $(DISCOHOOK_COPY_PATH)
+copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)</Command>
       <Outputs>$(SolutionDir)\Binaries\bin-vc14\$(TargetName).dll;$(SolutionDir)\Source\FLHookPluginSDK\libs\$(TargetName).lib;%(Outputs)</Outputs>
     </CustomBuildStep>
     <ClCompile>

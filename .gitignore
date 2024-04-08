@@ -30,3 +30,4 @@ _ReSharper*/
 
 Plugins/Public/*/headers/
 Plugins/Public/*/libs/
+Binaries/bin-vc14/*

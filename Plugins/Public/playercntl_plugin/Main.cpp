@@ -607,6 +607,7 @@ namespace HkIServerImpl
 	{
 		HyperJump::InitJumpDriveInfo(iClientID, true);
 		MiscCmds::PlayerLaunch(iClientID);
+		PlayerInfo::PlayerLaunch(iClientID);
 		returncode = DEFAULT_RETURNCODE;
 	}
 
@@ -658,6 +659,7 @@ namespace HkIServerImpl
 		returncode = DEFAULT_RETURNCODE;
 		ClearClientInfo(iClientID);
 		Rename::CharacterSelect_AFTER(charId, iClientID);
+		PlayerInfo::ClearInfo(iClientID);
 	}
 
 	void __stdcall JumpInComplete_AFTER(unsigned int iSystem, unsigned int iShip)
@@ -1272,12 +1274,9 @@ USERCMD UserCmds[] =
 	{ L"/commandlist",	Message::UserCmd_CommandList, L""},
 	{ L"/mail",			Message::UserCmd_MailShow, L"Usage: /mail <msgnum>"},
 	{ L"/maildel",		Message::UserCmd_MailDel, L"Usage: /maildel <msgnum>"},
-	{ L"/si",			PlayerInfo::UserCmd_ShowInfo, L"Usage: /showinfo"},
 	{ L"/setinfo",		PlayerInfo::UserCmd_SetInfo, L"Usage: /setinfo"},
 	{ L"/time",			Message::UserCmd_Time, L""},
 	{ L"/time*",		Message::UserCmd_Time, L""},
-	{ L"/showinfo",		PlayerInfo::UserCmd_ShowInfo, L"Usage: /showinfo"},
-	{ L"/showinfo*",	PlayerInfo::UserCmd_ShowInfo, L"Usage: /showinfo"},
 	{ L"/lights",		MiscCmds::UserCmd_Lights, L"Usage: /lights"},
 	{ L"/lights*",		MiscCmds::UserCmd_Lights, L"Usage: /lights"},
 	//{ L"/selfdestruct",	MiscCmds::UserCmd_SelfDestruct, L"Usage: /selfdestruct"},

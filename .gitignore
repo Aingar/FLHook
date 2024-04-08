@@ -24,10 +24,8 @@ _ReSharper*/
 [Dd]sacesrv_discovery*/
 .vs/
 [Pp]rivate*/
-
 *.dll
 *.pdb
-
 Plugins/Public/*/headers/
 Plugins/Public/*/libs/
 Binaries/bin-vc14/*

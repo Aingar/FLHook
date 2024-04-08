@@ -307,7 +307,7 @@ bool AlleyMF::GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int clientId)
 			return true;
 		}
 		auto shipListIter = iter->second.find(gbi.iGoodID);
-		if (shipListIter == iter->second.end())
+		if (shipListIter != iter->second.end())
 		{
 			return true;
 		}

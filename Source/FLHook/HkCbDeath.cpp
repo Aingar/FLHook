@@ -25,6 +25,7 @@ void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, u
 	}
 
 	ClientInfo[iClientIDVictim].cship = nullptr;
+	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 
 	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller));
 

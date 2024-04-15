@@ -354,7 +354,7 @@ namespace Archetype
 		/*  1x4 */ uint vtable;
 		/*  2x4 */ uint iArchID;
 		/*  3x4 */ char* szName;
-		/*  4x4 */ uint iArchType;
+		/*  4x4 */ AClassType iArchType;
 		/*  5x4 */ uint iIdsName;
 		/*  6x4 */ uint iIdsInfo;
 		/*  7x4 */ float fHitPoints;

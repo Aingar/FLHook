@@ -61,7 +61,7 @@ void LoadMarketGoodsIni(const string& scPath, map<uint, market_map_t >& mapBaseM
 			MarketGoodInfo mgi;
 			mgi.iGoodID = CreateID(ini.get_value_string(0));
 			mgi.iMin = ini.get_value_int(3);
-			mgi.iStock = ini.get_value_int(4);
+			mgi.iQuantity = ini.get_value_int(4);
 			mgi.iTransType = (TransactionType)ini.get_value_int(5);
 			mgi.fRep = 0.0f;
 			mgi.fRank = 0.0f;
@@ -135,7 +135,7 @@ DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_
 			src[pos++] = baseId;
 			src[pos++] = mgi.iGoodID;
 			*((float*)&(src[pos++])) = mgi.fPrice;
-			src[pos++] = mgi.iStock; // sell price
+			src[pos++] = mgi.iQuantity; // sell price
 			src[pos++] = mgi.iTransType;
 		}
 	}
@@ -222,7 +222,7 @@ void LoadSettings()
 
 						mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
 						mapBaseMarketDelta[baseId][iGoodID].fPrice = fPrice;
-						mapBaseMarketDelta[baseId][iGoodID].iStock = iSellPrice;
+						mapBaseMarketDelta[baseId][iGoodID].iQuantity = iSellPrice;
 						mapBaseMarketDelta[baseId][iGoodID].iTransType = (bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
@@ -256,7 +256,7 @@ void LoadSettings()
 			// The multiplier is the new price / old good (base) price
 			float fMultiplier = mgi.fPrice / gi->fPrice;
 
-			bd->set_market_good(mgi.iGoodID, !mgi.iTransType, mgi.iStock, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
+			bd->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
 		}
 	}
 
@@ -293,7 +293,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 
 	BaseData* bd = BaseDataList_get()->get_base_data(Players[client].iBaseID);
 	MarketGoodInfo* info = (MarketGoodInfo*)stl_map_find((DWORD*)&(bd->market_map), gsi.iArchID);
-	int sellPrice = info->iStock;
+	int sellPrice = info->iQuantity;
 	int currPrice = static_cast<int>(info->fPrice);
 	pub::Player::AdjustCash(client, gsi.iCount * (sellPrice - currPrice));
 }

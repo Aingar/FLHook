@@ -146,7 +146,7 @@ void LoadSettings()
 			for (uint goodID : buyBackRestrictedGoods)
 			{
 				auto result = marketMap.find(goodID).value();
-				if (marketMap.find(goodID).value()->iStock == 500 )
+				if (marketMap.find(goodID).value()->iStock > 0 )
 				{
 					mapProducers[baseInfo->iBaseID].insert(goodID);
 				}

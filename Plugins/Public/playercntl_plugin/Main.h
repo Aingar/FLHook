@@ -269,6 +269,7 @@ namespace Message
 namespace PlayerInfo
 {
 	bool UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
+	bool UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage);
 	void PlayerLaunch(uint clientId);
 	void ClearInfo(uint clientId);
 }

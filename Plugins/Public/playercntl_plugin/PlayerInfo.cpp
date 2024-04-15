@@ -181,7 +181,7 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 			return false;
 		}
 		
-		if ((wscMsg.size() + playerInfoData[iClientID].infoVector[iPara].length()) > MAX_CHARACTERS)
+		if (!playerInfoData[iClientID].infoVector.empty() && (wscMsg.size() + playerInfoData[iClientID].infoVector[iPara].length()) > MAX_CHARACTERS)
 		{
 			PrintUserCmdText(iClientID, L"ERR Text will be too long!(including formatting) Current lenght: %u, Max Lenght: %u", playerInfoData[iClientID].playerInfo.length(), MAX_CHARACTERS);
 			return false;
@@ -214,6 +214,28 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 		PrintUserCmdText(iClientID, L"|  <command> The command to perform on the paragraph, 'a' for append, 'd' for delete");
 	}
 
+	return true;
+}
+
+bool PlayerInfo::UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+
+	if (!playerInfoData[iClientID].initialized)
+	{
+		InitializePlayerInfo(iClientID);
+	}
+	
+	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Your Information");
+	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD + iClientID, playerInfoData[iClientID].playerInfo);
+	FmtStr caption(0, 0);
+	caption.begin_mad_lib(SETINFO_START_INFOCARD);
+	caption.end_mad_lib();
+
+	FmtStr message(0, 0);
+	message.begin_mad_lib(SETINFO_START_INFOCARD + iClientID);
+	message.end_mad_lib();
+
+	pub::Player::PopUpDialog(iClientID, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
 	return true;
 }
 

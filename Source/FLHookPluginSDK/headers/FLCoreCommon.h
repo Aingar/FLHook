@@ -1200,7 +1200,7 @@ public:
 	float start_room;
 	float price_variance;
 	float ship_repair_cost;
-	flmap<struct MarketGoodInfo> market_map;
+	FlMap<uint, MarketGoodInfo> market_map;
 };
 
 class IMPORT BaseDataList
@@ -6587,7 +6587,7 @@ namespace SubObjectID
 		void Reset(void);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		ushort currSId;
 	};
 
 	class IMPORT EquipIdMaker
@@ -6599,7 +6599,7 @@ namespace SubObjectID
 		void Reset(void);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		ushort currSId;
 	};
 
 	class IMPORT ShieldIdMaker
@@ -6611,7 +6611,7 @@ namespace SubObjectID
 		void Reset(void);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		ushort currSId;
 	};
 
 	IMPORT  bool  IsArchGroupID(unsigned short);

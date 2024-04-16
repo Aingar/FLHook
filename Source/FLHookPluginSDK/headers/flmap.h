@@ -1,147 +1,144 @@
-
 #pragma once
 
-// only supports unsigned int keys with less comparison for now
-
-template<typename ValType>
-class flmap
+// Not quite a BST, through very similar.
+template <typename KeyType, typename ValType>
+class FlMap
 {
 
 public:
+    struct Node;
 
-	struct Node;
+    typedef Node* NodePtr;
 
-	typedef Node* NodePtr;
+    struct Node
+    {
+        NodePtr left;
+        NodePtr parent;
+        NodePtr right;
+        KeyType key;
+        ValType data;
+    };
 
-	struct Node
-	{
-		NodePtr left;
-		NodePtr parent;
-		NodePtr right;
-		unsigned int key;
-		ValType data;
-	};
+    class Iterator
+    {
+    public:
+        Iterator(NodePtr currentNode, FlMap<KeyType, ValType>* classPtr)
+        {
+            this->currentNode = currentNode;
+            classObj = classPtr;
+        }
 
-	class iterator
-	{
-	public:
-		iterator(NodePtr currentNode, flmap<ValType>* classPtr)
-		{
-			_currentNode = currentNode;
-			_classObj = classPtr;
-		}
+        Iterator()
+        {
+            currentNode = 0;
+            classObj = 0;
+        }
 
-		iterator()
-		{
-			_currentNode = 0;
-			_classObj = 0;
-		}
+        void Inc()
+        {
+            if (!classObj->IsNil(currentNode->right))
+            {
+                currentNode = classObj->Min(currentNode->right);
+            }
+            else if (!classObj->IsNil(currentNode))
+            { // climb looking for right subtree
+                NodePtr node;
+                while (!classObj->IsNil(node = currentNode->parent) && currentNode == node->right)
+                {
+                    currentNode = node; // ==> parent while right subtree
+                }
+                currentNode = node; // ==> parent (head if end())
+            }
 
-		void Inc()
-		{
-			if (_classObj->IsNil(_currentNode) == true)
-				;
-			else if (_classObj->IsNil(_currentNode->right) == false)
-				_currentNode = _classObj->Min(_currentNode->right);
-			else
-			{ // climb looking for right subtree
-				NodePtr node;
-				while (_classObj->IsNil(node = _currentNode->parent) == false && _currentNode == node->right)
-					_currentNode = node; // ==> parent while right subtree
-				_currentNode = node; // ==> parent (head if end())
-			}
+            // set to end node if we are at nil (so we can compare against end-iterator)
+            if (classObj->IsNil(currentNode))
+            {
+                currentNode = classObj->end().currentNode;
+            }
+        }
 
-			// set to end node if we are at nil (so we can compare against end-iterator)
-			if (_classObj->IsNil(_currentNode))
-				_currentNode = _classObj->end()._currentNode;
-		}
+        Iterator& operator++()
+        {
+            Inc();
+            return *this;
+        }
+        Iterator operator++(int)
+        {
+            Iterator tmp(*this); // copy
+            operator++();        // pre-increment
+            return tmp;          // return old value
+        }
 
-		iterator& operator++() {
-			Inc();
-			return *this;
-		}
-		iterator operator++(int) {
-			iterator tmp(*this); // copy
-			operator++(); // pre-increment
-			return tmp;   // return old value
-		}
+        bool operator==(const Iterator& right) const
+        { // test for iterator equality
+            return (currentNode == right.currentNode);
+        }
 
-		bool operator==(const iterator& _Right) const
-		{	// test for iterator equality
-			return (_currentNode == _Right._currentNode);
-		}
+        bool operator!=(const Iterator& right) const
+        { // test for iterator inequality
+            return (!(*this == right));
+        }
 
-		bool operator!=(const iterator& _Right) const
-		{	// test for iterator inequality
-			return (!(*this == _Right));
-		}
+        unsigned int key() { return currentNode->key; }
 
-		unsigned int * key()
-		{
-			return &_currentNode->key;
-		}
+        ValType* value() { return &currentNode->data; }
 
-		ValType* value()
-		{
-			return &_currentNode->data;
-		}
+        NodePtr operator*() { return currentNode; }
 
-	private:
-		NodePtr _currentNode;
-		flmap<ValType>* _classObj;
-	};
+    private:
+        NodePtr currentNode;
+        FlMap<KeyType, ValType>* classObj;
+    };
 
 public:
+    unsigned int size() { return _size; };
 
-	unsigned int size() { return _size; };
+    Iterator begin() { return Iterator(headNode->left, this); }
 
-	iterator begin()
-	{
-		return iterator(_headNode->left, this);
-	}
+    Iterator end() { return Iterator(headNode, this); }
 
-	iterator end()
-	{
-		return iterator(_endNode, this);
-	}
+    Iterator find(KeyType key)
+    {
+        NodePtr searchNode = headNode->parent; // parent of headnode is first legit (upmost) node
 
-	iterator find(unsigned int key)
-	{
-		NodePtr searchNode = _headNode->parent; // parent of headnode is first legit (upmost) node
+        while (IsNil(searchNode) == false)
+        {
+            if (searchNode->key == key)
+            {
+                break;
+            }
 
-		while (IsNil(searchNode) == false)
-		{
-			if (searchNode->key == key)
-				break;
+            if (key < searchNode->key)
+            {
+                searchNode = searchNode->left;
+            }
+            else
+            {
+                searchNode = searchNode->right;
+            }
+        }
 
-			if (key < searchNode->key)
-				searchNode = searchNode->left;
-			else
-				searchNode = searchNode->right;
-		}
-
-		return iterator(searchNode, this);
-	}
+        return Iterator(searchNode, this);
+    }
 
 protected:
-	NodePtr Min(NodePtr node)
-	{
-		// go to leftmost child
-		while (IsNil(node->left) == false)
-			node = node->left;
+    NodePtr Min(NodePtr node)
+    {
+        // go to leftmost child
+        while (IsNil(node->left) == false)
+        {
+            node = node->left;
+        }
 
-		return node;
-	}
+        return node;
+    }
 
-	bool IsNil(NodePtr node)
-	{
-		return (node == _endNode || node == _headNode);
-	}
+    bool IsNil(NodePtr node) { return (node == endNode || node == headNode); }
 
 private:
-	void* dunno;
-	NodePtr _headNode; // headnode stores min/max in left/right and upmost node in parent
-	NodePtr _endNode;
-	void* dunno2;
-	unsigned int _size;
+    void* dunno = nullptr;
+    NodePtr headNode = nullptr; // headnode stores min/max in left/right and upmost node in parent
+    NodePtr endNode = nullptr;
+    void* dunno2 = nullptr;
+    unsigned int _size = 0; // NOLINT
 };

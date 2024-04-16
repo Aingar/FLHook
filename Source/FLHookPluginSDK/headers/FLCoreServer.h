@@ -371,7 +371,10 @@ struct CollisionGroupDescList
 struct CHARACTER_ID
 {
 	CHARACTER_ID(void);
-	struct CHARACTER_ID const& operator=(struct CHARACTER_ID const&);
+	CHARACTER_ID const& operator=(CHARACTER_ID const&);
+	bool operator<(CHARACTER_ID const& a) const { return _stricmp(charFilename, a.charFilename) < 0; }
+	bool operator==(CHARACTER_ID const& a) const { return _stricmp(charFilename, a.charFilename) == 0; }
+	bool operator!=(CHARACTER_ID const& a) const { return _stricmp(charFilename, a.charFilename) != 0; }
 	void invalidate(void);
 	bool is_valid(void)const;
 
@@ -379,10 +382,50 @@ public:
 	char charFilename[512];
 };
 
-struct PlayerData {
+struct CharacterData
+{
+	CHARACTER_ID characterCode;
+	st6::wstring name;                                    // 512
+	st6::wstring description;                             // 528
+	uint descripStrId;                                    // 544
+	uint datetimeHigh;                                    // 548
+	uint datetimeLow;                                     // 552
+	uint shipHash;                                        // 556
+	int money;                                            // 560
+	int numOfKills;                                       // 564
+	int numOfSuccessMissions;                             // 568
+	int numOfFailedMissions;                              // 572
+	float hullStatus;                                     // 576
+	st6::list<EquipDesc> currentEquipAndCargo;            // 580
+	st6::list<CollisionGroupDesc> currentCollisionGroups; // 592
+	float baseHullStatus;                                 // 604
+	st6::list<EquipDesc> baseEquipAndCargo;               // 608
+	st6::list<CollisionGroupDesc> baseCollisionGroups;    // 620
+	uint currentBase;                                     // 632
+	uint lastDockedBase;                                  // 636
+	uint currentRoom;                                     // 640
+	uint system;                                          // 644
+	Vector pos;                                           // 648 - 656
+	Matrix rot;                                           // 660 - 692
+	uint startingRing;                                    // 696
+	int rank;                                             // 700
+	st6::vector<Reputation::Relation> repList;            // 704
+	uint affiliation;                                     // 720, see Reputation::get_id();
+	Costume commCostume;                                  // 724 - 772
+	uint voiceLen;                                        // 776
+	char voice[32] = "trent_voice";                       // 780
+	Costume baseCostume;                                  // 812 - 860
+	SubObjectID::EquipIdMaker equipIdEnumerator;          // 864
+	st6::string prefilledWeaponGroupIni;                  // 876
+	st6::list<uint> logInfo;                              // 888
+	int interfaceState = 3;                               // 896
+	FlMap<uint, char> visits;                             // 900
+};
+
+struct PlayerData
+{
 	wchar_t accId[40];
-	long x050, x054, x058, x05C;
-	uint numberOfCharacters;
+	FlMap<CHARACTER_ID, CharacterData> characterMap;
 	CHARACTER_ID charFile;
 	uint iShipArchetype;
 	float fRelativeHealth;

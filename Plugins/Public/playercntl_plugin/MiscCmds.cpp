@@ -635,11 +635,11 @@ namespace MiscCmds
 			uint shortNameIds;
 		};
 
-		auto group1 = reinterpret_cast<flmap<RepGroup>*>(0x64018EC);
+		auto group1 = reinterpret_cast<FlMap<uint,RepGroup>*>(0x64018EC);
 		auto listItem = group1->begin();
 		while (listItem != group1->end())
 		{
-			ConPrint(L"%u - %u - %ls\n", *listItem.key(), stows(listItem.value()->name).c_str());
+			ConPrint(L"%u - %u - %ls\n", listItem.key(), stows(listItem.value()->name).c_str());
 			listItem.Inc();
 		}
 

@@ -459,7 +459,6 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 	CShip* cship = ClientInfo[iClientID].cship;
 	if (!cship)
 	{
-		ConPrint(L"CShip not found!!!\n");
 		return;
 	}
 
@@ -488,10 +487,12 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 	CEquip* cloakEq = cship->equip_manager.FindFirst(EquipmentClass::CloakingDevice);
 	if (!cloakEq)
 	{
+		InitCloakInfo(iClientID, 0);
 		return;
 	}
 	if (!mapCloakingDevices.count(cloakEq->EquipArch()->iArchID))
 	{
+		InitCloakInfo(iClientID, 0);
 		return;
 	}
 
@@ -504,6 +505,10 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 	if (cloakInfo.arch && cloakInfo.arch->bBreakOnProximity && !cloakInfo.bAdmin)
 	{
 		InitCloakInfo(iClientID, static_cast<uint>(cloakInfo.arch->fRange));
+	}
+	else
+	{
+		InitCloakInfo(iClientID, 0);
 	}
 }
 

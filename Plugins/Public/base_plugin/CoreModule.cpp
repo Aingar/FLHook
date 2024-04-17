@@ -231,14 +231,17 @@ void CoreModule::EnableShieldFuse(bool shieldEnabled)
 	}
 }
 
-bool CoreModule::Timer(uint time)
+bool CoreModule::Timer(SYSTEMTIME& time)
 {
 	// Disable shield if time elapsed
-	if (base->shield_timeout && base->shield_timeout < time)
+	if (base->shield_timeout)
 	{
-		base->shield_timeout = 0;
-		base->isShieldOn = false;
-		EnableShieldFuse(false);
+		--base->shield_timeout;
+		if (base->shield_timeout)
+		{
+			base->isShieldOn = false;
+			EnableShieldFuse(false);
+		}
 	}
 
 	if (set_holiday_mode)
@@ -246,7 +249,7 @@ bool CoreModule::Timer(uint time)
 		return false;
 	}
 
-	if ((time % set_tick_time) != 0)
+	if (((time.wMinute*60 + time.wSecond) % set_tick_time) != 0)
 	{
 		return false;
 	}
@@ -268,7 +271,7 @@ bool CoreModule::Timer(uint time)
 	{
 		base->base_health = base->baseCSolar->get_hit_pts();
 	}
-	if (!dont_rust && ((time % set_damage_tick_time) == 0))
+	if (!dont_rust && ((time.wMinute*60 + time.wSecond) % set_damage_tick_time == 0))
 	{
 		float no_crew_penalty = isCrewSufficient ? 1.0f : no_crew_damage_multiplier;
 		// Reduce hitpoints to reflect wear and tear. This will eventually
@@ -302,7 +305,7 @@ bool CoreModule::Timer(uint time)
 
 	// Humans use commodity_oxygen, commodity_water. Consume these for
 	// the crew or kill 10 crew off and repeat this every 12 hours.
-	if (!dont_eat && time % set_crew_check_frequency == 0)
+	if (!dont_eat && (time.wHour*3600 + time.wMinute*60 + time.wSecond) % set_crew_check_frequency == 0)
 	{
 		bool passedFoodCheck = true;
 

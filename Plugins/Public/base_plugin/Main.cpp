@@ -1070,14 +1070,15 @@ void HkTimerCheckKick()
 		load_settings_required = false;
 		LoadSettingsActual();
 	}
-	uint curr_time = (uint)time(0);
+	SYSTEMTIME curr_time;
+	GetLocalTime(&curr_time);
 	for(auto& iter : player_bases)
 	{
 		PlayerBase *base = iter.second;
 		base->Timer(curr_time);
 	}
 
-	if (set_plugin_debug_special && (curr_time % 60 == 0))
+	if (set_plugin_debug_special && (curr_time.wSecond == 0))
 	{
 		AddLog("Finished\n");
 	}
@@ -1101,7 +1102,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	if (curr_time % 8 == 0)
+	if (curr_time.wSecond % 8 == 0)
 	{
 		//fix custom jump solars not being dockable
 		for (uint customSolar : customSolarList)
@@ -1114,7 +1115,7 @@ void HkTimerCheckKick()
 			}
 		}
 	}
-	if ((curr_time % 60) == 0)
+	if (curr_time.wSecond == 0)
 	{
 		// Write status to an html formatted page every 60 seconds
 		if ((ExportType == 0 || ExportType == 2) && set_status_path_html.size() > 0)

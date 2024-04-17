@@ -80,18 +80,18 @@ void PlayerBase::Spawn()
 	SyncReputationForBase();
 }
 
-bool IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, int timeOfDay)
+bool IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, const SYSTEMTIME& st)
 {
+	int timeOfDay = st.wHour * 60 + st.wMinute;
 	return ((window.start < window.end
 			&& window.start <= timeOfDay && window.end > timeOfDay)
 		|| (window.start > window.end
 			&& (window.start <= timeOfDay || window.end > timeOfDay)));
 }
 
-void PlayerBase::CheckVulnerabilityWindow(uint currTime)
+void PlayerBase::CheckVulnerabilityWindow(const SYSTEMTIME& st)
 {
-	int timeOfDay = (currTime % (3600 * 24)) / 60;
-	if (IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay))
+	if (IsVulnerabilityWindowActive(vulnerabilityWindow1, st))
 	{
 		if (!vulnerableWindowStatus)
 		{
@@ -115,7 +115,7 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 		}
 		vulnerableWindowStatus = true;
 	}
-	else if (!single_vulnerability_window && IsVulnerabilityWindowActive(vulnerabilityWindow2, timeOfDay))
+	else if (!single_vulnerability_window && IsVulnerabilityWindowActive(vulnerabilityWindow2, st))
 	{
 		if (!vulnerableWindowStatus)
 		{
@@ -158,26 +158,26 @@ void PlayerBase::LogDamageDealers()
 
 // Dispatch timer to modules and exit immediately if the timer indicates
 // that this base has been deleted.
-bool PlayerBase::Timer(uint curr_time)
+bool PlayerBase::Timer(const SYSTEMTIME &st)
 {
-	if (set_plugin_debug_special && (curr_time % 60 == 0))
+	if (set_plugin_debug_special && st.wSecond == 0)
 	{
 		AddLog("Started processing %s\n", wstos(this->basename).c_str());
 	}
-	if ((curr_time % set_tick_time) == 0 && logic)
+	if ((st.wMinute*60 + st.wSecond % set_tick_time) == 0 && logic)
 	{
 		reservedCatalystMap.clear();
 		reservedCatalystMap[set_base_crew_type] = base_level * 200;
 	}
-	if ((curr_time % 60) == 0 && !invulnerable)
+	if ((st.wSecond % 60) == 0 && !invulnerable)
 	{
-		this->CheckVulnerabilityWindow(curr_time);
+		this->CheckVulnerabilityWindow(st);
 	}
 	for (Module* pobModule : modules)
 	{
 		if (pobModule)
 		{
-			bool is_deleted = pobModule->Timer(curr_time);
+			bool is_deleted = pobModule->Timer(st);
 			if (is_deleted)
 				return true;
 		}
@@ -237,7 +237,9 @@ void PlayerBase::SetupDefaults()
 		vulnerabilityWindow1 = { 10 * 60, ((10 * 60) + vulnerability_window_length) % (60 * 24) };
 		vulnerabilityWindow2 = { 20 * 60, ((20 * 60) + vulnerability_window_length) % (60 * 24) };
 	}
-	CheckVulnerabilityWindow((uint)time(nullptr));
+	SYSTEMTIME st;
+	GetSystemTime(&st);
+	CheckVulnerabilityWindow(st);
 
 	if (modules.size() < (base_level * 3) + 1)
 	{

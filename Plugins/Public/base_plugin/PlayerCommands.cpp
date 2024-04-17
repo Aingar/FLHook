@@ -1845,6 +1845,8 @@ namespace PlayerCommands
 
 	void Shop(uint client, const wstring& args)
 	{
+
+
 		// Check that this player is in a player controlled base
 		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (!base)

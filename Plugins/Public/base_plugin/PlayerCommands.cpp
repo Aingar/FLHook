@@ -2607,6 +2607,12 @@ namespace PlayerCommands
 			return;
 		}
 
+		if (param1 < 9 && static_cast<float>(param1) + (vulnerability_window_length / 60.0f) > 9.0f)
+		{
+			PrintUserCmdText(client, L"ERR You can't set the vulnerability window crossing the server restart!");
+			return;
+		}
+
 		int vulnerabilityWindowOneStart = param1 * 60; // minutes
 		int vulnerabilityWindowOneEnd = (vulnerabilityWindowOneStart + vulnerability_window_length) % (60 * 24);
 		int vulnerabilityWindowTwoStart = param2 * 60;

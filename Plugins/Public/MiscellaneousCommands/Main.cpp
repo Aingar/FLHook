@@ -80,6 +80,137 @@ bool CheckIsInBase(uint iClientID)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // /refresh - Updates the timestamps of the character file for all the ships on the account.
+
+struct RequestPathStruct
+{
+	uint shipId;
+	uint unused1;
+	uint unused2;
+	Vector sourcePos;
+	uint unused6;
+	uint sourceSystem;
+	Vector targetPos;
+	uint unused11;
+	uint targetSystem;
+};
+
+bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	if (!Players[iClientID].iMissionID)
+	{
+		PrintUserCmdText(iClientID, L"Not on a mission");
+		return false;
+	}
+
+	Server.AbortMission(iClientID, 0);
+	Players[iClientID].iMissionID = 0;
+	Players[iClientID].iMissionSetBy = 0;
+	PrintUserCmdText(iClientID, L"Mission forcefully aborted");
+
+	return true;
+}
+
+bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	if (!Players[iClientID].iShipID)
+	{
+		PrintUserCmdText(iClientID, L"ERR Must be in space");
+		return false;
+	}
+
+	if (!Players[iClientID].PlayerGroup || Players[iClientID].PlayerGroup->GetMemberCount() == 1)
+	{
+		PrintUserCmdText(iClientID, L"ERR Must be in a non-empty group!");
+		return false;
+	}
+
+	RequestPathStruct requestPathStruct;
+	requestPathStruct.targetPos = ClientInfo[iClientID].cship->vPos;
+	requestPathStruct.targetSystem = Players[iClientID].iSystemID;
+
+	auto& pg = Players[iClientID].PlayerGroup;
+	uint groupSize = pg->GetMemberCount();
+	for (int i = 0; i < groupSize; ++i)
+	{
+		uint memberId = pg->GetMember(i);
+		if (memberId == iClientID)
+		{
+			continue;
+		}
+		if (!ClientInfo[memberId].cship)
+		{
+			continue;
+		}
+
+		requestPathStruct.shipId = Players[iClientID].iShipID;
+		requestPathStruct.sourceSystem = Players[iClientID].iSystemID;
+		requestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+
+		Server.RequestBestPath(iClientID, (unsigned char*)&requestPathStruct, 0);
+	}
+}
+
+bool UserCmd_WayPoint(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	if (!Players[iClientID].iShipID)
+	{
+		PrintUserCmdText(iClientID, L"ERR Must be in space");
+		return false;
+	}
+
+	Vector pos = { ToFloat(GetParam(wscParam, ' ', 0)),ToFloat(GetParam(wscParam, ' ', 1)),ToFloat(GetParam(wscParam, ' ', 2)) };
+
+	RequestPathStruct bestPathStruct;
+	bestPathStruct.shipId = Players[iClientID].iShipID;
+	bestPathStruct.sourceSystem = bestPathStruct.targetSystem = Players[iClientID].iSystemID;
+	bestPathStruct.targetPos = pos;
+	bestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+
+	Server.RequestBestPath(iClientID, (unsigned char*)&bestPathStruct, 0);
+
+	return true;
+}
+
+bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	if (!Players[iClientID].iShipID)
+	{
+		PrintUserCmdText(iClientID, L"ERR Must be in space!");
+		return false;
+	}
+
+	if (!Players[iClientID].PlayerGroup)
+	{
+		PrintUserCmdText(iClientID, L"ERR Must be in a group!");
+		return false;
+	}
+
+	uint targetClient = HkGetClientIdFromCharname(wscParam);
+
+	if (targetClient == -1)
+	{
+		PrintUserCmdText(iClientID, L"ERR Target ship not online!");
+		return false;
+	}
+
+	if (Players[iClientID].PlayerGroup != Players[targetClient].PlayerGroup)
+	{
+		PrintUserCmdText(iClientID, L"ERR Target ship not in your group!");
+		return false;
+	}
+
+	RequestPathStruct bestPathStruct;
+	bestPathStruct.shipId = Players[iClientID].iShipID;
+	bestPathStruct.sourceSystem = Players[iClientID].iSystemID;
+	bestPathStruct.targetSystem = Players[targetClient].iSystemID;
+	bestPathStruct.targetPos = ClientInfo[targetClient].cship->vPos;
+	bestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+
+	Server.RequestBestPath(iClientID, (unsigned char*)&bestPathStruct, 0);
+
+	return true;
+}
+
 bool UserCmd_RefreshCharacters(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
 	if (!CheckIsInBase(iClientID))
@@ -153,96 +284,6 @@ bool UserCmd_RefreshCharacters(uint iClientID, const wstring &wscCmd, const wstr
 	return true;
 }
 
-
-template <typename T>
-struct BinarySearchTree;
-
-template <typename T>
-struct Node
-{
-	Node* prev;
-	Node* left;
-	Node* right;
-	unsigned int key;
-	T value;
-	bool unknown;
-	bool isEnd;
-
-	class Iterator
-	{
-		friend BinarySearchTree<T>;
-		Node* node;
-		explicit Iterator(Node* node) { this->node = node; }
-
-	public:
-		Iterator& operator++()
-		{
-			node = node->Traverse();
-			return *this;
-		}
-
-		Node* operator->() const { return node; }
-
-		friend bool operator==(const Iterator& a, const Iterator& b) { return a.node == b.node; }
-		friend bool operator!=(const Iterator& a, const Iterator& b) { return a.node != b.node; }
-	};
-
-private:
-	Node* Traverse()
-	{
-		Node* node = this;
-		Node** nodeRef = &node;
-
-		Node* v1 = (*nodeRef)->right;
-		Node* result;
-
-		if (v1->isEnd)
-		{
-			for (result = (*nodeRef)->left; (*nodeRef) == result->right; result = result->left)
-			{
-				(*nodeRef) = result;
-			}
-
-			if ((*nodeRef)->right != result)
-			{
-				(*nodeRef) = result;
-			}
-		}
-		else
-		{
-			for (result = v1->prev; !result->isEnd; result = result->prev)
-			{
-				v1 = result;
-			}
-
-			(*nodeRef) = v1;
-		}
-
-		return *nodeRef;
-	}
-};
-
-template <typename ValType>
-struct BinarySearchTree
-{
-	using Iter = typename Node<ValType>::Iterator;
-	unsigned int size() { return _size; }
-	Iter begin() { return Iter(headNode->left); }
-	Iter end() { return Iter(headNode); }
-
-	// Specialize for different types!
-	void Insert(uint key, ValType val) = delete;
-
-private:
-	Node<ValType>* nextNode = nullptr;
-	Node<ValType>* headNode = nullptr; // headnode stores min/max in left/right and upmost node in parent
-	Node<ValType>* endNode = nullptr;
-	void* dunno2 = nullptr;
-	// ReSharper disable once CppInconsistentNaming
-	unsigned int _size = 0u;
-};
-
-#pragma optimize("", off);
 // /frelancer - gives the user a freelancer IFF
 bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
@@ -260,7 +301,6 @@ bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring 
 	PrintUserCmdText(iClientID, L"Freelancer IFF granted. You may need to /droprep if your old IFF exists after logging out/in and undocking.");
 	return true;
 }
-#pragma optimize("", on);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code
@@ -290,7 +330,10 @@ USERCMD UserCmds[] =
 	{ L"/refresh", UserCmd_RefreshCharacters, L"" },
 	{ L"/refresh*", UserCmd_RefreshCharacters, L"" },
 	{ L"/freelancer", UserCmd_FreelancerIFF, L"" },
-	{ L"/freelancer", UserCmd_FreelancerIFF, L"" },
+	{ L"/wp", UserCmd_WayPoint, L"" },
+	{ L"/wpp", UserCmd_WayPointPlayer, L"" },
+	{ L"/rally", UserCmd_WayPointRally, L"" },
+	{ L"/forceabort", UserCmd_ForceAbortMission, L""},
 };
 
 /**

@@ -398,14 +398,14 @@ struct CUSTOM_REVERSE_TRANSACTION_STRUCT
 
 struct SPAWN_SOLAR_STRUCT
 {
-	uint solarArchetypeId;
-	uint loadoutArchetypeId;
+	uint solarArchetypeId = 0;
+	uint loadoutArchetypeId = 0;
 	string nickname;
-	uint solar_ids;
-	wstring overwrittenName;
+	uint solar_ids = 0;
+	wstring overwrittenName = L"";
 	Vector pos;
 	Matrix ori;
-	uint iSystemId;
+	uint iSystemId = 0;
 	uint iSpaceObjId = 0;
 	uint destSystem = 0;
 	uint destObj = 0;

@@ -231,7 +231,7 @@ void CoreModule::EnableShieldFuse(bool shieldEnabled)
 	}
 }
 
-bool CoreModule::Timer(SYSTEMTIME& time)
+bool CoreModule::Timer(const SYSTEMTIME& time)
 {
 	// Disable shield if time elapsed
 	if (base->shield_timeout)
@@ -366,7 +366,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 	{
 		return incoming_damage;
 	}
-	base->shield_timeout = (int)time(nullptr) + 60;
+	base->shield_timeout = 60;
 	if (!base->isShieldOn)
 	{
 		base->isShieldOn = true;

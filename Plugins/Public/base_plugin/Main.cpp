@@ -1071,7 +1071,7 @@ void HkTimerCheckKick()
 		LoadSettingsActual();
 	}
 	SYSTEMTIME curr_time;
-	GetLocalTime(&curr_time);
+	GetSystemTime(&curr_time);
 	for(auto& iter : player_bases)
 	{
 		PlayerBase *base = iter.second;
@@ -1991,10 +1991,21 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	MARKET_ITEM &item = base->market_items.at(gsi.iArchID);
+	int price;
+	MARKET_ITEM* item;
+	auto foundItem = base->market_items.find(gsi.iArchID);
+	if (foundItem == base->market_items.end())
+	{
+		price = gsi.iCount;
+		item = &MARKET_ITEM();
+		base->market_items[gsi.iArchID] = *item;
+	}
+	else
+	{
+		item = &foundItem->second;
+		price = foundItem->second.sellPrice * gsi.iCount;
+	}
 
-	int count = gsi.iCount;
-	int price = item.sellPrice * count;
 
 	if (price < 0)
 	{
@@ -2005,8 +2016,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(gsi.iCount)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(price)).c_str());
 
 		ConPrint(wscMsgU);
 		LogCheater(client, wscMsgU);
@@ -2023,14 +2034,14 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	if ((item.quantity + count) > item.max_stock)
+	if ((item->quantity + gsi.iCount) > item->max_stock)
 	{
 		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
 		clients[client].reverse_sell = true;
 		return;
 	}
 
-	if (count > LONG_MAX / item.price)
+	if (gsi.iCount > LONG_MAX / item->price)
 	{
 		clients[client].reverse_sell = true;
 		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
@@ -2039,8 +2050,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(gsi.iCount)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item->price)).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
@@ -2096,7 +2107,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 	const GoodInfo *gi = GoodList_get()->find_by_id(gsi.iArchID);
 	string gname = wstos(HtmlEncode(HkGetWStringFromIDS(gi->iIDSName)));
-	string msg = "Player " + wstos(charname) + " sold item " + gname + " x" + itos(count);
+	string msg = "Player " + wstos(charname) + " sold item " + gname + " x" + itos(gsi.iCount);
 	Log::LogBaseAction(wstos(base->basename), msg.c_str());
 
 	//Event plugin hooks

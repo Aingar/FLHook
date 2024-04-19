@@ -327,6 +327,10 @@ wstring GetLastBaseName(uint client)
 {
 	const auto& dockedInfo = idToDockedInfoMap[client];
 	const auto& baseInfo = Universe::get_base(dockedInfo->lastDockedSolar);
+	if (!baseInfo)
+	{
+		PrintUserCmdText(client, L"ERR base %u not found! Contact Developers.", dockedInfo->lastDockedSolar);
+	}
 	const auto& sysInfo = Universe::get_system(baseInfo->iSystemID);
 	wstring baseName;
 	wstring& sysName = HkGetWStringFromIDS(sysInfo->strid_name);

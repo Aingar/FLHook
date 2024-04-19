@@ -131,7 +131,7 @@ public:
 	virtual void LoadState(INI_Reader& ini) = 0;
 	virtual void SaveState(FILE* file) = 0;
 
-	virtual bool Timer(const SYSTEMTIME& time) { return false; }
+	virtual bool Timer(uint time) { return false; }
 
 	virtual float SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage) { return 0.0f; }
 	virtual bool SpaceObjDestroyed(uint space_obj) { return false; }
@@ -164,7 +164,7 @@ public:
 	void LoadState(INI_Reader& ini);
 	void SaveState(FILE* file);
 
-	bool Timer(const SYSTEMTIME& time);
+	bool Timer(uint time);
 	float SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage);
 	bool SpaceObjDestroyed(uint space_obj, bool moveFile = true, bool broadcastDeath = true);
 	void SetReputation(int player_rep, float attitude);
@@ -296,7 +296,7 @@ public:
 
 	void Spawn();
 
-	bool Timer(const SYSTEMTIME& st);
+	bool Timer(uint curr_time);
 
 	void SetupDefaults();
 	void Load();
@@ -316,7 +316,7 @@ public:
 	void SyncReputationForBaseObject(uint space_obj);
 
 	void SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage);
-	void CheckVulnerabilityWindow(const SYSTEMTIME& st);
+	void CheckVulnerabilityWindow(uint currTime);
 	void LogDamageDealers();
 
 	bool isFreshlyBuilt;

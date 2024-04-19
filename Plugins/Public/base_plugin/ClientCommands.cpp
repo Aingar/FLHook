@@ -269,9 +269,8 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	}
 	else
 	{
-		SYSTEMTIME st;
-		GetSystemTime(&st);
-		uint nextCheckInSeconds = set_crew_check_frequency - ((st.wHour*3600 + st.wMinute*60 + st.wSecond) % set_crew_check_frequency);
+		time_t currTime = time(0);
+		uint nextCheckInSeconds = set_crew_check_frequency - (currTime % set_crew_check_frequency);
 		uint nextCheckHour = nextCheckInSeconds / 3600;
 		uint nextCheckMinute = (nextCheckInSeconds % 3600) / 60;
 		base_status += L"<TEXT>Crew Status: Refusing to work over lack of supplies, next supply check in " + stows(itos(nextCheckHour)) + L"h " + stows(itos(nextCheckMinute)) + L"m</TEXT><PARA/>";

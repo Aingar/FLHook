@@ -25,6 +25,11 @@ CoreModule::~CoreModule()
 		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);
 		space_obj = 0;
+		CObject* csolar = CObject::Find(space_obj, CObject::COBJECT_MASK);
+		if (csolar)
+		{
+			csolar->Release();
+		}
 	}
 }
 
@@ -130,7 +135,6 @@ void CoreModule::Spawn()
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
-		base->baseCSolar->Release();
 
 		struct PlayerData* pd = 0;
 		while (pd = Players.traverse_active(pd))

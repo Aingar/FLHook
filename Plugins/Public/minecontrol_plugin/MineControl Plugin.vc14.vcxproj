@@ -127,7 +127,11 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
       <TargetMachine>MachineX86</TargetMachine>
     </Link>
     <PostBuildEvent>
-      <Command />
+      <Command>copy /Y $(OutDir)$(TargetName).dll  ..\..\..\Binaries\bin-vc14\flhook_plugins\public\
+copy /Y $(OutDir)$(TargetName).pdb  ..\..\..\Binaries\bin-vc14\flhook_plugins\public\
+copy /Y $(OutDir)$(TargetName).dll  $(DISCOHOOK_COPY_PATH)flhook_plugins\
+copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
+      </Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>

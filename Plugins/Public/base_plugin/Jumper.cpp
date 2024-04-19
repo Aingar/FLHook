@@ -383,6 +383,11 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 		targetJumpHole->destSystem = originJumpHole->system;
 
 		auto& selectedSystemCoordList = mapSystemJumps[targetJumpHole->system];
+		if (selectedSystemCoordList.empty())
+		{
+			AddLog("Exception: Unable to form a JH to %u system\n", targetJumpHole->system);
+			continue;
+		}
 		auto& coords = selectedSystemCoordList.at(rand() % selectedSystemCoordList.size());
 		targetJumpHole->position = coords.pos;
 		targetJumpHole->rotation = coords.ornt;

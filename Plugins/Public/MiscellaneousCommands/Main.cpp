@@ -130,7 +130,7 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 
 	auto& pg = Players[iClientID].PlayerGroup;
 	uint groupSize = pg->GetMemberCount();
-	for (int i = 0; i < groupSize; ++i)
+	for (uint i = 0; i < groupSize; ++i)
 	{
 		uint memberId = pg->GetMember(i);
 		if (memberId == iClientID)
@@ -146,8 +146,9 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 		requestPathStruct.sourceSystem = Players[iClientID].iSystemID;
 		requestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
 
-		Server.RequestBestPath(iClientID, (unsigned char*)&requestPathStruct, 0);
+		Server.RequestBestPath(memberId, (unsigned char*)&requestPathStruct, 0);
 	}
+	return true;
 }
 
 bool UserCmd_WayPoint(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
@@ -333,7 +334,7 @@ USERCMD UserCmds[] =
 	{ L"/wp", UserCmd_WayPoint, L"" },
 	{ L"/wpp", UserCmd_WayPointPlayer, L"" },
 	{ L"/rally", UserCmd_WayPointRally, L"" },
-	{ L"/forceabort", UserCmd_ForceAbortMission, L""},
+	{ L"/missionbug", UserCmd_ForceAbortMission, L""},
 };
 
 /**

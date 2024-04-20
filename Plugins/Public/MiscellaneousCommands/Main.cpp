@@ -180,25 +180,49 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 		return false;
 	}
 
-	if (!Players[iClientID].PlayerGroup)
+	if (!Players[iClientID].PlayerGroup || Players[iClientID].PlayerGroup->GetMemberCount() == 1)
 	{
-		PrintUserCmdText(iClientID, L"ERR Must be in a group!");
+		PrintUserCmdText(iClientID, L"ERR Must be in a non-empty group!");
 		return false;
 	}
 
-	uint targetClient = HkGetClientIdFromCharname(wscParam);
-
-	if (targetClient == -1)
+	if (wscParam.empty())
 	{
-		PrintUserCmdText(iClientID, L"ERR Target ship not online!");
+		PrintUserCmdText(iClientID, L"ERR Must provide target name (at least partial)!");
 		return false;
 	}
 
-	if (Players[iClientID].PlayerGroup != Players[targetClient].PlayerGroup)
+	wstring targetName = ToLower(wscParam);
+
+	auto& pg = Players[iClientID].PlayerGroup;
+	uint groupSize = pg->GetMemberCount();
+	uint targetClient = 0;
+	wstring memberName;
+
+	for (uint i = 0; i < groupSize; ++i)
 	{
-		PrintUserCmdText(iClientID, L"ERR Target ship not in your group!");
+		uint memberId = pg->GetMember(i);
+		if (memberId == iClientID)
+		{
+			continue;
+		}
+
+		memberName = (const wchar_t*)Players.GetActiveCharacterName(memberId);
+
+		if (memberName.find(targetName) != wstring::npos)
+		{
+			targetClient = memberId;
+			break;
+		}
+	}
+
+	if (!targetClient)
+	{
+		PrintUserCmdText(iClientID, L"ERR Target ship not found!");
 		return false;
 	}
+
+	PrintUserCmdText(iClientID, L"Plotting waypoint to: %ls", memberName.c_str());
 
 	RequestPathStruct bestPathStruct;
 	bestPathStruct.shipId = Players[iClientID].iShipID;

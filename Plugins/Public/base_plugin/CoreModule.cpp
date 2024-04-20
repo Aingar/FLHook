@@ -25,11 +25,11 @@ CoreModule::~CoreModule()
 		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);
 		space_obj = 0;
-		CObject* csolar = CObject::Find(space_obj, CObject::COBJECT_MASK);
-		if (csolar)
-		{
-			csolar->Release();
-		}
+	}
+	if (base->baseCSolar)
+	{
+		base->baseCSolar->Release();
+		base->baseCSolar = nullptr;
 	}
 }
 

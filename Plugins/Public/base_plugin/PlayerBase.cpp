@@ -95,6 +95,7 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 	{
 		if (!vulnerableWindowStatus)
 		{
+			vulnerableWindowStatus = true;
 			//Reset the base defenses to default only on the opening of the first vulnerability window
 			siege_mode = true;
 			SyncReputationForBase();
@@ -108,33 +109,32 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 			{
 				base_shield_reinforcement_threshold = FLT_MAX;
 			}
+			if (baseCSolar && base_health <= max_base_health)
+			{
+				baseCSolar->set_hit_pts(base_health);
+			}
 		}
-		if (baseCSolar && base_health <= max_base_health)
-		{
-			baseCSolar->set_hit_pts(base_health);
-		}
-		vulnerableWindowStatus = true;
 	}
 	else if (!single_vulnerability_window && IsVulnerabilityWindowActive(vulnerabilityWindow2, timeOfDay))
 	{
 		if (!vulnerableWindowStatus)
 		{
+			vulnerableWindowStatus = true;
 			if (baseCSolar && base_health <= max_base_health)
 			{
 				baseCSolar->set_hit_pts(base_health);
 			}
-			vulnerableWindowStatus = true;
 			siege_mode = true;
 			SyncReputationForBase();
 		}
 	}
 	else if (vulnerableWindowStatus)
 	{
+		vulnerableWindowStatus = false;
 		if (baseCSolar && base_health <= max_base_health)
 		{
 			baseCSolar->set_hit_pts(base_health);
 		}
-		vulnerableWindowStatus = false;
 		siege_mode = false;
 		SyncReputationForBase();
 		LogDamageDealers();

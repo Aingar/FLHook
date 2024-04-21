@@ -209,7 +209,7 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 
 		memberName = (const wchar_t*)Players.GetActiveCharacterName(memberId);
 
-		if (memberName.find(targetName) != wstring::npos)
+		if (ToLower(memberName).find(targetName) != wstring::npos)
 		{
 			targetClient = memberId;
 			break;

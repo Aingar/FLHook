@@ -38,8 +38,6 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Cloak Plugin", "Plugins\Pub
 		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
 	EndProjectSection
 EndProject
-Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CommodityLimit", "Plugins\Public\commoditylimit\CommodityLimit.vcxproj", "{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}"
-EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Conn Plugin", "Plugins\Public\conn_plugin\Conn Plugin.vc14.vcxproj", "{81D33B95-1CDD-4F58-A24C-E2EC47143DD0}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "event", "Plugins\Public\event\Event.vcxproj", "{4B9AB78F-085B-4F29-8E03-99FCF081F273}"
@@ -200,17 +198,6 @@ Global
 		{81A35B95-1CED-4F58-A24C-E2DC47D43DD0}.Release|Win32.ActiveCfg = Release|Win32
 		{81A35B95-1CED-4F58-A24C-E2DC47D43DD0}.Release|Win32.Build.0 = Release|Win32
 		{81A35B95-1CED-4F58-A24C-E2DC47D43DD0}.Release|x64.ActiveCfg = Release|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Debug|Win32.ActiveCfg = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Debug|Win32.Build.0 = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Debug|x64.ActiveCfg = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Debug|x64.Build.0 = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.DebugDONOTUSE|x64.ActiveCfg = Release|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.DebugDONOTUSE|x64.Build.0 = Release|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Release|Win32.ActiveCfg = Release|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Release|Win32.Build.0 = Release|Win32
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A}.Release|x64.ActiveCfg = Release|Win32
 		{81D33B95-1CDD-4F58-A24C-E2EC47143DD0}.Debug|Win32.ActiveCfg = Debug|Win32
 		{81D33B95-1CDD-4F58-A24C-E2EC47143DD0}.Debug|Win32.Build.0 = Debug|Win32
 		{81D33B95-1CDD-4F58-A24C-E2EC47143DD0}.Debug|x64.ActiveCfg = Debug|Win32
@@ -438,7 +425,6 @@ Global
 		{B92D0FA9-093B-4DB0-9AFD-3AF72BD87AAE} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{81D35B95-1CDD-4F58-A24C-E2EC47D43DD0} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{81A35B95-1CED-4F58-A24C-E2DC47D43DD0} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
-		{E7DFB061-5E6A-47DC-94C5-CCB169EA410A} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{81D33B95-1CDD-4F58-A24C-E2EC47143DD0} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{4B9AB78F-085B-4F29-8E03-99FCF081F273} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{097BFFBB-2BBE-4E16-B2FB-3ED8E90ECBD7} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
@@ -486,7 +472,6 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c26da99f-10f7-421b-ac31-eed1623e7b04}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{db39d53f-d243-4c8c-95cd-2101cca7d20f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7008ba7-4f75-4af7-b25c-3a9a3287a88f}*SharedItemsImports = 4
-		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7dfb061-5e6a-47dc-94c5-ccb169ea410a}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7eb5672-90cc-4b88-a8a0-55bb6bbae7f7}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{f1ec36fb-0262-4edd-b582-fe77872d3820}*SharedItemsImports = 4
 	EndGlobalSection

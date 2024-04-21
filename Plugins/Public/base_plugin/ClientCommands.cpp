@@ -261,7 +261,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	}
 	else if (base->HasMarketItem(set_base_crew_type) < base->base_level * 200)
 	{
-		base_status += L"<TEXT>Crew Status: Insufficient crew onboard</TEXT><PARA/>";
+		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Insufficient crew onboard</TEXT><PARA/><TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}
 	else if (base->isCrewSupplied)
 	{
@@ -273,7 +273,8 @@ void SendBaseStatus(uint client, PlayerBase* base)
 		uint nextCheckInSeconds = set_crew_check_frequency - (currTime % set_crew_check_frequency);
 		uint nextCheckHour = nextCheckInSeconds / 3600;
 		uint nextCheckMinute = (nextCheckInSeconds % 3600) / 60;
-		base_status += L"<TEXT>Crew Status: Refusing to work over lack of supplies, next supply check in " + stows(itos(nextCheckHour)) + L"h " + stows(itos(nextCheckMinute)) + L"m</TEXT><PARA/>";
+		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Refusing to work over lack of supplies, next supply check in " + stows(itos(nextCheckHour)) + L"h " + stows(itos(nextCheckMinute)) + L"m</TEXT><PARA/>";
+		base_status += L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}
 
 	base_status += L"<PARA/>";

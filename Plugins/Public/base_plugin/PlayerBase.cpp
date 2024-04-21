@@ -487,6 +487,11 @@ void PlayerBase::Load()
 			}
 			else if (ini.is_header("BuildModule"))
 			{
+				if (moduleCounter >= modules.size())
+				{
+					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+					return;
+				}
 				BuildModule* mod = new BuildModule(this);
 				mod->LoadState(ini);
 				if (mod->active_recipe.shortcut_number == Module::TYPE_CORE)
@@ -501,6 +506,11 @@ void PlayerBase::Load()
 			}
 			else if (ini.is_header("StorageModule"))
 			{
+				if (moduleCounter >= modules.size())
+				{
+					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+					return;
+				}
 				StorageModule* mod = new StorageModule(this);
 				mod->LoadState(ini);
 				modules.at(moduleCounter) = mod;
@@ -508,6 +518,11 @@ void PlayerBase::Load()
 			}
 			else if (ini.is_header("DefenseModule"))
 			{
+				if (moduleCounter >= modules.size())
+				{
+					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+					return;
+				}
 				DefenseModule* mod = new DefenseModule(this);
 				mod->LoadState(ini);
 				modules.at(moduleCounter) = mod;
@@ -515,6 +530,11 @@ void PlayerBase::Load()
 			}
 			else if (ini.is_header("FactoryModule"))
 			{
+				if (moduleCounter >= modules.size())
+				{
+					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+					return;
+				}
 				FactoryModule* mod = new FactoryModule(this);
 				mod->LoadState(ini);
 				modules.at(moduleCounter) = mod;

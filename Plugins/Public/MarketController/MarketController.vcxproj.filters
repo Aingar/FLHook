@@ -3,6 +3,7 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="AlleyMF.cpp" />
+    <ClCompile Include="CommodityLimit.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Main.h" />

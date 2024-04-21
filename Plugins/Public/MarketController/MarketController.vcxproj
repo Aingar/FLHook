@@ -121,6 +121,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="AlleyMF.cpp" />
+    <ClCompile Include="CommodityLimit.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>

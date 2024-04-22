@@ -216,6 +216,10 @@ HK_ERROR HkResolveShortCut(const wstring &wscShortcut, uint &_iClientID)
 
 uint HkGetClientIDByShip(uint iShip)
 {
+	if(!iShip)
+	{
+		return 0;
+	}
 	PlayerData* pd = nullptr;
 	while (pd = Players.traverse_active(pd))
 	{

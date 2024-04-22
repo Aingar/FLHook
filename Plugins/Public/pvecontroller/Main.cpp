@@ -31,10 +31,6 @@ PLUGIN_RETURNCODE returncode;
 #define PLUGIN_DEBUG_VERBOSE 2
 #define PLUGIN_DEBUG_VERYVERBOSE 3
 
-struct CLIENT_DATA {
-	int bounty_count;
-	int bounty_pool;
-};
 
 struct stBountyBasePayout {
 	int iBasePayout;
@@ -53,15 +49,12 @@ struct stWarzone {
 	float fMultiplier;
 };
 
-CLIENT_DATA aClientData[250];
 unordered_map<uint, stBountyBasePayout> mapBountyPayouts;
 unordered_map<uint, stBountyBasePayout> mapBountyShipPayouts;
 unordered_map<uint, float> mapBountyGroupScale;
 unordered_map<uint, float> mapBountyArmorScales;
 unordered_map<uint, float> mapBountySystemScales;
 multimap<uint, stWarzone> mmapBountyWarzoneScales;
-
-unordered_set<uint> setBountyAwardedShips;
 
 multimap<uint, stDropInfo> mmapDropInfo;
 unordered_set<uint> mapDropExcludedArchetypes;
@@ -77,24 +70,15 @@ int set_iPoolPayoutTimer = 0;
 int iLoadedNPCBountyClasses = 0;
 int iLoadedNPCShipBountyOverrides = 0;
 int iLoadedNPCBountyGroupScale = 0;
-int iLoadedNPCBountyArmorScales = 0;
 int iLoadedNPCBountySystemScales = 0;
 int iLoadedClassTypes = 0;
 int iLoadedClassDiffMultipliers = 0;
-int iLoadedNPCBountyWarzoneScales = 0;
 void LoadSettingsNPCBounties(void);
 
 
 bool set_bDropsEnabled = true;
 int iLoadedNPCDropClasses = 0;
 void LoadSettingsNPCDrops(void);
-
-/// Clear client info when a client connects.
-void ClearClientInfo(uint iClientID)
-{
-	returncode = DEFAULT_RETURNCODE;
-	aClientData[iClientID] = { 0 };
-}
 
 /// Load settings.
 void LoadSettings()
@@ -130,16 +114,12 @@ void LoadSettingsNPCBounties()
 	iLoadedNPCShipBountyOverrides = 0;
 	mapBountyGroupScale.clear();
 	iLoadedNPCBountyGroupScale = 0;
-	mapBountyArmorScales.clear();
-	iLoadedNPCBountyArmorScales = 0;
 	mapBountySystemScales.clear();
 	iLoadedNPCBountySystemScales = 0;
 	mapShipClassTypes.clear();
 	iLoadedClassTypes = 0;
 	mapClassDiffMultipliers.clear();
 	iLoadedClassDiffMultipliers = 0;
-	mmapBountyWarzoneScales.clear();
-	iLoadedNPCBountyWarzoneScales = 0;
 
 	// Load ratting bounty settings
 	set_iPoolPayoutTimer = IniGetI(scPluginCfgFile, "NPCBounties", "pool_payout_timer", 0);
@@ -186,15 +166,6 @@ void LoadSettingsNPCBounties()
 							ConPrint(L"PVECONTROLLER: Loaded override for \"%s\" == %u, $%d.\n", stows(ini.get_value_string(0)).c_str(), uShiparchHash, mapBountyShipPayouts[uShiparchHash].iBasePayout);
 					}
 
-					if (!strcmp(ini.get_name_ptr(), "armor_multiplier"))
-					{
-						uint uArmorHash = CreateID(ini.get_value_string(0));
-						mapBountyArmorScales[uArmorHash] = ini.get_value_float(1);
-						++iLoadedNPCBountyArmorScales;
-						if (set_iPluginDebug)
-							ConPrint(L"PVECONTROLLER: Loaded fighter armor multiplier for \"%s\" == %u, %f.\n", stows(ini.get_value_string(0)).c_str(), uArmorHash, ini.get_value_float(1));
-					}
-
 					if (!strcmp(ini.get_name_ptr(), "system_multiplier"))
 					{
 						uint uSystemHash = CreateID(ini.get_value_string(0));
@@ -222,22 +193,6 @@ void LoadSettingsNPCBounties()
 							ConPrint(L"PVECONTROLLER: Loaded class difference multiplier for %i == %f.\n", ini.get_value_int(0), ini.get_value_float(1));
 					}
 
-					if (!strcmp(ini.get_name_ptr(), "warzone_multiplier"))
-					{
-						stWarzone wz;
-						uint uSystemHash = CreateID(ini.get_value_string(0));
-						uint uFactionHash1 = 0;
-						uint uFactionHash2 = 0;
-						pub::Reputation::GetReputationGroup(uFactionHash1, ini.get_value_string(1));
-						pub::Reputation::GetReputationGroup(uFactionHash2, ini.get_value_string(2));
-						wz.uFaction1 = uFactionHash1;
-						wz.uFaction2 = uFactionHash2;
-						wz.fMultiplier = ini.get_value_float(3);
-						mmapBountyWarzoneScales.insert(make_pair(uSystemHash, wz));
-						++iLoadedNPCBountyWarzoneScales;
-						if (set_iPluginDebug)
-							ConPrint(L"PVECONTROLLER: Loaded warzone scale multiplier for \"%s\" == %u, %f.\n", stows(ini.get_value_string(0)).c_str(), uSystemHash, ini.get_value_float(1));
-					}
 				}
 			}
 
@@ -249,12 +204,10 @@ void LoadSettingsNPCBounties()
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty group scale values.\n", iLoadedNPCBountyGroupScale);
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty classes.\n", iLoadedNPCBountyClasses);
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty ship overrides.\n", iLoadedNPCShipBountyOverrides);
-	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty fighter armor multipliers.\n", iLoadedNPCBountyArmorScales);
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty system scale multipliers.\n", iLoadedNPCBountySystemScales);
 	ConPrint(L"PVECONTROLLER: Loaded %u ship class types.\n", iLoadedClassTypes);
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty class difference multipliers.\n", iLoadedClassDiffMultipliers);
-	ConPrint(L"PVECONTROLLER: Loaded %u NPC bounty warzone scale multipliers.\n", iLoadedNPCBountyWarzoneScales);
-}
+	}
 
 void LoadSettingsNPCDrops()
 {
@@ -346,46 +299,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 // Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void NPCBountyAddToPool(uint iClientID, int iBounty, bool bNotify) {
-	if (!iClientID)
-		return;
+void NPCBountyPayout(uint iClientID, int cash) {
 
-	aClientData[iClientID].bounty_count++;
-	aClientData[iClientID].bounty_pool += iBounty;
-	if (bNotify)
-		PrintUserCmdText(iClientID, L"A $%s credit bounty has been added to your reward pool.", ToMoneyStr(iBounty).c_str());
-}
-
-void NPCBountyPayout(uint iClientID) {
-	if (!iClientID)
-		return;
-
-	float fValue;
-	pub::Player::GetAssetValue(iClientID, fValue);
-
-	int iCurrMoney;
-	pub::Player::InspectCash(iClientID, iCurrMoney);
-
-	long long lNewMoney = iCurrMoney;
-	lNewMoney += aClientData[iClientID].bounty_pool;
-
-	if (fValue + aClientData[iClientID].bounty_pool > 2000000000 || lNewMoney > 2000000000)
-	{
-		PrintUserCmdText(iClientID, L"A bounty pool worth $%s credits was attempted to be paid, but the result would overfill your neural net account.", ToMoneyStr(aClientData[iClientID].bounty_pool).c_str());
-		PrintUserCmdText(iClientID, L"Payment of this bounty pool will be retried later.");
-		return;
-	}
-
-	HkAddCash((const wchar_t*)Players.GetActiveCharacterName(iClientID), aClientData[iClientID].bounty_pool);
-	if (set_iPoolPayoutTimer) {
-		PrintUserCmdText(iClientID, L"A bounty pool worth $%s credits for %d kill%s has been deposited into your account.", ToMoneyStr(aClientData[iClientID].bounty_pool).c_str(), aClientData[iClientID].bounty_count, (aClientData[iClientID].bounty_count == 1 ? L"" : L"s"));
-	}
-	else {
-		PrintUserCmdText(iClientID, L"A bounty of $%s credits has been deposited into your account.", ToMoneyStr(aClientData[iClientID].bounty_pool).c_str());
-	}
-
-	aClientData[iClientID].bounty_count = 0;
-	aClientData[iClientID].bounty_pool = 0;
+	pub::Player::AdjustCash(iClientID, cash);
+	PrintUserCmdText(iClientID, L"A bounty of $%s credits has been deposited into your account.", ToMoneyStr(cash).c_str());
+	
 }
 
 
@@ -393,28 +311,9 @@ void NPCBountyPayout(uint iClientID) {
 // Command Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UserCmd_Pool(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
-{
-	if (set_iPoolPayoutTimer == 0) {
-		PrintUserCmdText(iClientID, L"Bounty pool has been disabled; all bounties are paid out at time of kill.");
-		return true;
-	}
-
-	uint next_tick = set_iPoolPayoutTimer - ((uint)time(0) % set_iPoolPayoutTimer);
-	if (aClientData[iClientID].bounty_pool == 0)
-		PrintUserCmdText(iClientID, L"You do not currently have any outstanding bounty payments.");
-	else
-		PrintUserCmdText(iClientID, L"You will be paid out $%s credits for %d kill%s in %dm%ds.", ToMoneyStr(aClientData[iClientID].bounty_pool).c_str(), aClientData[iClientID].bounty_count, (aClientData[iClientID].bounty_count == 1 ? L"" : L"s"), next_tick / 60, next_tick % 60);
-
-	return true;
-}
-
 bool UserCmd_Value(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
-	float fShipValue = 0;
-	HKGetShipValue((const wchar_t*)Players.GetActiveCharacterName(iClientID), fShipValue);
-	PrintUserCmdText(iClientID, L"Ship value: $%s credits.", ToMoneyStr(static_cast<int>(fShipValue)).c_str());
-
+	PrintUserCmdText(iClientID, L"Ship value: $%s credits.", ToMoneyStr(Players[iClientID].worth).c_str());
 	return true;
 }
 
@@ -434,7 +333,6 @@ struct USERCMD
 
 USERCMD UserCmds[] =
 {
-	{ L"/pool", UserCmd_Pool, L"" },
 	{ L"/value", UserCmd_Value, L"" },
 };
 
@@ -486,46 +384,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 
 	if (!(cmds->rights & RIGHT_PLUGINS)) { cmds->Print(L"ERR No permission\n"); return false; }
 
-	if (!cmds->ArgStrToEnd(1).compare(L"status"))
-	{
-		cmds->Print(L"PVECONTROLLER: PvE Controller (Phase 1) is active.\n");
-		if (set_iPoolPayoutTimer)
-		{
-			uint next_tick = set_iPoolPayoutTimer - ((uint)time(0) % set_iPoolPayoutTimer);
-			uint pools = 0, poolkills = 0;
-			uint64_t poolvalue = 0;
-			for (int i = 0; i < 250; i++) {
-				if (aClientData[i].bounty_pool) {
-					pools++;
-					poolvalue += aClientData[i].bounty_pool;
-					poolkills += aClientData[i].bounty_count;
-				}
-			}
-			cmds->Print(L"  There are %d outstanding bounty pools worth $%lld credits for %d kill%s to be paid out in %dm%ds.\n", pools, poolvalue, poolkills, (poolkills != 1 ? L"s" : L""), next_tick / 60, next_tick % 60);
-		}
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return true;
-	}
-	else if (!cmds->ArgStrToEnd(1).compare(L"payout"))
-	{
-		if (set_iPoolPayoutTimer)
-		{
-			uint pools = 0, poolkills = 0;
-			uint64_t poolvalue = 0;
-			for (int i = 0; i < 250; i++) {
-				if (aClientData[i].bounty_pool) {
-					pools++;
-					poolvalue += aClientData[i].bounty_pool;
-					poolkills += aClientData[i].bounty_count;
-					NPCBountyPayout(i);
-				}
-			}
-			cmds->Print(L"PVECONTROLLER: Paid out %d outstanding bounty pools worth $%lld credits for %d kill%s.\n", pools, poolvalue, poolkills, (poolkills != 1 ? L"s" : L""));
-		}
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return true;
-	}
-	else if (!cmds->ArgStrToEnd(1).compare(L"reloadall"))
+	if (!cmds->ArgStrToEnd(1).compare(L"reloadall"))
 	{
 		cmds->Print(L"PVECONTROLLER: COMPLETE LIVE RELOAD requested by %s.\n", cmds->GetAdminName());
 		LoadSettings();
@@ -552,8 +411,6 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	else
 	{
 		cmds->Print(L"Usage:\n");
-		cmds->Print(L"  .pvecontroller status    -- Displays PvE controller status information.\n");
-		cmds->Print(L"  .pvecontroller payout    -- Pays out all outstanding NPC bounties.\n");
 		cmds->Print(L"  .pvecontroller reloadall -- Reloads ALL settings on the fly.\n");
 		cmds->Print(L"  .pvecontroller reloadnpcbounties -- Reloads NPC bounty settings on the fly.\n");
 		cmds->Print(L"  .pvecontroller reloadnpcdrops -- Reloads NPC drop settings on the fly.\n");
@@ -571,9 +428,15 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (!killerId)
+	{
+		return;
+	}
+
 	CShip* cship = (CShip*)iobj->cobj;
 	if (cship->ownerPlayer)
 		return;
+
 	uint iVictimShipId = cship->id;
 
 	uint iKillerClientId = HkGetClientIDByShip(killerId);
@@ -581,18 +444,8 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	if (!iVictimShipId || !iKillerClientId)
 		return;
 
-	if (HkGetClientIDByShip(iVictimShipId))
-		return;
-
-	if (setBountyAwardedShips.count(iVictimShipId))
-		return;
-
-	uint iTargetType;
-	pub::SpaceObj::GetType(iVictimShipId, iTargetType);
-
-	unsigned int uArchID = 0;
-	pub::SpaceObj::GetSolarArchetypeID(iVictimShipId, uArchID);
-	Archetype::Ship* victimShiparch = Archetype::GetShip(uArchID);
+	Archetype::Ship* victimShiparch = reinterpret_cast<Archetype::Ship*>(cship->archetype);
+	uint uArchID = victimShiparch->iArchID;
 
 	// Grab some info we'll need later.
 	uint uKillerSystem = 0;
@@ -612,8 +465,6 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		return;
 	}
 
-	setBountyAwardedShips.insert(iVictimShipId);
-
 	// Process bounties if enabled.
 	if (set_bBountiesEnabled) {
 		float fBountyPayout = 0;
@@ -627,34 +478,6 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			const auto& iter = mapBountyPayouts.find(victimShiparch->iShipClass);
 			if (iter != mapBountyPayouts.end()) {
 				fBountyPayout = static_cast<float>(iter->second.iBasePayout);
-				if (victimShiparch->iShipClass < 5) {
-					unsigned int iDunno = 0;
-					IObjInspectImpl* obj = NULL;
-					if (GetShipInspect(iVictimShipId, obj, iDunno)) {
-						if (obj) {
-							CShip* cship = (CShip*)HkGetEqObjFromObjRW((IObjRW*)obj);
-							CEquipManager* eqmanager = (CEquipManager*)((char*)cship + 0xE4);
-							CEArmor* cearmor = (CEArmor*)eqmanager->FindFirst(0x1000000);
-
-							// If the NPC has armour, see if we have an armour scale multiplier to use on it.
-							if (cearmor) {
-								const auto& iter = mapBountyArmorScales.find(cearmor->archetype->iArchID);
-								if (iter != mapBountyArmorScales.end())
-									fBountyPayout *= iter->second;
-							}
-						}
-					}
-				}
-			}
-		}
-
-		if (iLoadedNPCBountyWarzoneScales) {
-			const auto& iter = mmapBountyWarzoneScales.find(uKillerSystem);
-			if (iter != mmapBountyWarzoneScales.end())
-			{
-				if ((iter->second.uFaction1 == uKillerAffiliation && iter->second.uFaction2 == uTargetAffiliation) || (iter->second.uFaction2 == uKillerAffiliation && iter->second.uFaction1 == uTargetAffiliation)) {
-					fBountyPayout *= iter->second.fMultiplier;
-				}
 			}
 		}
 
@@ -685,27 +508,37 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			fBountyPayout = 0;
 
 		if (fBountyPayout) {
-			list<GROUP_MEMBER> lstMembers;
-			HkGetGroupMembers((const wchar_t*)Players.GetActiveCharacterName(iKillerClientId), lstMembers);
-
-			foreach(lstMembers, GROUP_MEMBER, gm) {
-				uint uGroupMemberSystem = 0;
-				pub::Player::GetSystem(gm->iClientID, uGroupMemberSystem);
-				if (uKillerSystem != uGroupMemberSystem)
-					lstMembers.erase(gm);
+			auto playerGroup = Players[iKillerClientId].PlayerGroup;
+			if (!playerGroup)
+			{
+				NPCBountyPayout(iKillerClientId, static_cast<int>(fBountyPayout));
 			}
-
-			if (mapBountyGroupScale.count(lstMembers.size()))
-				fBountyPayout *= mapBountyGroupScale[lstMembers.size()];
 			else
-				fBountyPayout /= static_cast<float>(lstMembers.size());
-
-			foreach(lstMembers, GROUP_MEMBER, gm) {
-				NPCBountyAddToPool(gm->iClientID, static_cast<int>(fBountyPayout), set_iPoolPayoutTimer);
-				if (!set_iPoolPayoutTimer)
-					NPCBountyPayout(gm->iClientID);
+			{
+				uint memberCount = playerGroup->GetMemberCount();
+				vector<uint> inSystemMembers;
+				for (uint i = 0 ; i < memberCount ; i++)
+				{
+					uint memberId = playerGroup->GetMember(i);
+					if (Players[memberId].iSystemID == uKillerSystem)
+					{
+						inSystemMembers.emplace_back(memberId);
+					}
+				}
+				auto groupScale = mapBountyGroupScale.find(inSystemMembers.size());
+				if (groupScale != mapBountyGroupScale.end())
+				{
+					fBountyPayout *= groupScale->second;
+				}
+				else
+				{
+					fBountyPayout /= inSystemMembers.size();
+				}
+				for (auto member : inSystemMembers)
+				{
+					NPCBountyPayout(member, static_cast<int>(fBountyPayout));
+				}
 			}
-
 		}
 	}
 
@@ -747,47 +580,6 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	}
 }
 
-void HkTimerCheckKick()
-{
-	returncode = DEFAULT_RETURNCODE;
-	uint curr_time = (uint)time(0);
-
-	// Pay bounty pools as required.
-	if (set_iPoolPayoutTimer) {
-		if (curr_time % set_iPoolPayoutTimer == 0) {
-			for (int i = 0; i < 250; i++) {
-				if (aClientData[i].bounty_pool)
-					NPCBountyPayout(i);
-			}
-		}
-	}
-	if (curr_time % 1800 == 0)
-	{
-		setBountyAwardedShips.clear();
-	}
-}
-
-void __stdcall BaseEnter(uint iBaseID, uint iClientID)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	// Pay bounty pool when a client docks so we don't have to screw around with client disconnections and other garbage like that.
-	if (aClientData[iClientID].bounty_pool)
-		NPCBountyPayout(iClientID);
-}
-
-void __stdcall DisConnect(uint iClientID, enum EFLConnection p2)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	//ConPrint(L"PVE: DisConnect for id=%d char=%s\n", iClientID, Players.GetActiveCharacterName(iClientID));
-
-	/*if (ClientInfo[iClientID].bCharSelected)
-		NPCBountyPayout(iClientID);*/
-
-	ClearClientInfo(iClientID);
-}
-
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
@@ -798,13 +590,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->ePluginReturnCode = &returncode;
 	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_ShipDestroyed, PLUGIN_ShipDestroyed, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
-
+	
 	return p_PI;
 }

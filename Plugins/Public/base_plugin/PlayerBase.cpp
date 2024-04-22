@@ -482,11 +482,6 @@ void PlayerBase::Load()
 			}
 			else if (ini.is_header("BuildModule"))
 			{
-				if (moduleCounter >= modules.size())
-				{
-					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-					return;
-				}
 				BuildModule* mod = new BuildModule(this);
 				mod->LoadState(ini);
 				if (mod->active_recipe.shortcut_number == Module::TYPE_CORE)
@@ -495,6 +490,11 @@ void PlayerBase::Load()
 				}
 				else
 				{
+					if (moduleCounter >= modules.size())
+					{
+						ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+						return;
+					}
 					modules.at(moduleCounter) = mod;
 					moduleCounter++;
 				}

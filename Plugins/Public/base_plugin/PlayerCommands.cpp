@@ -289,7 +289,6 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"OK Access granted");
 			PrintUserCmdText(client, L"Welcome administrator, all base command and control functions are available.");
 			BaseLogging("Base %s: player %s logged in as an admin", wstos(base->basename).c_str(), wstos(charname).c_str());
-			pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_pob_admin_login"));
 		}
 		if (foundBp.viewshop)
 		{
@@ -954,17 +953,6 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"OK");
 	}
 
-	void UpdateBaseInfoText(PlayerBase* pb)
-	{
-		pb->description_text = BuildBaseDescription(pb);
-		PlayerData* pd = nullptr;
-		while (pd = Players.traverse_active(pd))
-		{
-			HkChangeIDSString(pd->iOnlineID, pb->description_ids, pb->description_text);
-			SendBaseIDSList(pd->iOnlineID, pb->baseCSolar->id, pb->description_ids);
-		}
-	}
-
 	void BaseInfo(uint client, const wstring& args)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
@@ -1000,7 +988,6 @@ namespace PlayerCommands
 			}
 
 			base->Save();
-			UpdateBaseInfoText(base);
 		}
 		else if (iPara > 0 && iPara <= MAX_PARAGRAPHS && cmd == L"d")
 		{
@@ -1017,7 +1004,6 @@ namespace PlayerCommands
 			}
 
 			base->Save();
-			UpdateBaseInfoText(base);
 		}
 		else
 		{
@@ -1788,7 +1774,7 @@ namespace PlayerCommands
 		status += L"<TEXT>Available commands:</TEXT><PARA/>";
 		if (clients[client].admin)
 		{
-			status += L"<TEXT>  /shop price [item] [sellPrice] [buyPrice]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop price [item] [price]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
 		}
@@ -1820,9 +1806,9 @@ namespace PlayerCommands
 					continue;
 				}
 				wchar_t buf[1000];
-				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s $%u/$%u stock: %u min %u max (%s)</TEXT><PARA/>",
+				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s %0.0f credits stock: %u min %u max (%s)</TEXT><PARA/>",
 					globalItem, i.second.quantity, HtmlEncode(name).c_str(),
-					i.second.sellPrice, i.second.price, i.second.min_stock, i.second.max_stock, i.second.is_public ? L"Public" : L"Private");
+					i.second.price, i.second.min_stock, i.second.max_stock, i.second.is_public ? L"Public" : L"Private");
 				status += buf;
 				item++;
 			}
@@ -1863,19 +1849,11 @@ namespace PlayerCommands
 		if (cmd == L"price")
 		{
 			int item = ToInt(GetParam(args, ' ', 2));
-			int sellPrice = ToInt(GetParam(args, ' ', 3));
-			int buyPrice = ToInt(GetParam(args, ' ', 4));
+			int money = ToInt(GetParam(args, ' ', 3));
 
-			if (sellPrice < 1 || sellPrice > 1'000'000'000
-				|| buyPrice < 1 || buyPrice > 1'000'000'000)
+			if (money < 1 || money > 1'000'000'000)
 			{
-				PrintUserCmdText(client, L"ERR Prices not valid");
-				return;
-			}
-
-			if (sellPrice > buyPrice)
-			{
-				PrintUserCmdText(client, L"ERR Sell price must be less or equal to buy price!");
+				PrintUserCmdText(client, L"ERR Price not valid");
 				return;
 			}
 
@@ -1885,8 +1863,7 @@ namespace PlayerCommands
 				++curr_item;
 				if (curr_item == item)
 				{
-					i.second.price = buyPrice;
-					i.second.sellPrice = sellPrice;
+					i.second.price = (float)money;
 					SendMarketGoodUpdated(base, i.first, i.second);
 					base->Save();
 
@@ -1896,7 +1873,7 @@ namespace PlayerCommands
 
 					wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 					const GoodInfo* gi = GoodList::find_by_id(i.first);
-					BaseLogging("Base %s: player %s changed prices of %s to %d/%d", wstos(base->basename).c_str(), wstos(charname).c_str(), wstos(HkGetWStringFromIDS(gi->iIDSName)).c_str(), sellPrice, buyPrice);
+					BaseLogging("Base %s: player %s changed price of %s to %d", wstos(base->basename).c_str(), wstos(charname).c_str(), wstos(HkGetWStringFromIDS(gi->iIDSName)).c_str(), money);
 					return;
 				}
 			}
@@ -2566,7 +2543,7 @@ namespace PlayerCommands
 			return;
 		}
 
-		uint currTime = (uint)time(nullptr);
+		uint currTime = time(nullptr);
 
 		if (base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown > currTime )
 		{

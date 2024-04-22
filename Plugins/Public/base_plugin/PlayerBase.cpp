@@ -237,7 +237,7 @@ void PlayerBase::SetupDefaults()
 		vulnerabilityWindow1 = { 10 * 60, ((10 * 60) + vulnerability_window_length) % (60 * 24) };
 		vulnerabilityWindow2 = { 20 * 60, ((20 * 60) + vulnerability_window_length) % (60 * 24) };
 	}
-	CheckVulnerabilityWindow((uint)time(nullptr));
+	CheckVulnerabilityWindow(time(nullptr));
 
 	if (modules.size() < (base_level * 3) + 1)
 	{
@@ -393,15 +393,10 @@ void PlayerBase::Load()
 						MARKET_ITEM mi;
 						UINT good = ini.get_value_int(0);
 						mi.quantity = ini.get_value_int(1);
-						mi.price = ini.get_value_int(2);
+						mi.price = ini.get_value_float(2);
 						mi.min_stock = ini.get_value_int(3);
 						mi.max_stock = ini.get_value_int(4);
 						mi.is_public = bool(ini.get_value_int(5));
-						mi.sellPrice = ini.get_value_int(6);
-						if (!mi.sellPrice)
-						{
-							mi.sellPrice = mi.price;
-						}
 						market_items[good] = mi;
 					}
 					else if (ini.is_value("health"))
@@ -604,7 +599,7 @@ void PlayerBase::Save()
 		}
 		for (auto i : market_items)
 		{
-			fprintf(file, "commodity = %u, %u, %u, %u, %u, %u\n",
+			fprintf(file, "commodity = %u, %u, %f, %u, %u, %u\n",
 				i.first, i.second.quantity, i.second.price, i.second.min_stock, i.second.max_stock, int(i.second.is_public));
 		}
 
@@ -692,7 +687,7 @@ void PlayerBase::ChangeMoney(INT64 the_money)
 	}
 }
 
-int PlayerBase::GetRemainingCargoSpace()
+uint PlayerBase::GetRemainingCargoSpace()
 {
 	uint used = 0;
 	for (auto i = market_items.begin(); i != market_items.end(); ++i)

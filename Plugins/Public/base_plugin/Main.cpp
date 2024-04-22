@@ -1723,11 +1723,6 @@ void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int clie
 	for (auto& base : player_bases)
 	{
 		HkChangeIDSString(client, base.second->solar_ids, base.second->basename);
-		if (base.second->description_ids)
-		{
-			SendBaseIDSList(client, base.second->baseCSolar->id, base.second->description_ids);
-			HkChangeIDSString(client, base.second->description_ids, base.second->description_text);
-		}
 	}
 }
 
@@ -1969,150 +1964,152 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 
 	// If the client is in a player controlled base
 	PlayerBase *base = GetPlayerBaseForClient(client);
-	if (!base)
+	if (base)
 	{
-		return;
-	}
-	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
-	if (base->market_items.find(gsi.iArchID) == base->market_items.end()
-		&& !clients[client].admin)
-	{
-		PrintUserCmdText(client, L"ERR: Base will not accept goods");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	if (CheckIfCommodityForbidden(gsi.iArchID))
-	{
-		PrintUserCmdText(client, L"ERR: Cargo is not allowed on Player Bases");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	MARKET_ITEM &item = base->market_items.at(gsi.iArchID);
-
-	int count = gsi.iCount;
-	int price = item.sellPrice * count;
-
-	if (price < 0)
-	{
-		clients[client].reverse_sell = true;
-		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
-
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
-		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price)\n";
-		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
-
-		ConPrint(wscMsgU);
-		LogCheater(client, wscMsgU);
-
-		return;
-	}
-
-	// If the base doesn't have sufficient cash to support this purchase
-	// reduce the amount purchased and shift the cargo back to the ship.
-	if (base->money < price)
-	{
-		PrintUserCmdText(client, L"ERR: Base cannot accept goods, insufficient cash");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	if ((item.quantity + count) > item.max_stock)
-	{
-		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	if (count > LONG_MAX / item.price)
-	{
-		clients[client].reverse_sell = true;
-		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
-
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
-		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
-		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
-
-		ConPrint(wscMsgU);
-		LogCheater(client, wscMsgU);
-
-		return;
-	}
-
-	// Prevent player from getting invalid net worth.
-	float fValue;
-	pub::Player::GetAssetValue(client, fValue);
-
-	int iCurrMoney;
-	pub::Player::InspectCash(client, iCurrMoney);
-
-	long long lNewMoney = iCurrMoney;
-	lNewMoney += price;
-
-	if (fValue + price > 2100000000 || lNewMoney > 2100000000)
-	{
-		PrintUserCmdText(client, L"ERR: Character too valuable.");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	if (base->AddMarketGood(gsi.iArchID, gsi.iCount))
-	{
-		lastTransactionBase = true;
-		lastTransactionArchID = gsi.iArchID;
-		lastTransactionCount = gsi.iCount;
-		lastTransactionClientID = client;
-	}
-	else
-	{
-		PrintUserCmdText(client, L"ERR: Base will not accept goods");
-		clients[client].reverse_sell = true;
-		return;
-	}
-
-	pub::Player::AdjustCash(client, price);
-	base->ChangeMoney(0 - price);
-	base->Save();
-
-	if (listCommodities.find(gsi.iArchID) != listCommodities.end())
-	{
-		string cname = wstos(listCommodities[gsi.iArchID]);
-		string cbase = wstos(base->basename);
-
-		Notify_Event_Commodity_Sold(client, cname, gsi.iCount, cbase);
-	}
-
-	//build string and log the purchase
-	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-	const GoodInfo *gi = GoodList_get()->find_by_id(gsi.iArchID);
-	string gname = wstos(HtmlEncode(HkGetWStringFromIDS(gi->iIDSName)));
-	string msg = "Player " + wstos(charname) + " sold item " + gname + " x" + itos(count);
-	Log::LogBaseAction(wstos(base->basename), msg.c_str());
-
-	//Event plugin hooks
-	if (HookExt::IniGetB(client, "event.enabled") && (clients[client].reverse_sell == false))
-	{
-		//HkMsgU(L"DEBUG: POB event enabled");
-		if (base->basename == HookExt::IniGetWS(client, "event.eventpob"))
+		if (base->market_items.find(gsi.iArchID) == base->market_items.end()
+			&& !clients[client].admin)
 		{
-			//HkMsgU(L"DEBUG: event pob found");
-			if (gsi.iArchID == HookExt::IniGetI(client, "event.eventpobcommodity"))
+			PrintUserCmdText(client, L"ERR: Base will not accept goods");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		if (CheckIfCommodityForbidden(gsi.iArchID))
+		{
+
+			PrintUserCmdText(client, L"ERR: Cargo is not allowed on Player Bases");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		MARKET_ITEM &item = base->market_items[gsi.iArchID];
+
+		uint count = gsi.iCount;
+		int price = (int)item.price * count;
+
+		if (price < 0)
+		{
+			clients[client].reverse_sell = true;
+			PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
+
+			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
+			pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
+			wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price)\n";
+			wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
+			wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
+			wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos((int)item.price)).c_str());
+
+			ConPrint(wscMsgU);
+			LogCheater(client, wscMsgU);
+
+			return;
+		}
+
+		// If the base doesn't have sufficient cash to support this purchase
+		// reduce the amount purchased and shift the cargo back to the ship.
+		if (base->money < price)
+		{
+			PrintUserCmdText(client, L"ERR: Base cannot accept goods, insufficient cash");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		if ((item.quantity + count) > item.max_stock)
+		{
+			PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		if (count > LONG_MAX / item.price)
+		{
+			clients[client].reverse_sell = true;
+			PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
+
+			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
+			pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
+			wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
+			wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
+			wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
+			wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos((int)item.price)).c_str());
+			wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
+
+			ConPrint(wscMsgU);
+			LogCheater(client, wscMsgU);
+
+			return;
+		}
+
+		// Prevent player from getting invalid net worth.
+		float fValue;
+		pub::Player::GetAssetValue(client, fValue);
+
+		int iCurrMoney;
+		pub::Player::InspectCash(client, iCurrMoney);
+
+		long long lNewMoney = iCurrMoney;
+		lNewMoney += price;
+
+		if (fValue + price > 2100000000 || lNewMoney > 2100000000)
+		{
+			PrintUserCmdText(client, L"ERR: Character too valuable.");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		if (base->AddMarketGood(gsi.iArchID, gsi.iCount))
+		{
+			lastTransactionBase = true;
+			lastTransactionArchID = gsi.iArchID;
+			lastTransactionCount = gsi.iCount;
+			lastTransactionClientID = client;
+		}
+		else
+		{
+			PrintUserCmdText(client, L"ERR: Base will not accept goods");
+			clients[client].reverse_sell = true;
+			return;
+		}
+
+		pub::Player::AdjustCash(client, price);
+		base->ChangeMoney(0 - price);
+		base->Save();
+
+		if (listCommodities.find(gsi.iArchID) != listCommodities.end())
+		{
+			string cname = wstos(listCommodities[gsi.iArchID]);
+			string cbase = wstos(base->basename);
+
+			Notify_Event_Commodity_Sold(client, cname, gsi.iCount, cbase);
+		}
+
+		//build string and log the purchase
+		wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+		const GoodInfo *gi = GoodList_get()->find_by_id(gsi.iArchID);
+		string gname = wstos(HtmlEncode(HkGetWStringFromIDS(gi->iIDSName)));
+		string msg = "Player " + wstos(charname) + " sold item " + gname + " x" + itos(count);
+		Log::LogBaseAction(wstos(base->basename), msg.c_str());
+
+		//Event plugin hooks
+		if (HookExt::IniGetB(client, "event.enabled") && (clients[client].reverse_sell == false))
+		{
+			//HkMsgU(L"DEBUG: POB event enabled");
+			if (base->basename == HookExt::IniGetWS(client, "event.eventpob"))
 			{
-				//HkMsgU(L"DEBUG: POB event commodity found");
-				//At this point, send the data to HookExt
-				PrintUserCmdText(client, L"Processing event deposit, please wait up to 15 seconds...");
-				HookExt::AddPOBEventData(client, wstos(HookExt::IniGetWS(client, "event.eventid")), gsi.iCount);
+				//HkMsgU(L"DEBUG: event pob found");
+				if (gsi.iArchID == HookExt::IniGetI(client, "event.eventpobcommodity"))
+				{
+					//HkMsgU(L"DEBUG: POB event commodity found");
+					//At this point, send the data to HookExt
+					PrintUserCmdText(client, L"Processing event deposit, please wait up to 15 seconds...");
+					HookExt::AddPOBEventData(client, wstos(HookExt::IniGetWS(client, "event.eventid")), gsi.iCount);
+				}
 			}
 		}
+
+
 	}
 }
 
@@ -2181,7 +2178,7 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		if (count > base->market_items[gbi.iGoodID].quantity)
 			count = base->market_items[gbi.iGoodID].quantity;
 
-		int price = base->market_items[gbi.iGoodID].price * count;
+		int price = (int)base->market_items[gbi.iGoodID].price * count;
 		int curr_money;
 		pub::Player::InspectCash(client, curr_money);
 
@@ -2347,7 +2344,7 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	customSolarList.erase(space_obj);
 }
 
-void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
+void __stdcall SolarDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (!dmg->iInflictorID)
@@ -3085,7 +3082,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 			PlayerBase *base = GetPlayerBaseForClient(info->iClientID);
 
 			MARKET_ITEM &item = base->market_items[lastTransactionArchID];
-			int price = item.price * lastTransactionCount;
+			int price = (int)item.price * lastTransactionCount;
 
 			base->RemoveMarketGood(lastTransactionArchID, lastTransactionCount);
 
@@ -3209,7 +3206,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDamageHull, PLUGIN_SolarHullDmg, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SolarDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	return p_PI;
 }

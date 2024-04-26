@@ -81,20 +81,19 @@ struct CLOAK_INFO
 	uint iState;
 	float fuelUsageCounter = 0;
 	bool bAdmin;
-	int DisruptTime;
+	uint DisruptTime;
 
 	CLOAK_ARCH* arch;
 };
 
 struct CDSTRUCT
 {
-	string nickname;
-	float range;
-	int cooldown;
-	uint ammotype;
-	uint ammoamount;
-	uint effect;
-	float effectlifetime;
+	float range = 0.0f;
+	int cooldown = 5;
+	uint ammotype = 0;
+	uint ammoamount = 0;
+	uint effect = 0;
+	float effectlifetime = 0.0f;
 };
 
 struct CLIENTCDSTRUCT
@@ -154,10 +153,9 @@ void LoadSettings()
 	{
 		while (ini.read_header())
 		{
-			CLOAK_ARCH device;
-			CDSTRUCT disruptor;
 			if (ini.is_header("Cloak"))
 			{
+				CLOAK_ARCH device;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))
@@ -220,11 +218,13 @@ void LoadSettings()
 			}
 			else if (ini.is_header("Disruptor"))
 			{
+				CDSTRUCT disruptor;
+				uint hash;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))
 					{
-						disruptor.nickname = ini.get_value_string();
+						hash = CreateID(ini.get_value_string());
 					}
 					else if (ini.is_value("cooldown_time"))
 					{
@@ -248,7 +248,7 @@ void LoadSettings()
 						disruptor.effectlifetime = ini.get_value_float(0);
 					}
 				}
-				mapCloakDisruptors[CreateID(disruptor.nickname.c_str())] = disruptor;
+				mapCloakDisruptors[hash] = disruptor;
 				++cdamt;
 			}
 			else if (ini.is_header("General")) {
@@ -537,16 +537,11 @@ void HkTimerCheckKick()
 
 		//code to check if the player is disrupted. We run this separately to not cause issues with the bugfix
 		//first we check if it's 0. If it is, it's useless to process the other conditions, even if it means an additional check to begin with.
-		if (info.DisruptTime != 0)
+		if (info.DisruptTime)
 		{
-			if (info.DisruptTime >= 2)
+			if (!--info.DisruptTime)
 			{
-				--info.DisruptTime;
-			}
-			else if (info.DisruptTime == 1)
-			{
-				PrintUserCmdText(iClientID, L"Cloaking Device restored.");
-				info.DisruptTime = 0;
+				PrintUserCmdText(iClientID, L"Cloaking Device rebooted.");
 			}
 		}
 
@@ -695,8 +690,9 @@ void CloakDisruptor(uint iClientID)
 			{
 				SetState(client2, cShip->id, STATE_CLOAK_OFF);
 				pub::Audio::PlaySoundEffect(client2, CreateID("cloak_osiris"));
-				PrintUserCmdText(client2, L"Alert: Cloaking device disruption field detected.");
 				cloakInfo.DisruptTime = mapClientsCD[iClientID].cd.cooldown;
+				PrintUserCmdText(client2, L"Alert: Cloaking device disruption field detected.");
+				PrintUserCmdText(client2, L"Cloak rebooting... %u seconds remaining.", cloakInfo.DisruptTime);
 			}
 		}
 	}
@@ -733,9 +729,9 @@ bool UserCmd_Cloak(uint iClientID, const wstring &wscCmd, const wstring &wscPara
 
 	auto& info = mapClientsCloak.at(iClientID);
 
-	if (info.DisruptTime != 0)
+	if (info.DisruptTime)
 	{
-		PrintUserCmdText(iClientID, L"Cloaking Device Disrupted. Please wait %d seconds", info.DisruptTime);
+		PrintUserCmdText(iClientID, L"Cloaking Device Disrupted. Please wait %u seconds", info.DisruptTime);
 		return true;
 	}
 

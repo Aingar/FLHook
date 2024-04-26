@@ -424,6 +424,8 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 //Functions to hook
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+uint lastProcessedId = 0;
+
 void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -443,6 +445,12 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	if (!iVictimShipId || !iKillerClientId)
 		return;
+
+	if (cship->id == lastProcessedId)
+	{
+		return;
+	}
+	lastProcessedId = cship->id;
 
 	Archetype::Ship* victimShiparch = reinterpret_cast<Archetype::Ship*>(cship->archetype);
 	uint uArchID = victimShiparch->iArchID;

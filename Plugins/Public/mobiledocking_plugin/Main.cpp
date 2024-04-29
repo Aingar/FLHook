@@ -1367,7 +1367,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->sName = "Mobile Docking Plugin";
 	p_PI->sShortName = "dock";
 	p_PI->bMayPause = false;
-	p_PI->bMayUnload = false;
+	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));

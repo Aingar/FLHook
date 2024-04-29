@@ -51,7 +51,7 @@ PlayerBase::PlayerBase(const string &the_path)
 
 PlayerBase::~PlayerBase()
 {
-	for (auto module : modules)
+	for (Module* module : modules)
 	{
 		if (module)
 		{

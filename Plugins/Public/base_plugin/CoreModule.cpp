@@ -26,11 +26,6 @@ CoreModule::~CoreModule()
 		spaceobj_modules.erase(space_obj);
 		space_obj = 0;
 	}
-	if (base->baseCSolar)
-	{
-		base->baseCSolar->Release();
-		base->baseCSolar = nullptr;
-	}
 }
 
 void CoreModule::Spawn()
@@ -137,6 +132,10 @@ void CoreModule::Spawn()
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
+		if (base->baseCSolar)
+		{
+			base->baseCSolar->Release();
+		}
 
 		if (shield_reinforcement_threshold_map.count(base->base_level))
 			base->base_shield_reinforcement_threshold = shield_reinforcement_threshold_map[base->base_level];

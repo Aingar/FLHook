@@ -1276,6 +1276,7 @@ USERCMD UserCmds[] =
 	{ L"/maildel",		Message::UserCmd_MailDel, L"Usage: /maildel <msgnum>"},
 	{ L"/setinfo",		PlayerInfo::UserCmd_SetInfo, L"Usage: /setinfo <paragraph> <a/d> <text>"},
 	{ L"/showinfo",		PlayerInfo::UserCmd_ShowInfoSelf, L"Usage: /showinfo"},
+	{ L"/si",			PlayerInfo::UserCmd_ShowInfoSelf, L"Usage: /showinfo" },
 	{ L"/time",			Message::UserCmd_Time, L""},
 	{ L"/time*",		Message::UserCmd_Time, L""},
 	{ L"/lights",		MiscCmds::UserCmd_Lights, L"Usage: /lights"},

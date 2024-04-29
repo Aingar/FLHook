@@ -66,6 +66,15 @@ void FetchPlayerInfo(uint clientId)
 	}
 }
 
+wstring FormatString(wstring& text)
+{
+	text = ReplaceStr(text, L"<", L"&#60;");
+	text = ReplaceStr(text, L">", L"&#62;");
+	text = ReplaceStr(text, L"&", L"&#38;");
+	text = ReplaceStr(text, L"\\n", L"</TEXT><PARA/><TEXT>");
+	return text;
+}
+
 void InitializePlayerInfo(uint clientId)
 {
 	playerInfoData[clientId].initialized = true;
@@ -98,21 +107,13 @@ void InitializePlayerInfo(uint clientId)
 			playerInfo += L"<TEXT>";
 			wstring playerInfoLine = stows(ini.get_value_string());
 			playerInfoData[clientId].infoVector.emplace_back(playerInfoLine);
-			playerInfo += playerInfoLine;
+			playerInfo += FormatString(playerInfoLine);
 			playerInfo += L"</TEXT><PARA/><PARA/>";
 		}
 	}
 	playerInfo += L"<POP/></RDL>";
 
 	playerInfoData[clientId].playerInfo = playerInfo;
-}
-
-void FormatString(wstring& text)
-{
-	text = ReplaceStr(text, L"<", L"&#60;");
-	text = ReplaceStr(text, L">", L"&#62;");
-	text = ReplaceStr(text, L"&", L"&#38;");
-	text = ReplaceStr(text, L"\\n", L"</TEXT><PARA/><TEXT>");
 }
 
 void RecalculateInfoText(uint clientId)
@@ -122,9 +123,9 @@ void RecalculateInfoText(uint clientId)
 	playerInfo = L"<RDL><PUSH/>";
 	for (wstring& info : playerInfoData[clientId].infoVector)
 	{
-		playerInfoData[clientId].playerInfo += L"<TEXT>";
-		playerInfoData[clientId].playerInfo += info;
-		playerInfoData[clientId].playerInfo += L"</TEXT><PARA/><PARA/>";
+		playerInfo += L"<TEXT>";
+		playerInfo += FormatString(info);
+		playerInfo += L"</TEXT><PARA/><PARA/>";
 	}
 	playerInfo += L"<POP/></RDL>";
 	playerInfoData[clientId].changedSinceLastLaunch = true;
@@ -149,7 +150,7 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 {
 	uint iPara = ToInt(GetParam(wscParam, ' ', 0));
 	const wstring &wscCommand = GetParam(wscParam, ' ', 1);
-	const wstring &wscMsg = GetParamToEnd(wscParam, ' ', 2);
+	wstring &wscMsg = GetParamToEnd(wscParam, ' ', 2);
 
 	if (!iPara || iPara > MAX_PARAGRAPHS)
 	{
@@ -180,21 +181,19 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 			PrintUserCmdText(iClientID, L"ERR You can't skip paragraphs!");
 			return false;
 		}
+		else if (iPara == infoVec.size())
+		{
+			infoVec.emplace_back(L"");
+		}
 		
-		if (!playerInfoData[iClientID].infoVector.empty() && (wscMsg.size() + playerInfoData[iClientID].infoVector[iPara].length()) > MAX_CHARACTERS)
+		if (!infoVec.empty() && (wscMsg.size() + infoVec[iPara].length()) > MAX_CHARACTERS)
 		{
 			PrintUserCmdText(iClientID, L"ERR Text will be too long!(including formatting) Current lenght: %u, Max Lenght: %u", playerInfoData[iClientID].playerInfo.length(), MAX_CHARACTERS);
 			return false;
 		}
 		
-		if (iPara < infoVec.size())
-		{
-			infoVec[iPara] += wscMsg;
-		}
-		else
-		{
-			infoVec.emplace_back(wscMsg);
-		}
+		infoVec[iPara] += wscMsg;
+		
 		RecalculateInfoText(iClientID);
 		WriteInfoFile(iClientID, scFilePath);
 		PropagatePlayerInfo(iClientID);
@@ -203,8 +202,10 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 	else if (wscCommand == L"d")
 	{
 		infoVec.erase(infoVec.begin() + iPara);
+		RecalculateInfoText(iClientID);
+		WriteInfoFile(iClientID, scFilePath);
+		PropagatePlayerInfo(iClientID);
 		PrintUserCmdText(iClientID, L"OK");
-		playerInfoData[iClientID].initialized = false;
 	}
 	else
 	{
@@ -224,19 +225,56 @@ bool PlayerInfo::UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, con
 	{
 		InitializePlayerInfo(iClientID);
 	}
-	
-	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Your Information");
-	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD + iClientID, playerInfoData[iClientID].playerInfo);
+
+	if (wscParam == L"me")
+	{
+
+		HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Your Information");
+		HkChangeIDSString(iClientID, SETINFO_START_INFOCARD + iClientID, playerInfoData[iClientID].playerInfo);
+		FmtStr caption(0, 0);
+		caption.begin_mad_lib(SETINFO_START_INFOCARD);
+		caption.end_mad_lib();
+
+		FmtStr message(0, 0);
+		message.begin_mad_lib(SETINFO_START_INFOCARD + iClientID);
+		message.end_mad_lib();
+
+		pub::Player::PopUpDialog(iClientID, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
+		return true;
+	}
+
+	auto cship = ClientInfo[iClientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not in space");
+		return true;
+	}
+
+	auto targetShip = cship->get_target();
+	if (!targetShip || targetShip->cobj->objectClass != CObject::CSHIP_OBJECT)
+	{
+		PrintUserCmdText(iClientID, L"ERR No player target");
+		return true;
+	}
+	auto targetCShip = reinterpret_cast<CShip*>(targetShip->cobj);
+	if (!targetCShip->ownerPlayer)
+	{
+		PrintUserCmdText(iClientID, L"ERR No player target");
+		return true;
+	}
+
+	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Target Information");
 	FmtStr caption(0, 0);
 	caption.begin_mad_lib(SETINFO_START_INFOCARD);
 	caption.end_mad_lib();
 
 	FmtStr message(0, 0);
-	message.begin_mad_lib(SETINFO_START_INFOCARD + iClientID);
+	message.begin_mad_lib(SETINFO_START_INFOCARD + targetCShip->ownerPlayer);
 	message.end_mad_lib();
 
 	pub::Player::PopUpDialog(iClientID, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
 	return true;
+
 }
 
 void PlayerInfo::ClearInfo(uint clientId)

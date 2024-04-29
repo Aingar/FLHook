@@ -13,12 +13,7 @@
 #include <functional>
 #include <vector>
 
-#define POPUPDIALOG_BUTTONS_LEFT_YES 1
-#define POPUPDIALOG_BUTTONS_CENTER_NO 2
-#define POPUPDIALOG_BUTTONS_RIGHT_LATER 4
-#define POPUPDIALOG_BUTTONS_CENTER_OK 8
-
-constexpr uint ITEMS_PER_PAGE = 35;
+constexpr uint ITEMS_PER_PAGE = 13;
 
 // Separate base help out into pages. FL seems to have a limit of something like 4k per infocard.
 const uint numPages = 4;
@@ -206,7 +201,22 @@ namespace PlayerCommands
 		message.begin_mad_lib(500001);
 		message.end_mad_lib();
 
-		pub::Player::PopUpDialog(client, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
+		uint buttonsRendered = POPUPDIALOG_BUTTONS_CENTER_OK;
+		if (page != 0)
+		{
+			HkChangeIDSString(client, 1244, L"PREV PAGE");
+			buttonsRendered |= POPUPDIALOG_BUTTONS_LEFT_YES;
+		}
+		if (page < numPages - 1)
+		{
+			HkChangeIDSString(client, 1570, L"NEXT PAGE");
+			buttonsRendered |= POPUPDIALOG_BUTTONS_RIGHT_LATER;
+		}
+
+		pub::Player::PopUpDialog(client, caption, message, buttonsRendered);
+		auto& clientData = clients[client];
+		clientData.lastPopupPage = page + 1;
+		clientData.lastPopupWindowType = POPUPWINDOWTYPE::HELP;
 	}
 
 	bool RateLimitLogins(uint client, PlayerBase* base, wstring charname)
@@ -1738,7 +1748,38 @@ namespace PlayerCommands
 		}
 	}
 
-	static void ShowShopStatus(uint client, PlayerBase* base, wstring substring, int page)
+	void ShowShopHelp(uint client)
+	{
+		wstring status = L"<RDL><PUSH/>";
+		status += L"<TEXT>Available commands:</TEXT><PARA/>";
+		if (clients[client].admin)
+		{
+			status += L"<TEXT>  /shop price [item] [price]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
+		}
+		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
+		status += L"<POP/></RDL>";
+
+		HkChangeIDSString(client, 500000, L"Shop Help");
+		HkChangeIDSString(client, 500001, status);
+
+		FmtStr caption(0, 0);
+		caption.begin_mad_lib(500000);
+		caption.end_mad_lib();
+
+		FmtStr message(0, 0);
+		message.begin_mad_lib(500001);
+		message.end_mad_lib();
+
+		clients[client].lastPopupWindowType = POPUPWINDOWTYPE::SHOP_HELP;
+
+		HkChangeIDSString(client, 1244, L"BACK");
+		HkChangeIDSString(client, 1245, L"CLOSE");
+		pub::Player::PopUpDialog(client, caption, message, POPUPDIALOG_BUTTONS_LEFT_YES | POPUPDIALOG_BUTTONS_CENTER_OK);
+	}
+
+	void ShowShopStatus(uint client, PlayerBase* base, wstring substring, int page)
 	{
 		int matchingItems = 0;
 		for (auto& i : base->market_items)
@@ -1771,16 +1812,6 @@ namespace PlayerCommands
 		int end_item = page * ITEMS_PER_PAGE;
 
 		wstring status = L"<RDL><PUSH/>";
-		status += L"<TEXT>Available commands:</TEXT><PARA/>";
-		if (clients[client].admin)
-		{
-			status += L"<TEXT>  /shop price [item] [price]</TEXT><PARA/>";
-			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
-			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
-		}
-		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
-
-		status += L"<TEXT>Stock:</TEXT><PARA/>";
 		int item = 1;
 		int globalItem = 0;
 
@@ -1806,9 +1837,9 @@ namespace PlayerCommands
 					continue;
 				}
 				wchar_t buf[1000];
-				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s %0.0f credits stock: %u min %u max (%s)</TEXT><PARA/>",
+				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s %0.0f credits stock: %u min %u max</TEXT><PARA/>",
 					globalItem, i.second.quantity, HtmlEncode(name).c_str(),
-					i.second.price, i.second.min_stock, i.second.max_stock, i.second.is_public ? L"Public" : L"Private");
+					i.second.price, i.second.min_stock, i.second.max_stock);
 				status += buf;
 				item++;
 			}
@@ -1826,7 +1857,24 @@ namespace PlayerCommands
 		message.begin_mad_lib(500001);
 		message.end_mad_lib();
 
-		pub::Player::PopUpDialog(client, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
+		uint renderedButtons = POPUPDIALOG_BUTTONS_CENTER_NO;
+		HkChangeIDSString(client, 1245, L"CLOSE/HELP");
+		if (page > 1)
+		{
+			HkChangeIDSString(client, 1244, L"PREV PAGE");
+			renderedButtons |= POPUPDIALOG_BUTTONS_LEFT_YES;
+		}
+		if (page < pages)
+		{
+			HkChangeIDSString(client, 1570, L"NEXT PAGE");
+			renderedButtons |= POPUPDIALOG_BUTTONS_RIGHT_LATER;
+		}
+
+		pub::Player::PopUpDialog(client, caption, message, renderedButtons);
+		auto& clientData = clients[client];
+		clientData.lastPopupPage = page;
+		clientData.lastPopupWindowType = POPUPWINDOWTYPE::SHOP;
+		clientData.lastShopFilterKeyword = substring;
 	}
 
 	void Shop(uint client, const wstring& args)

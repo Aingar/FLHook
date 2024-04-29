@@ -3162,6 +3162,63 @@ void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_typ
 	}
 }
 
+void PopUpDialogue(uint client, uint buttonPressed)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto& cd = clients[client];
+	if (buttonPressed == POPUPDIALOG_BUTTONS_CENTER_OK)
+	{
+		cd.lastPopupWindowType = POPUPWINDOWTYPE::NONE;
+		HkChangeIDSString(client, 1244, L"YES");
+		HkChangeIDSString(client, 1245, L"NO");
+		return;
+	}
+	if (cd.lastPopupWindowType == POPUPWINDOWTYPE::SHOP)
+	{
+		auto pb = player_bases.find(cd.player_base);
+		if (pb == player_bases.end())
+		{
+			return;
+		}
+		if (buttonPressed == POPUPDIALOG_BUTTONS_RIGHT_LATER)
+		{
+			PlayerCommands::ShowShopStatus(client, pb->second, cd.lastShopFilterKeyword, cd.lastPopupPage + 1);
+		}
+		else if (buttonPressed == POPUPDIALOG_BUTTONS_LEFT_YES)
+		{
+			PlayerCommands::ShowShopStatus(client, pb->second, cd.lastShopFilterKeyword, cd.lastPopupPage - 1);
+		}
+		else if (buttonPressed == POPUPDIALOG_BUTTONS_CENTER_NO)
+		{
+			PlayerCommands::ShowShopHelp(client);
+		}
+	}
+	else if (cd.lastPopupWindowType == POPUPWINDOWTYPE::SHOP_HELP)
+	{
+		auto pb = player_bases.find(cd.player_base);
+		if (pb == player_bases.end())
+		{
+			return;
+		}
+		else if (buttonPressed == POPUPDIALOG_BUTTONS_LEFT_YES)
+		{
+			PlayerCommands::ShowShopStatus(client, pb->second, cd.lastShopFilterKeyword, cd.lastPopupPage);
+		}
+	}
+	else if (cd.lastPopupWindowType == POPUPWINDOWTYPE::HELP)
+	{
+		if (buttonPressed == POPUPDIALOG_BUTTONS_RIGHT_LATER)
+		{
+			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage + 1)));
+		}
+		else if (buttonPressed == POPUPDIALOG_BUTTONS_LEFT_YES)
+		{
+			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage - 1)));
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -3208,6 +3265,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SolarDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	return p_PI;
 }
 

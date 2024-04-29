@@ -16,6 +16,11 @@
 #include <unordered_map>
 #include <unordered_set>
 
+#define POPUPDIALOG_BUTTONS_LEFT_YES 1
+#define POPUPDIALOG_BUTTONS_CENTER_NO 2
+#define POPUPDIALOG_BUTTONS_RIGHT_LATER 4
+#define POPUPDIALOG_BUTTONS_CENTER_OK 8
+
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
@@ -495,10 +500,18 @@ void SendBaseStatus(PlayerBase* base);
 void ForceLaunch(uint client);
 void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem);
 
+enum class POPUPWINDOWTYPE
+{
+	NONE,
+	SHOP,
+	SHOP_HELP,
+	HELP
+};
+
 struct CLIENT_DATA
 {
 	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false),
-		player_base(0), last_player_base(0) {}
+		player_base(0), last_player_base(0), lastPopupPage(0), lastPopupWindowType(POPUPWINDOWTYPE::NONE){}
 
 	// If true reverse the last sell by readding the item.
 	bool reverse_sell;
@@ -521,6 +534,10 @@ struct CLIENT_DATA
 	// Set to player base hash if ship is in base or was last in a player base-> 0 after 
 	// docking at any non player base->
 	uint last_player_base;
+
+	uint lastPopupPage;
+	POPUPWINDOWTYPE lastPopupWindowType;
+	wstring lastShopFilterKeyword;
 };
 
 namespace ExportData
@@ -589,6 +606,9 @@ namespace PlayerCommands
 
 	void BaseDeploy(uint client, const wstring& args);
 	void BaseTestDeploy(uint client, const wstring& args);
+
+	void ShowShopStatus(uint client, PlayerBase* base, wstring substring, int page);
+	void ShowShopHelp(uint client);
 
 	void Aff_initer();
 }

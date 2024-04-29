@@ -186,13 +186,23 @@ void SaveDataToFile(const string& path)
 	}
 }
 
+std::atomic_bool shouldKill = false;
+
 void SaveData()
 {
 	try
 	{
 		while (true)
 		{
-			std::this_thread::sleep_for(std::chrono::minutes(1));
+			uint counter = 0;
+			while (++counter != 12)
+			{
+				if (shouldKill)
+				{
+					return;
+				}
+				std::this_thread::sleep_for(std::chrono::seconds(5));
+			}
 
 			if (nameToCarrierInfoMap.empty())
 			{
@@ -1335,6 +1345,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		shouldKill = true;
+		saveThread.join();
 		HkUnloadStringDLLs();
 	}
 	return true;
@@ -1357,6 +1369,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayPause = false;
 	p_PI->bMayUnload = false;
 	p_PI->ePluginReturnCode = &returncode;
+
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));

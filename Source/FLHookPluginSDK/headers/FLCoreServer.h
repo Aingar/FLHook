@@ -953,12 +953,12 @@ namespace pub
 			structCostume Costume;
 			int iRep;
 			int iVoiceID;
-			uint iUnk8; //0
+			uint baseId;
 			uint iUnk9; //Boolean, only last byte is used
 			int iHitPointsLeft;
 			char cNickName[64]; //Has to be unique
 			uint iUnk11; //0 unused?
-			uint iUnk12; // 1 = flagged as mission solar, 0 = normal
+			bool missionMarked;
 		};
 
 		struct TerminalInfo {

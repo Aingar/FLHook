@@ -844,7 +844,7 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (isServerAdmin || base->affiliation <= 0)
+		if (isServerAdmin || base->affiliation <= 0 || base->affiliation == DEFAULT_AFFILIATION)
 		{
 			int rep;
 			pub::Player::GetRep(client, rep);

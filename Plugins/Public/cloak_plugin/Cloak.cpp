@@ -636,25 +636,27 @@ void HkTimerCheckKick()
 
 void CloakDisruptor(uint iClientID)
 {
-	uint iShipID = Players[iClientID].iShipID;
-
-	Vector pos;
-	Matrix rot;
-	pub::SpaceObj::GetLocation(iShipID, pos, rot);
-
-	uint iSystem;
-	pub::Player::GetSystem(iClientID, iSystem);
+	auto cship = ClientInfo[iClientID].cship;
+	if (!cship)
+	{
+		return;
+	}
+	Vector& pos = cship->vPos;
+	
+	uint iSystem = Players[iClientID].iSystemID;
 
 	// For all players in system...
-	struct PlayerData *pPD = 0;
+	struct PlayerData *pPD = nullptr;
 	while (pPD = Players.traverse_active(pPD))
 	{
 		// Get the this player's current system and location in the system.
-		uint client2 = HkGetClientIdFromPD(pPD);
+		uint client2 = pPD->iOnlineID;
 		if (iSystem != pPD->iSystemID)
 			continue;
 
 		CShip* cShip = ClientInfo[pPD->iOnlineID].cship;
+		if (!cShip)
+			continue;
 
 		// Is player within the specified range of the sending char.
 		if (HkDistance3D(pos, cShip->vPos) > mapClientsCD[iClientID].cd.range)
@@ -764,6 +766,7 @@ bool UserCmd_Cloak(uint iClientID, const wstring &wscCmd, const wstring &wscPara
 bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
 	//not found
+	auto cd = mapClientsCD.find(iClientID);
 	if (mapClientsCD.find(iClientID) == mapClientsCD.end())
 	{
 		PrintUserCmdText(iClientID, L"Cloak Disruptor not found.");
@@ -771,9 +774,9 @@ bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wsc
 	//found
 	else
 	{
-		if (mapClientsCD[iClientID].cdwn != 0)
+		if (cd->second.cdwn != 0)
 		{
-			PrintUserCmdText(iClientID, L"Cloak Disruptor recharging. %d seconds left.", mapClientsCD[iClientID].cdwn);
+			PrintUserCmdText(iClientID, L"Cloak Disruptor recharging. %d seconds left.", cd->second.cdwn);
 		}
 		else
 		{
@@ -790,11 +793,11 @@ bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wsc
 			CECargo* cargo;
 			while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
 			{
-				if (cargo->archetype->iArchID == mapClientsCD[iClientID].cd.ammotype)
+				if (cargo->archetype->iArchID == cd->second.cd.ammotype)
 				{
-					if (cargo->GetCount() >= mapClientsCD[iClientID].cd.ammoamount)
+					if (cargo->count >= cd->second.cd.ammoamount)
 					{
-						pub::Player::RemoveCargo(iClientID, cargo->iSubObjId, mapClientsCD[iClientID].cd.ammoamount);
+						pub::Player::RemoveCargo(iClientID, cargo->iSubObjId, cd->second.cd.ammoamount);
 						foundammo = true;
 					}
 					break;
@@ -810,13 +813,13 @@ bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wsc
 			IObjInspectImpl *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkLightFuse((IObjRW*)obj, mapClientsCD[iClientID].cd.effect, 0, mapClientsCD[iClientID].cd.effectlifetime, 0);
+				HkLightFuse((IObjRW*)obj, cd->second.cd.effect, 0, cd->second.cd.effectlifetime, 0);
 			}
 
 			pub::Audio::PlaySoundEffect(iClientID, CreateID("cloak_osiris"));
 			CloakDisruptor(iClientID);
-			mapClientsCD[iClientID].cdwn = mapClientsCD[iClientID].cd.cooldown;
-			PrintUserCmdText(iClientID, L"Cloak Disruptor engaged. Cooldown: %d seconds.", mapClientsCD[iClientID].cdwn);
+			cd->second.cdwn = cd->second.cd.cooldown;
+			PrintUserCmdText(iClientID, L"Cloak Disruptor engaged. Cooldown: %d seconds.", cd->second.cdwn);
 		}
 	}
 

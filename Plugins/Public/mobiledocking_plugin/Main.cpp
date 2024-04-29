@@ -330,6 +330,7 @@ wstring GetLastBaseName(uint client)
 	if (!baseInfo)
 	{
 		PrintUserCmdText(client, L"ERR base %u not found! Contact Developers.", dockedInfo->lastDockedSolar);
+		return L"ERROR";
 	}
 	const auto& sysInfo = Universe::get_system(baseInfo->iSystemID);
 	wstring baseName;

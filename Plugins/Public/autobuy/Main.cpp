@@ -1026,6 +1026,10 @@ bool SetShipArch(uint iClientID, uint ship)
 	static uint botsArch = CreateID("ge_s_repair_01");
 	static uint battArch = CreateID("ge_s_battery_01");
 	const auto& shipData = Archetype::GetShip(ship);
+	uint botsToSell = 0;
+	ushort botsSId = 0;
+	uint battsToSell = 0;
+	ushort battsSId = 0;
 	int counter = 0;
 	for (const auto& eq : Players[iClientID].equipDescList.equip)
 	{
@@ -1033,10 +1037,8 @@ bool SetShipArch(uint iClientID, uint ship)
 		{
 			if (eq.iCount > shipData->iMaxNanobots)
 			{
-				uint botsToSell = eq.iCount - shipData->iMaxNanobots;
-				pub::Player::RemoveCargo(iClientID, eq.sID, botsToSell);
-				const GoodInfo* gi = GoodList::find_by_id(botsArch);
-				pub::Player::AdjustCash(iClientID, static_cast<int>(gi->fPrice * static_cast<float>(botsToSell)));
+				botsToSell = eq.iCount - shipData->iMaxNanobots;
+				botsSId = eq.sID;
 			}
 			counter++;
 		}
@@ -1044,10 +1046,8 @@ bool SetShipArch(uint iClientID, uint ship)
 		{
 			if (eq.iCount > shipData->iMaxShieldBats)
 			{
-				uint battsToSell = eq.iCount - shipData->iMaxShieldBats;
-				pub::Player::RemoveCargo(iClientID, eq.sID, battsToSell);
-				const GoodInfo* gi = GoodList::find_by_id(battArch);
-				pub::Player::AdjustCash(iClientID, static_cast<int>(gi->fPrice * static_cast<float>(battsToSell)));
+				battsToSell = eq.iCount - shipData->iMaxShieldBats;
+				battsSId = eq.sID;
 			}
 			counter++;
 		}
@@ -1056,6 +1056,20 @@ bool SetShipArch(uint iClientID, uint ship)
 			break;
 		}
 	}
+
+	if (botsToSell)
+	{
+		pub::Player::RemoveCargo(iClientID, botsSId, botsToSell);
+		const GoodInfo* gi = GoodList::find_by_id(botsArch);
+		pub::Player::AdjustCash(iClientID, static_cast<int>(gi->fPrice * static_cast<float>(botsToSell)));
+	}
+	if (battsToSell)
+	{
+		pub::Player::RemoveCargo(iClientID, battsSId, battsToSell);
+		const GoodInfo* gi = GoodList::find_by_id(battArch);
+		pub::Player::AdjustCash(iClientID, static_cast<int>(gi->fPrice * static_cast<float>(battsToSell)));
+	}
+
 	return true;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

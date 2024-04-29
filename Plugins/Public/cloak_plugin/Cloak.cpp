@@ -549,18 +549,6 @@ void HkTimerCheckKick()
 		{
 			switch (info.iState)
 			{
-			case STATE_CLOAK_OFF:
-				if (timeNow % 3 == 0)
-				{
-					// Send cloak state for uncloaked cloak-able players (only for them in space) 
-					// this is the code to fix the bug where players wouldnt always see uncloaked players 
-					XActivateEquip ActivateEq;
-					ActivateEq.bActivate = false;
-					ActivateEq.iSpaceID = iShipID;
-					ActivateEq.sID = info.iCloakSlot;
-					Server.ActivateEquip(iClientID, ActivateEq);
-				}
-				break;
 			case STATE_CLOAK_CHARGING:
 				if (!ProcessFuel(iClientID, info, iShipID))
 				{
@@ -1068,6 +1056,25 @@ void SwitchOutComplete(uint ship, uint clientId)
 	}
 }
 
+void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto& cd = mapClientsCloak.find(pShip.clientId);
+	if (cd == mapClientsCloak.end())
+	{
+		return;
+	}
+	if (cd->second.iState == STATE_CLOAK_OFF || cd->second.iState == STATE_CLOAK_CHARGING)
+	{
+		static XActivateEquip eq;
+		eq.bActivate = false;
+		eq.iSpaceID = pShip.iSpaceID;
+		eq.sID = cd->second.iCloakSlot;
+		HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(client, eq);
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -1091,6 +1098,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete_AFTER, PLUGIN_HkIServerImpl_JumpInComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 

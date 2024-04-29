@@ -1322,6 +1322,7 @@ public:
 	DamageCause damageCause; // 16
 	uint iInflictorID; // 20
 	uint iInflictorPlayerID; // 24
+	bool unk;
 };
 
 class IMPORT CArchGroup

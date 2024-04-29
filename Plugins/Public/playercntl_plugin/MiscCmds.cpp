@@ -50,7 +50,7 @@ namespace MiscCmds
 	};
 
 	/** A list of clients that are being smited */
-	map<uint, INFO> mapInfo;
+	unordered_map<uint, INFO> mapInfo;
 	typedef map<uint, INFO, less<uint> >::value_type mapInfo_map_pair_t;
 	typedef map<uint, INFO, less<uint> >::iterator mapInfo_map_iter_t;
 
@@ -797,6 +797,44 @@ namespace MiscCmds
 
 		PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
 		return true;
+	}
+
+	void MiscCmds::SyncShieldState(uint clientId, FLPACKET_CREATESHIP& pShip)
+	{
+		auto& clientInfo = mapInfo.find(pShip.clientId);
+		if (clientInfo == mapInfo.end())
+		{
+			return;
+		}
+		if (!clientInfo->second.bShieldsUp)
+		{
+			static XActivateEquip eq;
+			eq.bActivate = false;
+			eq.iSpaceID = pShip.iSpaceID;
+
+			CShip* ship = ClientInfo[pShip.clientId].cship;
+			if (!ship)
+			{
+				return;
+			}
+
+			CEquipTraverser tr(EquipmentClass::ShieldGenerator);
+			CEquip* shieldGen;
+			while (shieldGen = ship->equip_manager.Traverse(tr))
+			{
+				eq.sID = shieldGen->GetID();
+				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(clientId, eq);
+			}
+			CEShield* shield = reinterpret_cast<CEShield*>(ship->equip_manager.FindFirst(EquipmentClass::Shield));
+			if (!shield)
+			{
+				return;
+			}
+			DamageList dmg;
+			dmg.add_damage_entry(shield->iSubObjId, shield->GetHitPoints(), (DamageEntry::SubObjFate)0);
+
+			HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(clientId, pShip.iSpaceID, dmg);
+		}
 	}
 
 	void MiscCmds::PlayerLaunch(uint client)

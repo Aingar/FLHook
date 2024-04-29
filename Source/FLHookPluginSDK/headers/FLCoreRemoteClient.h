@@ -36,6 +36,14 @@ class CDPServer;
 ///// FL PACKET STRUCTS ///////
 ///////////////////////////////
 
+struct PACKET_COSTUME
+{
+	uint head;
+	uint body;
+	uint lefthand;
+	uint righthand;
+};
+
 struct FLPACKET_UNKNOWN
 {
 	uint iDunno[20];
@@ -103,37 +111,47 @@ struct FLPACKET_DESTROYOBJECT
 
 struct FLPACKET_CREATESHIP
 {
-	char* pAddress; // ??
+	char* pAddress; // CShipCreateInfo vftable
 	uint iSpaceID;
 	uint iShipArch;
-	uint iDunno[2];
-	float fDunno[14];
-	float fPosX;
-	float fPosY;
-	float fPosZ;
-	float fDunno2[13];
+	uint iDockTargetId;
+	uint iPilot;
+	Costume commCostume;
+	uint voiceHash;
+	Vector pos;
+	Quaternion ori;
+	uint64_t hitPoints;
+	EquipDescVector equip;
+	st6::list<CollisionGroupDesc> colGrpDesc; //128 32
+	DamageList dmgList;
+	uint clientId; // 144 43?
+	uint groupId;
+	uint rank;
+	Vector linearVelocity;
+	Vector angularVelocity;
+	float throttle; //52
+	uint dunno; //53
+	uint playerGroup; //54
+	bool inTradeLane; //55
 };
 
 struct FLPACKET_CREATESOLAR
 {
 	char* pAddress; // ??
-	uint iSpaceID;
-	uint iSolarArch;
-	uint iDunno;
-	uint iPilot;
-	struct {
-		uint body;
-		uint head;
-		uint lefthand;
-		uint righthand;
-		uint accessory[8];
-		int  accessories;
-	} costume;
-	int iVoiceID;
+	uint iSpaceID; // 4
+	uint iSolarArch; // 8
+	uint iDockTargetId; // 12 causes the name to stop showing?
+	uint iPilot; //16
+	Costume costume; //20
+	uint iVoiceID;
 	Vector vPos;
-	float fOrientation[4];
-	float fHealth;
-
+	Quaternion fOrientation;
+	uint64_t hitPoints;
+	EquipDescVector eqVector;
+	st6::list<CollisionGroupDesc> colGrpDesc; //128
+	DamageList dmgList;
+	bool isDynamic;
+	bool isDestructible;
 };
 
 struct FLPACKET_LAND

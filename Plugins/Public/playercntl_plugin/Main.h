@@ -85,6 +85,7 @@ namespace MiscCmds
 	void CharacterInfoReq(unsigned int iClientID, bool p2);
 	void Timer();
 	void PlayerLaunch(uint client);
+	void SyncShieldState(uint clientId, FLPACKET_CREATESHIP& pShip);
 
 	bool UserCmd_Pos(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_Stuck(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);

@@ -412,11 +412,16 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_CREATESHIP(uint iClientID, FLPACKET_CRE
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP, bool, __stdcall, (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
+	//CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP, bool, __stdcall, (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
 
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_CREATESHIP(iClientID, pShip));
 
-	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_AFTER, bool, , (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
+	//CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_AFTER, bool, , (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
+
+	if (pShip.clientId)
+	{
+		CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, bool, , (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
+	}
 
 	return reinterpret_cast<bool>(vRet);
 }

@@ -1137,213 +1137,210 @@ namespace HyperJump
 
 	void HyperJump::Timer()
 	{
-		list<uint> lstOldClients;
+		vector<uint> lstOldClients;
 
 		// Handle jump drive charging
 		for (auto& iter = mapJumpDrives.begin(); iter != mapJumpDrives.end(); iter++)
 		{
 			uint iClientID = iter->first;
 
-			uint iShip;
-			pub::Player::GetShip(iClientID, iShip);
-			if (iShip == 0)
+			if (Players[iClientID].iShipID == 0)
 			{
-				lstOldClients.push_back(iClientID);
+				lstOldClients.emplace_back(iClientID);
+				continue;
 			}
-			else
-			{
-				JUMPDRIVE &jd = iter->second;
+			
+			JUMPDRIVE &jd = iter->second;
 
-				if (jd.arch == nullptr)
+			if (jd.arch == nullptr)
+			{
+				continue;
+			}
+			if (jd.jump_timer > 0)
+			{
+				if (setCloakingClients.find(iClientID) != setCloakingClients.end())
 				{
+					PrintUserCmdText(iClientID, L"ERR Ship is cloaked.");
+					ShutdownJumpDrive(iClientID);
 					continue;
 				}
-				if (jd.jump_timer > 0)
+
+				jd.jump_timer--;
+				// Turn on the jumpdrive flash
+				if (jd.jump_timer == 5)
 				{
-					if (setCloakingClients.find(iClientID) != setCloakingClients.end())
+					jd.curr_charge = 0.0;
+					jd.charging_on = false;
+					SetFuse(iClientID, jd.arch->jump_fuse);
+					pub::Audio::PlaySoundEffect(iClientID, CreateID("dsy_jumpdrive_activate"));
+
+					if (jd.targetClient)
 					{
-						PrintUserCmdText(iClientID, L"ERR Ship is cloaked.");
+						if (!CheckBeaconFuel(jd.targetClient, true))
+						{
+							PrintUserCmdText(jd.targetClient, L"ERR Insufficient batteries to power the matrix!");
+							PrintUserCmdText(iClientID, L"ERR Beacon ship has insufficient batteries!");
+							ShutdownJumpDrive(iClientID);
+							continue;
+						}
+						PlayerData* pd = nullptr;
+						uint systemId = Players[jd.targetClient].iSystemID;
+						wstring beaconPlayer = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(jd.targetClient));
+						wstring playerName = L"Hyperspace breach is forming around %player!";
+						playerName = ReplaceStr(playerName, L"%player", beaconPlayer);
+						while (Players.traverse_active(pd))
+						{
+							if (pd->iSystemID != systemId)
+							{
+								continue;
+							}
+							if (15000.0f < HkDistance3D(ClientInfo[pd->iOnlineID].cship->vPos,
+								ClientInfo[jd.targetClient].cship->vPos))
+							{
+								continue;
+							}
+							PrintUserCmdText(pd->iOnlineID, playerName);
+							pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_beacon_jump_detected"));
+
+						}
+						SetFuse(jd.targetClient, mapPlayerBeaconMatrix[jd.targetClient].arch->beaconFuse, mapPlayerBeaconMatrix[jd.targetClient].arch->beaconLifetime, 0);
+						
+					}
+					pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_complete"));
+				}
+				// Execute the jump and do the pop sound
+				else if (jd.jump_timer == 0)
+				{
+
+					CUSTOM_IN_WARP_CHECK_STRUCT info = { iClientID, false };
+					Plugin_Communication(CUSTOM_IN_WARP_CHECK, &info);
+					if (info.inWarp)
+					{
+						//bump up timer to execute the jump as soon as the player exits the jump tunnel.
+						jd.jump_timer++;
+						continue;
+					}
+
+					uint playerSystem;
+					pub::Player::GetSystem(iClientID, playerSystem);
+					auto canJump = IsSystemJumpable(playerSystem, jd.iTargetSystem, jd.jumpDistance);
+					if (!jd.targetClient && jd.iTargetSystem != set_blindJumpOverrideSystem && (!canJump.first || canJump.second > jd.jumpDistance))
+					{
+						PrintUserCmdText(iClientID, L"ERR You moved out of jump range during the charging period.");
 						ShutdownJumpDrive(iClientID);
 						continue;
 					}
 
-					jd.jump_timer--;
-					// Turn on the jumpdrive flash
-					if (jd.jump_timer == 5)
+					// Stop the charging fuses
+					StopChargeFuses(iClientID);
+					SetFuse(iClientID, 0);
+
+					if (jd.targetClient)
 					{
-						jd.curr_charge = 0.0;
-						jd.charging_on = false;
-						SetFuse(iClientID, jd.arch->jump_fuse);
-						pub::Audio::PlaySoundEffect(iClientID, CreateID("dsy_jumpdrive_activate"));
-
-						if (jd.targetClient)
+						//check if in transit
+						if (!HkGetInspect(jd.targetClient))
 						{
-							if (!CheckBeaconFuel(jd.targetClient, true))
-							{
-								PrintUserCmdText(jd.targetClient, L"ERR Insufficient batteries to power the matrix!");
-								PrintUserCmdText(iClientID, L"ERR Beacon ship has insufficient batteries!");
-								ShutdownJumpDrive(iClientID);
-								continue;
-							}
-							PlayerData* pd = nullptr;
-							uint systemId = Players[jd.targetClient].iSystemID;
-							wstring beaconPlayer = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(jd.targetClient));
-							wstring playerName = L"Hyperspace breach is forming around %player!";
-							playerName = ReplaceStr(playerName, L"%player", beaconPlayer);
-							while (Players.traverse_active(pd))
-							{
-								if (pd->iSystemID != systemId)
-								{
-									continue;
-								}
-								if (15000.0f < HkDistance3D(ClientInfo[pd->iOnlineID].cship->vPos,
-									ClientInfo[jd.targetClient].cship->vPos))
-								{
-									continue;
-								}
-								PrintUserCmdText(pd->iOnlineID, playerName);
-								pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_beacon_jump_detected"));
-
-							}
-							SetFuse(jd.targetClient, mapPlayerBeaconMatrix[jd.targetClient].arch->beaconFuse, mapPlayerBeaconMatrix[jd.targetClient].arch->beaconLifetime, 0);
-							
-						}
-						pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_complete"));
-					}
-					// Execute the jump and do the pop sound
-					else if (jd.jump_timer == 0)
-					{
-
-						CUSTOM_IN_WARP_CHECK_STRUCT info = { iClientID, false };
-						Plugin_Communication(CUSTOM_IN_WARP_CHECK, &info);
-						if (info.inWarp)
-						{
-							//bump up timer to execute the jump as soon as the player exits the jump tunnel.
-							jd.jump_timer++;
-							continue;
-						}
-
-						uint playerSystem;
-						pub::Player::GetSystem(iClientID, playerSystem);
-						auto canJump = IsSystemJumpable(playerSystem, jd.iTargetSystem, jd.jumpDistance);
-						if (!jd.targetClient && jd.iTargetSystem != set_blindJumpOverrideSystem && (!canJump.first || canJump.second > jd.jumpDistance))
-						{
-							PrintUserCmdText(iClientID, L"ERR You moved out of jump range during the charging period.");
+							PrintUserCmdText(iClientID, L"ERR Target Player is not in space, aborting jump.");
 							ShutdownJumpDrive(iClientID);
 							continue;
 						}
 
-						// Stop the charging fuses
-						StopChargeFuses(iClientID);
-						SetFuse(iClientID, 0);
-
-						if (jd.targetClient)
+						auto& canJump = CanBeaconJumpToPlayer(iClientID, jd.targetClient);
+						if (!canJump.first || canJump.second > jd.jumpDistance)
 						{
-							//check if in transit
-							if (!HkGetInspect(jd.targetClient))
-							{
-								PrintUserCmdText(iClientID, L"ERR Target Player is not in space, aborting jump.");
-								ShutdownJumpDrive(iClientID);
-								continue;
-							}
-
-							auto& canJump = CanBeaconJumpToPlayer(iClientID, jd.targetClient);
-							if (!canJump.first || canJump.second > jd.jumpDistance)
-							{
-								PrintUserCmdText(iClientID, L"ERR Target Player is out of range, aborting jump.");
-								ShutdownJumpDrive(iClientID);
-								continue;
-							}
-
-							CUSTOM_IN_WARP_CHECK_STRUCT info = { jd.targetClient, false };
-							Plugin_Communication(CUSTOM_IN_WARP_CHECK, &info);
-							if (info.inWarp)
-							{
-								//bump up timer to execute the jump as soon as beacon player exits the jump tunnel.
-								jd.jump_timer++;
-								continue;
-							}
-
-							uint targetShip;
-							pub::Player::GetShip(jd.targetClient, targetShip);
-							pub::SpaceObj::GetLocation(targetShip, jd.vTargetPosition, jd.matTargetOrient);
-							pub::Player::GetSystem(jd.targetClient, jd.iTargetSystem);
-							int inaccuracy = mapPlayerBeaconMatrix[jd.targetClient].arch->inaccuracy;
-							jd.vTargetPosition.x += (rand() % (inaccuracy * 2)) - inaccuracy;
-							jd.vTargetPosition.y += (rand() % (inaccuracy * 2)) - inaccuracy;
-							jd.vTargetPosition.z += (rand() % (inaccuracy * 2)) - inaccuracy;
+							PrintUserCmdText(iClientID, L"ERR Target Player is out of range, aborting jump.");
+							ShutdownJumpDrive(iClientID);
+							continue;
 						}
 
-						CreateJumpHolePair(iClientID);
-						pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_activated"));
+						CUSTOM_IN_WARP_CHECK_STRUCT info = { jd.targetClient, false };
+						Plugin_Communication(CUSTOM_IN_WARP_CHECK, &info);
+						if (info.inWarp)
+						{
+							//bump up timer to execute the jump as soon as beacon player exits the jump tunnel.
+							jd.jump_timer++;
+							continue;
+						}
+
+						uint targetShip;
+						pub::Player::GetShip(jd.targetClient, targetShip);
+						pub::SpaceObj::GetLocation(targetShip, jd.vTargetPosition, jd.matTargetOrient);
+						pub::Player::GetSystem(jd.targetClient, jd.iTargetSystem);
+						int inaccuracy = mapPlayerBeaconMatrix[jd.targetClient].arch->inaccuracy;
+						jd.vTargetPosition.x += (rand() % (inaccuracy * 2)) - inaccuracy;
+						jd.vTargetPosition.y += (rand() % (inaccuracy * 2)) - inaccuracy;
+						jd.vTargetPosition.z += (rand() % (inaccuracy * 2)) - inaccuracy;
 					}
 
-					// Proceed to the next ship.
+					CreateJumpHolePair(iClientID);
+					pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_activated"));
+				}
+
+				// Proceed to the next ship.
+				continue;
+			}
+
+			if (jd.charging_on && jd.jump_timer == 0)
+			{
+				// Use fuel to charge the jump drive's storage capacitors
+				bool successfulCharge = false;
+
+				if (setCloakingClients.find(iClientID) != setCloakingClients.end())
+				{
+					PrintUserCmdText(iClientID, L"ERR Ship is cloaked.");
+					ShutdownJumpDrive(iClientID);
 					continue;
 				}
 
-				if (jd.charging_on && jd.jump_timer == 0)
+				for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 				{
-					// Use fuel to charge the jump drive's storage capacitors
-					bool successfulCharge = false;
-
-					if (setCloakingClients.find(iClientID) != setCloakingClients.end())
+					if (jd.arch->mapFuelToUsagePerDistance.count(item->iArchID))
 					{
-						PrintUserCmdText(iClientID, L"ERR Ship is cloaked.");
-						ShutdownJumpDrive(iClientID);
-						continue;
-					}
-
-					for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
-					{
-						if (jd.arch->mapFuelToUsagePerDistance.count(item->iArchID))
+						uint fuel_usage = jd.arch->mapFuelToUsagePerDistance[item->iArchID].at(jd.jumpDistance);
+						if (item->iCount >= fuel_usage)
 						{
-							uint fuel_usage = jd.arch->mapFuelToUsagePerDistance[item->iArchID].at(jd.jumpDistance);
-							if (item->iCount >= fuel_usage)
+							pub::Player::RemoveCargo(iClientID, item->sID, fuel_usage);
+							if ((jd.curr_charge < jd.arch->can_jump_charge)
+								&& (jd.curr_charge + jd.arch->charge_rate >= jd.arch->can_jump_charge))
 							{
-								pub::Player::RemoveCargo(iClientID, item->sID, fuel_usage);
-								if ((jd.curr_charge < jd.arch->can_jump_charge)
-									&& (jd.curr_charge + jd.arch->charge_rate >= jd.arch->can_jump_charge))
-								{
-									jd.jump_timer = 6;
-								}
-								jd.curr_charge += jd.arch->charge_rate;
-								successfulCharge = true;
-								break;
+								jd.jump_timer = 6;
 							}
+							jd.curr_charge += jd.arch->charge_rate;
+							successfulCharge = true;
+							break;
 						}
 					}
+				}
 
-					// Turn off the charging effect if the charging has failed due to lack of fuel and
-					// skip to the next player.
-					if (!successfulCharge)
+				// Turn off the charging effect if the charging has failed due to lack of fuel and
+				// skip to the next player.
+				if (!successfulCharge)
+				{
+					jd.charging_on = false;
+					PrintUserCmdText(iClientID, L"Jump drive charging failed, out of batteries.");
+					ShutdownJumpDrive(iClientID);
+					continue;
+				}
+
+				pub::Audio::PlaySoundEffect(iClientID, CreateID("dsy_jumpdrive_charge"));
+
+				uint expected_charge_status = (uint)(jd.curr_charge / jd.arch->can_jump_charge * 10);
+				if (jd.last_tick_charge != expected_charge_status)
+				{
+					jd.last_tick_charge = expected_charge_status;
+					PrintUserCmdText(iClientID, L"Jump drive charge %0.0f%%", (jd.curr_charge / jd.arch->can_jump_charge) * 100.0f);
+
+					// Find the currently expected charge fuse
+					uint charge_fuse_idx = (uint)((jd.curr_charge / jd.arch->can_jump_charge) * (jd.arch->charge_fuse.size() - 1));
+					if (charge_fuse_idx >= jd.arch->charge_fuse.size())
+						charge_fuse_idx = jd.arch->charge_fuse.size() - 1;
+
+					// If the fuse is not present then activate it.
+					uint charge_fuse = jd.arch->charge_fuse[charge_fuse_idx];
+					if (find(jd.active_charge_fuse.begin(), jd.active_charge_fuse.end(), charge_fuse)
+						== jd.active_charge_fuse.end())
 					{
-						jd.charging_on = false;
-						PrintUserCmdText(iClientID, L"Jump drive charging failed, out of batteries.");
-						ShutdownJumpDrive(iClientID);
-						continue;
-					}
-
-					pub::Audio::PlaySoundEffect(iClientID, CreateID("dsy_jumpdrive_charge"));
-
-					uint expected_charge_status = (uint)(jd.curr_charge / jd.arch->can_jump_charge * 10);
-					if (jd.last_tick_charge != expected_charge_status)
-					{
-						jd.last_tick_charge = expected_charge_status;
-						PrintUserCmdText(iClientID, L"Jump drive charge %0.0f%%", (jd.curr_charge / jd.arch->can_jump_charge) * 100.0f);
-
-						// Find the currently expected charge fuse
-						uint charge_fuse_idx = (uint)((jd.curr_charge / jd.arch->can_jump_charge) * (jd.arch->charge_fuse.size() - 1));
-						if (charge_fuse_idx >= jd.arch->charge_fuse.size())
-							charge_fuse_idx = jd.arch->charge_fuse.size() - 1;
-
-						// If the fuse is not present then activate it.
-						uint charge_fuse = jd.arch->charge_fuse[charge_fuse_idx];
-						if (find(jd.active_charge_fuse.begin(), jd.active_charge_fuse.end(), charge_fuse)
-							== jd.active_charge_fuse.end())
-						{
-							AddChargeFuse(iClientID, charge_fuse);
-						}
+						AddChargeFuse(iClientID, charge_fuse);
 					}
 				}
 			}
@@ -1393,9 +1390,9 @@ namespace HyperJump
 		}
 
 		// If the ship has docked or died remove the client.	
-		foreach(lstOldClients, uint, iClientID)
+		for(uint iClientID : lstOldClients)
 		{
-			mapJumpDrives.erase(*iClientID);
+			mapJumpDrives.erase(iClientID);
 		}
 	}
 

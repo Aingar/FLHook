@@ -128,6 +128,8 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 	requestPathStruct.targetPos = ClientInfo[iClientID].cship->vPos;
 	requestPathStruct.targetSystem = Players[iClientID].iSystemID;
 
+	wstring clientName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+
 	auto& pg = Players[iClientID].PlayerGroup;
 	uint groupSize = pg->GetMemberCount();
 	for (uint i = 0; i < groupSize; ++i)
@@ -147,6 +149,7 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 		requestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
 
 		Server.RequestBestPath(memberId, (unsigned char*)&requestPathStruct, 0);
+		PrintUserCmdText(memberId, L"%ls is rallying you to their position.", clientName.c_str());
 	}
 	return true;
 }

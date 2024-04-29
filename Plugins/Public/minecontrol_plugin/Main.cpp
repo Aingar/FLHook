@@ -968,6 +968,11 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 				tempLootId = zone->lootableZone->dynamic_loot_commodity;
 			}
 
+			if (loot1Id && tempLootId == loot1Id)
+			{
+				continue;
+			}
+
 			const GoodInfo* gi = GoodList::find_by_id(tempLootId);
 			if (!alreadyFoundFirstMineable)
 			{

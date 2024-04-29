@@ -1481,8 +1481,6 @@ namespace HkIServerImpl
 	{
 		CALL_PLUGINS_V(PLUGIN_HKIServerImpl_PopUpDialog, , (uint, uint), (iClientID, buttonPressed));
 
-		//TODO: find the F9 infocard
-
 		return;
 	}
 

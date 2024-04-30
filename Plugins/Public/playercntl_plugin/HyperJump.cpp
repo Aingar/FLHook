@@ -1186,9 +1186,9 @@ namespace HyperJump
 						PlayerData* pd = nullptr;
 						uint systemId = Players[jd.targetClient].iSystemID;
 						wstring beaconPlayer = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(jd.targetClient));
-						wstring playerName = L"Hyperspace breach is forming around %player!";
-						playerName = ReplaceStr(playerName, L"%player", beaconPlayer);
-						while (Players.traverse_active(pd))
+						wstring matrixJumpMessage = L"Hyperspace breach is forming around %player!";
+						matrixJumpMessage = ReplaceStr(matrixJumpMessage, L"%player", beaconPlayer);
+						while (pd = Players.traverse_active(pd))
 						{
 							if (pd->iSystemID != systemId)
 							{
@@ -1199,7 +1199,7 @@ namespace HyperJump
 							{
 								continue;
 							}
-							PrintUserCmdText(pd->iOnlineID, playerName);
+							PrintUserCmdText(pd->iOnlineID, matrixJumpMessage);
 							pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_beacon_jump_detected"));
 
 						}

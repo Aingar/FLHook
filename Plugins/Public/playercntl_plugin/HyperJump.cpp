@@ -1190,7 +1190,7 @@ namespace HyperJump
 						matrixJumpMessage = ReplaceStr(matrixJumpMessage, L"%player", beaconPlayer);
 						while (pd = Players.traverse_active(pd))
 						{
-							if (pd->iSystemID != systemId)
+							if (pd->iSystemID != systemId || !pd->iShipID)
 							{
 								continue;
 							}

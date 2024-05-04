@@ -130,6 +130,7 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 
 	wstring clientName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 
+	uint counter = 0;
 	auto& pg = Players[iClientID].PlayerGroup;
 	uint groupSize = pg->GetMemberCount();
 	for (uint i = 0; i < groupSize; ++i)
@@ -150,7 +151,10 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 
 		Server.RequestBestPath(memberId, (unsigned char*)&requestPathStruct, 0);
 		PrintUserCmdText(memberId, L"%ls is rallying you to their position.", clientName.c_str());
+		++counter;
 	}
+
+	PrintUserCmdText(iClientID, L"Rallying %u allies to your position.", counter);
 	return true;
 }
 

@@ -136,18 +136,30 @@ void LoadSettings()
 
 	set_bLocalTime = IniGetB(scPluginCfgFile, "General", "LocalTime", false);
 
+	string shipArchIniPath = string(szCurDir) + R"(..\DATA\SHIPS\shiparch.ini)";
+
 	INI_Reader ini;
-	if (ini.open(scPluginCfgFile.c_str(), false))
+	uint currNickname = 0;
+	if (ini.open(shipArchIniPath.c_str(), false))
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("TradeLaneBan"))
+			if (!ini.is_header("Ship"))
 			{
-				while (ini.read_value())
+				continue;
+			}
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
 				{
-					if (ini.is_value("ship"))
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("can_use_tradelanes"))
+				{
+					if (!ini.get_value_bool(0))
 					{
-						setLaneAndFormationBannedShips.insert(CreateID(ini.get_value_string(0)));
+						setLaneAndFormationBannedShips.insert(currNickname);
+						break;
 					}
 				}
 			}

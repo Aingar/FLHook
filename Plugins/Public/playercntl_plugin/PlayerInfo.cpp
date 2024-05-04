@@ -8,6 +8,7 @@
 #include <FLHook.h>
 #include <plugin.h>
 #include <PluginUtilities.h>
+#include <sstream>
 
 #define POPUPDIALOG_BUTTONS_LEFT_YES 1
 #define POPUPDIALOG_BUTTONS_CENTER_NO 2
@@ -66,13 +67,228 @@ void FetchPlayerInfo(uint clientId)
 	}
 }
 
+wstring GetFormatHex(uint newFormat)
+{
+	wchar_t buf[3];
+	swprintf(buf, L"%02x", newFormat);
+	return buf;
+}
+
+static uint RgbToBgr(const uint color) { return color & 0xFF000000 | (color & 0xFF0000) >> 16 | color & 0x00FF00 | (color & 0x0000FF) << 16; };
+
+wstring GetColorHex(TextColor newColor)
+{
+	wchar_t buf[7];
+	swprintf(buf, L"%06x", RgbToBgr(static_cast<uint>(newColor)));
+	return buf;
+}
+
+bool SetFormatColor(wstring& currFormat, wstring& currColor, wchar_t input1, wchar_t input2)
+{
+	uint newFormat = 0;
+	bool format = false;
+	switch (input1)
+	{
+	case L'r':
+		switch (input2)
+		{
+		case L'd':
+			currColor = GetColorHex(TextColor::SystemBlue);
+			break;
+		case L'B':
+			currColor = GetColorHex(TextColor::Black);
+			break;
+		case L'W':
+			currColor = GetColorHex(TextColor::White);
+			break;
+		case L'r':
+			currColor = GetColorHex(TextColor::Red);
+			break;
+		case L'g':
+			currColor = GetColorHex(TextColor::Green);
+			break;
+		case L'b':
+			currColor = GetColorHex(TextColor::DeepSkyBlue);
+			break;
+		case L'v':
+			currColor = GetColorHex(TextColor::Violet);
+			break;
+		case L'y':
+			currColor = GetColorHex(TextColor::Yellow);
+			break;
+		case L'o':
+			currColor = GetColorHex(TextColor::Orange);
+			break;
+		case L'G':
+			currColor = GetColorHex(TextColor::Gray);
+			break;
+		default:
+			return false;
+		}
+		break;
+	case L'l':
+		switch (input2)
+		{
+		case L'r':
+			currColor = GetColorHex(TextColor::LightSalmon);
+			break;
+		case L'g':
+			currColor = GetColorHex(TextColor::LightGreen);
+			break;
+		case L'b':
+			currColor = GetColorHex(TextColor::SystemBlue);
+			break;
+		case L'v':
+			currColor = GetColorHex(TextColor::BlueViolet);
+			break;
+		case L'y':
+			currColor = GetColorHex(TextColor::LightYellow);
+			break;
+		case L'o':
+			currColor = GetColorHex(TextColor::Wheat);
+			break;
+		case L'G':
+			currColor = GetColorHex(TextColor::LightGray);
+			break;
+		default:
+			return false;
+		}
+		break;
+	case L'd':
+		switch (input2)
+		{
+		case L'r':
+			currColor = GetColorHex(TextColor::DarkRed);
+			break;
+		case L'g':
+			currColor = GetColorHex(TextColor::DarkGreen);
+			break;
+		case L'b':
+			currColor = GetColorHex(TextColor::Blue);
+			break;
+		case L'v':
+			currColor = GetColorHex(TextColor::DarkViolet);
+			break;
+		case L'y':
+			currColor = GetColorHex(TextColor::DarkGoldenrod);
+			break;
+		case L'o':
+			currColor = GetColorHex(TextColor::DarkOrange);
+			break;
+		case L'G':
+			currColor = GetColorHex(TextColor::DarkGray);
+			break;
+		default:
+			return false;
+		}
+		break;
+	case L'N':
+		format = true;
+		newFormat = 0x0;
+		break;
+	case L's':
+		format = true;
+		newFormat = 0x90;
+		break;
+	case L'v':
+		format = true;
+		newFormat = 0x8;
+		break;
+	case L'w':
+		format = true;
+		newFormat = 0x10;
+		break;
+	default:
+		return false;
+		break;
+	}
+
+	if (format)
+	{
+		switch (input2)
+		{
+		case L'b':
+			currFormat = GetFormatHex(newFormat | 0x1);
+			break;
+		case L'i':
+			currFormat = GetFormatHex(newFormat | 0x2);
+			break;
+		case L'u':
+			currFormat = GetFormatHex(newFormat | 0x4);
+			break;
+		case L'n':
+			currFormat = GetFormatHex(newFormat);
+			break;
+		default:
+			return false;
+		}
+	}
+	return true;
+}
+
 wstring FormatString(wstring& text)
 {
-	text = ReplaceStr(text, L"<", L"&#60;");
-	text = ReplaceStr(text, L">", L"&#62;");
-	text = ReplaceStr(text, L"&", L"&#38;");
-	text = ReplaceStr(text, L"\\n", L"</TEXT><PARA/><TEXT>");
-	return text;
+	wstringstream newString;
+	wstring currFormat = L"00";
+	wstring currColor = GetColorHex(TextColor::Default);
+	for (int i = 0; i < text.size(); ++i)
+	{
+		wchar_t currChar = text.at(i);
+		if (currChar == L'<')
+		{
+			newString << L"&#60;";
+			continue;
+		}
+		if (currChar == L'>')
+		{
+			newString << L"&#62;";
+			continue;
+		}
+		if (currChar == L'&')
+		{
+			newString << L"&#38;";
+			continue;
+		}
+		else if (currChar != L'%')
+		{
+			newString << currChar;
+			continue;
+		}
+		++i;
+		if (i == text.size())
+		{
+			break;
+		}
+		currChar = text.at(i);
+		if (currChar == L'%')
+		{
+			newString << L'%';
+			continue;
+		}
+		else if (currChar == L'n')
+		{
+			newString << L"</TEXT><PARA/><TEXT>";
+			continue;
+		}
+		++i;
+		if (i == text.size())
+		{
+			break;
+		}
+		wchar_t secondChar = text.at(i);
+
+		if (!SetFormatColor(currFormat, currColor, currChar, secondChar))
+		{
+			continue;
+		}
+
+
+		newString << L"</TEXT><TRA data=\"0x" << currColor <<
+			currFormat << "\" mask=\"-1\"/><TEXT>";
+
+	}
+
+	return newString.str();
 }
 
 void InitializePlayerInfo(uint clientId)

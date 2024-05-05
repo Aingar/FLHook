@@ -10,6 +10,8 @@
 #define __MAIN_H__ 1
 
 #include <FLHook.h>
+#include <thread>
+#include <atomic>
 #include <unordered_set>
 
 void AddExceptionInfoLog(struct SEHException* pep);
@@ -78,6 +80,9 @@ namespace MiscCmds
 	void LoadSettings(const string &scPluginCfgFile);
 	void LoadListOfReps();
 	map<wstring, uint> Resetrep_load_Time_limits_for_player_account(string filename);
+	extern std::thread shieldSyncThread;
+	extern std::atomic_bool shouldKillShieldThread;
+	void ShieldSync();
 	void Resetrep_save_Time_limits_to_player_account(string filename, map<wstring,uint> tempmap);
 
 	void ClearClientInfo(uint iClientID);

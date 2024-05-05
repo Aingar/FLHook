@@ -90,6 +90,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		MiscCmds::shouldKillShieldThread = true;
+		MiscCmds::shieldSyncThread.join();
 		CrashCatcher::Shutdown();
 		HkUnloadStringDLLs();
 	}
@@ -1909,5 +1911,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateShipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	
+	MiscCmds::shieldSyncThread = std::thread(MiscCmds::ShieldSync);
+
 	return p_PI;
 }

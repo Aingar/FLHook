@@ -26,6 +26,19 @@
 
 namespace MiscCmds
 {
+	struct ShieldSyncData
+	{
+		bool skipFirst = true;
+		vector<ushort> shields;
+		DamageList dmg;
+		uint spaceObjId;
+		uint clientId;
+	};
+	std::thread shieldSyncThread;
+	std::atomic_bool shouldKillShieldThread = false;
+	std::mutex saveMutex;
+	std::vector<ShieldSyncData> shieldSyncData;
+
 	struct INFO
 	{
 		/// Lights on/off
@@ -817,6 +830,10 @@ namespace MiscCmds
 			{
 				return;
 			}
+			
+			ShieldSyncData data;
+			data.spaceObjId = pShip.iSpaceID;
+			data.clientId = clientId;
 
 			CEquipTraverser tr(EquipmentClass::ShieldGenerator);
 			CEquip* shieldGen;
@@ -824,7 +841,10 @@ namespace MiscCmds
 			{
 				eq.sID = shieldGen->GetID();
 				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(clientId, eq);
+				data.shields.emplace_back(eq.sID);
 			}
+
+
 			CEShield* shield = reinterpret_cast<CEShield*>(ship->equip_manager.FindFirst(EquipmentClass::Shield));
 			if (!shield)
 			{
@@ -833,7 +853,10 @@ namespace MiscCmds
 			DamageList dmg;
 			dmg.add_damage_entry(shield->iSubObjId, shield->GetHitPoints(), (DamageEntry::SubObjFate)0);
 
-			HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(clientId, pShip.iSpaceID, dmg);
+			data.dmg = dmg;
+
+			std::lock_guard<std::mutex> saveLock(saveMutex);
+			shieldSyncData.emplace_back(data);
 		}
 	}
 
@@ -1130,5 +1153,43 @@ namespace MiscCmds
 
 		UnsetPlayerFuse(targetClient, fuseId);
 		cmds->Print(L"OK\n");
+	}
+
+	void ShieldSync()
+	{
+		while (true)
+		{
+			if (shouldKillShieldThread)
+			{
+				return;
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+			if (shieldSyncData.empty())
+			{
+				continue;
+			}
+			std::lock_guard<std::mutex> saveLock(saveMutex);
+			for (auto& iter = shieldSyncData.begin(); iter != shieldSyncData.end() ;)
+			{
+				if (!iter->skipFirst)
+				{
+					iter->skipFirst = true;
+					iter++;
+					continue;
+				}
+				HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(iter->clientId, iter->spaceObjId, iter->dmg);
+				XActivateEquip eq;
+				eq.iSpaceID = iter->spaceObjId;
+				eq.bActivate = false;
+				for (ushort sid : iter->shields)
+				{
+					eq.sID = sid;
+					HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->clientId, eq);
+				}
+				iter = shieldSyncData.erase(iter);
+			}
+		}
 	}
 }

@@ -26,6 +26,10 @@
 #include <sstream>
 #include "minijson_writer.hpp"
 
+#include <thread>
+#include <atomic>
+#include <mutex>
+
 static int set_iPluginDebug = 0;
 static bool cloakStateChanged = true;
 static string filePath = "c:/stats/player_cloak_status.json";
@@ -102,6 +106,18 @@ struct CLIENTCDSTRUCT
 	CDSTRUCT cd;
 };
 
+std::atomic_bool shouldKillSyncThread = false;
+std::mutex syncMutex;
+std::thread cloakSyncThread;
+
+struct CloakSyncData
+{
+	uint client;
+	XActivateEquip eq;
+	bool skipFirst = false;
+};
+vector<CloakSyncData> cloakSyncData;
+
 static unordered_map<uint, CLOAK_INFO> mapClientsCloak;
 static unordered_map<uint, CLIENTCDSTRUCT> mapClientsCD;
 
@@ -132,6 +148,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		shouldKillSyncThread = true;
+		cloakSyncThread.join();
 	}
 	return true;
 }
@@ -1070,11 +1088,42 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 	}
 	if (cd->second.iState == STATE_CLOAK_OFF || cd->second.iState == STATE_CLOAK_CHARGING)
 	{
-		static XActivateEquip eq;
+		XActivateEquip eq;
 		eq.bActivate = false;
 		eq.iSpaceID = pShip.iSpaceID;
 		eq.sID = cd->second.iCloakSlot;
-		HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(client, eq);
+		std::lock_guard<std::mutex> saveLock(syncMutex);
+		cloakSyncData.push_back({client, eq});
+	}
+}
+
+void CloakSyncThread()
+{
+	while (true)
+	{
+		if (shouldKillSyncThread)
+		{
+			return;
+		}
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(500));
+
+		if (cloakSyncData.empty())
+		{
+			continue;
+		}
+		std::lock_guard<std::mutex> saveLock(syncMutex);
+		for (auto& iter = cloakSyncData.begin(); iter != cloakSyncData.end();)
+		{
+			if (!iter->skipFirst)
+			{
+				iter->skipFirst = true;
+				iter++;
+				continue;
+			}
+			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, iter->eq);
+			iter = cloakSyncData.erase(iter);
+		}
 	}
 }
 
@@ -1106,6 +1155,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 
+	cloakSyncThread = std::thread(CloakSyncThread);
 
 	return p_PI;
 }

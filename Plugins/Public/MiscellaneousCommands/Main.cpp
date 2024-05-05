@@ -229,6 +229,12 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 		return false;
 	}
 
+	if (!Players[targetClient].iShipID)
+	{
+		PrintUserCmdText(iClientID, L"ERR %ls is not in space!", memberName.c_str());
+		return false;
+	}
+
 	PrintUserCmdText(iClientID, L"Plotting waypoint to: %ls", memberName.c_str());
 
 	RequestPathStruct bestPathStruct;

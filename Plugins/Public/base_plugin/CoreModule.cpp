@@ -70,7 +70,6 @@ void CoreModule::Spawn()
 		si.Costume.righthand = 0;
 		si.Costume.accessories = 0;
 		si.iVoiceID = CreateID("atc_leg_m01");
-		si.baseId = base->proxy_base;
 		strncpy_s(si.cNickName, sizeof(si.cNickName), base->nickname.c_str(), base->nickname.size());
 
 		// Check to see if the hook IDS limit has been reached
@@ -85,6 +84,10 @@ void CoreModule::Spawn()
 		base->solar_ids = solar_ids;
 
 		wstring basename = base->basename;
+		//if (base->affiliation)
+		//{
+		//	basename = HkGetWStringFromIDS(Reputation::get_name(base->affiliation)) + L" - " + base->basename;
+		//}
 
 		struct PlayerData* pd = 0;
 		while (pd = Players.traverse_active(pd))
@@ -102,7 +105,6 @@ void CoreModule::Spawn()
 		infocard.begin_mad_lib(solar_ids); // infocard
 		infocard.end_mad_lib();
 		pub::Reputation::Alloc(si.iRep, infoname, infocard);
-		pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
 
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;

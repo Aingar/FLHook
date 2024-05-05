@@ -24,8 +24,6 @@
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
-const ushort DEFAULT_AFFILIATION = MakeId("fc_uk_grp");
-
 void LogCheater(uint client, const wstring& reason);
 uint GetAffliationFromClient(uint client);
 
@@ -512,7 +510,7 @@ enum class POPUPWINDOWTYPE
 
 struct CLIENT_DATA
 {
-	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false), docking_base(0),
+	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false),
 		player_base(0), last_player_base(0), lastPopupPage(0), lastPopupWindowType(POPUPWINDOWTYPE::NONE){}
 
 	// If true reverse the last sell by readding the item.
@@ -536,8 +534,6 @@ struct CLIENT_DATA
 	// Set to player base hash if ship is in base or was last in a player base-> 0 after 
 	// docking at any non player base->
 	uint last_player_base;
-
-	uint docking_base;
 
 	uint lastPopupPage;
 	POPUPWINDOWTYPE lastPopupWindowType;

@@ -159,7 +159,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	base_status += L"<TEXT>" + XMLText(base->basename) + L", " + HkGetWStringFromIDS(sys->strid_name) + L"</TEXT><PARA/>";
 	
 	wstring affiliation_string = L"";
-	if (base->affiliation && base->affiliation != DEFAULT_AFFILIATION)
+	if (base->affiliation)
 	{
 		affiliation_string = HkGetWStringFromIDS(Reputation::get_name(base->affiliation));
 	}

@@ -76,23 +76,20 @@ void CoreModule::Spawn()
 
 		// Check to see if the hook IDS limit has been reached
 		static uint solar_ids = 526000;
+		static uint description_ids = 268000;
 		if (++solar_ids > 526999)
 		{
 			solar_ids = 0;
 			return;
 		}
+		++description_ids;
 
 		// Send the base name to all players that are online
 		base->solar_ids = solar_ids;
+		base->description_ids = description_ids;
+		base->description_text = BuildBaseDescription(base);
 
 		wstring basename = base->basename;
-
-		struct PlayerData* pd = 0;
-		while (pd = Players.traverse_active(pd))
-		{
-			HkChangeIDSString(pd->iOnlineID, base->solar_ids, basename);
-		}
-
 
 		// Set the base name
 		FmtStr infoname(solar_ids, 0);
@@ -138,6 +135,14 @@ void CoreModule::Spawn()
 			POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
 			base->baseCSolar->dockTargetId2 = 0;
 			base->baseCSolar->Release();
+		}
+
+		struct PlayerData* pd = 0;
+		while (pd = Players.traverse_active(pd))
+		{
+			HkChangeIDSString(pd->iOnlineID, base->solar_ids, base->basename);
+			HkChangeIDSString(pd->iOnlineID, base->description_ids, base->description_text);
+			SendBaseIDSList(pd->iOnlineID, base->baseCSolar->id, base->description_ids);
 		}
 
 		if (shield_reinforcement_threshold_map.count(base->base_level))
@@ -363,7 +368,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 	{
 		return incoming_damage;
 	}
-	base->shield_timeout = time(nullptr) + 60;
+	base->shield_timeout = (int)time(nullptr) + 60;
 	if (!base->isShieldOn)
 	{
 		base->isShieldOn = true;

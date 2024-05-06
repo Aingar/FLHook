@@ -771,6 +771,8 @@ extern unordered_map<uint, float> siegeWeaponryMap;
 
 extern unordered_set<uint> humanCargoList;
 
+extern unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
+
 // From EquipmentUtilities.cpp
 namespace EquipmentUtilities
 {

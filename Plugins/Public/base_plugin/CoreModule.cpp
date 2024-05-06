@@ -22,6 +22,7 @@ CoreModule::~CoreModule()
 {
 	if (space_obj)
 	{
+		POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
 		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);
 		space_obj = 0;
@@ -134,6 +135,8 @@ void CoreModule::Spawn()
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 		if (base->baseCSolar)
 		{
+			POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
+			base->baseCSolar->dockTargetId2 = 0;
 			base->baseCSolar->Release();
 		}
 

@@ -20,6 +20,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
+unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
 
 /// 0 = HTML, 1 = JSON, 2 = Both
@@ -442,6 +443,18 @@ void Shutdown()
 
 void LoadSettings()
 {
+	Universe::IBase* base = Universe::GetFirstBase();
+	while (base)
+	{
+		if (string(base->cNickname).find("proxy_base") != string::npos)
+		{
+			CSolar* solar = reinterpret_cast<CSolar*>(CObject::Find(base->lSpaceObjID, CObject::CSOLAR_OBJECT));
+			solar->Release();
+			solar->dockTargetId2 = 0;
+		}
+		base = Universe::GetNextBase();
+	}
+
 	returncode = DEFAULT_RETURNCODE;
 	load_settings_required = true;
 }
@@ -1524,8 +1537,10 @@ bool UserCmd_Process(uint client, const wstring &args)
 
 static void ForcePlayerBaseDock(uint client, PlayerBase *base)
 {
-	clients[client].player_base = base->base;
-	clients[client].last_player_base = base->base;
+	auto& cd = clients[client];
+	cd.player_base = base->base;
+	cd.last_player_base = base->base;
+	cd.docking_base = base->base;
 
 	if (set_plugin_debug > 1)
 	{
@@ -1879,10 +1894,20 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 	if (set_plugin_debug > 1)
 		ConPrint(L"PlayerLaunch ship=%u client=%u\n", ship, client);
 
-	if (!clients[client].player_base)
+	auto& cd = clients[client];
+	if (!cd.player_base)
 		return;
 
-	player_launch_base = GetPlayerBase(clients[client].player_base);
+	player_launch_base = GetPlayerBase(cd.player_base);
+
+	for (auto& solar : POBSolarsBySystemMap[player_launch_base->system])
+	{
+		if (solar == player_launch_base->baseCSolar)
+		{
+			continue;
+		}
+		solar->dockTargetId2 = 0;
+	}
 	clients[client].player_base = 0;
 }
 
@@ -1890,6 +1915,20 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	if (player_launch_base)
+	{
+		for (auto& solar : POBSolarsBySystemMap[player_launch_base->system])
+		{
+			if (solar == player_launch_base->baseCSolar)
+			{
+				continue;
+			}
+			solar->dockTargetId2 = player_launch_base->proxy_base;
+		}
+		player_launch_base = nullptr;
+	}
+
 	SyncReputationForClientShip(ship, client);
 }
 
@@ -3197,7 +3236,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&RequestEvent, PLUGIN_HkIServerImpl_RequestEvent, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LaunchPosHook, PLUGIN_LaunchPosHook, 0));
+	//p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LaunchPosHook, PLUGIN_LaunchPosHook, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));

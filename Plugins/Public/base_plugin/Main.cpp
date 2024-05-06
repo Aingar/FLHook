@@ -1159,52 +1159,24 @@ __declspec(naked) void HkCb_IsDockableErrorNaked()
 	}
 }
 
-bool __stdcall HkCb_Land(IObjInspectImpl *obj, uint base_dock_id, uint base)
+bool __stdcall HkCb_Land(IObjRW *obj, uint base_dock_id, uint base)
 {
-	if (obj)
+	if (!obj)
 	{
-		uint client = HkGetClientIDByShip(obj->get_id());
-		if (client)
-		{
-			if (set_plugin_debug > 1)
-				ConPrint(L"Land client=%u base_dock_id=%u base=%u\n", client, base_dock_id, base);
-
-			// If we're docking at a player base, do nothing.
-			if (clients[client].player_base)
-				return true;
-
-			CUSTOM_MOBILE_DOCK_CHECK_STRUCT info;
-			info.iClientID = client;
-			info.isMobileDocked = false;
-			Plugin_Communication(CUSTOM_MOBILE_DOCK_CHECK, &info);
-			if (!info.isMobileDocked)
-			{
-				clients[client].last_player_base = 0;
-			}
-
-			// If we're not docking at a player base then clear 
-			// the last base flag
-			clients[client].player_base = 0;
-
-			if (base == 0)
-			{
-				char szSystem[1024];
-				pub::GetSystemNickname(szSystem, sizeof(szSystem), Players[client].iSystemID);
-
-				char szProxyBase[1024];
-				sprintf(szProxyBase, "%s_proxy_base", szSystem);
-
-				uint iProxyBaseID = CreateID(szProxyBase);
-
-				clients[client].player_base = base_dock_id;
-				clients[client].last_player_base = base_dock_id;
-				if (set_plugin_debug > 1)
-					ConPrint(L"Land[2] client=%u baseDockID=%u base=%u player_base=%u\n", client, base_dock_id, base, clients[client].player_base);
-				pub::Player::ForceLand(client, iProxyBaseID);
-				return false;
-			}
-		}
+		return true;
 	}
+	uint client = reinterpret_cast<CShip*>(obj->cobj)->ownerPlayer;
+	if (!client)
+	{
+		return true;
+	}
+
+	auto& clientData = clients[client];
+
+	clientData.player_base = clientData.docking_base;
+	clientData.last_player_base = clientData.docking_base;
+	clientData.docking_base = 0;
+
 	return true;
 }
 
@@ -1611,20 +1583,6 @@ static bool IsDockingAllowed(PlayerBase *base, uint client)
 	return false;
 }
 
-void __stdcall SetTarget(uint iClientID, XSetTarget const& setTarget)
-{
-	returncode = DEFAULT_RETURNCODE;
-	if (setTarget.iSlot)
-	{
-		return;
-	}
-	if (player_bases.count(setTarget.iSpaceID))
-	{
-		PlayerBase* base = player_bases.at(setTarget.iSpaceID);
-		pub::SpaceObj::SetRelativeHealth(setTarget.iSpaceID, base->base_health / base->max_base_health);
-	}
-}
-
 int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& iCancel, enum DOCK_HOST_RESPONSE& response)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1709,6 +1667,8 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 		response = ACCESS_DENIED;
 		return 0;
 	}
+
+	clients[client].docking_base = base;
 
 	SendBaseStatus(client, pbase);
 	
@@ -3245,7 +3205,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetTarget, PLUGIN_HkIServerImpl_SetTarget, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));

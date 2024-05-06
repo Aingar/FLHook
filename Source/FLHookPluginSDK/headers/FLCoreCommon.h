@@ -1447,15 +1447,17 @@ namespace Universe
 {
 	struct IBase
 	{
-		uint iDunno1;
+		void* vftable;
 		uint iBaseID;
 		char* cNickname;
 		uint iBaseIDS;
 		char* cFilepath;
 		uint iSystemID;
-		uint iDunno4[4];
+		st6::string baseRunBy;
 		ulong lSpaceObjID;
-		uint iDunno5[10];
+		bool bDunno1;
+		uint iDunno6[15];
+		bool bDunno2;
 	};
 	struct IMPORT ISystem
 	{
@@ -3036,7 +3038,7 @@ public:
 	CArchGroupManager archGroupManager;                        // 81
 	bool isCELauncher;                                         // 87 sub_6CEA4A0 casts eq to CELauncher only if this is true
 	uint dockTargetId;                                         // 88
-	struct IObjInspectImpl* dockTargetIObj;                           // 89
+	uint dockTargetId2;				                           // 89
 	uint iDunnoEqObj23;                                        // 90
 	bool boundingExplosionBool;                                // 91
 	float boundingExplosionFloat;                              // 92

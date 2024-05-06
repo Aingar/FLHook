@@ -1454,10 +1454,24 @@ namespace Universe
 		char* cFilepath;
 		uint iSystemID;
 		st6::string baseRunBy;
-		ulong lSpaceObjID;
+		uint lSpaceObjID;
 		bool bDunno1;
-		uint iDunno6[15];
-		bool bDunno2;
+		uint shipSmall01;
+		uint shipSmall02;
+		uint shipSmall03;
+		uint shipMedium01;
+		uint shipMedium02;
+		uint shipMedium03;
+		uint shipLarge01;
+		uint shipLarge02;
+		uint shipLarge03;
+		uint terrainTiny;
+		uint terrainSmall;
+		uint terrainMedium;
+		uint terrainLarge;
+		uint terrainDynamic1;
+		uint terrainDynamic2;
+		bool autosaveForbidden;
 	};
 	struct IMPORT ISystem
 	{

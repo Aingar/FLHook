@@ -37,7 +37,8 @@ void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item)
 		uint client = pd->iOnlineID;
 		if (!HkIsInCharSelectMenu(client))
 		{
-			if (clients[client].player_base == base->base)
+			auto& cd = clients[client];
+			if (cd.player_base == base->base)
 			{
 				// NB: If price is 0 it will not be shown at all.
 				wchar_t buf[200];
@@ -49,7 +50,7 @@ void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item)
 				}
 				// If the item is buy only and this is not an admin then it is
 				// buy only at the client
-				else if (item.min_stock >= item.quantity && !clients[client].admin)
+				else if (item.min_stock >= item.quantity && !cd.admin)
 				{
 					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
 						base->proxy_base, good, item.price, 1, 0);

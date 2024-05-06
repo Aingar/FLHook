@@ -1544,7 +1544,7 @@ static void ForcePlayerBaseDock(uint client, PlayerBase *base)
 
 	if (set_plugin_debug > 1)
 	{
-		ConPrint(L"ForcePlayerBaseDock client=%u player_base=%u\n", client, clients[client].player_base);
+		ConPrint(L"ForcePlayerBaseDock client=%u player_base=%u\n", client, cd.player_base);
 	}
 	HkBeamById(client, base->proxy_base);
 }
@@ -1705,19 +1705,21 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	auto& cd = clients[client];
+
 	if (set_plugin_debug > 1)
-		ConPrint(L"CharacterSelect_AFTER client=%u player_base=%u\n", client, clients[client].player_base);
+		ConPrint(L"CharacterSelect_AFTER client=%u player_base=%u\n", client, cd.player_base);
 
 	// If this ship is in a player base is then set then docking ID to emulate
 	// a landing.
 	LoadDockState(client);
-	if (clients[client].player_base)
+	if (cd.player_base)
 	{
 		if (set_plugin_debug > 1)
-			ConPrint(L"CharacterSelect_AFTER[2] client=%u player_base=%u\n", client, clients[client].player_base);
+			ConPrint(L"CharacterSelect_AFTER[2] client=%u player_base=%u\n", client, cd.player_base);
 
 		// If this base does not exist, dump the ship into space
-		PlayerBase *base = GetPlayerBase(clients[client].player_base);
+		PlayerBase *base = GetPlayerBase(cd.player_base);
 		if (!base)
 		{
 			DeleteDockState(client);
@@ -1737,14 +1739,16 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 
 void __stdcall BaseEnter(uint base, uint client)
 {
+	auto& cd = clients[client];
+
 	if (set_plugin_debug > 1)
 		ConPrint(L"BaseEnter base=%u client=%u player_base=%u last_player_base=%u\n", base, client,
-			clients[client].player_base, clients[client].last_player_base);
+			cd.player_base, cd.last_player_base);
 
 	returncode = DEFAULT_RETURNCODE;
 
-	clients[client].admin = false;
-	clients[client].viewshop = false;
+	cd.admin = false;
+	cd.viewshop = false;
 
 	// Check if ships is currently docked on a docking module
 	CUSTOM_MOBILE_DOCK_CHECK_STRUCT mobileCheck;
@@ -1758,15 +1762,15 @@ void __stdcall BaseEnter(uint base, uint client)
 	}
 
 	// If the last player base is set then we have not docked at a non player base yet.
-	if (clients[client].last_player_base)
+	if (cd.last_player_base)
 	{
-		clients[client].player_base = clients[client].last_player_base;
+		cd.player_base = cd.last_player_base;
 	}
 
 	// If the player is registered as being in a player controlled base then 
 	// send the economy update, player system update and save a file to indicate
 	// that we're in the base->
-	if (clients[client].player_base)
+	if (cd.player_base)
 	{
 		PlayerBase *base = GetPlayerBaseForClient(client);
 		if (base)
@@ -1796,29 +1800,31 @@ void __stdcall BaseExit(uint base, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	auto& cd = clients[client];
+
 	if (set_plugin_debug > 1)
-		ConPrint(L"BaseExit base=%u client=%u player_base=%u\n", base, client, clients[client].player_base);
+		ConPrint(L"BaseExit base=%u client=%u player_base=%u\n", base, client, cd.player_base);
 
 	// Reset client state and save it retaining the last player base ID to deal with respawn.
-	clients[client].admin = false;
-	clients[client].viewshop = false;
+	cd.admin = false;
+	cd.viewshop = false;
 
 	CUSTOM_MOBILE_DOCK_CHECK_STRUCT mobileCheck;
 	mobileCheck.iClientID = client;
 	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_MOBILE_DOCK_CHECK, &mobileCheck);
 
-	if (clients[client].player_base || mobileCheck.isMobileDocked)
+	if (cd.player_base || mobileCheck.isMobileDocked)
 	{
 		if (set_plugin_debug)
 		{
-			ConPrint(L"BaseExit base=%u client=%u player_base=%u\n", base, client, clients[client].player_base);
+			ConPrint(L"BaseExit base=%u client=%u player_base=%u\n", base, client, cd.player_base);
 		}
 
-		if (clients[client].player_base) {
-			clients[client].last_player_base = clients[client].player_base;
-			clients[client].player_base = 0;
+		if (cd.player_base) {
+			cd.last_player_base = cd.player_base;
+			cd.player_base = 0;
 			SaveDockState(client);
-			clients[client].player_base = clients[client].last_player_base;
+			cd.player_base = cd.last_player_base;
 		}
 	}
 	else
@@ -1908,7 +1914,7 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 		}
 		solar->dockTargetId2 = 0;
 	}
-	clients[client].player_base = 0;
+	cd.player_base = 0;
 }
 
 
@@ -1967,11 +1973,13 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
+		auto& cd = clients[client];
+
 		if (base->market_items.find(gsi.iArchID) == base->market_items.end()
-			&& !clients[client].admin)
+			&& !cd.admin)
 		{
 			PrintUserCmdText(client, L"ERR: Base will not accept goods");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
@@ -1979,7 +1987,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		{
 
 			PrintUserCmdText(client, L"ERR: Cargo is not allowed on Player Bases");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
@@ -1990,7 +1998,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 
 		if (price < 0)
 		{
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
 
 			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
@@ -2011,20 +2019,20 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		if (base->money < price)
 		{
 			PrintUserCmdText(client, L"ERR: Base cannot accept goods, insufficient cash");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
 		if ((item.quantity + count) > item.max_stock)
 		{
 			PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
 		if (count > LONG_MAX / item.price)
 		{
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
 
 			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
@@ -2054,7 +2062,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		if (fValue + price > 2100000000 || lNewMoney > 2100000000)
 		{
 			PrintUserCmdText(client, L"ERR: Character too valuable.");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
@@ -2068,7 +2076,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		else
 		{
 			PrintUserCmdText(client, L"ERR: Base will not accept goods");
-			clients[client].reverse_sell = true;
+			cd.reverse_sell = true;
 			return;
 		}
 
@@ -2092,7 +2100,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		Log::LogBaseAction(wstos(base->basename), msg.c_str());
 
 		//Event plugin hooks
-		if (HookExt::IniGetB(client, "event.enabled") && (clients[client].reverse_sell == false))
+		if (HookExt::IniGetB(client, "event.enabled") && (cd.reverse_sell == false))
 		{
 			//HkMsgU(L"DEBUG: POB event enabled");
 			if (base->basename == HookExt::IniGetWS(client, "event.eventpob"))
@@ -2116,7 +2124,8 @@ void __stdcall ReqRemoveItem(unsigned short slot, int count, unsigned int client
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (clients[client].player_base && clients[client].reverse_sell)
+	auto& cd = clients[client];
+	if (cd.player_base && cd.reverse_sell)
 	{
 		returncode = SKIPPLUGINS;
 		int hold_size;
@@ -2128,19 +2137,20 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	uint player_base = clients[client].player_base;
+	auto& cd = clients[client];
+	uint player_base = cd.player_base;
 	if (player_base)
 	{
-		if (clients[client].reverse_sell)
+		if (cd.reverse_sell)
 		{
 			returncode = SKIPPLUGINS;
-			clients[client].reverse_sell = false;
+			cd.reverse_sell = false;
 
-			foreach(clients[client].cargo, CARGO_INFO, ci)
+			for(CARGO_INFO& ci : cd.cargo)
 			{
-				if (ci->iID == iID)
+				if (ci.iID == iID)
 				{
-					Server.ReqAddItem(ci->iArchID, ci->hardpoint.value, count, ci->fStatus, ci->bMounted, client);
+					Server.ReqAddItem(ci.iArchID, ci.hardpoint.value, count, ci.fStatus, ci.bMounted, client);
 					return;
 				}
 			}
@@ -2173,36 +2183,39 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
-		uint count = gbi.iCount;
-		if (count > base->market_items[gbi.iGoodID].quantity)
-			count = base->market_items[gbi.iGoodID].quantity;
+		auto& cd = clients[client];
+		auto& mi = base->market_items[gbi.iGoodID];
 
-		int price = (int)base->market_items[gbi.iGoodID].price * count;
+		uint count = gbi.iCount;
+		if (count > mi.quantity)
+			count = mi.quantity;
+
+		int price = (int)mi.price * count;
 		int curr_money;
 		pub::Player::InspectCash(client, curr_money);
 
 		const wstring &charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 
 		// In theory, these should never be called.
-		if (count == 0 || ((base->market_items[gbi.iGoodID].min_stock > (base->market_items[gbi.iGoodID].quantity - count)) && !clients[client].admin))
+		if (count == 0 || ((mi.min_stock > (mi.quantity - count)) && !cd.admin))
 		{
 			PrintUserCmdText(client, L"ERR Base will not sell goods");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			clients[client].stop_buy = true;
+			cd.stop_buy = true;
 			return;
 		}
 		else if (curr_money < price)
 		{
 			PrintUserCmdText(client, L"ERR Not enough credits");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			clients[client].stop_buy = true;
+			cd.stop_buy = true;
 			return;
 		}
 
-		if (((base->market_items[gbi.iGoodID].min_stock > (base->market_items[gbi.iGoodID].quantity - count)) && clients[client].admin))
+		if (((mi.min_stock > (mi.quantity - count)) && cd.admin))
 			PrintUserCmdText(client, L"Permitted player-owned base good sale in violation of shop's minimum stock value due to base admin login.");
 
-		clients[client].stop_buy = false;
+		cd.stop_buy = false;
 		base->RemoveMarketGood(gbi.iGoodID, count);
 		pub::Player::AdjustCash(client, 0 - price);
 		base->ChangeMoney(price);
@@ -2263,10 +2276,10 @@ void __stdcall ReqAddItem(unsigned int good, char const *hardpoint, int count, f
 	if (base)
 	{
 		returncode = SKIPPLUGINS;
-		if (clients[client].stop_buy)
+		auto& cd = clients[client];
+		if (cd.stop_buy)
 		{
-			if (clients[client].stop_buy)
-				clients[client].stop_buy = false;
+			clients[client].stop_buy = false;
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		}
 	}

@@ -60,14 +60,16 @@ void DeleteBase(PlayerBase* base, bool moveFile)
 
 void LoadDockState(uint client)
 {
-	clients[client].player_base = HookExt::IniGetI(client, "base.player_base");
-	clients[client].last_player_base = HookExt::IniGetI(client, "base.last_player_base");
+	auto& cd = clients[client];
+	cd.player_base = HookExt::IniGetI(client, "base.player_base");
+	cd.last_player_base = HookExt::IniGetI(client, "base.last_player_base");
 }
 
 void SaveDockState(uint client)
 {
-	HookExt::IniSetI(client, "base.player_base", clients[client].player_base);
-	HookExt::IniSetI(client, "base.last_player_base", clients[client].last_player_base);
+	auto& cd = clients[client];
+	HookExt::IniSetI(client, "base.player_base", cd.player_base);
+	HookExt::IniSetI(client, "base.last_player_base", cd.last_player_base);
 }
 
 void DeleteDockState(uint client)

@@ -300,7 +300,7 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"Welcome administrator, all base command and control functions are available.");
 			BaseLogging("Base %s: player %s logged in as an admin", wstos(base->basename).c_str(), wstos(charname).c_str());
 		}
-		if (foundBp.viewshop)
+		else if (foundBp.viewshop)
 		{
 			clients[client].viewshop = true;
 			PrintUserCmdText(client, L"OK Access granted");
@@ -1750,9 +1750,10 @@ namespace PlayerCommands
 
 	void ShowShopHelp(uint client)
 	{
+		auto& cd = clients[client];
 		wstring status = L"<RDL><PUSH/>";
 		status += L"<TEXT>Available commands:</TEXT><PARA/>";
-		if (clients[client].admin)
+		if (cd.admin)
 		{
 			status += L"<TEXT>  /shop price [item] [price]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
@@ -1772,7 +1773,7 @@ namespace PlayerCommands
 		message.begin_mad_lib(500001);
 		message.end_mad_lib();
 
-		clients[client].lastPopupWindowType = POPUPWINDOWTYPE::SHOP_HELP;
+		cd.lastPopupWindowType = POPUPWINDOWTYPE::SHOP_HELP;
 
 		HkChangeIDSString(client, 1244, L"BACK");
 		HkChangeIDSString(client, 1245, L"CLOSE");
@@ -1888,7 +1889,9 @@ namespace PlayerCommands
 		}
 
 		const wstring& cmd = GetParam(args, ' ', 1);
-		if (!clients[client].admin && (!clients[client].viewshop || (cmd == L"price" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
+
+		auto& cd = clients[client];
+		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
 		{
 			PrintUserCmdText(client, L"ERROR: Access denied");
 			return;
@@ -2032,7 +2035,8 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (!clients[client].admin && !clients[client].viewshop)
+		auto& cd = clients[client];
+		if (!cd.admin && !cd.viewshop)
 		{
 			PrintUserCmdText(client, L"ERR Access denied");
 			return;

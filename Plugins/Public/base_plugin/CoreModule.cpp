@@ -133,7 +133,6 @@ void CoreModule::Spawn()
 		if (base->baseCSolar)
 		{
 			POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
-			base->baseCSolar->dockTargetId2 = 0;
 			base->baseCSolar->Release();
 		}
 

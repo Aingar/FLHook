@@ -299,6 +299,7 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"OK Access granted");
 			PrintUserCmdText(client, L"Welcome administrator, all base command and control functions are available.");
 			BaseLogging("Base %s: player %s logged in as an admin", wstos(base->basename).c_str(), wstos(charname).c_str());
+			pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_pob_admin_login"));
 		}
 		else if (foundBp.viewshop)
 		{
@@ -963,6 +964,17 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"OK");
 	}
 
+	void UpdateBaseInfoText(PlayerBase* pb)
+	{
+		pb->description_text = BuildBaseDescription(pb);
+		PlayerData* pd = nullptr;
+		while (pd = Players.traverse_active(pd))
+		{
+			HkChangeIDSString(pd->iOnlineID, pb->description_ids, pb->description_text);
+			SendBaseIDSList(pd->iOnlineID, pb->baseCSolar->id, pb->description_ids);
+		}
+	}
+
 	void BaseInfo(uint client, const wstring& args)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
@@ -998,6 +1010,7 @@ namespace PlayerCommands
 			}
 
 			base->Save();
+			UpdateBaseInfoText(base);
 		}
 		else if (iPara > 0 && iPara <= MAX_PARAGRAPHS && cmd == L"d")
 		{
@@ -1014,6 +1027,7 @@ namespace PlayerCommands
 			}
 
 			base->Save();
+			UpdateBaseInfoText(base);
 		}
 		else
 		{
@@ -1838,9 +1852,9 @@ namespace PlayerCommands
 					continue;
 				}
 				wchar_t buf[1000];
-				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s %0.0f credits stock: %u min %u max</TEXT><PARA/>",
+				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s, buy $%u sell $%u, limits: %u/%u</TEXT><PARA/>",
 					globalItem, i.second.quantity, HtmlEncode(name).c_str(),
-					i.second.price, i.second.min_stock, i.second.max_stock);
+					i.second.sellPrice, i.second.price, i.second.min_stock, i.second.max_stock);
 				status += buf;
 				item++;
 			}
@@ -1900,11 +1914,19 @@ namespace PlayerCommands
 		if (cmd == L"price")
 		{
 			int item = ToInt(GetParam(args, ' ', 2));
-			int money = ToInt(GetParam(args, ' ', 3));
+			int sellPrice = ToInt(GetParam(args, ' ', 3));
+			int buyPrice = ToInt(GetParam(args, ' ', 4));
 
-			if (money < 1 || money > 1'000'000'000)
+			if (sellPrice < 1 || sellPrice > 1'000'000'000
+				|| buyPrice < 1 || buyPrice > 1'000'000'000)
 			{
-				PrintUserCmdText(client, L"ERR Price not valid");
+				PrintUserCmdText(client, L"ERR Prices not valid");
+				return;
+			}
+
+			if (sellPrice > buyPrice)
+			{
+				PrintUserCmdText(client, L"ERR Sell price must be less or equal to buy price!");
 				return;
 			}
 
@@ -1914,7 +1936,8 @@ namespace PlayerCommands
 				++curr_item;
 				if (curr_item == item)
 				{
-					i.second.price = (float)money;
+					i.second.price = buyPrice;
+					i.second.sellPrice = sellPrice;
 					SendMarketGoodUpdated(base, i.first, i.second);
 					base->Save();
 
@@ -1924,7 +1947,7 @@ namespace PlayerCommands
 
 					wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 					const GoodInfo* gi = GoodList::find_by_id(i.first);
-					BaseLogging("Base %s: player %s changed price of %s to %d", wstos(base->basename).c_str(), wstos(charname).c_str(), wstos(HkGetWStringFromIDS(gi->iIDSName)).c_str(), money);
+					BaseLogging("Base %s: player %s changed prices of %s to %d/%d", wstos(base->basename).c_str(), wstos(charname).c_str(), wstos(HkGetWStringFromIDS(gi->iIDSName)).c_str(), sellPrice, buyPrice);
 					return;
 				}
 			}
@@ -1937,6 +1960,10 @@ namespace PlayerCommands
 			uint max_stock = ToUInt(GetParam(args, ' ', 4));
 
 			int curr_item = 0;
+			if (item == 0 || item > base->market_items.size())
+			{
+				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
+			}
 			for (auto& i : base->market_items)
 			{
 				++curr_item;
@@ -1965,6 +1992,10 @@ namespace PlayerCommands
 			int item = ToInt(GetParam(args, ' ', 2));
 
 			int curr_item = 0;
+			if (item == 0 || item > base->market_items.size())
+			{
+				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
+			}
 			for (auto& i : base->market_items)
 			{
 				++curr_item;
@@ -1977,6 +2008,7 @@ namespace PlayerCommands
 				i.second.min_stock = 0;
 				i.second.max_stock = 0;
 				SendMarketGoodUpdated(base, i.first, i.second);
+				base->pinned_market_items.erase(i.first);
 				base->market_items.erase(i.first);
 				base->Save();
 
@@ -2016,6 +2048,43 @@ namespace PlayerCommands
 			int page = ToInt(GetParam(args, ' ', 3));
 			ShowShopStatus(client, base, ToLower(substring), page);
 			PrintUserCmdText(client, L"OK");
+		}
+		else if (cmd == L"pin")
+		{
+			int item = ToInt(GetParam(args, ' ', 2));
+
+			int curr_item = 0;
+			if (item == 0 || item > base->market_items.size())
+			{
+				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
+			}
+			for (auto& i : base->market_items)
+			{
+				++curr_item;
+				if (curr_item != item)
+				{
+					continue;
+				}
+				if (!i.second.is_pinned)
+				{
+					if (base->pinned_market_items.size() >= MAX_PINNED_ITEMS)
+					{
+						PrintUserCmdText(client, L"ERR Already at the limit of pinned items!");
+						return;
+					}
+					i.second.is_pinned = true;
+					base->pinned_market_items[i.first] = &i.second;
+					PrintUserCmdText(client, L"Item pinned!");
+				}
+				else
+				{
+					base->pinned_market_items.erase(i.first);
+					i.second.is_pinned = false;
+					PrintUserCmdText(client, L"Item unpinned!");
+				}
+				base->Save();
+				UpdateBaseInfoText(base);
+			}
 		}
 		else
 		{
@@ -2595,7 +2664,7 @@ namespace PlayerCommands
 			return;
 		}
 
-		uint currTime = time(nullptr);
+		uint currTime = (uint)time(nullptr);
 
 		if (base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown > currTime )
 		{
@@ -2652,6 +2721,7 @@ namespace PlayerCommands
 			base->vulnerabilityWindow1 = { vulnerabilityWindowOneStart, vulnerabilityWindowOneEnd };
 			base->lastVulnerabilityWindowChange = currTime;
 			PrintUserCmdText(client, L"OK Vulnerability window set.");
+			UpdateBaseInfoText(base);
 			return;
 		}
 
@@ -2669,6 +2739,7 @@ namespace PlayerCommands
 		}
 		base->lastVulnerabilityWindowChange = currTime;
 
+		UpdateBaseInfoText(base);
 		PrintUserCmdText(client, L"OK Vulnerability window set.");
 	}
 

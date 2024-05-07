@@ -13,6 +13,13 @@ void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem)
 	SendCommand(client, buf);
 }
 
+void SendBaseIDSList(uint client, uint solarId, uint ids)
+{
+	wchar_t buf[30];
+	_snwprintf(buf, sizeof(buf), L" SolarInfo %u %u", solarId, ids);
+	SendCommand(client, buf);
+}
+
 void SendSetBaseInfoText(uint client, const wstring& message)
 {
 	SendCommand(client, wstring(L" SetBaseInfoText ") + message);
@@ -45,21 +52,21 @@ void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item)
 				// If the base has none of the item then it is buy-only at the client.
 				if (item.quantity == 0)
 				{
-					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-						base->proxy_base, good, item.price, 1, 0);
+					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+						base->proxy_base, good, item.price, 1, 0, item.sellPrice);
 				}
 				// If the item is buy only and this is not an admin then it is
 				// buy only at the client
 				else if (item.min_stock >= item.quantity && !cd.admin)
 				{
-					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-						base->proxy_base, good, item.price, 1, 0);
+					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+						base->proxy_base, good, item.price, 1, 0, item.sellPrice);
 				}
 				// Otherwise this item is for sale by the client.
 				else
 				{
-					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-						base->proxy_base, good, item.price, 0, item.quantity);
+					_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+						base->proxy_base, good, item.price, 0, item.quantity, item.sellPrice);
 				}
 				SendCommand(client, buf);
 			}
@@ -87,21 +94,21 @@ void SendMarketGoodSync(PlayerBase* base, uint client)
 		// If the base has none of the item then it is buy-only at the client.
 		if (item.quantity == 0)
 		{
-			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-				base->proxy_base, good, item.price, 1, 0);
+			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+				base->proxy_base, good, item.price, 1, 0, item.sellPrice);
 		}
 		// If the item is buy only and this is not an admin then it is
 		// buy only at the client
 		else if (item.min_stock >= item.quantity && !clients[client].admin)
 		{
-			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-				base->proxy_base, good, item.price, 1, 0);
+			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+				base->proxy_base, good, item.price, 1, 0, item.sellPrice);
 		}
 		// Otherwise this item is for sale by the client.
 		else
 		{
-			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %f %u %u",
-				base->proxy_base, good, item.price, 0, item.quantity);
+			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+				base->proxy_base, good, item.price, 0, item.quantity, item.sellPrice);
 		}
 		SendCommand(client, buf);
 	}
@@ -119,7 +126,7 @@ wstring UIntToPrettyStr(uint value)
 		if (j == 3)
 		{
 			j = 0;
-			wscBuf.insert(0, L".");
+			wscBuf.insert(0, L",");
 		}
 		wscBuf.insert(0, wstring(1, buf[i]));
 	}
@@ -152,13 +159,14 @@ static wstring IntToStr(uint iValue)
 	return	buf;
 }
 
-void SendBaseStatus(uint client, PlayerBase* base)
+wstring GetBaseHeaderText(PlayerBase* base)
 {
+
 	const Universe::ISystem* sys = Universe::get_system(base->system);
 
 	wstring base_status = L"<RDL><PUSH/>";
 	base_status += L"<TEXT>" + XMLText(base->basename) + L", " + HkGetWStringFromIDS(sys->strid_name) + L"</TEXT><PARA/>";
-	
+
 	wstring affiliation_string = L"";
 	if (base->affiliation && base->affiliation != DEFAULT_AFFILIATION)
 	{
@@ -171,7 +179,64 @@ void SendBaseStatus(uint client, PlayerBase* base)
 
 	base_status += L"<TEXT>Core " + IntToStr(base->base_level) + L" " + affiliation_string + L" Installation</TEXT><PARA/><PARA/>";
 
-	base_status += base->infocard;
+	if (!base->infocard.empty())
+	{
+		base_status += base->infocard;
+	}
+
+	if (!base->pinned_market_items.empty())
+	{
+		base_status += L"<PARA/><TEXT>Highlighted commodities:</TEXT>";
+		for (auto& item : base->pinned_market_items)
+		{
+			wchar_t buf[120];
+			const GoodInfo* gi = GoodList::find_by_id(item.first);
+			if (!gi)
+			{
+				continue;
+			}
+			wstring name = HkGetWStringFromIDS(gi->iIDSName);
+			wstring stock = UIntToPrettyStr(item.second->quantity);
+			wstring buyPrice = UIntToPrettyStr(item.second->price);
+			wstring sellPrice = UIntToPrettyStr(item.second->sellPrice);
+			wstring minStock = UIntToPrettyStr(item.second->min_stock);
+			wstring maxStock = UIntToPrettyStr(item.second->max_stock);
+			swprintf(buf, _countof(buf), L"<PARA/><TEXT>- %ls: x%ls | Buys at $%ls Sells at $%ls | Min: %ls Max: %ls</TEXT>",
+				name.c_str(), stock.c_str(), sellPrice.c_str(), buyPrice.c_str(), minStock.c_str(), maxStock.c_str());
+			base_status += buf;
+		}
+	}
+
+	return base_status;
+}
+
+wstring BuildBaseDescription(PlayerBase* base)
+{
+	wstring base_info = GetBaseHeaderText(base);
+
+	if (single_vulnerability_window)
+	{
+		wchar_t buf[75];
+		swprintf(buf, _countof(buf), L"<PARA/><PARA/><TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60);
+		base_info += buf;
+	}
+	else
+	{
+		wchar_t buf[125];
+		swprintf(buf, _countof(buf), L"<PARA/><PARA/><TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>",
+			base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60,
+			base->vulnerabilityWindow2.start / 60, base->vulnerabilityWindow2.end / 60, base->vulnerabilityWindow2.end % 60);
+		base_info += buf;
+	}
+
+	base_info += L"<POP/></RDL>";
+
+	return base_info;
+}
+
+void SendBaseStatus(uint client, PlayerBase* base)
+{
+	wstring base_status = GetBaseHeaderText(base);
 
 	base_status += L"<TEXT>Cargo Storage: " + Int64ToPrettyStr(base->GetRemainingCargoSpace()) + L" free of " + Int64ToPrettyStr(base->storage_space) + L"</TEXT><PARA/>";
 	base_status += L"<TEXT>Money: " + Int64ToPrettyStr(base->money) + L"</TEXT><PARA/>";

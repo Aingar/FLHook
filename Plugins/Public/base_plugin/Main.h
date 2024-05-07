@@ -24,6 +24,7 @@
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
+static uint MAX_PINNED_ITEMS = 10;
 const ushort DEFAULT_AFFILIATION = MakeId("fc_uk_grp");
 
 void LogCheater(uint client, const wstring& reason);
@@ -87,19 +88,25 @@ struct ARCHTYPE_STRUCT
 
 struct MARKET_ITEM
 {
-	MARKET_ITEM() : quantity(0), price(1.0f), min_stock(100000), max_stock(100000), is_public(false) {}
+	MARKET_ITEM() : quantity(0), price(1), sellPrice(1), min_stock(100000), max_stock(100000), is_pinned(false), is_public(false) {}
 
 	// Number of units of commodity stored in this base
 	uint quantity;
 
-	// Buy/Sell price for commodity.
-	float price;
+	// Buy price for commodity.
+	int price;
+
+	// Sell price for commodity.
+	int sellPrice;
 
 	// Stop selling if the base holds less than this number of items
 	uint min_stock;
 
 	// Stop buying if the base holds more than this number of items
 	uint max_stock;
+
+	// Displays the selected item in the F9 window
+	bool is_pinned;
 
 	// Making public to all players without restrictions
 	bool is_public;
@@ -309,7 +316,7 @@ public:
 	bool AddMarketGood(uint good, uint quantity);
 	void RemoveMarketGood(uint good, uint quantity);
 	void ChangeMoney(INT64 quantity);
-	uint GetRemainingCargoSpace();
+	int GetRemainingCargoSpace();
 	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
 
@@ -345,6 +352,8 @@ public:
 	// The name of the base shown to other players
 	wstring basename;
 
+	wstring description_text;
+
 	// The infocard for the base
 	wstring infocard;
 
@@ -371,6 +380,8 @@ public:
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 
+	map<uint, MARKET_ITEM*> pinned_market_items;
+
 	// The money this base has
 	INT64 money;
 
@@ -382,6 +393,9 @@ public:
 
 	// When the base is spawned, this is the IDS of the base name
 	uint solar_ids;
+
+	// Space F9 info
+	uint description_ids;
 
 	// The ingame hash of the nickname
 	uint base;
@@ -450,7 +464,7 @@ public:
 	bool isShieldOn;
 
 	// The number of seconds that shield will be active
-	int shield_timeout;
+	uint shield_timeout;
 
 	int logic;
 	int invulnerable;
@@ -501,6 +515,8 @@ void SendBaseStatus(uint client, PlayerBase* base);
 void SendBaseStatus(PlayerBase* base);
 void ForceLaunch(uint client);
 void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem);
+wstring BuildBaseDescription(PlayerBase* base);
+void SendBaseIDSList(uint client, uint solarId, uint ids);
 
 enum class POPUPWINDOWTYPE
 {

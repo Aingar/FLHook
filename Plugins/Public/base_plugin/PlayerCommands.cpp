@@ -2073,7 +2073,7 @@ namespace PlayerCommands
 						return;
 					}
 					i.second.is_pinned = true;
-					base->pinned_market_items[i.first] = &i.second;
+					base->pinned_market_items.insert(i.first);
 					PrintUserCmdText(client, L"Item pinned!");
 				}
 				else

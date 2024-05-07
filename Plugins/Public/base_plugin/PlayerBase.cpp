@@ -403,6 +403,10 @@ void PlayerBase::Load()
 						mi.is_public = bool(ini.get_value_int(5));
 						mi.sellPrice = ini.get_value_int(6);
 						mi.is_pinned = bool(ini.get_value_int(7));
+						if (mi.is_pinned)
+						{
+							pinned_market_items.insert(good);
+						}
 						if (!mi.sellPrice)
 						{
 							mi.sellPrice = mi.price;
@@ -607,10 +611,11 @@ void PlayerBase::Save()
 			if (infocard_para[i].length() >= 252)
 				ini_write_wstring(file, "infocardpara2", infocard_para[i].substr(252, 252));
 		}
-		for (auto i : market_items)
+		for (const auto& i : market_items)
 		{
-			fprintf(file, "commodity = %u, %u, %u, %u, %u, %u, %u\n",
-				i.first, i.second.quantity, i.second.price, i.second.min_stock, i.second.max_stock, int(i.second.is_public), int(i.second.is_pinned));
+			fprintf(file, "commodity = %u, %u, %u, %u, %u, %u, %u, %u\n",
+				i.first, i.second.quantity, i.second.price, i.second.min_stock,
+				i.second.max_stock, int(i.second.is_public), i.second.sellPrice, int(i.second.is_pinned));
 		}
 
 		fprintf(file, "defensemode = %u\n", defense_mode);

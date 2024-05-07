@@ -380,7 +380,7 @@ public:
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 
-	map<uint, MARKET_ITEM*> pinned_market_items;
+	set<uint> pinned_market_items;
 
 	// The money this base has
 	INT64 money;

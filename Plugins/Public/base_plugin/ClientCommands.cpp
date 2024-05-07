@@ -187,24 +187,26 @@ wstring GetBaseHeaderText(PlayerBase* base)
 	if (!base->pinned_market_items.empty())
 	{
 		base_status += L"<PARA/><TEXT>Highlighted commodities:</TEXT>";
-		for (auto& item : base->pinned_market_items)
+		for (auto& goodId : base->pinned_market_items)
 		{
+			const auto& item = base->market_items.at(goodId);
 			wchar_t buf[120];
-			const GoodInfo* gi = GoodList::find_by_id(item.first);
+			const GoodInfo* gi = GoodList::find_by_id(goodId);
 			if (!gi)
 			{
 				continue;
 			}
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);
-			wstring stock = UIntToPrettyStr(item.second->quantity);
-			wstring buyPrice = UIntToPrettyStr(item.second->price);
-			wstring sellPrice = UIntToPrettyStr(item.second->sellPrice);
-			wstring minStock = UIntToPrettyStr(item.second->min_stock);
-			wstring maxStock = UIntToPrettyStr(item.second->max_stock);
+			wstring stock = UIntToPrettyStr(item.quantity);
+			wstring buyPrice = UIntToPrettyStr(item.price);
+			wstring sellPrice = UIntToPrettyStr(item.sellPrice);
+			wstring minStock = UIntToPrettyStr(item.min_stock);
+			wstring maxStock = UIntToPrettyStr(item.max_stock);
 			swprintf(buf, _countof(buf), L"<PARA/><TEXT>- %ls: x%ls | Buys at $%ls Sells at $%ls | Min: %ls Max: %ls</TEXT>",
 				name.c_str(), stock.c_str(), sellPrice.c_str(), buyPrice.c_str(), minStock.c_str(), maxStock.c_str());
 			base_status += buf;
 		}
+		base_status += L"<PARA/><PARA/>";
 	}
 
 	return base_status;
@@ -217,13 +219,13 @@ wstring BuildBaseDescription(PlayerBase* base)
 	if (single_vulnerability_window)
 	{
 		wchar_t buf[75];
-		swprintf(buf, _countof(buf), L"<PARA/><PARA/><TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60);
+		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60);
 		base_info += buf;
 	}
 	else
 	{
 		wchar_t buf[125];
-		swprintf(buf, _countof(buf), L"<PARA/><PARA/><TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>",
+		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>",
 			base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60,
 			base->vulnerabilityWindow2.start / 60, base->vulnerabilityWindow2.end / 60, base->vulnerabilityWindow2.end % 60);
 		base_info += buf;

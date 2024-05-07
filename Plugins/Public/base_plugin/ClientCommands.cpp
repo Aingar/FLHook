@@ -183,10 +183,14 @@ wstring GetBaseHeaderText(PlayerBase* base)
 	{
 		base_status += base->infocard;
 	}
+	else
+	{
+		base_status += L"<PARA/>";
+	}
 
 	if (!base->pinned_market_items.empty())
 	{
-		base_status += L"<PARA/><TEXT>Highlighted commodities:</TEXT>";
+		base_status += L"<TEXT>Highlighted commodities:</TEXT>";
 		for (auto& goodId : base->pinned_market_items)
 		{
 			const auto& item = base->market_items.at(goodId);

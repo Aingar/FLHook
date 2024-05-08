@@ -90,8 +90,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
-		MiscCmds::shouldKillShieldThread = true;
-		MiscCmds::shieldSyncThread.join();
 		CrashCatcher::Shutdown();
 		HkUnloadStringDLLs();
 	}
@@ -1846,6 +1844,12 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		checkData->inWarp = AntiJumpDisconnect::IsInWarp(checkData->clientId);
 	}
 	return;
+}
+
+EXPORT void FreeThreads()
+{
+	MiscCmds::shouldKillShieldThread = true;
+	MiscCmds::shieldSyncThread.join();
 }
 
 /** Functions to hook */

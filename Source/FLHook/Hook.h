@@ -371,6 +371,7 @@ struct PLUGIN_SORTCRIT {
 
 typedef PLUGIN_RETURNCODE(*PLUGIN_Get_PluginReturnCode)();
 typedef PLUGIN_INFO* (*PLUGIN_Get_PluginInfo)();
+typedef void (*PLUGIN_FreeThreads)();
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

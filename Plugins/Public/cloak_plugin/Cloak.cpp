@@ -148,8 +148,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
-		shouldKillSyncThread = true;
-		cloakSyncThread.join();
 	}
 	return true;
 }
@@ -1121,13 +1119,19 @@ void CloakSyncThread()
 				iter++;
 				continue;
 			}
-			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, iter->eq);
+			Server.ActivateEquip(iter->client, iter->eq);
 			iter = cloakSyncData.erase(iter);
 		}
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+EXPORT void FreeThreads()
+{
+	shouldKillSyncThread = true;
+	cloakSyncThread.join();
+}
 
 /** Functions to hook */
 EXPORT PLUGIN_INFO* Get_PluginInfo()

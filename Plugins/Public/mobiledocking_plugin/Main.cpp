@@ -1345,8 +1345,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
-		shouldKill = true;
-		saveThread.join();
 		HkUnloadStringDLLs();
 	}
 	return true;
@@ -1360,6 +1358,12 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+EXPORT void FreeThreads()
+{
+	shouldKill = true;
+	saveThread.join();
+}
 
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {

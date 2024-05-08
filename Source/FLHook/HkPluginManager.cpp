@@ -76,6 +76,13 @@ namespace PluginManager
 				if (it->bMayUnload == false)
 					return HKE_PLUGIN_UNLOADABLE;
 
+				FARPROC pFreeThreadsFunc = GetProcAddress(it->hDLL, "?FreeThreads@@YAXXZ");
+				if (pFreeThreadsFunc)
+				{
+					PLUGIN_FreeThreads freeThreads = (PLUGIN_FreeThreads)pFreeThreadsFunc;
+					freeThreads();
+				}
+
 				FreeLibrary(it->hDLL);
 
 				for (int i = 0; i < (int)PLUGIN_CALLBACKS_AMOUNT; i++) {

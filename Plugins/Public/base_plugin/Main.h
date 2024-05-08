@@ -330,6 +330,10 @@ public:
 	void CheckVulnerabilityWindow(uint currTime);
 	void LogDamageDealers();
 
+	wstring GetBaseHeaderText();
+	wstring BuildBaseDescription();
+	void UpdateBaseInfoText();
+
 	bool isFreshlyBuilt;
 
 	// The base nickname
@@ -381,6 +385,8 @@ public:
 	unordered_map<uint, MARKET_ITEM> market_items;
 
 	set<uint> pinned_market_items;
+
+	bool pinned_item_updated;
 
 	// The money this base has
 	INT64 money;
@@ -515,7 +521,6 @@ void SendBaseStatus(uint client, PlayerBase* base);
 void SendBaseStatus(PlayerBase* base);
 void ForceLaunch(uint client);
 void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem);
-wstring BuildBaseDescription(PlayerBase* base);
 void SendBaseIDSList(uint client, uint solarId, uint ids);
 
 enum class POPUPWINDOWTYPE
@@ -771,6 +776,8 @@ extern bool single_vulnerability_window;
 extern bool set_holiday_mode;
 
 wstring HtmlEncode(wstring text);
+
+wstring IntToStr(uint iValue);
 
 extern string set_status_path_html;
 extern string set_status_path_json;

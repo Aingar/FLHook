@@ -964,17 +964,6 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"OK");
 	}
 
-	void UpdateBaseInfoText(PlayerBase* pb)
-	{
-		pb->description_text = BuildBaseDescription(pb);
-		PlayerData* pd = nullptr;
-		while (pd = Players.traverse_active(pd))
-		{
-			HkChangeIDSString(pd->iOnlineID, pb->description_ids, pb->description_text);
-			SendBaseIDSList(pd->iOnlineID, pb->baseCSolar->id, pb->description_ids);
-		}
-	}
-
 	void BaseInfo(uint client, const wstring& args)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
@@ -1010,7 +999,7 @@ namespace PlayerCommands
 			}
 
 			base->Save();
-			UpdateBaseInfoText(base);
+			base->UpdateBaseInfoText();
 		}
 		else if (iPara > 0 && iPara <= MAX_PARAGRAPHS && cmd == L"d")
 		{
@@ -1027,7 +1016,7 @@ namespace PlayerCommands
 			}
 
 			base->Save();
-			UpdateBaseInfoText(base);
+			base->UpdateBaseInfoText();
 		}
 		else
 		{
@@ -2083,7 +2072,7 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"Item unpinned!");
 				}
 				base->Save();
-				UpdateBaseInfoText(base);
+				base->UpdateBaseInfoText();
 			}
 		}
 		else
@@ -2721,7 +2710,7 @@ namespace PlayerCommands
 			base->vulnerabilityWindow1 = { vulnerabilityWindowOneStart, vulnerabilityWindowOneEnd };
 			base->lastVulnerabilityWindowChange = currTime;
 			PrintUserCmdText(client, L"OK Vulnerability window set.");
-			UpdateBaseInfoText(base);
+			base->UpdateBaseInfoText();
 			return;
 		}
 
@@ -2739,7 +2728,7 @@ namespace PlayerCommands
 		}
 		base->lastVulnerabilityWindowChange = currTime;
 
-		UpdateBaseInfoText(base);
+		base->UpdateBaseInfoText();
 		PrintUserCmdText(client, L"OK Vulnerability window set.");
 	}
 

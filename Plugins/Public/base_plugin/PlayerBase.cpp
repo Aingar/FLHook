@@ -4,7 +4,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 	: basename(the_basename),
 	base(0), money(0), base_health(0), baseCSolar(nullptr),
 	base_level(1), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
-	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true),
+	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
 	nickname = CreateBaseNickname(wstos(basename));
@@ -38,7 +38,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 PlayerBase::PlayerBase(const string &the_path)
 	: path(the_path), base(0), money(0), baseCSolar(nullptr),
 	base_health(0), base_level(0), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
-	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false),
+	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
 	// Load and spawn base modules
@@ -245,6 +245,98 @@ void PlayerBase::SetupDefaults()
 	}
 
 	RecalculateCargoSpace();
+}
+
+wstring PlayerBase::GetBaseHeaderText()
+{
+
+	const Universe::ISystem* sys = Universe::get_system(system);
+
+	wstring base_status = L"<RDL><PUSH/>";
+	base_status += L"<TEXT>" + XMLText(basename) + L", " + HkGetWStringFromIDS(sys->strid_name) + L"</TEXT><PARA/>";
+
+	wstring affiliation_string = L"";
+	if (affiliation && affiliation != DEFAULT_AFFILIATION)
+	{
+		affiliation_string = HkGetWStringFromIDS(Reputation::get_name(affiliation));
+	}
+	else
+	{
+		affiliation_string = L"Unaffiliated";
+	}
+
+	base_status += L"<TEXT>Core " + IntToStr(base_level) + L" " + affiliation_string + L" Installation</TEXT><PARA/><PARA/>";
+
+	if (!infocard.empty())
+	{
+		base_status += infocard;
+	}
+	else
+	{
+		base_status += L"<PARA/>";
+	}
+
+	if (!pinned_market_items.empty())
+	{
+		base_status += L"<TEXT>Highlighted commodities:</TEXT>";
+		for (auto& goodId : pinned_market_items)
+		{
+			const auto& item = market_items.at(goodId);
+			wchar_t buf[120];
+			const GoodInfo* gi = GoodList::find_by_id(goodId);
+			if (!gi)
+			{
+				continue;
+			}
+			wstring name = HkGetWStringFromIDS(gi->iIDSName);
+			wstring stock = UIntToPrettyStr(item.quantity);
+			wstring buyPrice = UIntToPrettyStr(item.price);
+			wstring sellPrice = UIntToPrettyStr(item.sellPrice);
+			wstring minStock = UIntToPrettyStr(item.min_stock);
+			wstring maxStock = UIntToPrettyStr(item.max_stock);
+			swprintf(buf, _countof(buf), L"<PARA/><TEXT>- %ls: x%ls | Buys at $%ls Sells at $%ls | Min: %ls Max: %ls</TEXT>",
+				name.c_str(), stock.c_str(), sellPrice.c_str(), buyPrice.c_str(), minStock.c_str(), maxStock.c_str());
+			base_status += buf;
+		}
+		base_status += L"<PARA/><PARA/>";
+	}
+
+	return base_status;
+}
+
+wstring PlayerBase::BuildBaseDescription()
+{
+	wstring base_info = GetBaseHeaderText();
+
+	if (single_vulnerability_window)
+	{
+		wchar_t buf[75];
+		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", vulnerabilityWindow1.start / 60, vulnerabilityWindow1.end / 60, vulnerabilityWindow1.end % 60);
+		base_info += buf;
+	}
+	else
+	{
+		wchar_t buf[125];
+		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>",
+			vulnerabilityWindow1.start / 60, vulnerabilityWindow1.end / 60, vulnerabilityWindow1.end % 60,
+			vulnerabilityWindow2.start / 60, vulnerabilityWindow2.end / 60, vulnerabilityWindow2.end % 60);
+		base_info += buf;
+	}
+
+	base_info += L"<POP/></RDL>";
+
+	return base_info;
+}
+
+void PlayerBase::UpdateBaseInfoText()
+{
+	description_text = BuildBaseDescription();
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd))
+	{
+		HkChangeIDSString(pd->iOnlineID, description_ids, description_text);
+		SendBaseIDSList(pd->iOnlineID, baseCSolar->id, description_ids);
+	}
 }
 
 void PlayerBase::Load()

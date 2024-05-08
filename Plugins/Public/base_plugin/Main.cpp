@@ -1107,6 +1107,11 @@ void HkTimerCheckKick()
 			auto& pb = baseSaveIterator->second;
 			if (pb->logic == 1 || pb->invulnerable == 0)
 			{
+				if (pb->pinned_item_updated)
+				{
+					pb->UpdateBaseInfoText();
+					pb->pinned_item_updated = false;
+				}
 				pb->Save();
 				saveSuccessful = true;
 			}
@@ -2029,26 +2034,17 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-		// If the base doesn't have sufficient cash to support this purchase
-		// reduce the amount purchased and shift the cargo back to the ship.
-		if (base->money < price)
-		{
-			PrintUserCmdText(client, L"ERR: Base cannot accept goods, insufficient cash");
-			cd.reverse_sell = true;
-			return;
-		}
+	if ((item.quantity + count) > item.max_stock)
+	{
+		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
+		cd.reverse_sell = true;
+		return;
+	}
 
-		if ((item.quantity + count) > item.max_stock)
-		{
-			PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
-			cd.reverse_sell = true;
-			return;
-		}
-
-		if (count > LONG_MAX / item.price)
-		{
-			cd.reverse_sell = true;
-			PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
+	if (count > LONG_MAX / item.price)
+	{
+		cd.reverse_sell = true;
+		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
 		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
@@ -2124,6 +2120,11 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 			PrintUserCmdText(client, L"Processing event deposit, please wait up to 15 seconds...");
 			HookExt::AddPOBEventData(client, wstos(HookExt::IniGetWS(client, "event.eventid")), gsi.iCount);
 		}
+	}
+
+	if (!base->pinned_market_items.empty() && base->pinned_market_items.count(gsi.iArchID))
+	{
+		base->pinned_item_updated = true;
 	}
 }
 
@@ -2227,6 +2228,11 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		pub::Player::AdjustCash(client, 0 - price);
 		base->ChangeMoney(price);
 		base->Save();
+
+		if (!base->pinned_market_items.empty() && base->pinned_market_items.count(gbi.iGoodID))
+		{
+			base->pinned_item_updated = true;
+		}
 
 		//build string and log the purchase
 		const GoodInfo *gi = GoodList_get()->find_by_id(gbi.iGoodID);

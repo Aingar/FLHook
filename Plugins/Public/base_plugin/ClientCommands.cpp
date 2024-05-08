@@ -152,97 +152,16 @@ static wstring Int64ToPrettyStr(INT64 iValue)
 	return wscBuf;
 }
 
-static wstring IntToStr(uint iValue)
+wstring IntToStr(uint iValue)
 {
 	wchar_t buf[1000];
 	swprintf(buf, _countof(buf), L"%u", iValue);
 	return	buf;
 }
 
-wstring GetBaseHeaderText(PlayerBase* base)
-{
-
-	const Universe::ISystem* sys = Universe::get_system(base->system);
-
-	wstring base_status = L"<RDL><PUSH/>";
-	base_status += L"<TEXT>" + XMLText(base->basename) + L", " + HkGetWStringFromIDS(sys->strid_name) + L"</TEXT><PARA/>";
-
-	wstring affiliation_string = L"";
-	if (base->affiliation && base->affiliation != DEFAULT_AFFILIATION)
-	{
-		affiliation_string = HkGetWStringFromIDS(Reputation::get_name(base->affiliation));
-	}
-	else
-	{
-		affiliation_string = L"Unaffiliated";
-	}
-
-	base_status += L"<TEXT>Core " + IntToStr(base->base_level) + L" " + affiliation_string + L" Installation</TEXT><PARA/><PARA/>";
-
-	if (!base->infocard.empty())
-	{
-		base_status += base->infocard;
-	}
-	else
-	{
-		base_status += L"<PARA/>";
-	}
-
-	if (!base->pinned_market_items.empty())
-	{
-		base_status += L"<TEXT>Highlighted commodities:</TEXT>";
-		for (auto& goodId : base->pinned_market_items)
-		{
-			const auto& item = base->market_items.at(goodId);
-			wchar_t buf[120];
-			const GoodInfo* gi = GoodList::find_by_id(goodId);
-			if (!gi)
-			{
-				continue;
-			}
-			wstring name = HkGetWStringFromIDS(gi->iIDSName);
-			wstring stock = UIntToPrettyStr(item.quantity);
-			wstring buyPrice = UIntToPrettyStr(item.price);
-			wstring sellPrice = UIntToPrettyStr(item.sellPrice);
-			wstring minStock = UIntToPrettyStr(item.min_stock);
-			wstring maxStock = UIntToPrettyStr(item.max_stock);
-			swprintf(buf, _countof(buf), L"<PARA/><TEXT>- %ls: x%ls | Buys at $%ls Sells at $%ls | Min: %ls Max: %ls</TEXT>",
-				name.c_str(), stock.c_str(), sellPrice.c_str(), buyPrice.c_str(), minStock.c_str(), maxStock.c_str());
-			base_status += buf;
-		}
-		base_status += L"<PARA/><PARA/>";
-	}
-
-	return base_status;
-}
-
-wstring BuildBaseDescription(PlayerBase* base)
-{
-	wstring base_info = GetBaseHeaderText(base);
-
-	if (single_vulnerability_window)
-	{
-		wchar_t buf[75];
-		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Window: %u:00 - %u:%02u</TEXT><PARA/>", base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60);
-		base_info += buf;
-	}
-	else
-	{
-		wchar_t buf[125];
-		swprintf(buf, _countof(buf), L"<TEXT>Vulnerability Windows: %u:00 - %u:%02u, %u:00 - %u:%02u</TEXT><PARA/>",
-			base->vulnerabilityWindow1.start / 60, base->vulnerabilityWindow1.end / 60, base->vulnerabilityWindow1.end % 60,
-			base->vulnerabilityWindow2.start / 60, base->vulnerabilityWindow2.end / 60, base->vulnerabilityWindow2.end % 60);
-		base_info += buf;
-	}
-
-	base_info += L"<POP/></RDL>";
-
-	return base_info;
-}
-
 void SendBaseStatus(uint client, PlayerBase* base)
 {
-	wstring base_status = GetBaseHeaderText(base);
+	wstring base_status = base->GetBaseHeaderText();
 
 	base_status += L"<TEXT>Cargo Storage: " + Int64ToPrettyStr(base->GetRemainingCargoSpace()) + L" free of " + Int64ToPrettyStr(base->storage_space) + L"</TEXT><PARA/>";
 	base_status += L"<TEXT>Money: " + Int64ToPrettyStr(base->money) + L"</TEXT><PARA/>";

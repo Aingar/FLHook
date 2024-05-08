@@ -87,7 +87,7 @@ void CoreModule::Spawn()
 		// Send the base name to all players that are online
 		base->solar_ids = solar_ids;
 		base->description_ids = description_ids;
-		base->description_text = BuildBaseDescription(base);
+		base->description_text = base->BuildBaseDescription();
 
 		wstring basename = base->basename;
 

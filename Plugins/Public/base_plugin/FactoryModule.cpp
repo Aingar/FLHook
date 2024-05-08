@@ -216,6 +216,12 @@ bool FactoryModule::Timer(uint time)
 		}
 		i->second -= quantity;
 		base->RemoveMarketGood(good, quantity);
+
+		if (!base->pinned_market_items.empty() && base->pinned_market_items.count(i->first))
+		{
+			base->pinned_item_updated = true;
+		}
+
 		consumedAnything = true;
 		if (!i->second)
 		{

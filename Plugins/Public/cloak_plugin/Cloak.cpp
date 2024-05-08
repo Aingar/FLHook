@@ -1091,7 +1091,7 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 		eq.iSpaceID = pShip.iSpaceID;
 		eq.sID = cd->second.iCloakSlot;
 		std::lock_guard<std::mutex> saveLock(syncMutex);
-		cloakSyncData.push_back({client, eq});
+		cloakSyncData.push_back({ pShip.clientId, eq, 0});
 	}
 }
 

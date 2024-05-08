@@ -1187,6 +1187,7 @@ namespace MiscCmds
 				{
 					eq.sID = sid;
 					HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->clientId, eq);
+					Server.ActivateEquip(iter->clientId, eq);
 				}
 				iter = shieldSyncData.erase(iter);
 			}

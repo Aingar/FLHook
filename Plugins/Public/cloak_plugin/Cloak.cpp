@@ -1119,6 +1119,7 @@ void CloakSyncThread()
 				iter++;
 				continue;
 			}
+			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, iter->eq);
 			Server.ActivateEquip(iter->client, iter->eq);
 			iter = cloakSyncData.erase(iter);
 		}

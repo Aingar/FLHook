@@ -3523,12 +3523,12 @@ public:
 	bool inTradeLane;                         // 175
 	bool gunRelatedBool;                      // has active guns?
 	float angularDragFactor;                  // 176
-	uint gunStatsDirty;                       // 177
-	uint activeGunCount1;                     // 178
-	float rectHeight;                         // 179 no clue
-	float maxActiveGunRange1;                 // 180
-	uint activeGunCount2;                     // 181
-	float maxActiveGunRange2;                 // 182 1-missiles 2-guns?
+	bool returnDirtyGunStats;                 // 177
+	uint activeGunCount;                      // 178
+	float averageGunSpeed;                    // 179
+	float maxActiveGunRange;                  // 180
+	uint activeMissileCount;                  // 181
+	float maxActiveMissileRange;              // 182 1-missiles 2-guns?
 };
 
 struct IMPORT CSolar : public CEqObj

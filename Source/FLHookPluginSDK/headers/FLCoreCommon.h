@@ -3053,7 +3053,7 @@ public:
 	bool isCELauncher;                                         // 87 sub_6CEA4A0 casts eq to CELauncher only if this is true
 	uint dockTargetId;                                         // 88
 	uint dockTargetId2;				                           // 89
-	uint iDunnoEqObj23;                                        // 90
+	INotify* notifyPtr;                                        // 90
 	bool boundingExplosionBool;                                // 91
 	float boundingExplosionFloat;                              // 92
 	Vector boundingExplosionVector;                            // 93

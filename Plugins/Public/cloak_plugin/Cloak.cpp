@@ -114,7 +114,7 @@ struct CloakSyncData
 {
 	uint client;
 	XActivateEquip eq;
-	bool skipFirst = false;
+	int iterationCounter = 0;
 };
 vector<CloakSyncData> cloakSyncData;
 
@@ -1113,15 +1113,20 @@ void CloakSyncThread()
 		std::lock_guard<std::mutex> saveLock(syncMutex);
 		for (auto& iter = cloakSyncData.begin(); iter != cloakSyncData.end();)
 		{
-			if (!iter->skipFirst)
+			++iter->iterationCounter;
+			if (iter->iterationCounter > 2)
 			{
-				iter->skipFirst = true;
-				iter++;
-				continue;
+				Server.ActivateEquip(iter->client, iter->eq);
 			}
-			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, iter->eq);
-			Server.ActivateEquip(iter->client, iter->eq);
-			iter = cloakSyncData.erase(iter);
+			
+			if (iter->iterationCounter > 5)
+			{
+				iter = cloakSyncData.erase(iter);
+			}
+			else
+			{
+				iter++;
+			}
 		}
 	}
 }

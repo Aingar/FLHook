@@ -106,18 +106,6 @@ struct CLIENTCDSTRUCT
 	CDSTRUCT cd;
 };
 
-std::atomic_bool shouldKillSyncThread = false;
-std::mutex syncMutex;
-std::thread cloakSyncThread;
-
-struct CloakSyncData
-{
-	uint client;
-	XActivateEquip eq;
-	int iterationCounter = 0;
-};
-vector<CloakSyncData> cloakSyncData;
-
 static unordered_map<uint, CLOAK_INFO> mapClientsCloak;
 static unordered_map<uint, CLIENTCDSTRUCT> mapClientsCD;
 
@@ -565,6 +553,18 @@ void HkTimerCheckKick()
 		{
 			switch (info.iState)
 			{
+			case STATE_CLOAK_OFF:
+				if (timeNow % 3 == 0)
+				{
+					// Send cloak state for uncloaked cloak-able players (only for them in space)  
+					// this is the code to fix the bug where players wouldnt always see uncloaked players  
+					XActivateEquip ActivateEq;
+					ActivateEq.bActivate = false;
+					ActivateEq.iSpaceID = iShipID;
+					ActivateEq.sID = info.iCloakSlot;
+					Server.ActivateEquip(iClientID, ActivateEq);
+				}
+				break;
 			case STATE_CLOAK_CHARGING:
 				if (!ProcessFuel(iClientID, info, iShipID))
 				{
@@ -1075,69 +1075,8 @@ void SwitchOutComplete(uint ship, uint clientId)
 	}
 }
 
-void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	auto& cd = mapClientsCloak.find(pShip.clientId);
-	if (cd == mapClientsCloak.end())
-	{
-		return;
-	}
-	if (cd->second.iState == STATE_CLOAK_OFF || cd->second.iState == STATE_CLOAK_CHARGING)
-	{
-		XActivateEquip eq;
-		eq.bActivate = false;
-		eq.iSpaceID = pShip.iSpaceID;
-		eq.sID = cd->second.iCloakSlot;
-		std::lock_guard<std::mutex> saveLock(syncMutex);
-		cloakSyncData.push_back({ pShip.clientId, eq, 0});
-	}
-}
-
-void CloakSyncThread()
-{
-	while (true)
-	{
-		if (shouldKillSyncThread)
-		{
-			return;
-		}
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-		if (cloakSyncData.empty())
-		{
-			continue;
-		}
-		std::lock_guard<std::mutex> saveLock(syncMutex);
-		for (auto& iter = cloakSyncData.begin(); iter != cloakSyncData.end();)
-		{
-			++iter->iterationCounter;
-			if (iter->iterationCounter > 2)
-			{
-				Server.ActivateEquip(iter->client, iter->eq);
-			}
-			
-			if (iter->iterationCounter > 5)
-			{
-				iter = cloakSyncData.erase(iter);
-			}
-			else
-			{
-				iter++;
-			}
-		}
-	}
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-EXPORT void FreeThreads()
-{
-	shouldKillSyncThread = true;
-	cloakSyncThread.join();
-}
 
 /** Functions to hook */
 EXPORT PLUGIN_INFO* Get_PluginInfo()
@@ -1161,11 +1100,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
-	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
-
-	cloakSyncThread = std::thread(CloakSyncThread);
 
 	return p_PI;
 }

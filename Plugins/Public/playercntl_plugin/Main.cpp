@@ -473,6 +473,7 @@ namespace HkIServerImpl
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			}
 		}
+		PlayerInfo::ClearInfo(iClientID, true);
 	}
 
 	void __stdcall CreateNewCharacter(struct SCreateCharacterInfo const &si, unsigned int iClientID)
@@ -671,7 +672,7 @@ namespace HkIServerImpl
 		returncode = DEFAULT_RETURNCODE;
 		ClearClientInfo(iClientID);
 		Rename::CharacterSelect_AFTER(charId, iClientID);
-		PlayerInfo::ClearInfo(iClientID);
+		PlayerInfo::ClearInfo(iClientID, false);
 	}
 
 	void __stdcall JumpInComplete_AFTER(unsigned int iSystem, unsigned int iShip)

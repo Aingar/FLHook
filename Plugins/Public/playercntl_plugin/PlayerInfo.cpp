@@ -498,10 +498,15 @@ bool PlayerInfo::UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, con
 
 }
 
-void PlayerInfo::ClearInfo(uint clientId)
+void PlayerInfo::ClearInfo(uint clientId, bool fullClear)
 {
 	playerInfoData[clientId].initialized = false;
 	playerInfoData[clientId].playerInfo = L"";
+	playerInfoData[clientId].infoVector.clear();
+	if (fullClear)
+	{
+		playerInfoData[clientId].pulledInfos = false;
+	}
 }
 
 void PlayerInfo::PlayerLaunch(uint clientId)

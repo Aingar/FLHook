@@ -280,20 +280,35 @@ __declspec(naked) void ShipDestroyedNaked()
 }
 
 
-inline bool MineDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId)
+inline int MineDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId)
 {
-	CALL_PLUGINS(PLUGIN_MineDestroyed, bool, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
-	return true;
+	CALL_PLUGINS(PLUGIN_MineDestroyed, int, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
+	return 0;
 }
 
 bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	LOG_CORE_TIMER_START
 	TRY_HOOK
-	if (!MineDestroyedPluginCaller(iobj, isKill, killerId) && !isKill)
+	int pluginResult = MineDestroyedPluginCaller(iobj, isKill, killerId);
+	switch (pluginResult)
 	{
-		pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::FUSE);
-		return false;
+	case 0:
+		return true;
+	case 1:
+		if (!isKill)
+		{
+			pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::FUSE);
+			return false;
+		}
+		break;
+	case 2:
+		if (isKill)
+		{
+			pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::VANISH);
+			return false;
+		}
+		break;
 	}
 	return true;
 	CATCH_HOOK(AddLog("MineDestroyed exception"); return true)

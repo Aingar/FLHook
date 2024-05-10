@@ -22,8 +22,14 @@ unordered_set<uint> setNoTrackingAlertProjectiles;
 
 unordered_map<uint, uint> mapTrackingByObjTypeBlacklistBitmap;
 
-unordered_set<uint> selfDetonatingMines;
+struct MineInfo
+{
+	float armingTime = 0.0f;
+	bool detonateOnEndLifetime = false;
+};
+
 unordered_map<uint, float> guidedArmingTimesMap;
+unordered_map<uint, MineInfo> mineArmingTimesMap;
 
 uint lastProcessedProjectile = 0;
 
@@ -123,11 +129,11 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("self_detonate"))
 					{
-						if (ini.get_value_bool(0))
-						{
-							selfDetonatingMines.insert(currNickname);
-						}
-						break;
+						mineArmingTimesMap[currNickname].detonateOnEndLifetime = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("mine_arming_time"))
+					{
+						mineArmingTimesMap[currNickname].armingTime = ini.get_value_float(0);
 					}
 				}
 			}
@@ -300,16 +306,29 @@ void __stdcall CreateGuided(uint& iClientID, FLPACKET_CREATEGUIDED& createGuided
 
 }
 
-bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (selfDetonatingMines.count(iobj->cobj->archetype->iArchID))
+	CMine* mine = reinterpret_cast<CMine*>(iobj->cobj);
+	Archetype::Mine* mineArch = reinterpret_cast<Archetype::Mine*>(mine->archetype);
+
+	auto& mineInfo = mineArmingTimesMap.find(mineArch->iArchID);
+	if (mineInfo != mineArmingTimesMap.end())
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return false;
+		if (mineArch->fLifeTime - mine->remainingLifetime < mineInfo->second.armingTime)
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return 2;
+		}
+
+		if (mineInfo->second.detonateOnEndLifetime)
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return 1;
+		}
 	}
-	return true;
+	return 0;
 }
 
 bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)

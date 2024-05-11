@@ -905,145 +905,144 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 	}
 
 	CEquip* equip;
-	while (equip = cship->equip_manager.Traverse(tr))
+	equip = cship->equip_manager.FindByID(jc.iSlot);
+
+	if (!equip)
 	{
-		if (equip->iSubObjId != jc.iSlot)
+		PrintUserCmdText(iClientID, L"ERR Issue when handling jettison event, contact developers. Error code %u", jc.iSlot);
+		AddLog("Error: jettisoned item not found! %u", jc.iSlot);
+		return;
+	}
+
+	if (equip->archetype->iArchID != set_deployableContainerCommodity)
+	{
+		return;
+	}
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+	const auto& cd = mapClients.find(iClientID);
+	if (cd != mapClients.end() && cd->second.deployedContainerId)
+	{
+		PrintUserCmdText(iClientID, L"ERR A mining container is already deployed");
+		return;
+	}
+
+	uint shipId;
+	uint systemId;
+	Vector pos;
+	Matrix ori;
+	wstring commodityName1;
+	wstring commodityName2;
+	uint loot1Id = 0;
+	uint loot2Id = 0;
+	pub::Player::GetShip(iClientID, shipId);
+	pub::Player::GetSystem(iClientID, systemId);
+	pub::SpaceObj::GetLocation(shipId, pos, ori);
+	TranslateX(pos, ori, -400);
+
+	CmnAsteroid::CAsteroidSystem* csys = CmnAsteroid::Find(systemId);
+	if (!csys)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not in a mineable field!");
+		return;
+	}
+
+	bool alreadyFoundFirstMineable = false;
+	// Find asteroid field that matches the best.
+	for (CmnAsteroid::CAsteroidField* cfield = csys->FindFirst(); cfield; cfield = csys->FindNext())
+	{
+		uint tempLootId;
+		if (!cfield->near_field(pos))
 		{
 			continue;
 		}
-		if (equip->archetype->iArchID != set_deployableContainerCommodity)
+		const Universe::IZone* zone = cfield->get_lootable_zone(pos);
+		if (!zone || !zone->lootableZone)
 		{
-			return;
+			continue;
 		}
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
-		const auto& cd = mapClients.find(iClientID);
-		if (cd != mapClients.end() && cd->second.deployedContainerId)
+		const auto& zoneBonusData = set_mapZoneBonus.find(zone->iZoneID);
+		if (zoneBonusData != set_mapZoneBonus.end() && zoneBonusData->second.iReplacementLootID)
 		{
-			PrintUserCmdText(iClientID, L"ERR A mining container is already deployed");
-			return;
-		}
-
-		uint shipId;
-		uint systemId;
-		Vector pos;
-		Matrix ori;
-		wstring commodityName1;
-		wstring commodityName2;
-		uint loot1Id = 0;
-		uint loot2Id = 0;
-		pub::Player::GetShip(iClientID, shipId);
-		pub::Player::GetSystem(iClientID, systemId);
-		pub::SpaceObj::GetLocation(shipId, pos, ori);
-		TranslateX(pos, ori, -400);
-
-		CmnAsteroid::CAsteroidSystem* csys = CmnAsteroid::Find(systemId);
-		if (!csys)
-		{
-			PrintUserCmdText(iClientID, L"ERR Not in a mineable field!");
-			return;
-		}
-
-		bool alreadyFoundFirstMineable = false;
-		// Find asteroid field that matches the best.
-		for (CmnAsteroid::CAsteroidField* cfield = csys->FindFirst(); cfield; cfield = csys->FindNext())
-		{
-			uint tempLootId;
-			if (!cfield->near_field(pos))
-			{
-				continue;
-			}
-			const Universe::IZone* zone = cfield->get_lootable_zone(pos);
-			if (!zone || !zone->lootableZone)
-			{
-				continue;
-			}
-			const auto& zoneBonusData = set_mapZoneBonus.find(zone->iZoneID);
-			if (zoneBonusData != set_mapZoneBonus.end() && zoneBonusData->second.iReplacementLootID)
-			{
-				tempLootId = zoneBonusData->second.iReplacementLootID;
-			}
-			else
-			{
-				tempLootId = zone->lootableZone->dynamic_loot_commodity;
-			}
-
-			if (loot1Id && tempLootId == loot1Id)
-			{
-				continue;
-			}
-
-			const GoodInfo* gi = GoodList::find_by_id(tempLootId);
-			if (!alreadyFoundFirstMineable)
-			{
-				loot1Id = tempLootId;
-				alreadyFoundFirstMineable = true;
-				commodityName1 = HkGetWStringFromIDS(gi->iIDSName);
-			}
-			else
-			{
-				loot2Id = tempLootId;
-				commodityName2 = HkGetWStringFromIDS(gi->iIDSName);
-				break;
-			}
-
-		}
-
-		if (!loot1Id)
-		{
-			PrintUserCmdText(iClientID, L"ERR Not in a mineable field!");
-			return;
-		}
-
-
-		wstring fullContainerName;
-		if (loot2Id)
-		{
-			fullContainerName = commodityName1 + L"/" + commodityName2 + L" Container";
+			tempLootId = zoneBonusData->second.iReplacementLootID;
 		}
 		else
 		{
-			fullContainerName = commodityName1 + L" Container";
+			tempLootId = zone->lootableZone->dynamic_loot_commodity;
 		}
 
-		SPAWN_SOLAR_STRUCT data;
-		data.iSystemId = systemId;
-		data.pos = pos;
-		data.ori = ori;
-		data.overwrittenName = fullContainerName;
-		data.nickname = "player_mining_container_" + itos(iClientID);
-		data.solar_ids = 540999 + iClientID;
-		data.solarArchetypeId = set_containerSolarArchetypeID;
-		data.loadoutArchetypeId = set_containerLoadoutArchetypeID;
-
-		Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_SPAWN_SOLAR, &data);
-		if (data.iSpaceObjId)
+		if (loot1Id && tempLootId == loot1Id)
 		{
-			pub::SpaceObj::SetRelativeHealth(data.iSpaceObjId, 1.0f);
-			CONTAINER_DATA cd;
-			cd.systemId = systemId;
-			pos.y -= 30;
-			cd.jettisonPos = pos;
-			cd.loot1Id = loot1Id;
-			cd.loot1Name = commodityName1;
-			cd.lootCrate1Id = Archetype::GetEquipment(loot1Id)->get_loot_appearance()->iArchID;
-			if (loot2Id)
-			{
-				cd.loot2Id = loot2Id;
-				cd.loot2Name = commodityName2;
-				cd.lootCrate2Id = Archetype::GetEquipment(loot2Id)->get_loot_appearance()->iArchID;
-			}
-			cd.nameIDS = data.solar_ids;
-			cd.solarName = data.overwrittenName;
-			cd.clientId = iClientID;
-			mapMiningContainers[data.iSpaceObjId] = cd;
-			mapClients[iClientID].deployedContainerId = data.iSpaceObjId;
-			pub::Player::RemoveCargo(iClientID, equip->iSubObjId, 1);
+			continue;
 		}
 
-		break;
+		const GoodInfo* gi = GoodList::find_by_id(tempLootId);
+		if (!alreadyFoundFirstMineable)
+		{
+			loot1Id = tempLootId;
+			alreadyFoundFirstMineable = true;
+			commodityName1 = HkGetWStringFromIDS(gi->iIDSName);
+		}
+		else
+		{
+			loot2Id = tempLootId;
+			commodityName2 = HkGetWStringFromIDS(gi->iIDSName);
+			break;
+		}
+
 	}
 
+	if (!loot1Id)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not in a mineable field!");
+		return;
+	}
+
+
+	wstring fullContainerName;
+	if (loot2Id)
+	{
+		fullContainerName = commodityName1 + L"/" + commodityName2 + L" Container";
+	}
+	else
+	{
+		fullContainerName = commodityName1 + L" Container";
+	}
+
+	SPAWN_SOLAR_STRUCT data;
+	data.iSystemId = systemId;
+	data.pos = pos;
+	data.ori = ori;
+	data.overwrittenName = fullContainerName;
+	data.nickname = "player_mining_container_" + itos(iClientID);
+	data.solar_ids = 540999 + iClientID;
+	data.solarArchetypeId = set_containerSolarArchetypeID;
+	data.loadoutArchetypeId = set_containerLoadoutArchetypeID;
+
+	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_SPAWN_SOLAR, &data);
+	if (data.iSpaceObjId)
+	{
+		pub::SpaceObj::SetRelativeHealth(data.iSpaceObjId, 1.0f);
+		CONTAINER_DATA cd;
+		cd.systemId = systemId;
+		pos.y -= 30;
+		cd.jettisonPos = pos;
+		cd.loot1Id = loot1Id;
+		cd.loot1Name = commodityName1;
+		cd.lootCrate1Id = Archetype::GetEquipment(loot1Id)->get_loot_appearance()->iArchID;
+		if (loot2Id)
+		{
+			cd.loot2Id = loot2Id;
+			cd.loot2Name = commodityName2;
+			cd.lootCrate2Id = Archetype::GetEquipment(loot2Id)->get_loot_appearance()->iArchID;
+		}
+		cd.nameIDS = data.solar_ids;
+		cd.solarName = data.overwrittenName;
+		cd.clientId = iClientID;
+		mapMiningContainers[data.iSpaceObjId] = cd;
+		mapClients[iClientID].deployedContainerId = data.iSpaceObjId;
+		pub::Player::RemoveCargo(iClientID, equip->iSubObjId, 1);
+	}
 }
 
 void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)

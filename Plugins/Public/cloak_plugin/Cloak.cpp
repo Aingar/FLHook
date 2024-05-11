@@ -679,12 +679,13 @@ void CloakDisruptor(uint iClientID)
 			continue;
 
 		//we check if that character has a cloaking device.
-		if (!mapClientsCloak.count(client2))
+		auto& cloakInfoIter = mapClientsCloak.find(client2);
+		if (cloakInfoIter == mapClientsCloak.end())
 		{
 			continue;
 		}
 		
-		auto& cloakInfo = mapClientsCloak[client2];
+		auto& cloakInfo = cloakInfoIter->second;
 
 		//if it's an admin, do nothing. Doing it this way fixes the ghost bug.
 		if (!cloakInfo.bAdmin)
@@ -727,13 +728,15 @@ bool UserCmd_Cloak(uint iClientID, const wstring &wscCmd, const wstring &wscPara
 		return true;
 	}
 
-	if (!mapClientsCloak.count(iClientID))
+	auto& infoIter = mapClientsCloak.find(iClientID);
+
+	if (infoIter == mapClientsCloak.end() || !infoIter->second.arch)
 	{
 		PrintUserCmdText(iClientID, L"Cloaking device not available");
 		return true;
 	}
 
-	auto& info = mapClientsCloak.at(iClientID);
+	auto& info = infoIter->second;
 
 	if (info.DisruptTime)
 	{
@@ -938,22 +941,23 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 			return true;
 		}
 
-		if (!mapClientsCloak.count(iClientID))
+		auto& cloakData = mapClientsCloak.find(iClientID);
+		if (cloakData == mapClientsCloak.end())
 		{
 			cmds->Print(L"ERR Cloaking device not available");
 			return true;
 		}
 
-		switch (mapClientsCloak[iClientID].iState)
+		switch (cloakData->second.iState)
 		{
 		case STATE_CLOAK_OFF:
-			mapClientsCloak[iClientID].bAdmin = true;
+			cloakData->second.bAdmin = true;
 			InitCloakInfo(iClientID, 0);
 			SetState(iClientID, iShip, STATE_CLOAK_ON);
 			break;
 		case STATE_CLOAK_CHARGING:
 		case STATE_CLOAK_ON:
-			mapClientsCloak[iClientID].bAdmin = true;
+			cloakData->second.bAdmin = true;
 			InitCloakInfo(iClientID, 0);
 			SetState(iClientID, iShip, STATE_CLOAK_OFF);
 			break;
@@ -975,13 +979,14 @@ void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, Damag
 	if (!client)
 		return;
 
-	if (!mapClientsCloak.count(client))
+	auto& cloakData = mapClientsCloak.find(client);
+	if (cloakData == mapClientsCloak.end())
 	{
 		return;
 	}
 
-	if (!mapClientsCloak[client].bAdmin
-		&& mapClientsCloak[client].iState == STATE_CLOAK_CHARGING)
+	if (!cloakData->second.bAdmin
+		&& cloakData->second.iState == STATE_CLOAK_CHARGING)
 	{
 		SetState(client, cShip->id, STATE_CLOAK_OFF);
 	}
@@ -992,18 +997,27 @@ void __stdcall JumpInComplete_AFTER(unsigned int iSystem, unsigned int iShip)
 	returncode = DEFAULT_RETURNCODE;
 	uint iClientID = HkGetClientIDByShip(iShip);
 
-	if (iClientID)
+	if (!iClientID)
 	{
-		jumpingPlayers[iClientID] = 5;
-		if (mapClientsCloak[iClientID].iState == STATE_CLOAK_CHARGING)
-		{
-			SetState(iClientID, iShip, STATE_CLOAK_OFF);
-			pub::Audio::PlaySoundEffect(iClientID, CreateID("cloak_osiris"));
-			PrintUserCmdText(iClientID, L"Alert: Cloaking device overheat detected. Shutting down.");
+		return;
+	}
 
-			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-			HkAddCheaterLog(wscCharname, L"Switched system while under cloak charging mode");
-		}
+	jumpingPlayers[iClientID] = 5;
+
+	auto& cloakData = mapClientsCloak.find(iClientID);
+	if (cloakData == mapClientsCloak.end())
+	{
+		return;
+	}
+
+	if (cloakData->second.iState == STATE_CLOAK_CHARGING)
+	{
+		SetState(iClientID, iShip, STATE_CLOAK_OFF);
+		pub::Audio::PlaySoundEffect(iClientID, CreateID("cloak_osiris"));
+		PrintUserCmdText(iClientID, L"Alert: Cloaking device overheat detected. Shutting down.");
+
+		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+		HkAddCheaterLog(wscCharname, L"Switched system while under cloak charging mode");
 	}
 }
 
@@ -1011,34 +1025,44 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if ((response == PROCEED_DOCK || response == DOCK) && iCancel != -1)
+	if (((response == PROCEED_DOCK || response == DOCK) && iCancel != -1))
 	{
-		uint client = HkGetClientIDByShip(iShip);
-		if (!client)
-		{
-			return 0;
-		}
-		// If the last jump happened within 60 seconds then prohibit the docking
-		// on a jump hole or gate.
-		uint iTypeID;
-		pub::SpaceObj::GetType(iDockTarget, iTypeID);
-		if (iTypeID & (JumpGate | JumpHole))
-		{
-			if (mapClientsCloak[client].iState == STATE_CLOAK_CHARGING)
-			{
-				SetState(client, iShip, STATE_CLOAK_OFF);
-				pub::Audio::PlaySoundEffect(client, CreateID("cloak_osiris"));
-				PrintUserCmdText(client, L"Alert: Cloaking device overheat detected. Shutting down.");
+		return 0;
+	}
 
-				wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-				HkAddCheaterLog(wscCharname, L"About to enter a JG/JH while under cloak charging mode");
-				return 0;
-			}
-			else if (mapClientsCloak[client].iState == STATE_CLOAK_ON)
-			{
-				jumpingPlayers[client] = 20;
-			}
-		}
+	uint client = HkGetClientIDByShip(iShip);
+	if (!client)
+	{
+		return 0;
+	}
+	// If the last jump happened within 60 seconds then prohibit the docking
+	// on a jump hole or gate.
+	uint iTypeID;
+	pub::SpaceObj::GetType(iDockTarget, iTypeID);
+	if (!(iTypeID & (JumpGate | JumpHole)))
+	{
+		return 0;
+	}
+	
+	auto& cloakInfo = mapClientsCloak.find(client);
+	if (cloakInfo == mapClientsCloak.end())
+	{
+		return 0;
+	}
+
+	if (cloakInfo->second.iState == STATE_CLOAK_CHARGING)
+	{
+		SetState(client, iShip, STATE_CLOAK_OFF);
+		pub::Audio::PlaySoundEffect(client, CreateID("cloak_osiris"));
+		PrintUserCmdText(client, L"Alert: Cloaking device overheat detected. Shutting down.");
+
+		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
+		HkAddCheaterLog(wscCharname, L"About to enter a JG/JH while under cloak charging mode");
+		return 0;
+	}
+	else if (cloakInfo->second.iState == STATE_CLOAK_ON)
+	{
+		jumpingPlayers[client] = 20;
 	}
 
 	return 0;
@@ -1057,10 +1081,14 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	{
 		returncode = SKIPPLUGINS;
 		CUSTOM_CLOAK_CHECK_STRUCT* info = reinterpret_cast<CUSTOM_CLOAK_CHECK_STRUCT*>(data);
-		auto cloakState = mapClientsCloak[info->clientId].iState;
-		if (cloakState == STATE_CLOAK_CHARGING || cloakState == STATE_CLOAK_ON)
+		auto& cloakData = mapClientsCloak.find(info->clientId);
+		if (cloakData != mapClientsCloak.end())
 		{
-			info->isCloaked = true;
+			auto cloakState = cloakData->second.iState;
+			if (cloakState == STATE_CLOAK_CHARGING || cloakState == STATE_CLOAK_ON)
+			{
+				info->isCloaked = true;
+			}
 		}
 	}
 }
@@ -1069,7 +1097,8 @@ void SwitchOutComplete(uint ship, uint clientId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (mapClientsCloak.count(clientId) && mapClientsCloak.at(clientId).iState == STATE_CLOAK_ON)
+	auto& info = mapClientsCloak.find(clientId);
+	if (info == mapClientsCloak.end() || info->second.iState == STATE_CLOAK_ON)
 	{
 		ObscureSystemList(clientId);
 	}

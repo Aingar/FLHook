@@ -31,6 +31,8 @@
 
 static int set_iPluginDebug = 0;
 
+uint playerIds[MAX_CLIENT_ID + 1];
+
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
@@ -83,17 +85,15 @@ struct COMBAT_EVENT {
 	int iObjectiveMax = INT32_MAX;
 	int iObjectiveCurrent = 0; // Always 0 to prevent having no data	
 	//Combat event data
-	bool bPlayersOnly = false; // assume false
-	list<uint> lAllowedIDs;
-	list<uint> lTargetIDs;
-	list<uint> lSystems;
+	unordered_set<uint> lAllowedIDs;
+	unordered_set<uint> lTargetIDs;
+	unordered_set<uint> lSystems;
+	unordered_set<uint> lNPCTargetReputation;
 	//Rewards
 	int bonusnpc;
 	int bonusplayer;
 	int iObjectivePlayerReward;
 	int iObjectiveNPCReward;
-	//NPC data if needed
-	list<uint> lNPCTargetReputation;
 	//Optional commodity reward data
 	bool bCommodityReward = false; // assume false
 	uint uCommodityID;
@@ -126,16 +126,10 @@ map<string, COMBAT_EVENT> mapCombatEvents;
 
 map<string, EVENT_TRACKER> mapEventTracking;
 
-map<uint, string> mapMiningSpaceObj;
-map<string, MINING_EVENT> mapMiningEvents;
-
-//gun projectile archs that are allowed to mine
-set<uint> validminingarch;
-
 
 //We'll map player IDs so we don't have to iterate through the player structures
 //at some point this should be moved to HookExt so all plugins can benefit from this and reduce data redudancy.
-map <uint, string> mapIDs;
+unordered_map <uint, string> mapIDs;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Loading Settings
@@ -184,9 +178,6 @@ void LoadSettings()
 	int iLoaded = 0;
 	int iLoaded2 = 0;
 	int iLoaded3 = 0;
-
-	validminingarch.insert(CreateID("dsy_ecoturret_ammo"));
-	validminingarch.insert(CreateID("dsy_miningturret_ammo"));
 
 	INI_Reader ini;
 	if (ini.open(File_FLHook.c_str(), false))
@@ -319,10 +310,6 @@ void LoadSettings()
 						ce.iObjectiveMax = ini.get_value_int(0);
 					}
 					//Combat settings
-					else if (ini.is_value("playersonly"))
-					{
-						ce.bPlayersOnly = ini.get_value_bool(0);
-					}
 					else if (ini.is_value("allowedid"))
 					{
 						uint idHash = CreateID(ini.get_value_string(0));
@@ -332,7 +319,7 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						ce.lAllowedIDs.push_back(CreateID(ini.get_value_string(0)));
+						ce.lAllowedIDs.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("targetid"))
 					{
@@ -343,7 +330,7 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						ce.lTargetIDs.push_back(CreateID(ini.get_value_string(0)));
+						ce.lTargetIDs.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("system"))
 					{
@@ -355,7 +342,7 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						ce.lSystems.push_back(CreateID(ini.get_value_string(0)));
+						ce.lSystems.insert(CreateID(ini.get_value_string(0)));
 					}
 					//Bonus values
 					else if (ini.is_value("bonusnpc"))
@@ -371,9 +358,7 @@ void LoadSettings()
 					//NPC target reputations if enabled
 					else if (ini.is_value("targetnpc"))
 					{
-						uint rep;
-						pub::Reputation::GetReputationGroup(rep, ini.get_value_string(0));
-						ce.lNPCTargetReputation.push_back(rep);
+						ce.lNPCTargetReputation.insert(MakeId(ini.get_value_string(0)));
 					}
 					//Optional commodity reward
 					else if (ini.is_value("commodityreward"))
@@ -396,66 +381,6 @@ void LoadSettings()
 					++iLoaded;
 				}
 			}
-			//Mining Events
-			else if (ini.is_header("MiningEvent"))
-			{
-				MINING_EVENT me;
-				string id;
-
-				while (ini.read_value())
-				{
-					//Default event settings
-					if (ini.is_value("id"))
-					{
-						id = ini.get_value_string(0);
-					}
-					else if (ini.is_value("name"))
-					{
-						me.sEventName = ini.get_value_string(0);
-					}
-					else if (ini.is_value("url"))
-					{
-						me.sURL = ini.get_value_string(0);
-					}
-					else if (ini.is_value("objectivemax"))
-					{
-						me.iObjectiveMax = ini.get_value_int(0);
-						me.iObjectiveCurrent = ini.get_value_int(0);
-					}
-					//Mining settings
-					else if (ini.is_value("allowedminerid"))
-					{
-						me.lAllowedMinerIDs.insert(CreateID(ini.get_value_string(0)));
-					}
-					else if (ini.is_value("allowedtraderid"))
-					{
-						me.lAllowedTraderIDs.insert(CreateID(ini.get_value_string(0)));
-					}
-					//Bonus values
-					else if (ini.is_value("bonus"))
-					{
-						me.iBonusCash = ini.get_value_int(0);
-					}
-					//Optional commodity reward
-					else if (ini.is_value("limited"))
-					{
-						me.bLimited = ini.get_value_bool(0);
-					}
-					else if (ini.is_value("commodity"))
-					{
-						pub::GetGoodID(me.uCommodityID, ini.get_value_string(0));
-					}
-					else if (ini.is_value("commodityperhit"))
-					{
-						me.iCommodityPerHit = ini.get_value_int(0);
-					}
-				}
-
-				mapMiningEvents[id] = me;
-				++iLoaded;
-
-			}
-
 		}
 		ini.close();
 	}
@@ -526,38 +451,6 @@ void LoadSettings()
 					++iLoaded2;
 				}
 			}
-			//COMBAT EVENTS
-			if (ini.is_header("MiningEvent"))
-			{
-				bool exist = false;
-				string id;
-				int currentcount;
-
-				while (ini.read_value())
-				{
-					if (ini.is_value("id"))
-					{
-						id = ini.get_value_string(0);
-						//this is to ensure we don't keep data for events that ceased to exist
-						if (mapMiningEvents.find(id) != mapMiningEvents.end())
-						{
-							exist = true;
-						}
-					}
-					else if (ini.is_value("currentcount"))
-					{
-						currentcount = ini.get_value_int(0);
-					}
-				}
-
-				if (exist)
-				{
-					mapMiningEvents[id].iObjectiveCurrent = currentcount;
-					ConPrint(L"Event ME: Found event ID %s and loaded count %i\n", stows(id).c_str(), currentcount);
-					++iLoaded2;
-				}
-			}
-
 		}
 		ini.close();
 	}
@@ -592,11 +485,6 @@ void LoadSettings()
 							exist = true;
 							name = mapCombatEvents[id].sEventName;
 						}
-						else if (mapMiningEvents.find(id) != mapMiningEvents.end())
-						{
-							exist = true;
-							name = mapMiningEvents[id].sEventName;
-						}
 					}
 					else if ((ini.is_value("data")) && (exist == true))
 					{
@@ -627,6 +515,42 @@ void LoadSettings()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+uint GetPlayerId(uint clientId)
+{
+	if (playerIds[clientId])
+	{
+		return playerIds[clientId];
+	}
+
+	if (!ClientInfo[clientId].cship)
+	{
+		for (auto& equip : Players[clientId].equipDescList.equip)
+		{
+			if (!mapIDs.count(equip.iArchID))
+			{
+				continue;
+			}
+
+			playerIds[clientId] = equip.iArchID;
+			break;
+		}
+	}
+	else
+	{
+
+		CEquip* tracBeam = ClientInfo[clientId].cship->equip_manager.FindFirst(EquipmentClass::TractorBeam);
+
+		if (!tracBeam)
+		{
+			return 0;
+		}
+
+		playerIds[clientId] = tracBeam->EquipArch()->iArchID;
+	}
+	
+	return playerIds[clientId];
+}
 
 FILE *Logfile = fopen("./flhook_logs/event_log.log", "at");
 
@@ -932,14 +856,7 @@ void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int 
 
 void __stdcall PlayerLaunch_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)
 {
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
-	{
-		if ((mapIDs.find(item->iArchID) != mapIDs.end()) && item->bMounted)
-		{
-			HookExt::IniSetI(iClientID, "event.shipid", item->iArchID);
-			//PrintUserCmdText(iClientID, L"DEBUG: Found ID %s", stows(mapIDs[item->iArchID]).c_str());
-		}
-	}
+	playerIds[iClientID] = 0;
 }
 
 void ReadHookExtEventData()
@@ -999,7 +916,7 @@ void ReadHookExtEventData()
 
 void ProcessEventData()
 {
-	if (mapMiningEvents.empty() && mapTradeEvents.empty() && mapCombatEvents.empty())
+	if (mapTradeEvents.empty() && mapCombatEvents.empty())
 	{
 		return;
 	}
@@ -1096,56 +1013,6 @@ void ProcessEventData()
 
 		string siegeblock;
 		siegeblock = "[CombatEvent]\n";
-		siegeblock.append("id = " + iter->first + "\n");
-
-		stringstream ss;
-		ss << iter->second.iObjectiveCurrent;
-		string str = ss.str();
-
-		siegeblock.append("currentcount = " + str + "\n");
-
-		siegedump.append(siegeblock);
-
-		///////////////////////////////////////////////////////////////////////////////////////
-		// END INI DUMPING
-		///////////////////////////////////////////////////////////////////////////////////////
-
-	}
-
-	//////////////////////////////////////////////////////////////////////////////////////
-	// COMBAT ITERATOR END
-	///////////////////////////////////////////////////////////////////////////////////////
-
-	//////////////////////////////////////////////////////////////////////////////////////
-	// MINING ITERATOR INIT
-	///////////////////////////////////////////////////////////////////////////////////////
-
-	for (map<string, MINING_EVENT>::iterator iter = mapMiningEvents.begin(); iter != mapMiningEvents.end(); iter++)
-	{
-		///////////////////////////////////////////////////////////////////////////////////////
-		// JSON DUMPING
-		///////////////////////////////////////////////////////////////////////////////////////
-
-		//begin the object writer
-		minijson::object_writer pw = writer.nested_object(iter->first.c_str());
-
-		//add basic elements
-		pw.write("name", iter->second.sEventName);
-		pw.write("url", iter->second.sURL);
-		pw.write("current", iter->second.iObjectiveCurrent);
-		pw.write("max", iter->second.iObjectiveMax);
-		pw.close();
-
-		///////////////////////////////////////////////////////////////////////////////////////
-		// END JSON DUMPING
-		///////////////////////////////////////////////////////////////////////////////////////
-
-		///////////////////////////////////////////////////////////////////////////////////////
-		// INI DUMPING
-		///////////////////////////////////////////////////////////////////////////////////////
-
-		string siegeblock;
-		siegeblock = "[MiningEvent]\n";
 		siegeblock.append("id = " + iter->first + "\n");
 
 		stringstream ss;
@@ -1315,127 +1182,99 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (!iClientIDVictim || !iClientIDKiller)
+	{
+		return;
+	}
+
 	const wchar_t *victim = (const wchar_t*)Players.GetActiveCharacterName(iClientIDVictim);
 	const wchar_t *killer = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
 
 	string sIDVictimEvent;
-	if (victim)
-	{
-		if (HookExt::IniGetB(iClientIDVictim, "event.enabled"))
-		{
-			sIDVictimEvent = wstos(HookExt::IniGetWS(iClientIDVictim, "event.eventid"));
-			//else disable event mode
-			HookExt::IniSetB(iClientIDVictim, "event.enabled", false);
-			HookExt::IniSetWS(iClientIDVictim, "event.eventid", L"");
-			HookExt::IniSetWS(iClientIDVictim, "event.eventpob", L"");
-			HookExt::IniSetI(iClientIDVictim, "event.eventpobcommodity", 0);
-			HookExt::IniSetI(iClientIDVictim, "event.quantity", 0);
-			PrintUserCmdText(iClientIDVictim, L"You have died and have been unregistered from the event: %s", stows(mapTradeEvents[sIDVictimEvent].sEventName).c_str());
-		}
 
+	if (HookExt::IniGetB(iClientIDVictim, "event.enabled"))
+	{
+		sIDVictimEvent = wstos(HookExt::IniGetWS(iClientIDVictim, "event.eventid"));
+		//else disable event mode
+		HookExt::IniSetB(iClientIDVictim, "event.enabled", false);
+		HookExt::IniSetWS(iClientIDVictim, "event.eventid", L"");
+		HookExt::IniSetWS(iClientIDVictim, "event.eventpob", L"");
+		HookExt::IniSetI(iClientIDVictim, "event.eventpobcommodity", 0);
+		HookExt::IniSetI(iClientIDVictim, "event.quantity", 0);
+		PrintUserCmdText(iClientIDVictim, L"You have died and have been unregistered from the event: %s", stows(mapTradeEvents[sIDVictimEvent].sEventName).c_str());
 	}
 
-	if (victim && killer)
+	//Combat event handling for player death
+	uint pIDKiller = GetPlayerId(iClientIDKiller);
+	uint pIDVictim = GetPlayerId(iClientIDVictim);
+
+	for (auto& i = mapCombatEvents.begin(); i != mapCombatEvents.end(); ++i)
 	{
-		//Combat event handling for player death
-		uint pIDKiller = HookExt::IniGetI(iClientIDKiller, "event.shipid");
-		uint pIDVictim = HookExt::IniGetI(iClientIDVictim, "event.shipid");
-
-		for (map<string, COMBAT_EVENT>::iterator i = mapCombatEvents.begin(); i != mapCombatEvents.end(); ++i)
+		//Check if this event has been completed already
+		if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
 		{
-			//Check if this event has been completed already
-			if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
-			{
-				PrintUserCmdText(iClientIDKiller, L"Sorry, the event is already completed.");
-			}
-			else
-			{
-				//Check if the kill was done in a system that match. This is most likely the fastest way to iterate through events at first.
-				bool bFoundSystem = false;
-				for (list<uint>::iterator i1 = i->second.lSystems.begin(); i1 != i->second.lSystems.end(); ++i1)
-				{
-					if (*i1 == iSystem)
-					{
-						bFoundSystem = true;
-						break;
-					}
-				}
+			continue;
+		}
 
-				if (bFoundSystem)
-				{
-					//Check first if our killer match the event
-					bool bFoundIDKiller = false;
-					for (list<uint>::iterator i2 = i->second.lAllowedIDs.begin(); i2 != i->second.lAllowedIDs.end(); ++i2)
-					{
-						if (*i2 == pIDKiller)
-						{
-							bFoundIDKiller = true;
-							break;
-						}
-					}
+		if (!i->second.lSystems.count(iSystem))
+		{
+			continue;
+		}
 
-					if (bFoundIDKiller)
-					{
-						//Check if our victim match the event
-						bool bFoundIDVictim = false;
-						for (list<uint>::iterator i3 = i->second.lTargetIDs.begin(); i3 != i->second.lTargetIDs.end(); ++i3)
-						{
-							if (*i3 == pIDVictim || *i3 == mapTradeEvents[sIDVictimEvent].uHashID)
-							{
-								bFoundIDVictim = true;
-								break;
-							}
-						}
+		if (!i->second.lAllowedIDs.count(pIDKiller))
+		{
+			continue;
+		}
 
-						if (bFoundIDVictim)
-						{
-							//If we reach this point we have a winner
-							//Check event status first
-							if ((i->second.iObjectiveCurrent + i->second.iObjectivePlayerReward) >= i->second.iObjectiveMax)
-							{
-								i->second.iObjectiveCurrent = i->second.iObjectiveMax;
-								PrintUserCmdText(iClientIDKiller, L"You have delivered the final kill. Congratulations !");
-								Notify_TradeEvent_Exit(iClientIDKiller, i->second.sEventName, "NOTIFICATION: Final Kill"); //must be changed
-							}
-							else
-							{
-								i->second.iObjectiveCurrent += i->second.iObjectivePlayerReward;
-							}
+		if (!i->second.lTargetIDs.count(pIDVictim))
+		{
+			continue;
+		}
+		//If we reach this point we have a winner
+		//Check event status first
+		if ((i->second.iObjectiveCurrent + i->second.iObjectivePlayerReward) >= i->second.iObjectiveMax)
+		{
+			i->second.iObjectiveCurrent = i->second.iObjectiveMax;
+			PrintUserCmdText(iClientIDKiller, L"You have delivered the final kill. Congratulations !");
+			Notify_TradeEvent_Exit(iClientIDKiller, i->second.sEventName, "NOTIFICATION: Final Kill"); //must be changed
+		}
+		else
+		{
+			i->second.iObjectiveCurrent += i->second.iObjectivePlayerReward;
+		}
 
-							//Once we have updated the status, handle the reward
-							//Provide commodity reward if chosen
-							if (i->second.bCommodityReward == true)
-							{
-								//TODO
-								break;
-							}
-							//Else provide money reward
-							else
-							{
-								wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
-								HkAddCash(wscCharname, i->second.bonusplayer);
+		//Once we have updated the status, handle the reward
+		//Provide commodity reward if chosen
+		if (i->second.bCommodityReward == true)
+		{
+			//TODO
+			break;
+		}
+		//Else provide money reward
+		else
+		{
+			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
+			HkAddCash(wscCharname, i->second.bonusplayer);
 
-								mapEventTracking[i->first].PlayerEventData[wscCharname] += i->second.iObjectivePlayerReward;
+			mapEventTracking[i->first].PlayerEventData[wscCharname] += i->second.iObjectivePlayerReward;
 
-								pub::Audio::PlaySoundEffect(iClientIDKiller, CreateID("ui_gain_level"));
-								PrintUserCmdText(iClientIDKiller, L"You receive a bonus of %d credits and contributed %d points.", i->second.bonusplayer, i->second.iObjectivePlayerReward);
-								Notify_CombatEvent_PlayerKill(iClientIDKiller, iClientIDVictim, i->second.sEventName, i->second.bonusplayer, i->second.iObjectivePlayerReward);
-								break;
-							}
-						}
-					}
-
-				}
-			}
+			pub::Audio::PlaySoundEffect(iClientIDKiller, CreateID("ui_gain_level"));
+			PrintUserCmdText(iClientIDKiller, L"You receive a bonus of %d credits and contributed %d points.", i->second.bonusplayer, i->second.iObjectivePlayerReward);
+			Notify_CombatEvent_PlayerKill(iClientIDKiller, iClientIDVictim, i->second.sEventName, i->second.bonusplayer, i->second.iObjectivePlayerReward);
+			break;
 		}
 	}
-
 }
 
 
-void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, DamageList* dmgList)
+void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	if (mapCombatEvents.empty())
+	{
+		return;
+	}
 
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
@@ -1444,7 +1283,66 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, DamageList* dmgList)
 		return;
 	}
 
-	//TODO: Implement npc rewards
+	uint killerPlayerId = HkGetClientIDByShip(killerId);
+
+	if (!killerPlayerId)
+	{
+		return;
+	}
+
+	for (auto& i = mapCombatEvents.begin(); i != mapCombatEvents.end(); ++i)
+	{
+		COMBAT_EVENT& event = i->second;
+		//Check if this event has been completed already
+		if (event.iObjectiveCurrent >= event.iObjectiveMax)
+		{
+			continue;
+		}
+
+		if (!event.lSystems.count(cship->system))
+		{
+			continue;
+		}
+
+
+		uint killerFactionId = GetPlayerId(killerPlayerId);
+
+		if (!event.lAllowedIDs.count(killerFactionId))
+		{
+			continue;
+		}
+
+		uint aff;
+		pub::Reputation::GetAffiliation(cship->repVibe, aff);
+
+		if (!event.lNPCTargetReputation.count(aff))
+		{
+			continue;
+		}
+
+		if (event.bonusnpc)
+		{
+			pub::Player::AdjustCash(killerPlayerId, event.bonusnpc);
+			PrintUserCmdText(killerPlayerId, L"You've received $%ls credits as an event reward.", ToMoneyStr(event.bonusnpc).c_str());
+		}
+
+		if (event.iObjectiveNPCReward)
+		{
+			PrintUserCmdText(killerPlayerId, L"%u points awarded.", event.iObjectiveNPCReward);
+			event.iObjectiveCurrent += event.iObjectiveNPCReward;
+		}
+
+		wstring charname = (const wchar_t*)Players.GetActiveCharacterName(killerPlayerId);
+
+		mapEventTracking[i->first].PlayerEventData[charname] += i->second.iObjectiveNPCReward;
+
+		if (event.iObjectiveCurrent >= event.iObjectiveMax)
+		{
+			wchar_t buf[150];
+			_snwprintf(buf, sizeof(buf), L"Event %ls objective has been completed, congratulations!", stows(event.sEventName).c_str());
+			HkMsgU(buf);
+		}
+	}
 }
 
 
@@ -1467,6 +1365,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy_AFTER, PLUGIN_HkIServerImpl_GFGoodBuy_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell_AFTER, PLUGIN_HkIServerImpl_GFGoodSell_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SendDeathMsg, PLUGIN_SendDeathMsg, 2));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 
 	return p_PI;
 }

@@ -575,7 +575,6 @@ void AdminCmd_AIMake(CCmds* cmds, int Amount, const wstring& NpcType, const wstr
 	//Creation counter
 	for (int i = 0; i < Amount; i++)
 	{
-		if(coordName != L"")
 		CreateNPC(NpcType, pos, rot, iSystem, groupName, coordName);
 		Log_CreateNPC(NpcType);
 	}

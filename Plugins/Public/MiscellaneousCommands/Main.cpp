@@ -229,7 +229,7 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 		return false;
 	}
 
-	if (!Players[targetClient].iShipID)
+	if (!ClientInfo[targetClient].cship)
 	{
 		PrintUserCmdText(iClientID, L"ERR %ls is not in space!", memberName.c_str());
 		return false;

@@ -52,8 +52,14 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 	return returncode;
 }
 
+struct AmmoStruct
+{
+	int ammoLimit;
+	int launcherStackingLimit;
+};
+
 // For ships, we go the easy way and map each ship belonging to each base
-static map <uint, int> mapAmmolimits;
+static map <uint, AmmoStruct> mapAmmolimits;
 
 // Autobuy data for players
 struct AUTOBUY_PLAYERINFO
@@ -75,8 +81,6 @@ static map <uint, AUTOBUY_PLAYERINFO> mapAutobuyPlayerInfo;
 static map <uint, uint> mapAutobuyFLHookCloak;
 static map <uint, uint> mapAutobuyFLHookJump;
 static map <uint, uint> mapAutobuyFLHookMatrix;
-
-static map <uint, int> mapStackableItems;
 
 uint iNanobotsID;
 uint iShieldBatsID;
@@ -111,7 +115,7 @@ void LoadSettings()
 			if (ini.is_header("CounterMeasure"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -123,13 +127,18 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -144,7 +153,7 @@ void LoadSettings()
 			if (ini.is_header("Munition"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -156,20 +165,25 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
 			else if (ini.is_header("Mine"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -181,13 +195,18 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -203,7 +222,7 @@ void LoadSettings()
 			if (ini.is_header("Munition"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -215,20 +234,25 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
 			else if (ini.is_header("CounterMeasure"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -240,20 +264,25 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
 			else if (ini.is_header("Mine"))
 			{
 				uint itemname;
-				int itemlimit;
+				AmmoStruct ammo;
 				bool valid = false;
 
 				while (ini.read_value())
@@ -265,13 +294,18 @@ void LoadSettings()
 					else if (ini.is_value("ammo_limit"))
 					{
 						valid = true;
-						itemlimit = ini.get_value_int(0);
+						ammo.ammoLimit = ini.get_value_int(0);
+						ammo.launcherStackingLimit = ini.get_value_int(1);
+						if (!ammo.launcherStackingLimit)
+						{
+							ammo.launcherStackingLimit = 1;
+						}
 					}
 				}
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = itemlimit;
+					mapAmmolimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -326,17 +360,6 @@ void LoadSettings()
 					}
 				}
 			}
-			else if (ini.is_header("stackable"))
-			{
-				while (ini.read_value())
-				{
-					if (ini.is_value("weapon"))
-					{
-						mapStackableItems[CreateID(ini.get_value_string(0))] = ini.get_value_int(1);
-						++iLoadedStackables;
-					}
-				}
-			}
 		}
 		ini.close();
 	}
@@ -373,17 +396,12 @@ int HkPlayerAutoBuyGetCount(list<CARGO_INFO> &lstCargo, uint iItemArchID)
 }
 
 #define ADD_EQUIP_TO_CART(desc)	{ aci.iArchID = ((Archetype::Launcher*)eq)->iProjectileArchID; \
-								aci.iCount = mapAmmolimits[aci.iArchID] - HkPlayerAutoBuyGetCount(lstCargo, aci.iArchID); \
-								aci.wscDescription = desc; \
-								lstCart.push_back(aci); }
-
-#define ADD_EQUIP_TO_CART_STACKABLE(desc)	{ aci.iArchID = ((Archetype::Launcher*)eq)->iProjectileArchID; \
-								aci.iCount = (mapAmmolimits[aci.iArchID] * tempmap[eq->iArchID])  - HkPlayerAutoBuyGetCount(lstCargo, aci.iArchID); \
+								aci.iCount = ammoLimitMap[aci.iArchID].ammoAdjustment; \
 								aci.wscDescription = desc; \
 								lstCart.push_back(aci); }
 
 #define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc)	{ aci.iArchID = IDin; \
-								aci.iCount = mapAmmolimits[aci.iArchID] - HkPlayerAutoBuyGetCount(lstCargo, aci.iArchID); \
+								aci.iCount = ammoLimitMap[aci.iArchID].ammoAdjustment; \
 								aci.wscDescription = desc; \
 								lstCart.push_back(aci); }
 
@@ -542,62 +560,101 @@ bool  UserCmd_AutoBuy(uint iClientID, const wstring &wscCmd, const wstring &wscP
 	return true;
 }
 
-void CheckforStackables(uint iClientID)
+struct ammoData
 {
-	map<uint, uint> tempmap;
+	int ammoAdjustment;
+	int ammoCount;
+	ushort sid;
+	int launcherCount;
+};
 
-	// player cargo
-	int iRemHoldSize;
-	list<CARGO_INFO> lstCargo;
-	HkEnumCargo(ARG_CLIENTID(iClientID), lstCargo, iRemHoldSize);
-
-	foreach(lstCargo, CARGO_INFO, it)
-	{
-		if (!(*it).bMounted)
-			continue;
-
-		if (mapStackableItems.find(it->iArchID) != mapStackableItems.end())
-		{
-			tempmap[it->iArchID] += 1;
-		}
-	}
+#pragma optimize("", off)
+unordered_map<uint, ammoData> GetAmmoLimits(uint client)
+{
+	unordered_map<uint, ammoData> ammoLauncherCount;
 
 	//now that we have identified the stackables, retrieve the current ammo count for stackables
-	for (map<uint, uint>::iterator ita = tempmap.begin(); ita != tempmap.end(); ita++)
+	for (auto& equip : Players[client].equipDescList.equip)
 	{
-		Archetype::Equipment *eq = Archetype::GetEquipment(ita->first);
-		uint ammo = ((Archetype::Launcher*)eq)->iProjectileArchID;
+		Archetype::Equipment* eq = Archetype::GetEquipment(equip.iArchID);
+		EQ_TYPE type = HkGetEqType(eq);
 
-		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+		if (type == ET_OTHER)
 		{
-			if (item->iArchID == ammo)
+			if (equip.bMounted)
 			{
-				if (item->iCount > (mapAmmolimits[ammo] * tempmap[ita->first]))
-				{
-					wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-					//ConPrint(L"DEBUG: player %s, iCount %d, ammo %d, tempmap %d \n", wscCharname.c_str(), item->iCount, mapAmmolimits[ammo], tempmap[ita->first]);
-					PrintUserCmdText(iClientID, L"You have lost some ammo because you had more than you should have.");
-
-					pub::Player::RemoveCargo(iClientID, item->sID, (item->iCount - (mapAmmolimits[ammo] * tempmap[ita->first])));
-				}
+				continue;
 			}
+			ammoLauncherCount[equip.iArchID].ammoCount = equip.iCount;
 		}
-	}
 
-
-
-	foreach(lstCargo, CARGO_INFO, it)
-	{
-		if (!(*it).bMounted)
-			continue;
-
-		if (mapStackableItems.find(it->iArchID) != mapStackableItems.end())
+		if (!equip.bMounted || equip.is_internal())
 		{
-			tempmap[it->iArchID] += 1;
+			continue;
+		}
+
+		if (type != ET_GUN && type != ET_MINE && type != ET_MISSILE && type != ET_CM && type != ET_CD && type != ET_TORPEDO)
+		{
+			continue;
+		}
+
+		uint ammo = ((Archetype::Launcher*)eq)->iProjectileArchID;
+		
+		auto& ammoLimit = mapAmmolimits.find(ammo);
+		if (ammoLimit == mapAmmolimits.end())
+		{
+			continue;
+		}
+		
+		if(ammoLimit->second.launcherStackingLimit > ammoLauncherCount[ammo].launcherCount)
+		{
+			++ammoLauncherCount[ammo].launcherCount;
 		}
 	}
 
+	for (auto& eq : Players[client].equipDescList.equip)
+	{
+		auto& ammo = ammoLauncherCount.find(eq.iArchID);
+		if (ammo != ammoLauncherCount.end())
+		{
+			ammo->second.ammoCount = eq.iCount;
+			ammo->second.sid = eq.sID;
+			continue;
+		}
+	}
 
+	for (auto& ammo : ammoLauncherCount)
+	{
+		if (!ammo.second.launcherCount)
+		{
+			continue;
+		}
+		int currAmmoLimit;
+		if (mapAmmolimits.count(ammo.first))
+		{
+			currAmmoLimit = ammo.second.launcherCount * mapAmmolimits.at(ammo.first).ammoLimit;
+		}
+		else
+		{
+			currAmmoLimit = MAX_PLAYER_AMMO;
+		}
+		ammo.second.ammoAdjustment = currAmmoLimit - ammo.second.ammoCount;
+	}
+
+	return ammoLauncherCount;
+}
+
+void CheckforStackables(uint iClientID)
+{
+	unordered_map<uint, ammoData> ammoLauncherCount = GetAmmoLimits(iClientID);
+
+	for (auto& ammo : ammoLauncherCount)
+	{
+		if (ammo.second.ammoAdjustment < 0)
+		{
+			pub::Player::RemoveCargo(iClientID, ammo.second.sid, -ammo.second.ammoAdjustment);
+		}
+	}
 }
 
 void PlayerAutorepair(uint iClientID)
@@ -711,8 +768,6 @@ void PlayerAutorepair(uint iClientID)
 
 void PlayerAutobuy(uint iClientID, uint iBaseID)
 {
-	map<uint, int> tempmap;
-
 	// player cargo
 	int iRemHoldSize;
 	list<CARGO_INFO> lstCargo;
@@ -771,96 +826,65 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 		mapAutobuyPlayerInfo[iClientID].bAutoBuyMissiles || mapAutobuyPlayerInfo[iClientID].bAutobuyMunition || mapAutobuyPlayerInfo[iClientID].bAutoBuyTorps || 
 		mapAutobuyPlayerInfo[iClientID].bAutobuyJump || mapAutobuyPlayerInfo[iClientID].bAutobuyMatrix || mapAutobuyPlayerInfo[iClientID].bAutobuyCloak)
 	{
-		// add mounted equip to a new list and eliminate double equipment(such as 2x lancer etc)
-		list<CARGO_INFO> lstMounted;
-		foreach(lstCargo, CARGO_INFO, it)
-		{
-			if (!(*it).bMounted)
-				continue;
-
-			if (mapStackableItems.find(it->iArchID) != mapStackableItems.end())
-			{
-				if (tempmap[it->iArchID] < mapStackableItems[it->iArchID])
-					tempmap[it->iArchID] += 1;
-			}
-
-			bool bFound = false;
-			foreach(lstMounted, CARGO_INFO, it2)
-			{
-				if ((*it2).iArchID == (*it).iArchID)
-				{
-					bFound = true;
-					break;
-				}
-			}
-
-			if (!bFound)
-				lstMounted.push_back(*it);
-		}
-
+		unordered_map<uint, ammoData> ammoLimitMap = GetAmmoLimits(iClientID);
 		map <uint, wstring> mapAutobuyFLHookExtras;
 		// check mounted equip
-		foreach(lstMounted, CARGO_INFO, it2)
+		unordered_set <uint> processedItems;
+		for(auto& item : Players[iClientID].equipDescList.equip)
 		{
-			uint i = (*it2).iArchID;
+			if (processedItems.count(item.iArchID))
+			{
+				continue;
+			}
 			AUTOBUY_CARTITEM aci;
-			Archetype::Equipment *eq = Archetype::GetEquipment(it2->iArchID);
+			Archetype::Equipment *eq = Archetype::GetEquipment(item.iArchID);
 			EQ_TYPE eq_type = HkGetEqType(eq);
 			if (eq_type == ET_MINE)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutoBuyMines)
+				{
+					processedItems.insert(item.iArchID);
 					ADD_EQUIP_TO_CART(L"Mines")
+				}
 			}
 			else if (eq_type == ET_CM)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutoBuyCM)
+				{
+					processedItems.insert(item.iArchID);
 					ADD_EQUIP_TO_CART(L"Countermeasures")
+				}
 			}
 			else if (eq_type == ET_TORPEDO)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutoBuyTorps)
 				{
-					if (mapStackableItems.find(eq->get_id()) != mapStackableItems.end())
-					{
-						ADD_EQUIP_TO_CART_STACKABLE(L"Torpedos")
-					}
-					else
-					{
-						ADD_EQUIP_TO_CART(L"Torpedos")
-					}
+					processedItems.insert(item.iArchID);
+					ADD_EQUIP_TO_CART(L"Torpedos")
 				}
 			}
 			else if (eq_type == ET_CD)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutoBuyCD)
+				{
+					processedItems.insert(item.iArchID);
 					ADD_EQUIP_TO_CART(L"Cruise Disruptors")
+				}
 			}
 			else if (eq_type == ET_MISSILE)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutoBuyMissiles)
 				{
-					if (mapStackableItems.find(eq->get_id()) != mapStackableItems.end())
-					{
-						ADD_EQUIP_TO_CART_STACKABLE(L"Missiles")
-					}
-					else
-					{
-						ADD_EQUIP_TO_CART(L"Missiles")
-					}
+					processedItems.insert(item.iArchID);
+					ADD_EQUIP_TO_CART(L"Missiles")
 				}
 			}
 			else if (eq_type == ET_GUN)
 			{
 				if (mapAutobuyPlayerInfo[iClientID].bAutobuyMunition)
 				{
-					if (mapStackableItems.find(eq->get_id()) != mapStackableItems.end())
-					{
-						ADD_EQUIP_TO_CART_STACKABLE(L"Munitions")
-					}
-					else
-					{
-						ADD_EQUIP_TO_CART(L"Munitions")
-					}
+					processedItems.insert(item.iArchID);
+					ADD_EQUIP_TO_CART(L"Munitions")
 				}
 			}
 
@@ -897,7 +921,7 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 
 	foreach(lstCart, AUTOBUY_CARTITEM, it4)
 	{
-		if (!(*it4).iCount || !Arch2Good((*it4).iArchID))
+		if (it4->iCount == 0 || !Arch2Good(it4->iArchID))
 			continue;
 
 		// check if good is available and if player has the neccessary rep
@@ -932,11 +956,11 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 			continue; // base does not sell this item or bad rep
 
 		float fPrice;
-		if (pub::Market::GetPrice(iBaseID, (*it4).iArchID, fPrice) == -1)
+		if (pub::Market::GetPrice(iBaseID, it4->iArchID, fPrice) == -1)
 			continue; // good not available
 
-		Archetype::Equipment *eq = Archetype::GetEquipment((*it4).iArchID);
-		if (iRemHoldSize < (eq->fVolume * (*it4).iCount))
+		Archetype::Equipment *eq = Archetype::GetEquipment(it4->iArchID);
+		if (iRemHoldSize < (eq->fVolume * it4->iCount))
 		{
 			uint iNewCount = (uint)(iRemHoldSize / eq->fVolume);
 			if (!iNewCount) {
@@ -944,10 +968,10 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 				continue;
 			}
 			else
-				(*it4).iCount = iNewCount;
+				it4->iCount = iNewCount;
 		}
 
-		int iCost = ((int)fPrice * (*it4).iCount);
+		int iCost = ((int)fPrice * it4->iCount);
 		if (iCash < iCost)
 			PrintUserCmdText(iClientID, L"Auto-Buy(%s): FAILED! Insufficient Credits", (*it4).wscDescription.c_str());
 		else {
@@ -972,7 +996,7 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 
 
 }
-
+#pragma optimize("", on)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code

@@ -115,7 +115,7 @@ DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_
 	DWORD srclen = 8; // header
 	for (map<uint, market_map_t>::iterator i = mapMarket.begin(); i != mapMarket.end(); ++i)
 	{
-		srclen += i->second.size() * 16;
+		srclen += i->second.size() * 20;
 		number_of_updates += i->second.size();
 	}
 	DWORD* src = (DWORD*)new byte[srclen];
@@ -135,7 +135,7 @@ DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_
 			src[pos++] = baseId;
 			src[pos++] = mgi.iGoodID;
 			*((float*)&(src[pos++])) = mgi.fPrice;
-			//src[pos++] = mgi.iQuantity; // sell price
+			src[pos++] = mgi.iQuantity; // sell price
 			src[pos++] = mgi.iTransType;
 		}
 	}
@@ -217,12 +217,12 @@ void LoadSettings()
 						uint baseId = CreateID(ini.get_value_string(0));
 						uint iGoodID = CreateID(ini.get_value_string(1));
 						float fPrice = ini.get_value_float(2);
-						//uint iSellPrice = ini.get_value_int(3);
-						//bool bBaseBuys = (ini.get_value_int(4) == 1);
-						bool bBaseBuys = (ini.get_value_int(3) == 1);
+						uint iSellPrice = ini.get_value_int(3);
+						bool bBaseBuys = (ini.get_value_int(4) == 1);
 
 						mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
 						mapBaseMarketDelta[baseId][iGoodID].fPrice = fPrice;
+						mapBaseMarketDelta[baseId][iGoodID].iQuantity = iSellPrice;
 						mapBaseMarketDelta[baseId][iGoodID].iTransType = (bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
@@ -256,8 +256,7 @@ void LoadSettings()
 			// The multiplier is the new price / old good (base) price
 			float fMultiplier = mgi.fPrice / gi->fPrice;
 
-			//bd->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
-			bd->set_market_good(mgi.iGoodID, !mgi.iTransType, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
+			bd->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
 		}
 	}
 

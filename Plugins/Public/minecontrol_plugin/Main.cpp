@@ -639,7 +639,7 @@ bool UserCmd_Process(uint client, const wstring& args)
         return true;
     }
 
-    IObjRW* target = cship->target;
+    IObjRW* target = cship->get_target();
     if (!target)
     {
         PrintUserCmdText(client, L"ERR Mining container not selected");
@@ -764,7 +764,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         const Archetype::Equipment* lootInfo = Archetype::GetEquipment(lootId);
 
         bool foundContainer = false;
-        IObjRW* target = cship->target;
+        IObjRW* target = cship->get_target();
 
         if (target)
         {
@@ -791,15 +791,15 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
                         cd.lastValidTargetId = targetId;
                         cd.lastValidPlayerId = iTargetClientID;
                     }
-                    else
+                }
+                else
+                {
+                    const auto& containerIter = mapMiningContainers.find(targetId);
+                    if (containerIter != mapMiningContainers.end())
                     {
-                        const auto& containerIter = mapMiningContainers.find(targetId);
-                        if (containerIter != mapMiningContainers.end())
-                        {
-                            container = &containerIter->second;
-                            cd.lastValidContainer = container;
-                            cd.lastValidContainerId = targetId;
-                        }
+                        container = &containerIter->second;
+                        cd.lastValidContainer = container;
+                        cd.lastValidContainerId = targetId;
                     }
                 }
 

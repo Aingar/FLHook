@@ -1200,7 +1200,7 @@ public:
 	float start_room;
 	float price_variance;
 	float ship_repair_cost;
-	FlMap<uint, MarketGoodInfo> market_map;
+	st6::map<uint, MarketGoodInfo> market_map;
 };
 
 class IMPORT BaseDataList

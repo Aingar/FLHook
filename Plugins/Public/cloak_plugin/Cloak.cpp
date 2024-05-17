@@ -425,9 +425,7 @@ static bool ProcessFuel(uint iClientID, CLOAK_INFO &info, uint iShipID)
 		float currFuelUsage = fuelUsage->usageStatic;
 		if (fuelUsage->usageLinear != 0.0f || fuelUsage->usageSquare != 0.0f)
 		{
-			Vector dir1;
-			Vector dir2;
-			pub::SpaceObj::GetMotion(iShipID, dir1, dir2);
+			Vector dir1 = cship->get_velocity();
 			float vecLength = sqrtf(dir1.x * dir1.x + dir1.y * dir1.y + dir1.z * dir1.z);
 
 			currFuelUsage += fuelUsage->usageLinear * vecLength;

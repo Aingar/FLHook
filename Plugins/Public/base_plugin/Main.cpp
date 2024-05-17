@@ -449,8 +449,11 @@ void LoadSettings()
 		if (string(base->cNickname).find("proxy_base") != string::npos)
 		{
 			CSolar* solar = reinterpret_cast<CSolar*>(CObject::Find(base->lSpaceObjID, CObject::CSOLAR_OBJECT));
-			solar->Release();
-			solar->dockTargetId2 = 0;
+			if (solar)
+			{
+				solar->Release();
+				solar->dockTargetId2 = 0;
+			}
 		}
 		base = Universe::GetNextBase();
 	}

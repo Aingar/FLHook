@@ -223,7 +223,7 @@ void LoadSettings()
 						mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
 						mapBaseMarketDelta[baseId][iGoodID].fPrice = fPrice;
 						mapBaseMarketDelta[baseId][iGoodID].iMin = iSellPrice;
-						mapBaseMarketDelta[baseId][iGoodID].iTransType = (bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
+						mapBaseMarketDelta[baseId][iGoodID].iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
 			}

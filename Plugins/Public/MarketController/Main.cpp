@@ -135,7 +135,7 @@ DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_
 			src[pos++] = baseId;
 			src[pos++] = mgi.iGoodID;
 			*((float*)&(src[pos++])) = mgi.fPrice;
-			src[pos++] = mgi.iQuantity; // sell price
+			src[pos++] = mgi.iMin; // sell price
 			src[pos++] = mgi.iTransType;
 		}
 	}
@@ -222,7 +222,7 @@ void LoadSettings()
 
 						mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
 						mapBaseMarketDelta[baseId][iGoodID].fPrice = fPrice;
-						mapBaseMarketDelta[baseId][iGoodID].iQuantity = iSellPrice;
+						mapBaseMarketDelta[baseId][iGoodID].iMin = iSellPrice;
 						mapBaseMarketDelta[baseId][iGoodID].iTransType = (bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
@@ -279,6 +279,7 @@ void __stdcall Login(struct SLoginInfo const& li, uint client)
 	SendD5ACCmd(client, dsac_update_econ_cmd, dsac_update_econ_cmd_len);
 }
 
+#pragma optimize("", off)
 void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -292,11 +293,16 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 	}
 
 	BaseData* bd = BaseDataList_get()->get_base_data(Players[client].iBaseID);
-	MarketGoodInfo* info = (MarketGoodInfo*)stl_map_find((DWORD*)&(bd->market_map), gsi.iArchID);
-	int sellPrice = info->iQuantity;
-	int currPrice = static_cast<int>(info->fPrice);
+	auto marketData = bd->market_map.find(gsi.iArchID);
+	if (marketData == bd->market_map.end())
+	{
+		return;
+	}
+	int sellPrice = marketData->second.iMin;
+	int currPrice = static_cast<int>(marketData->second.fPrice);
 	pub::Player::AdjustCash(client, gsi.iCount * (sellPrice - currPrice));
 }
+#pragma optimize("", on)
 
 void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int client)
 {

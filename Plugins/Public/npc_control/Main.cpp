@@ -560,17 +560,25 @@ void AdminCmd_AIMake(CCmds* cmds, int Amount, const wstring& NpcType, const wstr
 		return;
 	}
 
-	uint iShip1;
-	pub::Player::GetShip(HkGetClientIdFromCharname(cmds->GetAdminName()), iShip1);
-	if (!iShip1)
+	uint clientId = HkGetClientIdFromCharname(cmds->GetAdminName());
+
+	if (clientId == -1)
+	{
+		cmds->Print(L"ERR Not usable from console");
 		return;
+	}
 
-	uint iSystem;
-	pub::Player::GetSystem(HkGetClientIdFromCharname(cmds->GetAdminName()), iSystem);
+	CShip* cship = ClientInfo[clientId].cship;
+	if (!cship)
+	{
+		cmds->Print(L"ERR Must be alive and in space");
+		return;
+	}
 
-	Vector pos;
-	Matrix rot;
-	pub::SpaceObj::GetLocation(iShip1, pos, rot);
+	uint iSystem = Players[clientId].iSystemID;
+
+	Vector& pos = cship->vPos;
+	Matrix& rot = cship->mRot;
 
 	//Creation counter
 	for (int i = 0; i < Amount; i++)
@@ -1009,7 +1017,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 		AdminCmd_AIMake(cmds, cmds->ArgInt(1), cmds->ArgStr(2), cmds->ArgStr(3), cmds->ArgStr(4));
 		return true;
 	}
-	if (IS_CMD("aicreatefleet"))
+	if (IS_CMD("aifleet"))
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIFleet(cmds, cmds->ArgStr(1), cmds->ArgStr(2));

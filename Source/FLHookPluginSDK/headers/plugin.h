@@ -274,7 +274,8 @@ enum PLUGIN_MESSAGE
 	CUSTOM_RENAME_NOTIFICATION = 57,
 	CUSTOM_RESTART_NOTIFICATION = 58,
 	CUSTOM_CLOAK_ALERT = 60,
-	CUSTOM_POB_DOCK_ALERT = 61
+	CUSTOM_POB_DOCK_ALERT = 61,
+	CUSTOM_SHIELD_STATE_CHANGE = 62
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -463,6 +464,12 @@ struct CUSTOM_POB_DOCK_ALERT_STRUCT
 	uint client;
 	float range;
 	wstring* msg;
+};
+
+struct CUSTOM_SHIELD_CHANGE_STATE_STRUCT
+{
+	uint client;
+	bool newState;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

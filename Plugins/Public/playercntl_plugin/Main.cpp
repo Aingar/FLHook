@@ -1163,12 +1163,6 @@ void __stdcall RequestBestPath(unsigned int p1, DWORD *p2, int p3)
 	}
 }
 
-void CreateShipPacket(uint clientId, FLPACKET_CREATESHIP& pShip)
-{
-	returncode = DEFAULT_RETURNCODE;
-	MiscCmds::SyncShieldState(clientId, pShip);
-}
-
 typedef bool(*_UserCmdProc)(uint, const wstring &, const wstring &, const wchar_t*);
 
 struct USERCMD
@@ -1847,12 +1841,6 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	return;
 }
 
-EXPORT void FreeThreads()
-{
-	MiscCmds::shouldKillShieldThread = true;
-	MiscCmds::shieldSyncThread.join();
-}
-
 /** Functions to hook */
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
@@ -1914,9 +1902,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCB_MissileTorpHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&RequestBestPath, PLUGIN_HkIServerImpl_RequestBestPath, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateShipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
-	
-	MiscCmds::shieldSyncThread = std::thread(MiscCmds::ShieldSync);
 
 	return p_PI;
 }

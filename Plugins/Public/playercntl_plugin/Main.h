@@ -80,9 +80,6 @@ namespace MiscCmds
 	void LoadSettings(const string &scPluginCfgFile);
 	void LoadListOfReps();
 	map<wstring, uint> Resetrep_load_Time_limits_for_player_account(string filename);
-	extern std::thread shieldSyncThread;
-	extern std::atomic_bool shouldKillShieldThread;
-	void ShieldSync();
 	void Resetrep_save_Time_limits_to_player_account(string filename, map<wstring,uint> tempmap);
 
 	void ClearClientInfo(uint iClientID);
@@ -90,7 +87,6 @@ namespace MiscCmds
 	void CharacterInfoReq(unsigned int iClientID, bool p2);
 	void Timer();
 	void PlayerLaunch(uint client);
-	void SyncShieldState(uint clientId, FLPACKET_CREATESHIP& pShip);
 
 	bool UserCmd_Pos(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_Stuck(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);

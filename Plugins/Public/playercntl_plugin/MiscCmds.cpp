@@ -26,19 +26,6 @@
 
 namespace MiscCmds
 {
-	struct ShieldSyncData
-	{
-		bool skipFirst = true;
-		vector<ushort> shields;
-		DamageList dmg;
-		uint spaceObjId;
-		uint clientId;
-	};
-	std::thread shieldSyncThread;
-	std::atomic_bool shouldKillShieldThread = false;
-	std::mutex saveMutex;
-	std::vector<ShieldSyncData> shieldSyncData;
-
 	struct INFO
 	{
 		/// Lights on/off
@@ -795,69 +782,14 @@ namespace MiscCmds
 		{
 			clientInfo.bShieldsDropped = false;
 		}
-		
-		CEquipTraverser tr(EquipmentClass::ShieldGenerator);
-		CEquip* shield;
-		while (shield = ship->equip_manager.Traverse(tr))
-		{
-			XActivateEquip ActivateEq;
-			ActivateEq.bActivate = clientInfo.bShieldsUp;
-			ActivateEq.iSpaceID = ship->id;
-			ActivateEq.sID = shield->GetID();
-			Server.ActivateEquip(iClientID, ActivateEq);
-			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iClientID, ActivateEq);
-		}
+
+		CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
+		info.client = iClientID;
+		info.newState = clientInfo.bShieldsUp;
+		Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 
 		PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
 		return true;
-	}
-
-	void MiscCmds::SyncShieldState(uint clientId, FLPACKET_CREATESHIP& pShip)
-	{
-		auto& clientInfo = mapInfo.find(pShip.clientId);
-		if (clientInfo == mapInfo.end())
-		{
-			return;
-		}
-		if (!clientInfo->second.bShieldsUp)
-		{
-			static XActivateEquip eq;
-			eq.bActivate = false;
-			eq.iSpaceID = pShip.iSpaceID;
-
-			CShip* ship = ClientInfo[pShip.clientId].cship;
-			if (!ship)
-			{
-				return;
-			}
-			
-			ShieldSyncData data;
-			data.spaceObjId = pShip.iSpaceID;
-			data.clientId = clientId;
-
-			CEquipTraverser tr(EquipmentClass::ShieldGenerator);
-			CEquip* shieldGen;
-			while (shieldGen = ship->equip_manager.Traverse(tr))
-			{
-				eq.sID = shieldGen->GetID();
-				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(clientId, eq);
-				data.shields.emplace_back(eq.sID);
-			}
-
-
-			CEShield* shield = reinterpret_cast<CEShield*>(ship->equip_manager.FindFirst(EquipmentClass::Shield));
-			if (!shield)
-			{
-				return;
-			}
-			DamageList dmg;
-			dmg.add_damage_entry(shield->iSubObjId, shield->GetHitPoints(), (DamageEntry::SubObjFate)0);
-
-			data.dmg = dmg;
-
-			std::lock_guard<std::mutex> saveLock(saveMutex);
-			shieldSyncData.emplace_back(data);
-		}
 	}
 
 	void MiscCmds::PlayerLaunch(uint client)
@@ -1155,42 +1087,4 @@ namespace MiscCmds
 		cmds->Print(L"OK\n");
 	}
 
-	void ShieldSync()
-	{
-		while (true)
-		{
-			if (shouldKillShieldThread)
-			{
-				return;
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(500));
-
-			if (shieldSyncData.empty())
-			{
-				continue;
-			}
-			std::lock_guard<std::mutex> saveLock(saveMutex);
-			for (auto& iter = shieldSyncData.begin(); iter != shieldSyncData.end() ;)
-			{
-				if (!iter->skipFirst)
-				{
-					iter->skipFirst = true;
-					iter++;
-					continue;
-				}
-				HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(iter->clientId, iter->spaceObjId, iter->dmg);
-				XActivateEquip eq;
-				eq.iSpaceID = iter->spaceObjId;
-				eq.bActivate = false;
-				for (ushort sid : iter->shields)
-				{
-					eq.sID = sid;
-					HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->clientId, eq);
-					Server.ActivateEquip(iter->clientId, eq);
-				}
-				iter = shieldSyncData.erase(iter);
-			}
-		}
-	}
 }

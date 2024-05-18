@@ -121,6 +121,13 @@ struct OBSCURED_SYSTEM
 };
 static unordered_map<uint, OBSCURED_SYSTEM> mapObscuredSystems;
 
+struct CloakSyncData
+{
+	XActivateEquip eq;
+	int iterationCounter = 0;
+};
+unordered_map<uint, CloakSyncData> cloakSyncData;
+
 void LoadSettings();
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -350,9 +357,18 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 		{
 		case STATE_CLOAK_CHARGING:
 		{
+			if (cloakInfo.arch->bDropShieldsOnUncloak)
+			{
+				pub::SpaceObj::DrainShields(iShipID);
+				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
+				info.client = iClientID;
+				info.newState = false;
+				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
+			}
 			communicationInfo.iClientID = iClientID;
 			communicationInfo.isChargingCloak = true;
 			communicationInfo.isCloaked = false;
+
 			Plugin_Communication(CLIENT_CLOAK_INFO, &communicationInfo);
 
 			PrintUserCmdText(iClientID, L"Preparing to cloak...");
@@ -361,6 +377,14 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 
 		case STATE_CLOAK_ON:
 		{
+			if (cloakInfo.arch->bDropShieldsOnUncloak)
+			{
+				pub::SpaceObj::DrainShields(iShipID);
+				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
+				info.client = iClientID;
+				info.newState = false;
+				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
+			}
 			communicationInfo.iClientID = iClientID;
 			communicationInfo.isChargingCloak = false;
 			communicationInfo.isCloaked = true;
@@ -374,6 +398,15 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 			break;
 		}
 		case STATE_CLOAK_OFF:
+		{
+			if (cloakInfo.arch->bDropShieldsOnUncloak)
+			{
+				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
+				info.client = iClientID;
+				info.newState = true;
+				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
+			}
+		}
 		default:
 		{
 			communicationInfo.iClientID = iClientID;
@@ -543,7 +576,7 @@ void HkTimerCheckKick()
 		{
 			if (!--info.DisruptTime)
 			{
-				PrintUserCmdText(iClientID, L"Cloaking Device rebooted.");
+				PrintUserCmdText(iClientID, L"Cloaking Device rebooted after disruption.");
 			}
 		}
 
@@ -573,10 +606,6 @@ void HkTimerCheckKick()
 				{
 					SetState(iClientID, iShipID, STATE_CLOAK_ON);
 				}
-				else if (info.arch->bDropShieldsOnUncloak && !info.bAdmin)
-				{
-					pub::SpaceObj::DrainShields(iShipID);
-				}
 				break;
 
 			case STATE_CLOAK_ON:
@@ -584,10 +613,6 @@ void HkTimerCheckKick()
 				{
 					PrintUserCmdText(iClientID, L"Cloaking device shutdown, no fuel");
 					SetState(iClientID, iShipID, STATE_CLOAK_OFF);
-				}
-				else if (info.arch->bDropShieldsOnUncloak && !info.bAdmin)
-				{
-					pub::SpaceObj::DrainShields(iShipID);
 				}
 				break;
 			}
@@ -646,6 +671,23 @@ void HkTimerCheckKick()
 		cloakStateChanged = false;
 	}
 
+	for (auto iter = cloakSyncData.begin(); iter != cloakSyncData.end();)
+	{
+		++iter->second.iterationCounter;
+		if (iter->second.iterationCounter > 1)
+		{
+			Server.ActivateEquip(iter->first, iter->second.eq);
+		}
+
+		if (iter->second.iterationCounter > 2)
+		{
+			iter = cloakSyncData.erase(iter);
+		}
+		else
+		{
+			iter++;
+		}
+	}
 }
 
 void CloakDisruptor(uint iClientID)
@@ -1102,6 +1144,25 @@ void SwitchOutComplete(uint ship, uint clientId)
 	}
 }
 
+void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto& cd = mapClientsCloak.find(pShip.clientId);
+	if (cd == mapClientsCloak.end())
+	{
+		return;
+	}
+	if (cd->second.iState == STATE_CLOAK_OFF || cd->second.iState == STATE_CLOAK_CHARGING)
+	{
+		XActivateEquip eq;
+		eq.bActivate = false;
+		eq.iSpaceID = pShip.iSpaceID;
+		eq.sID = cd->second.iCloakSlot;
+		cloakSyncData[pShip.clientId] = { eq, 0 };
+	}
+}
+
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1126,6 +1187,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete_AFTER, PLUGIN_HkIServerImpl_JumpInComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 

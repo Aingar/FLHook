@@ -14,7 +14,6 @@
 #include <FLHook.h>
 #include <plugin.h>
 
-map<string, uint> factions;
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
@@ -32,6 +31,17 @@ unordered_map<uint, float> guidedArmingTimesMap;
 unordered_map<uint, MineInfo> mineArmingTimesMap;
 
 uint lastProcessedProjectile = 0;
+
+bool playerShieldState[MAX_CLIENT_ID + 1];
+
+struct ShieldSyncData
+{
+	uint client;
+	uint targetClient;
+	uint count = 0;
+};
+
+vector<ShieldSyncData> shieldStateUpdateMap;
 
 constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
@@ -348,6 +358,133 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	return true;
 }
 
+void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (!playerShieldState[pShip.clientId])
+	{
+		shieldStateUpdateMap.push_back({ client, pShip.clientId, 0 });
+	}
+}
+
+void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (msg == CUSTOM_SHIELD_STATE_CHANGE)
+	{
+		returncode = SKIPPLUGINS;
+		CUSTOM_SHIELD_CHANGE_STATE_STRUCT* info = reinterpret_cast<CUSTOM_SHIELD_CHANGE_STATE_STRUCT*>(data);
+
+		CShip* cship = ClientInfo[info->client].cship;
+		if (!cship)
+		{
+			return;
+		}
+
+		XActivateEquip eq;
+		eq.iSpaceID = cship->id;
+		eq.bActivate = info->newState;
+
+		CEquipTraverser tr(ShieldGenerator);
+		CEquip* shield;
+
+		while (shield = cship->equip_manager.Traverse(tr))
+		{
+			eq.sID = shield->iSubObjId;
+			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(info->client, eq);
+			Server.ActivateEquip(info->client, eq);
+		}
+		playerShieldState[info->client] = info->newState;
+	}
+}
+
+void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
+{
+	returncode = DEFAULT_RETURNCODE;
+	playerShieldState[iClientID] = true;
+	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
+	{
+		if (iter->targetClient == iClientID)
+		{
+			iter = shieldStateUpdateMap.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
+void Timer()
+{
+	static unordered_map<uint, vector<ushort>*> eqSids;
+	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
+	{
+		++iter->count;
+		if (iter->count > 1)
+		{
+			XActivateEquip eq;
+			eq.bActivate = false;
+
+			CShip* cship = ClientInfo[iter->targetClient].cship;
+			if (!cship)
+			{
+				iter = shieldStateUpdateMap.erase(iter);
+				continue;
+			}
+			eq.iSpaceID = cship->id;
+
+			vector<ushort>* sids;
+			auto sidsIter = eqSids.find(iter->targetClient);
+			if (sidsIter != eqSids.end())
+			{
+				sids = sidsIter->second;
+			}
+			else
+			{
+				sids = new vector<ushort>();
+				CEquipTraverser tr(ShieldGenerator);
+				CEquip* shield;
+
+				while (shield = cship->equip_manager.Traverse(tr))
+				{
+					sids->emplace_back(shield->iSubObjId);
+				}
+				eqSids[iter->targetClient] = sids;
+			}
+
+			CEquip* shield = cship->equip_manager.FindFirst(Shield);
+			if (shield && shield->GetHitPoints() != shield->GetMaxHitPoints())
+			{
+				DamageList dmg;
+				dmg.add_damage_entry(shield->iSubObjId, shield->GetHitPoints(), DamageEntry::SubObjFate(0));
+				HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(iter->client, cship->id, dmg);
+			}
+
+			for (ushort sid : *sids)
+			{
+				eq.sID = sid;
+				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, eq);
+			}
+		}
+
+		if (iter->count > 2)
+		{
+			iter = shieldStateUpdateMap.erase(iter);
+		}
+		else
+		{
+			iter++;
+		}
+	}
+	for (auto iter : eqSids)
+	{
+		delete iter.second;
+	}
+	eqSids.clear();
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
@@ -381,6 +518,11 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	return p_PI;

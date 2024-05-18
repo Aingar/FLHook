@@ -325,7 +325,7 @@ EXPORT void HkTimerCheckKick()
         }
     }
 
-    if (currTime % 30 == 0 && !pendingDestructionNodes.empty())
+    if (currTime % 30 == 0)
     {
         for (auto damagedNode = pendingDestructionNodes.begin(); damagedNode != pendingDestructionNodes.end(); )
         {
@@ -1169,6 +1169,7 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
         nodeDb.miningDB->positions.push_back(iobj->cobj->vPos);
         nodeDb.miningDB->nicknamesVector.emplace_back(nodeDb.nickname);
         miningNodeMap.erase(space_obj);
+        pendingDestructionNodes.erase(space_obj);
     }
 }
 

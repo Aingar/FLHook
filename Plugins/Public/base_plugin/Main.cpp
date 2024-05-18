@@ -2418,8 +2418,6 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	}
 	else if (args.find(L"testmodulerecipe") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
@@ -2427,6 +2425,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!base)
 		{
 			cmd->Print(L"ERR Not in player base");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2441,12 +2440,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		}
 		base->Save();
 		cmd->Print(L"OK");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"testfacrecipe") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
@@ -2454,6 +2452,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!base)
 		{
 			cmd->Print(L"ERR Not in player base");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2469,18 +2468,18 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		}
 		base->Save();
 		cmd->Print(L"OK");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"testdeploy") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		if (!client)
 		{
 			cmd->Print(L"ERR Not in game");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2492,6 +2491,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		}
 
 		cmd->Print(L"OK");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.compare(L"beam") == 0)
@@ -2521,9 +2521,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		{
 			if (ToLower(i.second->basename).find(ToLower(basename)) == 0)
 			{
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				ForcePlayerBaseDock(info.iClientID, i.second);
 				cmd->Print(L"OK");
+				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				return true;
 			}
 		}
@@ -2533,9 +2533,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		{
 			if (ToLower(i.second->basename).find(ToLower(basename)) != -1)
 			{
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				ForcePlayerBaseDock(info.iClientID, i.second);
 				cmd->Print(L"OK");
+				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				return true;
 			}
 		}
@@ -2545,13 +2545,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	}
 	else if (args.find(L"basedestroy") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
-		PlayerBase *base;
+		PlayerBase *base = nullptr;
 		for (auto& i : player_bases)
 		{
 			if (i.second->basename == cmd->ArgStrToEnd(1) || stows(i.second->nickname) == cmd->ArgStrToEnd(1))
@@ -2561,26 +2559,25 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			}
 		}
 
-
 		if (!base)
 		{
 			cmd->Print(L"ERR Base doesn't exist");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
 		base->base_health = 0;
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj);
 
 	}
 	else if (args.find(L"basedespawn") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
-		PlayerBase* base;
+		PlayerBase* base = nullptr;
 		for (auto& i : player_bases)
 		{
 			if (i.second->basename == cmd->ArgStrToEnd(1))
@@ -2593,17 +2590,17 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!base)
 		{
 			cmd->Print(L"ERR Base doesn't exist");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
 		base->base_health = 0;
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 
 	}
 	else if (args.find(L"baserespawn") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
@@ -2620,7 +2617,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		HANDLE h = FindFirstFile(path.c_str(), &findfile);
 		if (h == INVALID_HANDLE_VALUE)
 		{
-			cmd->Print(L"ERR Base file not found");
+			cmd->Print(L"ERR Base file not found\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2629,6 +2627,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (pub::SpaceObj::ExistsAndAlive(baseNickname) == 0) // -2 for nonexistant object, 0 for existing and alive
 		{
 			cmd->Print(L"ERR Base already spawned!\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2646,19 +2645,18 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			cmd->Print(L"ERROR POB file corrupted: %ls\n", stows(path).c_str());
 		}
 
-
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"basetogglegod") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		bool optype = cmd->ArgInt(1);
 
-		PlayerBase *base;
+		PlayerBase *base = nullptr;
 		for (auto& i : player_bases)
 		{
 			if (i.second->basename == cmd->ArgStrToEnd(2))
@@ -2668,10 +2666,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			}
 		}
 
-
 		if (!base)
 		{
 			cmd->Print(L"ERR Base doesn't exist");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -2687,7 +2685,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			cmd->Print(L"OK Base made vulnerable.");
 		}
 
-		//cmd->Print(L"OK Base is gone are you proud of yourself.");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"testbase") == 0)

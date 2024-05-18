@@ -1609,33 +1609,33 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 
 	if (IS_CMD("smiteall"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_SmiteAll(cmds);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("bob"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_Bob(cmds, cmds->ArgCharname(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 
 	else if (IS_CMD("playmusic"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_PlayMusic(cmds, cmds->ArgStrToEnd(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("playsound"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_PlaySound(cmds, cmds->ArgStrToEnd(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("playnnm"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_PlayNNM(cmds, cmds->ArgStrToEnd(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("beam"))
@@ -1648,43 +1648,42 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("pull"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		HyperJump::AdminCmd_Pull(cmds, cmds->ArgCharname(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("move"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		HyperJump::AdminCmd_Move(cmds, cmds->ArgFloat(1), cmds->ArgFloat(2), cmds->ArgFloat(3));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL; 
 		return true;
 	}
 	else if (IS_CMD("chase"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		HyperJump::AdminCmd_Chase(cmds, cmds->ArgCharname(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("authchar"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		IPBans::AdminCmd_AuthenticateChar(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("reloadbans"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		IPBans::AdminCmd_ReloadBans(cmds);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("setaccmovecode"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Rename::AdminCmd_SetAccMoveCode(cmds, cmds->ArgCharname(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("rotatelogs"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		if (fLogDebug)
 		{
 			fclose(fLogDebug);
@@ -1702,66 +1701,67 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		}
 
 		cmds->Print(L"OK\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("pm") || IS_CMD("privatemsg"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Message::AdminCmd_SendMail(cmds, cmds->ArgCharname(1), cmds->ArgStrToEnd(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("pm") || IS_CMD("privatemsg"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Message::AdminCmd_SendMail(cmds, cmds->ArgCharname(1), cmds->ArgStrToEnd(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("showtags"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Rename::AdminCmd_ShowTags(cmds);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("addtag"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Rename::AdminCmd_AddTag(cmds, cmds->ArgStr(1), cmds->ArgStr(2), cmds->ArgStrToEnd(3));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("droptag"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Rename::AdminCmd_DropTag(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("reloadlockedships"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Rename::ReloadLockedShips();
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("sethp"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_SetHP(cmds, cmds->ArgCharname(1), cmds->ArgUInt(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("setfuse"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_SetFuse(cmds, cmds->ArgCharname(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("sethpfuse"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		MiscCmds::AdminCmd_SetHPFuse(cmds, cmds->ArgCharname(1), cmds->ArgUInt(2), cmds->ArgStr(3));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("unsetfuse"))
-		{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	{
 		MiscCmds::AdminCmd_UnsetFuse(cmds, cmds->ArgCharname(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	return false;

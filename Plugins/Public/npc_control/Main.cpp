@@ -1013,76 +1013,76 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 	returncode = DEFAULT_RETURNCODE;
 	if (IS_CMD("aicreate"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIMake(cmds, cmds->ArgInt(1), cmds->ArgStr(2), cmds->ArgStr(3), cmds->ArgStr(4));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	if (IS_CMD("aifleet"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIFleet(cmds, cmds->ArgStr(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aidestroy"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIKill(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aicancel"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AICancel(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aifollow"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIFollow(cmds, cmds->ArgCharname(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aicome"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AICome(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aigoto"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_AIGoto(cmds, cmds->ArgStr(1), cmds->ArgStr(2), cmds->ArgInt(3));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("listgroup"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_ListNPCGroups(cmds);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("fleetlist"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_ListNPCFleets(cmds);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aisetcoordshere"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_SetCoordsHere(cmds, cmds->ArgStr(1), cmds->ArgFloat(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aisetcoords"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		Vector pos{ cmds->ArgFloat(2), cmds->ArgFloat(3), cmds->ArgFloat(4) };
 		Vector ori{ cmds->ArgFloat(5), cmds->ArgFloat(6), cmds->ArgFloat(7) };
 		AdminCmd_SetCoords(cmds, cmds->ArgStr(1), pos, ori, cmds->ArgFloat(8));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("aiclearcoords"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AdminCmd_ClearCoords(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	return false;

@@ -441,11 +441,13 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 	if (IS_CMD("av"))
 	{
 		AdminVoice(cmds, wscCmd);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (IS_CMD("adminvoice"))
 	{
 		AdminVoice(cmds, wscCmd);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 

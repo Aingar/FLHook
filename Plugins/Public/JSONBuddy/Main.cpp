@@ -165,7 +165,6 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 			return false;
 
 		// Logout.
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		acc->ForceLogout();
 		cmds->Print(L"OK\n");
 
@@ -176,6 +175,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 			cmds->Print(L"Forcing logout on iClientID=%d\n", iClientID);
 			Players.logout(iClientID);
 		}
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	return false;

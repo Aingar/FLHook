@@ -961,15 +961,14 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 
 	if (IS_CMD("cloak"))
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-
 		uint iClientID = HkGetClientIdFromCharname(cmds->GetAdminName());
 		
 		if (!(cmds->rights & RIGHT_CLOAK)) { cmds->Print(L"ERR No permission\n"); return true; }
 		
 		if (iClientID == -1)
 		{
-			cmds->Print(L"ERR On console");
+			cmds->Print(L"ERR On console\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -977,14 +976,16 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		pub::Player::GetShip(iClientID, iShip);
 		if (!iShip)
 		{
-			PrintUserCmdText(iClientID, L"ERR Not in space");
+			cmds->Print(L"ERR Not in space\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
 		auto& cloakData = mapClientsCloak.find(iClientID);
 		if (cloakData == mapClientsCloak.end())
 		{
-			cmds->Print(L"ERR Cloaking device not available");
+			cmds->Print(L"ERR Cloaking device not available\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
 
@@ -1002,6 +1003,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 			SetState(iClientID, iShip, STATE_CLOAK_OFF);
 			break;
 		}
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	return false;
@@ -1011,12 +1013,12 @@ void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, Damag
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (dmg->get_cause() != DamageCause::CruiseDisrupter && dmg->get_cause() != DamageCause::UnkDisrupter)
-		return;
-
 	CShip* cShip = reinterpret_cast<CShip*>(iobj->cobj);
 	uint client = cShip->ownerPlayer;
 	if (!client)
+		return;
+
+	if (dmg->get_cause() != DamageCause::CruiseDisrupter && dmg->get_cause() != DamageCause::UnkDisrupter)
 		return;
 
 	auto& cloakData = mapClientsCloak.find(client);

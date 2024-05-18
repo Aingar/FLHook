@@ -159,12 +159,10 @@ EXPORT bool ExecuteCommandString_Callback(CCmds* classptr, const wstring &wscCmd
 {
 	returncode = NOFUNCTIONCALL;  // flhook needs to care about our return code
 
-	if (IS_CMD("tempban")) {
-
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL; // do not let other plugins kick in since we now handle the command
-
+	if (IS_CMD("tempban"))
+	{
 		CmdTempBan(classptr, classptr->ArgCharname(1), classptr->ArgInt(2));
-
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL; // do not let other plugins kick in since we now handle the command
 		return true;
 	}
 

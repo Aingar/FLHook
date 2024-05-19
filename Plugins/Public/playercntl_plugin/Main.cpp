@@ -355,7 +355,7 @@ namespace HkIEngine
 				// NPC call, let the game handle it
 				return 0;
 			}
-			if (Players[iClientID].fRelativeHealth == 0.0f) {
+			if (ClientInfo[iClientID].cship->hitPoints == 0.0f) {
 				dockPort = -1;
 				response = ACCESS_DENIED;
 				return 0;

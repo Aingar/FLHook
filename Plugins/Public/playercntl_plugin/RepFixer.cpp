@@ -59,10 +59,10 @@ namespace RepFixer
 	};
 
 	/// Map of faction equipment IDs to reputations list.
-	static map<unsigned int, list<FactionRep>> set_mapFactionReps;
+	static unordered_map<unsigned int, vector<FactionRep>> set_mapFactionReps;
 
 	/// Tag rephacks, (regex, rephacks associated)
-	static map<wstring, list<TagHack>> set_mapTagHacks;
+	static unordered_map<wstring, vector<TagHack>> set_mapTagHacks;
 
 	/// If true updates are logged to flhook.log
 	static bool set_bLogUpdates = false;
@@ -74,43 +74,67 @@ namespace RepFixer
 	static bool set_bEnableRepFixUpdates = true;
 
 	/// Load the reputations for the specified equipment faction ID nickname.
-	static void LoadFactionReps(const string &scPluginCfgFile, const string &scIDNick)
+	static void LoadFactionReps()
 	{
-		uint archID = CreateID(scIDNick.c_str());
 
-		list<FactionRep> lstFactionReps;
+		char szCurDir[MAX_PATH];
+		GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+		string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\playercntl_rephacks.cfg";
 
-		list<INISECTIONVALUE> lstValues;
-		IniGetSection(scPluginCfgFile, scIDNick, lstValues);
-		foreach(lstValues, INISECTIONVALUE, var)
+
+		INI_Reader ini;
+		if (!ini.open(scPluginCfgFile.c_str(), false))
 		{
-			if (var->scValue.size() > 0)
+			return;
+		}
+
+		while (ini.read_header())
+		{
+			if (!ini.is_header("rephack"))
 			{
-				FactionRep factionRep;
-				factionRep.scRepGroup = var->scKey;
+				continue;
+			}
+			vector<uint> idList;
+			vector<FactionRep> factionReps;
 
-				factionRep.fRep = ToFloat(GetParam(stows(var->scValue), ',', 0));
-				if (factionRep.fRep > 1.0f)
-					factionRep.fRep = 1.0f;
-				else if (factionRep.fRep < -1.0f)
-					factionRep.fRep = -1.0f;
-
-				factionRep.iMode = ToInt(GetParam(stows(var->scValue), ',', 1));
-				if (factionRep.iMode == FactionRep::MODE_REP_LESSTHAN
-					|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
-					|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
+			while (ini.read_value())
+			{
+				if (ini.is_value("id"))
 				{
-					if (set_iPluginDebug > 0)
+					uint counter = 0;
+					string currId = ini.get_value_string(counter++);
+					while (!currId.empty())
 					{
-						ConPrint(L"NOTICE: Add reputation %s/%s rep=%0.2f mode=%d\n",
-							stows(scIDNick).c_str(), stows(var->scKey).c_str(), factionRep.fRep, factionRep.iMode);
+						idList.emplace_back(CreateID(currId.c_str()));
+						currId = ini.get_value_string(counter++);
 					}
-					lstFactionReps.push_back(factionRep);
 				}
+				else
+				{
+					FactionRep factionRep;
+					factionRep.scRepGroup = ini.get_name_ptr();
+
+					factionRep.fRep = ini.get_value_float(0);
+					if (factionRep.fRep > 1.0f)
+						factionRep.fRep = 1.0f;
+					else if (factionRep.fRep < -1.0f)
+						factionRep.fRep = -1.0f;
+
+					factionRep.iMode = ini.get_value_int(1);
+					if (factionRep.iMode == FactionRep::MODE_REP_LESSTHAN
+						|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
+						|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
+					{
+						factionReps.push_back(factionRep);
+					}
+				}
+			}
+			for (uint id : idList)
+			{
+				set_mapFactionReps[id] = factionReps;
 			}
 		}
 
-		set_mapFactionReps[archID] = lstFactionReps;
 	}
 
 	void LoadTagRephacks()
@@ -123,35 +147,38 @@ namespace RepFixer
 		int iLoaded = 0;
 
 		INI_Reader ini;
-		if (ini.open(scPluginCfgFile.c_str(), false))
+		if (!ini.open(scPluginCfgFile.c_str(), false))
 		{
-			while (ini.read_header())
-			{
-				if (ini.is_header("tag"))
-				{
-					wstring tagname;
-					list<TagHack> replist;
+			return;
+		}
 
-					while (ini.read_value())
-					{
-						if (ini.is_value("name"))
-						{
-							tagname = stows(ini.get_value_string());
-						}
-						else if (ini.is_value("rep"))
-						{
-							TagHack th;
-							th.scRepGroup = ini.get_value_string(0);
-							th.fRep = ini.get_value_float(1);
-							replist.push_back(th);
-						}
-					}
-					set_mapTagHacks[tagname] = replist;
-					++iLoaded;
+		while (ini.read_header())
+		{
+			if (!ini.is_header("tag"))
+			{
+				continue;
+			}
+			wstring tagname;
+			vector<TagHack> replist;
+
+			while (ini.read_value())
+			{
+				if (ini.is_value("name"))
+				{
+					tagname = stows(ini.get_value_string());
+				}
+				else if (ini.is_value("rep"))
+				{
+					TagHack th;
+					th.scRepGroup = ini.get_value_string(0);
+					th.fRep = ini.get_value_float(1);
+					replist.push_back(th);
 				}
 			}
-			ini.close();
+			set_mapTagHacks[tagname] = replist;
+			++iLoaded;
 		}
+		ini.close();
 
 		ConPrint(L"Playercntl: Loaded %u tag rephacks\n", iLoaded);
 	}
@@ -165,10 +192,8 @@ namespace RepFixer
 
 		// For each "ID/License" equipment item load the faction reputation list.
 		set_mapFactionReps.clear();
-		list<INISECTIONVALUE> lstValues;
-		IniGetSection(scPluginCfgFile, "RepFixerItems", lstValues);
-		foreach(lstValues, INISECTIONVALUE, var)
-			LoadFactionReps(scPluginCfgFile, var->scKey);
+
+		LoadFactionReps();
 
 		LoadTagRephacks();
 	}
@@ -177,54 +202,40 @@ namespace RepFixer
 	/// that are greater than the allowed value.
 	static void CheckReps(unsigned int iClientID)
 	{
-		wstring wscCharName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 
-		list<CARGO_INFO> lstCargo;
-		int remainingHoldSize = 0;
-		HkEnumCargo(wscCharName, lstCargo, remainingHoldSize);
-
-		foreach(lstCargo, CARGO_INFO, cargo)
+		for (auto& cargo : Players[iClientID].equipDescList.equip)
 		{
 			// If the item is not mounted and we are only checking mounted items
 			// then skip to the next one.
-			if (!cargo->bMounted && set_bItemMustBeMounted)
+			if (!cargo.bMounted && set_bItemMustBeMounted)
 				continue;
 
 			// If the item is not an 'ID' then skip to the next one. 
-			map<unsigned int, list<FactionRep> >::iterator iterIDs = set_mapFactionReps.find(cargo->iArchID);
+			unordered_map<unsigned int, vector<FactionRep> >::iterator iterIDs = set_mapFactionReps.find(cargo.iArchID);
 			if (iterIDs == set_mapFactionReps.end())
 				continue;
 
+			int playerRep;
+			pub::Player::GetRep(iClientID, playerRep);
+
 			// The item is an 'ID'; check and adjust the player reputations
 			// if needed.
-			for (list<FactionRep>::iterator iterReps = iterIDs->second.begin(); iterReps != iterIDs->second.end(); iterReps++)
+			for (vector<FactionRep>::iterator iterReps = iterIDs->second.begin(); iterReps != iterIDs->second.end(); iterReps++)
 			{
-				const FactionRep &rep = *iterReps;
+				const FactionRep& rep = *iterReps;
 
-				float fRep = 0.0f;
-				HkGetRep(wscCharName, stows(rep.scRepGroup), fRep);
+				uint iRepGroupID;
+				float fRep;
+				pub::Reputation::GetReputationGroup(iRepGroupID, rep.scRepGroup.c_str());
+				pub::Reputation::GetGroupFeelingsTowards(playerRep, iRepGroupID, fRep);
 				if (((fRep > rep.fRep) && (rep.iMode == FactionRep::MODE_REP_LESSTHAN))
 					|| ((fRep < rep.fRep) && (rep.iMode == FactionRep::MODE_REP_GREATERTHAN)))
 				{
-					if (set_bLogUpdates)
-					{
-						AddLog("NOTICE: Updating reputation %s from %0.2f to %0.2f on %s (%s)",
-							rep.scRepGroup.c_str(), fRep, rep.fRep,
-							wstos(wscCharName).c_str(),
-							wstos(HkGetAccountID(HkGetAccountByCharname(wscCharName))).c_str());
-					}
-					HkSetRep(wscCharName, stows(rep.scRepGroup), rep.fRep);
+					pub::Reputation::SetReputation(playerRep, iRepGroupID, rep.fRep);
 				}
 				else if ((fRep != rep.fRep) && (rep.iMode == FactionRep::MODE_REP_STATIC))
 				{
-					if (set_bLogUpdates)
-					{
-						AddLog("NOTICE: Updating reputation %s from %0.2f to %0.2f on %s (%s)",
-							rep.scRepGroup.c_str(), fRep, rep.fRep,
-							wstos(wscCharName).c_str(),
-							wstos(HkGetAccountID(HkGetAccountByCharname(wscCharName))).c_str());
-					}
-					HkSetRep(wscCharName, stows(rep.scRepGroup), rep.fRep);
+					pub::Reputation::SetReputation(playerRep, iRepGroupID, rep.fRep);
 				}
 			}
 
@@ -232,19 +243,24 @@ namespace RepFixer
 			break;
 		}
 
+		wstring charName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+
 		//tag based rephacks
-		for (map<wstring, list<TagHack>>::iterator tagReps = set_mapTagHacks.begin(); tagReps != set_mapTagHacks.end(); tagReps++)
+		for (unordered_map<wstring, vector<TagHack>>::iterator tagReps = set_mapTagHacks.begin(); tagReps != set_mapTagHacks.end(); tagReps++)
 		{
-			if (wscCharName.find(tagReps->first) != string::npos)
+			if (charName.find(tagReps->first) == string::npos)
 			{
-				//we have a match, apply reps
-				for each (TagHack tag in tagReps->second)
-				{
-					HkSetRep(wscCharName, stows(tag.scRepGroup), tag.fRep);
-				}
-				//HkMsgU(L"Applied tag rephacks");
-				break;
+				continue;
 			}
+			//we have a match, apply reps
+			for each (TagHack tag in tagReps->second)
+			{
+				uint iRepGroupID;
+				pub::Reputation::GetReputationGroup(iRepGroupID, tag.scRepGroup.c_str());
+				pub::Reputation::SetReputation(playerRep, iRepGroupID, tag.fRep);
+			}
+			//HkMsgU(L"Applied tag rephacks");
+			break;
 		}
 
 		return;

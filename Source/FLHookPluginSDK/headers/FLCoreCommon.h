@@ -2387,6 +2387,9 @@ public:
 
 	CExternalEquip(class CExternalEquip const &);
 	CExternalEquip(unsigned int, struct CEqObj *, unsigned short, struct Archetype::Equipment const *, bool);
+
+	//char* dunnoExtEquip; //8
+	//uint dunnoExtEquip; //9
 };
 
 class IMPORT CAttachedEquip : public CExternalEquip
@@ -2417,17 +2420,26 @@ public:
 	struct CObject * GetPhysicsOwner(void)const;
 	struct CObject * RetrieveDebrisObject(void);
 
-public:
-	unsigned char data[OBJECT_DATA_SIZE];
+//public:
+//	uint dunnoAttEquip[2];
+//	float hitPts;
+//	uint dunnoAttEquip2;
+//	bool dunnoAttEquip;
+//	uint dunnoAttEquip3[4];
+	//18
+};
+
+struct Barrel
+{
+	uint dunno[13];
 };
 
 class IMPORT CELauncher : public CAttachedEquip
 {
 public:
-	int iDunno[28];
-	float fOfflineThreshold;
-	float fOfflineRebuildTime;
-	float fMaxCapacity;
+	Archetype::Projectile* projArch; //19
+	float refireDelayElapsed; //20
+	Barrel barrels[8]; //21
 
 	virtual ~CELauncher(void);
 	virtual bool IsDisabled(void)const;

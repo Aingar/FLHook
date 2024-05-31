@@ -2093,6 +2093,11 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
+	if (base->pinned_market_items.count(gsi.iArchID))
+	{
+		base->pinned_item_updated = true;
+	}
+
 	pub::Player::AdjustCash(client, price);
 	base->ChangeMoney(0 - price);
 	base->Save();
@@ -2125,7 +2130,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		}
 	}
 
-	if (!base->pinned_market_items.empty() && base->pinned_market_items.count(gsi.iArchID))
+	if (base->pinned_market_items.count(gsi.iArchID))
 	{
 		base->pinned_item_updated = true;
 	}
@@ -2232,7 +2237,7 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		base->ChangeMoney(price);
 		base->Save();
 
-		if (!base->pinned_market_items.empty() && base->pinned_market_items.count(gbi.iGoodID))
+		if (base->pinned_market_items.count(gbi.iGoodID))
 		{
 			base->pinned_item_updated = true;
 		}

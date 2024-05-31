@@ -170,9 +170,30 @@ void ReadMunitionDataFromInis()
 	}
 }
 
+struct SrvGun
+{
+	void* vtable;
+	CELauncher* launcher;
+};
+
+typedef void(__thiscall* PlayerFireRemoveAmmo)(PlayerData* pd, uint archId, int amount, float hp, bool syncPlayer);
+PlayerFireRemoveAmmo PlayerFireRemoveAmmoFunc;
+
+void __fastcall PlayerFireRemoveAmmoDetour(PlayerData* pd, void* edx, uint archId, int amount, float hp, bool syncPlayer)
+{
+	SrvGun** SrvGunPtr = (SrvGun**)(DWORD(&archId) + 0x14);
+	
+	CELauncher* launcher = ((*SrvGunPtr)->launcher);
+	PlayerFireRemoveAmmoFunc(pd, archId, launcher->GetProjectilesPerFire(), hp, syncPlayer);
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	HANDLE servHandle = GetModuleHandle("server.dll");
+	PatchCallAddr((char*)servHandle, 0xD921, (char*)PlayerFireRemoveAmmoDetour);
+	PlayerFireRemoveAmmoFunc = (PlayerFireRemoveAmmo)(DWORD(servHandle) + 0x6F260);
 
 	INI_Reader ini;
 

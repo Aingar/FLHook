@@ -88,14 +88,40 @@ namespace RepFixer
 			return;
 		}
 
+		unordered_map<uint, FactionRep> defaultRepMap;
+
 		while (ini.read_header())
 		{
+			if (ini.is_header("default_reps"))
+			{
+				while (ini.read_value())
+				{
+					FactionRep factionRep;
+					factionRep.scRepGroup = ini.get_name_ptr();
+
+					factionRep.fRep = ini.get_value_float(0);
+					if (factionRep.fRep > 1.0f)
+						factionRep.fRep = 1.0f;
+					else if (factionRep.fRep < -1.0f)
+						factionRep.fRep = -1.0f;
+
+					factionRep.iMode = ini.get_value_int(1);
+					if (factionRep.iMode == FactionRep::MODE_REP_LESSTHAN
+						|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
+						|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
+					{
+						uint repHash = CreateID(factionRep.scRepGroup.c_str());
+						defaultRepMap[repHash] = factionRep;
+					}
+				}
+				continue;
+			}
 			if (!ini.is_header("rephack"))
 			{
 				continue;
 			}
 			vector<uint> idList;
-			vector<FactionRep> factionReps;
+			unordered_map<uint, FactionRep> factionReps = defaultRepMap;
 
 			while (ini.read_value())
 			{
@@ -107,6 +133,22 @@ namespace RepFixer
 					{
 						idList.emplace_back(CreateID(currId.c_str()));
 						currId = ini.get_value_string(counter++);
+					}
+				}
+				else if (ini.is_value("inherits"))
+				{
+					uint inheritedGrp = CreateID(ini.get_value_string(0));
+					if (set_mapFactionReps.count(inheritedGrp))
+					{
+						for (auto& rep : set_mapFactionReps.at(inheritedGrp))
+						{
+							uint repHash = CreateID(rep.scRepGroup.c_str());
+							factionReps[repHash] = rep;
+						}
+					}
+					else
+					{
+						ConPrint(L"ERROR: Could not inherit reps from %ls, can only inherit from IDs above the entry.\n", stows(ini.get_value_string(0)).c_str());
 					}
 				}
 				else
@@ -125,13 +167,20 @@ namespace RepFixer
 						|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
 						|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
 					{
-						factionReps.push_back(factionRep);
+						uint repHash = CreateID(factionRep.scRepGroup.c_str());
+						factionReps[repHash] = factionRep;
 					}
 				}
 			}
+
+			vector<FactionRep> factionRepVector;
+			for (auto& rep : factionReps)
+			{
+				factionRepVector.emplace_back(rep.second);
+			}
 			for (uint id : idList)
 			{
-				set_mapFactionReps[id] = factionReps;
+				set_mapFactionReps[id] = factionRepVector;
 			}
 		}
 
@@ -203,6 +252,7 @@ namespace RepFixer
 	static void CheckReps(unsigned int iClientID)
 	{
 
+		int playerRep = Players[iClientID].iReputation;
 		for (auto& cargo : Players[iClientID].equipDescList.equip)
 		{
 			// If the item is not mounted and we are only checking mounted items
@@ -215,8 +265,6 @@ namespace RepFixer
 			if (iterIDs == set_mapFactionReps.end())
 				continue;
 
-			int playerRep;
-			pub::Player::GetRep(iClientID, playerRep);
 
 			// The item is an 'ID'; check and adjust the player reputations
 			// if needed.
@@ -259,7 +307,6 @@ namespace RepFixer
 				pub::Reputation::GetReputationGroup(iRepGroupID, tag.scRepGroup.c_str());
 				pub::Reputation::SetReputation(playerRep, iRepGroupID, tag.fRep);
 			}
-			//HkMsgU(L"Applied tag rephacks");
 			break;
 		}
 

@@ -1706,7 +1706,7 @@ void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int clie
 	for (auto& base : player_bases)
 	{
 		HkChangeIDSString(client, base.second->solar_ids, base.second->basename);
-		if (base.second->description_ids)
+		if (base.second->baseCSolar && base.second->description_ids)
 		{
 			SendBaseIDSList(client, base.second->baseCSolar->id, base.second->description_ids);
 			HkChangeIDSString(client, base.second->description_ids, base.second->description_text);
@@ -1918,8 +1918,18 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 		return;
 
 	player_launch_base = GetPlayerBase(cd.player_base);
+	if (!player_launch_base)
+	{
+		return;
+	}
 
-	for (auto& solar : POBSolarsBySystemMap[player_launch_base->system])
+	auto pobListIter = POBSolarsBySystemMap.find(player_launch_base->system);
+	if (pobListIter == POBSolarsBySystemMap.end())
+	{
+		return;
+	}
+
+	for (auto& solar : pobListIter->second)
 	{
 		if (solar == player_launch_base->baseCSolar)
 		{
@@ -3250,6 +3260,23 @@ void PopUpDialogue(uint client, uint buttonPressed)
 	}
 }
 
+void __stdcall SetTarget(uint uClientID, struct XSetTarget const& p2)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (p2.iSlot == 0)
+	{
+		auto jhIter = customSolarList.find(p2.iSpaceID);
+		if (jhIter != customSolarList.end())
+		{
+			auto jhIter2 = player_bases.find(p2.iSpaceID);
+			if (jhIter2 != player_bases.end() && jhIter2->second->destSystem)
+			{
+				SendJumpObjOverride(uClientID, p2.iSpaceID, jhIter2->second->destSystem);
+			}
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -3286,6 +3313,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetTarget, PLUGIN_HkIServerImpl_SetTarget, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

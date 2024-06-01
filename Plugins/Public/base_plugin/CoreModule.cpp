@@ -60,7 +60,11 @@ void CoreModule::Spawn()
 		{
 			si.iLoadoutID = CreateID(base->baseloadout.c_str());
 		}
-
+		auto& baseArch = mapArchs[base->basetype];
+		if (!baseArch.isjump)
+		{
+			si.baseId = base->proxy_base;
+		}
 		si.iHitPointsLeft = -1;
 		si.iSystemID = base->system;
 		si.mOrientation = base->rotation;
@@ -71,7 +75,6 @@ void CoreModule::Spawn()
 		si.Costume.righthand = 0;
 		si.Costume.accessories = 0;
 		si.iVoiceID = CreateID("atc_leg_m01");
-		si.baseId = base->proxy_base;
 		strncpy_s(si.cNickName, sizeof(si.cNickName), base->nickname.c_str(), base->nickname.size());
 
 		// Check to see if the hook IDS limit has been reached
@@ -100,8 +103,12 @@ void CoreModule::Spawn()
 		infocard.begin_mad_lib(solar_ids); // infocard
 		infocard.end_mad_lib();
 		pub::Reputation::Alloc(si.iRep, infoname, infocard);
-		pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
 
+
+		if (!baseArch.isjump)
+		{
+			pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
+		}
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;
 
@@ -129,11 +136,18 @@ void CoreModule::Spawn()
 		
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 
-		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
-		if (base->baseCSolar)
+		if (!baseArch.isjump)
 		{
-			POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
-			base->baseCSolar->Release();
+			base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
+			if (base->baseCSolar)
+			{
+				POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
+				base->baseCSolar->Release();
+			}
+		}
+		else
+		{
+			customSolarList.insert(space_obj);
 		}
 
 		struct PlayerData* pd = 0;

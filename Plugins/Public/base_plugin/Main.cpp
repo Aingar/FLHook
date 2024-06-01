@@ -1988,15 +1988,15 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	}
 	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
-		auto& cd = clients[client];
+	auto& cd = clients[client];
 
-		if (base->market_items.find(gsi.iArchID) == base->market_items.end()
-			&& !cd.admin)
-		{
-			PrintUserCmdText(client, L"ERR: Base will not accept goods");
-			cd.reverse_sell = true;
-			return;
-		}
+	if (base->market_items.find(gsi.iArchID) == base->market_items.end()
+		&& !cd.admin)
+	{
+		PrintUserCmdText(client, L"ERR: Base will not accept goods");
+		cd.reverse_sell = true;
+		return;
+	}
 
 	if (CheckIfCommodityForbidden(gsi.iArchID))
 	{
@@ -2005,7 +2005,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	MARKET_ITEM &item = base->market_items.at(gsi.iArchID);
+	MARKET_ITEM &item = base->market_items[gsi.iArchID];
 
 	int count = gsi.iCount;
 	int price = item.sellPrice * count;

@@ -42,7 +42,7 @@ L"<TEXT>Set or clear the faction that this base is affiliated with. When setting
 L"<TRA bold=\"true\"/><TEXT>/bank withdraw [credits], /bank deposit [credits], /bank status</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Withdraw, deposit or check the status of the credits held by the base's bank.</TEXT><PARA/><PARA/>"
 
-L"<TRA bold=\"true\"/><TEXT>/shop price [item] [price]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TRA bold=\"true\"/><TEXT>/shop price [item] [buyprice] [sellprice]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Set the [price] of [item].</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/shop stock [item] [min stock] [max stock]</TEXT><TRA bold=\"false\"/><PARA/>"
@@ -53,6 +53,9 @@ L"<TEXT>To prohibit buying from the base of an item by docked ships under all co
 
 L"<TRA bold=\"true\"/><TEXT>/shop remove [item]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Remove the item from the stock list. It cannot be sold to the base by docked ships unless they are base administrators.</TEXT><PARA/><PARA/>"
+
+L"<TRA bold=\"true\"/><TEXT>/shop pin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Highlights the selected good, causing its price and stock to be visible on the base infocard.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/shop [page]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items shown per page.</TEXT>",
@@ -1758,9 +1761,10 @@ namespace PlayerCommands
 		status += L"<TEXT>Available commands:</TEXT><PARA/>";
 		if (cd.admin)
 		{
-			status += L"<TEXT>  /shop price [item] [price]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop price [item] [buyprice] [sellprice]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop pin [item]</TEXT><PARA/>";
 		}
 		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
 		status += L"<POP/></RDL>";
@@ -1915,7 +1919,7 @@ namespace PlayerCommands
 
 			if (sellPrice > buyPrice)
 			{
-				PrintUserCmdText(client, L"ERR Sell price must be less or equal to buy price!");
+				PrintUserCmdText(client, L"ERR Base sell price must be greater or equal to buy price!");
 				return;
 			}
 

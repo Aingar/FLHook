@@ -136,7 +136,7 @@ void LoadSettings()
 
 	set_bLocalTime = IniGetB(scPluginCfgFile, "General", "LocalTime", false);
 
-	string shipArchIniPath = string(szCurDir) + R"(..\DATA\SHIPS\shiparch.ini)";
+	string shipArchIniPath = string(szCurDir) + R"(\..\DATA\SHIPS\shiparch.ini)";
 
 	INI_Reader ini;
 	uint currNickname = 0;

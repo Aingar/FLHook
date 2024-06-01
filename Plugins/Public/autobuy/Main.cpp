@@ -77,6 +77,12 @@ struct AUTOBUY_PLAYERINFO
 	bool bAutoRepair;
 };
 
+struct FLHookExtra
+{
+	int currCount;
+	wstring name;
+};
+
 static map <uint, AUTOBUY_PLAYERINFO> mapAutobuyPlayerInfo;
 static map <uint, uint> mapAutobuyFLHookCloak;
 static map <uint, uint> mapAutobuyFLHookJump;
@@ -384,12 +390,12 @@ struct AUTOBUY_CARTITEM
 	wstring wscDescription;
 };
 
-int HkPlayerAutoBuyGetCount(list<CARGO_INFO> &lstCargo, uint iItemArchID)
+int HkPlayerAutoBuyGetCount(uint clientId, uint iItemArchID)
 {
-	foreach(lstCargo, CARGO_INFO, it)
+	for(EquipDesc& eq : Players[clientId].equipDescList.equip)
 	{
-		if ((*it).iArchID == iItemArchID)
-			return (*it).iCount;
+		if (eq.iArchID == iItemArchID)
+			return eq.iCount;
 	}
 
 	return 0;
@@ -400,9 +406,9 @@ int HkPlayerAutoBuyGetCount(list<CARGO_INFO> &lstCargo, uint iItemArchID)
 								aci.wscDescription = desc; \
 								lstCart.push_back(aci); }
 
-#define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc)	{ aci.iArchID = IDin; \
-								aci.iCount = ammoLimitMap[aci.iArchID].ammoAdjustment; \
-								aci.wscDescription = desc; \
+#define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc, client)	{ aci.iArchID = IDin; \
+								aci.iCount = mapAmmolimits[aci.iArchID].ammoLimit - HkPlayerAutoBuyGetCount(client, aci.iArchID); \
+								aci.wscDescription = desc.name; \
 								lstCart.push_back(aci); }
 
 void AutobuyInfo(uint iClientID)
@@ -568,7 +574,6 @@ struct ammoData
 	int launcherCount;
 };
 
-#pragma optimize("", off)
 unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 {
 	unordered_map<uint, ammoData> ammoLauncherCount;
@@ -827,7 +832,7 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 		mapAutobuyPlayerInfo[iClientID].bAutobuyJump || mapAutobuyPlayerInfo[iClientID].bAutobuyMatrix || mapAutobuyPlayerInfo[iClientID].bAutobuyCloak)
 	{
 		unordered_map<uint, ammoData> ammoLimitMap = GetAmmoLimits(iClientID);
-		map <uint, wstring> mapAutobuyFLHookExtras;
+		map <uint, FLHookExtra> mapAutobuyFLHookExtras;
 		// check mounted equip
 		unordered_set <uint> processedItems;
 		for(auto& item : Players[iClientID].equipDescList.equip)
@@ -890,21 +895,34 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 
 			//FLHook handling
 			if (mapAutobuyFLHookCloak.find(eq->iArchID) != mapAutobuyFLHookCloak.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyCloak)
-					mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = L"Cloak Batteries";
+			{
+				FLHookExtra extra;
+				extra.name = L"Cloak Batteries";
+				extra.currCount = item.iCount;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = extra;
+			}
 
 			if (mapAutobuyFLHookJump.find(eq->iArchID) != mapAutobuyFLHookJump.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyJump)
-					mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = L"Jump Batteries";
-
+			{
+				FLHookExtra extra;
+				extra.name = L"Jump Batteries";
+				extra.currCount = item.iCount;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = extra;
+			}
 			if (mapAutobuyFLHookMatrix.find(eq->iArchID) != mapAutobuyFLHookMatrix.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyMatrix)
-					mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = L"Matrix Batteries";
-			
+			{
+				FLHookExtra extra;
+				extra.name = L"Matrix Batteries";
+				extra.currCount = item.iCount;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = extra;
+			}
 		}
 		//Buy flhook stuff here
-		for (map<uint, wstring>::iterator i = mapAutobuyFLHookExtras.begin();
+		for (map<uint, FLHookExtra>::iterator i = mapAutobuyFLHookExtras.begin();
 			i != mapAutobuyFLHookExtras.end(); ++i)
 		{
 			AUTOBUY_CARTITEM aci;
-			ADD_EQUIP_TO_CART_FLHOOK(i->first, i->second)
+			ADD_EQUIP_TO_CART_FLHOOK(i->first, i->second, iClientID)
 		}
 	}
 
@@ -996,7 +1014,6 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 
 
 }
-#pragma optimize("", on)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code

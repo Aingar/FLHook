@@ -1140,7 +1140,7 @@ void SwitchOutComplete(uint ship, uint clientId)
 	returncode = DEFAULT_RETURNCODE;
 
 	auto& info = mapClientsCloak.find(clientId);
-	if (info == mapClientsCloak.end() || info->second.iState == STATE_CLOAK_ON)
+	if (info != mapClientsCloak.end() && info->second.iState == STATE_CLOAK_ON)
 	{
 		ObscureSystemList(clientId);
 	}

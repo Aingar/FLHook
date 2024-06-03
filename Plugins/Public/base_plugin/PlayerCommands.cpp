@@ -1898,7 +1898,7 @@ namespace PlayerCommands
 		const wstring& cmd = GetParam(args, ' ', 1);
 
 		auto& cd = clients[client];
-		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
+		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"pin" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
 		{
 			PrintUserCmdText(client, L"ERROR: Access denied");
 			return;

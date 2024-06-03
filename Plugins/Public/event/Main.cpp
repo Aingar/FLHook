@@ -76,6 +76,9 @@ struct TRADE_EVENT {
 	uint uCommodityID;
 	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
 	list<uint> lAllowedIDs;
+	time_t startTime = 0;
+	time_t endTime = 0;
+	bool isActive = true;
 };
 
 struct COMBAT_EVENT {
@@ -97,21 +100,9 @@ struct COMBAT_EVENT {
 	//Optional commodity reward data
 	bool bCommodityReward = false; // assume false
 	uint uCommodityID;
-};
-
-struct MINING_EVENT {
-	//Basic event settings
-	string sEventName;
-	string sURL;
-	int iObjectiveMax = INT32_MAX;
-	int iObjectiveCurrent = 0; // Always 0 to prevent having no data
-	int iBonusCash;
-	//Mining settings
-	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
-	set<uint> lAllowedMinerIDs;
-	set<uint> lAllowedTraderIDs;
-	uint uCommodityID;
-	int iCommodityPerHit;
+	time_t startTime = 0;
+	time_t endTime = 0;
+	bool isActive = true;
 };
 
 struct EVENT_TRACKER
@@ -137,6 +128,7 @@ unordered_map <uint, string> mapIDs;
 
 void LoadIDs()
 {
+	mapIDs.clear();
 	string idfile = "..\\data\\equipment\\misc_equip.ini";
 	int idcount = 0;
 
@@ -170,6 +162,9 @@ void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	mapEventTracking.clear();
+	mapTradeEvents.clear();
+	mapCombatEvents.clear();
 	LoadIDs();
 
 	string File_FLHook = "..\\exe\\flhook_plugins\\events.cfg";
@@ -178,6 +173,8 @@ void LoadSettings()
 	int iLoaded = 0;
 	int iLoaded2 = 0;
 	int iLoaded3 = 0;
+
+	time_t currTime = time(0);
 
 	INI_Reader ini;
 	if (ini.open(File_FLHook.c_str(), false))
@@ -270,6 +267,23 @@ void LoadSettings()
 					else if (ini.is_value("flhookbasename"))
 					{
 						te.sFLHookBaseName = ini.get_value_string(0);
+					}
+					else if (ini.is_value("starttime"))
+					{
+						te.startTime = ini.get_value_int(0);
+						if (te.startTime > currTime)
+						{
+							te.isActive = false;
+						}
+					}
+					else if (ini.is_value("endtime"))
+					{
+						te.endTime = ini.get_value_int(0);
+						if (te.endTime && te.endTime < currTime)
+						{
+							te.isActive = false;
+							ConPrint(L"EVENT %ls has loaded, but is already concluded!\n", stows(te.sEventName).c_str());
+						}
 					}
 				}
 				if (invalidData)
@@ -368,6 +382,23 @@ void LoadSettings()
 					else if (ini.is_value("commodity"))
 					{
 						pub::GetGoodID(ce.uCommodityID, ini.get_value_string(0));
+					}
+					else if (ini.is_value("starttime"))
+					{
+						ce.startTime = ini.get_value_int(0);
+						if (ce.startTime > currTime)
+						{
+							ce.isActive = false;
+						}
+					}
+					else if (ini.is_value("endtime"))
+					{
+						ce.endTime = ini.get_value_int(0);
+						if (ce.endTime && ce.endTime < currTime)
+						{
+							ce.isActive = false;
+							ConPrint(L"EVENT %ls has loaded, but is already concluded!\n", stows(ce.sEventName).c_str());
+						}
 					}
 				}
 
@@ -664,7 +695,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			eventEnabled = HookExt::IniGetB(iClientID, "event.enabled");
 		}
 		//check if it's one of the commodities undergoing an event
-		if (gbi.iGoodID != i->second.uCommodityID)
+		if (!i->second.isActive || gbi.iGoodID != i->second.uCommodityID)
 		{
 			continue;
 		}
@@ -749,7 +780,7 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 			continue;
 		}
 		//this if is if we are interacting with this commodity and already in event mode
-		if (gsi.iArchID != i->second.uCommodityID)
+		if (!i->second.isActive || gsi.iArchID != i->second.uCommodityID)
 		{
 			continue;
 		}
@@ -1158,6 +1189,52 @@ void ProcessEventPlayerInfo()
 	///////////////////////////////////////////////////////////////////////////////////////
 }
 
+void CheckActiveEvent()
+{
+	time_t currTime = time(0);
+	for (auto& event : mapCombatEvents)
+	{
+		auto& ce = event.second;
+		if (ce.isActive)
+		{
+			if (ce.endTime && ce.endTime <= currTime)
+			{
+				ce.isActive = false;
+				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(ce.sEventName)));
+			}
+		}
+		else
+		{
+			if (ce.startTime && ce.startTime <= currTime && ce.endTime > currTime)
+			{
+				ce.isActive = true;
+				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
+			}
+		}
+	}
+
+	for (auto& event : mapTradeEvents)
+	{
+		auto& te = event.second;
+		if (te.isActive)
+		{
+			if (te.endTime && te.endTime <= currTime)
+			{
+				te.isActive = false;
+				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
+			}
+		}
+		else
+		{
+			if (te.startTime && te.startTime <= currTime && te.endTime > currTime)
+			{
+				te.isActive = true;
+				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
+			}
+		}
+	}
+}
+
 void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1174,6 +1251,10 @@ void HkTimerCheckKick()
 		ProcessEventPlayerInfo();
 	}
 
+	if ((curr_time_events % 300) == 0)
+	{
+		CheckActiveEvent();
+	}
 }
 
 
@@ -1211,7 +1292,7 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 	for (auto& i = mapCombatEvents.begin(); i != mapCombatEvents.end(); ++i)
 	{
 		//Check if this event has been completed already
-		if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
+		if (!i->second.isActive || i->second.iObjectiveCurrent == i->second.iObjectiveMax)
 		{
 			continue;
 		}
@@ -1294,7 +1375,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	{
 		COMBAT_EVENT& event = i->second;
 		//Check if this event has been completed already
-		if (event.iObjectiveCurrent >= event.iObjectiveMax)
+		if (!event.isActive || event.iObjectiveCurrent >= event.iObjectiveMax)
 		{
 			continue;
 		}
@@ -1345,7 +1426,22 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	}
 }
 
+#define IS_CMD(a) !args.compare(L##a)
+#define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
+bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
+{
+	returncode = DEFAULT_RETURNCODE;
 
+	if (IS_CMD("eventreload"))
+	{
+		LoadSettings();
+		cmd->Print(L"Event data reloaded\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+
+	return false;
+}
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions to hook
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1366,6 +1462,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell_AFTER, PLUGIN_HkIServerImpl_GFGoodSell_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SendDeathMsg, PLUGIN_SendDeathMsg, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	return p_PI;
 }

@@ -520,7 +520,6 @@ wstring UIntToPrettyStr(uint value);
 void SendBaseStatus(uint client, PlayerBase* base);
 void SendBaseStatus(PlayerBase* base);
 void ForceLaunch(uint client);
-void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem);
 void SendBaseIDSList(uint client, uint solarId, uint ids);
 
 enum class POPUPWINDOWTYPE

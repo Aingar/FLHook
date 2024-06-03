@@ -6,13 +6,6 @@ void SendCommand(uint client, const wstring& message)
 	HkFMsg(client, L"<TEXT>" + XMLText(message) + L"</TEXT>");
 }
 
-void SendJumpObjOverride(uint client, uint jumpObjId, uint newTargetSystem)
-{
-	wchar_t buf[50];
-	_snwprintf(buf, sizeof(buf), L" OverrideJumpObject %u %u", jumpObjId, newTargetSystem);
-	SendCommand(client, buf);
-}
-
 void SendBaseIDSList(uint client, uint solarId, uint ids)
 {
 	wchar_t buf[30];

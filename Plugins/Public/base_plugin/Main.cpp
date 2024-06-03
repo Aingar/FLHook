@@ -1669,8 +1669,6 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 			}
 		}
 
-		SendJumpObjOverride(client, base, pbase->destSystem);
-
 		return 0;
 	}
 
@@ -3260,23 +3258,6 @@ void PopUpDialogue(uint client, uint buttonPressed)
 	}
 }
 
-void __stdcall SetTarget(uint uClientID, struct XSetTarget const& p2)
-{
-	returncode = DEFAULT_RETURNCODE;
-	if (p2.iSlot == 0)
-	{
-		auto jhIter = customSolarList.find(p2.iSpaceID);
-		if (jhIter != customSolarList.end())
-		{
-			auto jhIter2 = player_bases.find(p2.iSpaceID);
-			if (jhIter2 != player_bases.end() && jhIter2->second->destSystem)
-			{
-				SendJumpObjOverride(uClientID, p2.iSpaceID, jhIter2->second->destSystem);
-			}
-		}
-	}
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -3313,7 +3294,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetTarget, PLUGIN_HkIServerImpl_SetTarget, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

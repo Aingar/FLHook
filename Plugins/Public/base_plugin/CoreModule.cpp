@@ -22,7 +22,10 @@ CoreModule::~CoreModule()
 {
 	if (space_obj)
 	{
-		POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+		if (base->baseCSolar)
+		{
+			POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+		}
 		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);
 		space_obj = 0;
@@ -64,6 +67,10 @@ void CoreModule::Spawn()
 		if (!baseArch.isjump)
 		{
 			si.baseId = base->proxy_base;
+		}
+		else
+		{
+			si.baseId = base->destSystem;
 		}
 		si.iHitPointsLeft = -1;
 		si.iSystemID = base->system;
@@ -145,17 +152,16 @@ void CoreModule::Spawn()
 				base->baseCSolar->Release();
 			}
 		}
-		else
-		{
-			customSolarList.insert(space_obj);
-		}
 
 		struct PlayerData* pd = 0;
 		while (pd = Players.traverse_active(pd))
 		{
 			HkChangeIDSString(pd->iOnlineID, base->solar_ids, base->basename);
 			HkChangeIDSString(pd->iOnlineID, base->description_ids, base->description_text);
-			SendBaseIDSList(pd->iOnlineID, base->baseCSolar->id, base->description_ids);
+			if (base->baseCSolar)
+			{
+				SendBaseIDSList(pd->iOnlineID, base->baseCSolar->id, base->description_ids);
+			}
 		}
 
 		if (shield_reinforcement_threshold_map.count(base->base_level))

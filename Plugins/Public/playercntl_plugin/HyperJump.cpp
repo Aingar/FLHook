@@ -744,13 +744,6 @@ namespace HyperJump
 		ClearJumpDriveInfo(iClientID, true);
 	}
 
-	void SendJumpObjOverride(uint client, JD_JUMPHOLE& jumpObj)
-	{
-		wchar_t buf[50];
-		_snwprintf(buf, sizeof(buf), L" OverrideJumpObject %u %u", jumpObj.objId, jumpObj.targetSystem);
-		HkFMsg(client, L"<TEXT>" + XMLText(buf) + L"</TEXT>");
-	}
-
 	bool HyperJump::Dock_Call(uint const& iShip, uint const& iDockTarget)
 	{
 		if (!jumpObjMap.count(iDockTarget))
@@ -799,7 +792,6 @@ namespace HyperJump
 
 		jumpObj.dockingQueue.insert(iShip);
 		shipToJumpObjMap[iShip] = iDockTarget;
-		SendJumpObjOverride(client, jumpObj);
 		return true;
 	}
 

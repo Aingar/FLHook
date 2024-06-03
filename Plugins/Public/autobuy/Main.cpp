@@ -88,6 +88,17 @@ static map <uint, uint> mapAutobuyFLHookCloak;
 static map <uint, uint> mapAutobuyFLHookJump;
 static map <uint, uint> mapAutobuyFLHookMatrix;
 
+struct ammoData
+{
+	int ammoAdjustment;
+	int ammoCount;
+	ushort sid;
+	int launcherCount;
+	int ammoLimit;
+};
+
+unordered_map<uint, unordered_map<uint, ammoData>> playerAmmoLimits;
+
 uint iNanobotsID;
 uint iShieldBatsID;
 
@@ -97,8 +108,52 @@ bool bPluginEnabled = true;
 //Loading Settings
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+int HkPlayerAutoBuyGetCount(uint clientId, uint iItemArchID)
+{
+	for (EquipDesc& eq : Players[clientId].equipDescList.equip)
+	{
+		if (eq.iArchID == iItemArchID)
+			return eq.iCount;
+	}
+
+	return 0;
+}
+
+int __fastcall GetAmmoCapacityDetourHash(CShip* cship, void* edx, uint ammoArch)
+{
+	uint clientId = cship->ownerPlayer;
+	if (!clientId)
+	{
+		return cship->get_ammo_capacity_remaining(ammoArch);
+	}
+	auto ammoLimits = playerAmmoLimits.find(clientId);
+	if (ammoLimits == playerAmmoLimits.end())
+	{
+		return cship->get_ammo_capacity_remaining(ammoArch);
+	}
+	auto currAmmoLimit = ammoLimits->second.find(ammoArch);
+	if (currAmmoLimit == ammoLimits->second.end())
+	{
+		return cship->get_ammo_capacity_remaining(ammoArch);
+	}
+
+	int maxCount = currAmmoLimit->second.ammoLimit;
+	int remainingCapacity = maxCount - HkPlayerAutoBuyGetCount(clientId, ammoArch);
+
+	return remainingCapacity;
+}
+
+int __fastcall GetAmmoCapacityDetourEq(CShip* cship, void* edx, Archetype::Equipment* ammoType)
+{
+	return GetAmmoCapacityDetourHash(cship, edx, ammoType->iArchID);
+}
+
 void LoadSettings()
 {
+	HANDLE hCommon = GetModuleHandle("common.dll");
+	PatchCallAddr((char*)hCommon, 0x3E60D, (char*)GetAmmoCapacityDetourEq);
+	PatchCallAddr((char*)hCommon, 0x535E7, (char*)GetAmmoCapacityDetourHash);
+	PatchCallAddr((char*)hCommon, 0x535F8, (char*)GetAmmoCapacityDetourHash);
 	//pull the repair factors directly from where the game uses it
 	hullRepairFactor = *(PFLOAT(DWORD(GetModuleHandleA("common.dll")) + 0x4A28));
 	equipmentRepairFactor = *(PFLOAT(DWORD(GetModuleHandleA("server.dll")) + 0x8AE7C));
@@ -390,17 +445,6 @@ struct AUTOBUY_CARTITEM
 	wstring wscDescription;
 };
 
-int HkPlayerAutoBuyGetCount(uint clientId, uint iItemArchID)
-{
-	for(EquipDesc& eq : Players[clientId].equipDescList.equip)
-	{
-		if (eq.iArchID == iItemArchID)
-			return eq.iCount;
-	}
-
-	return 0;
-}
-
 #define ADD_EQUIP_TO_CART(desc)	{ aci.iArchID = ((Archetype::Launcher*)eq)->iProjectileArchID; \
 								aci.iCount = ammoLimitMap[aci.iArchID].ammoAdjustment; \
 								aci.wscDescription = desc; \
@@ -408,7 +452,7 @@ int HkPlayerAutoBuyGetCount(uint clientId, uint iItemArchID)
 
 #define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc, client)	{ aci.iArchID = IDin; \
 								aci.iCount = mapAmmolimits[aci.iArchID].ammoLimit - HkPlayerAutoBuyGetCount(client, aci.iArchID); \
-								aci.wscDescription = desc.name; \
+								aci.wscDescription = desc; \
 								lstCart.push_back(aci); }
 
 void AutobuyInfo(uint iClientID)
@@ -566,17 +610,9 @@ bool  UserCmd_AutoBuy(uint iClientID, const wstring &wscCmd, const wstring &wscP
 	return true;
 }
 
-struct ammoData
-{
-	int ammoAdjustment;
-	int ammoCount;
-	ushort sid;
-	int launcherCount;
-};
-
 unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 {
-	unordered_map<uint, ammoData> ammoLauncherCount;
+	unordered_map<uint, ammoData> returnMap;
 
 	//now that we have identified the stackables, retrieve the current ammo count for stackables
 	for (auto& equip : Players[client].equipDescList.equip)
@@ -590,7 +626,7 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 			{
 				continue;
 			}
-			ammoLauncherCount[equip.iArchID].ammoCount = equip.iCount;
+			returnMap[equip.iArchID].ammoCount = equip.iCount;
 		}
 
 		if (!equip.bMounted || equip.is_internal())
@@ -611,16 +647,16 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 			continue;
 		}
 		
-		if(ammoLimit->second.launcherStackingLimit > ammoLauncherCount[ammo].launcherCount)
+		if(ammoLimit->second.launcherStackingLimit > returnMap[ammo].launcherCount)
 		{
-			++ammoLauncherCount[ammo].launcherCount;
+			++returnMap[ammo].launcherCount;
 		}
 	}
 
 	for (auto& eq : Players[client].equipDescList.equip)
 	{
-		auto& ammo = ammoLauncherCount.find(eq.iArchID);
-		if (ammo != ammoLauncherCount.end())
+		auto& ammo = returnMap.find(eq.iArchID);
+		if (ammo != returnMap.end())
 		{
 			ammo->second.ammoCount = eq.iCount;
 			ammo->second.sid = eq.sID;
@@ -628,31 +664,30 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 		}
 	}
 
-	for (auto& ammo : ammoLauncherCount)
+	for (auto& ammo : returnMap)
 	{
 		if (!ammo.second.launcherCount)
 		{
 			continue;
 		}
-		int currAmmoLimit;
 		if (mapAmmolimits.count(ammo.first))
 		{
-			currAmmoLimit = ammo.second.launcherCount * mapAmmolimits.at(ammo.first).ammoLimit;
+			ammo.second.ammoLimit = ammo.second.launcherCount * mapAmmolimits.at(ammo.first).ammoLimit;
 		}
 		else
 		{
-			currAmmoLimit = MAX_PLAYER_AMMO;
+			ammo.second.ammoLimit = MAX_PLAYER_AMMO;
 		}
-		ammo.second.ammoAdjustment = currAmmoLimit - ammo.second.ammoCount;
+		ammo.second.ammoAdjustment = ammo.second.ammoLimit - ammo.second.ammoCount;
 	}
 
-	return ammoLauncherCount;
+	return returnMap;
 }
 
 void CheckforStackables(uint iClientID)
 {
 	unordered_map<uint, ammoData> ammoLauncherCount = GetAmmoLimits(iClientID);
-
+	playerAmmoLimits[iClientID] = ammoLauncherCount;
 	for (auto& ammo : ammoLauncherCount)
 	{
 		if (ammo.second.ammoAdjustment < 0)
@@ -832,7 +867,7 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 		mapAutobuyPlayerInfo[iClientID].bAutobuyJump || mapAutobuyPlayerInfo[iClientID].bAutobuyMatrix || mapAutobuyPlayerInfo[iClientID].bAutobuyCloak)
 	{
 		unordered_map<uint, ammoData> ammoLimitMap = GetAmmoLimits(iClientID);
-		map <uint, FLHookExtra> mapAutobuyFLHookExtras;
+		unordered_map <uint, wstring> mapAutobuyFLHookExtras;
 		// check mounted equip
 		unordered_set <uint> processedItems;
 		for(auto& item : Players[iClientID].equipDescList.equip)
@@ -896,29 +931,19 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 			//FLHook handling
 			if (mapAutobuyFLHookCloak.find(eq->iArchID) != mapAutobuyFLHookCloak.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyCloak)
 			{
-				FLHookExtra extra;
-				extra.name = L"Cloak Batteries";
-				extra.currCount = item.iCount;
-				mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = extra;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = L"Cloak Batteries";
 			}
-
 			if (mapAutobuyFLHookJump.find(eq->iArchID) != mapAutobuyFLHookJump.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyJump)
 			{
-				FLHookExtra extra;
-				extra.name = L"Jump Batteries";
-				extra.currCount = item.iCount;
-				mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = extra;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = L"Jump Batteries";
 			}
 			if (mapAutobuyFLHookMatrix.find(eq->iArchID) != mapAutobuyFLHookMatrix.end() && mapAutobuyPlayerInfo[iClientID].bAutobuyMatrix)
 			{
-				FLHookExtra extra;
-				extra.name = L"Matrix Batteries";
-				extra.currCount = item.iCount;
-				mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = extra;
+				mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = L"Matrix Batteries";
 			}
 		}
 		//Buy flhook stuff here
-		for (map<uint, FLHookExtra>::iterator i = mapAutobuyFLHookExtras.begin();
+		for (auto i = mapAutobuyFLHookExtras.begin();
 			i != mapAutobuyFLHookExtras.end(); ++i)
 		{
 			AUTOBUY_CARTITEM aci;
@@ -1183,8 +1208,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
 	p_PI->sName = "Autobuy by Discovery Development Team";
 	p_PI->sShortName = "autobuy";
-	p_PI->bMayPause = true;
-	p_PI->bMayUnload = true;
+	p_PI->bMayPause = false;
+	p_PI->bMayUnload = false;
 	p_PI->ePluginReturnCode = &returncode;
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));

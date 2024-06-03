@@ -853,6 +853,11 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
             return;
         }
 
+        cship = ClientInfo[iSendToClientID].cship;
+        if (!cship)
+        {
+            return;
+        }
         float fHoldRemaining = cship->get_cargo_hold_remaining();
 
         if (fHoldRemaining <= 0.0f)
@@ -868,13 +873,17 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         {
             if (((uint)time(nullptr) - mapClients[iClientID].LastTimeMessageAboutBeingFull) > 1)
             {
-                PrintUserCmdText(iClientID, L"%s's cargo is now full.", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID)));
-                pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
                 if (iClientID != iSendToClientID)
                 {
-                    PrintUserCmdText(iSendToClientID, L"Your cargo is now full.");
-                    pub::Player::SendNNMessage(iSendToClientID, insufficientCargoSoundId);
+                    PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)));
+                    PrintUserCmdText(iClientID, L"%s's cargo is now full.", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID)));
+                    pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
                 }
+                else
+                {
+                    PrintUserCmdText(iSendToClientID, L"Your cargo is now full.");
+                }
+                pub::Player::SendNNMessage(iSendToClientID, insufficientCargoSoundId);
                 mapClients[iClientID].LastTimeMessageAboutBeingFull = (uint)time(nullptr);
             }
         }

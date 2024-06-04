@@ -398,7 +398,7 @@ namespace HkIServerImpl
 		}
 
 		float n = ui.vDir.w * ui.vDir.w + ui.vDir.x * ui.vDir.x + ui.vDir.y * ui.vDir.y + ui.vDir.z * ui.vDir.z;
-		if (n > 1.1f || n < 0.90f)
+		if (n > 1.05f || n < 0.95f)
 		{
 			AddLog("ERROR: Non-normalized quaternion found in " __FUNCTION__ " for id=%u, value: %0.4f", iClientID, n);
 			HkKick(Players[iClientID].Account);

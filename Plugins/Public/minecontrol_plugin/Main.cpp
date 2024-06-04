@@ -174,8 +174,6 @@ struct CLIENT_DATA
     uint miningSampleStart = 0;
     float overminedFraction = 0;
     uint deployedContainerId = 0;
-    uint lastValidTargetId = 0;
-    uint lastValidPlayerId = 0;
     uint lastValidContainerId = 0;
     CONTAINER_DATA* lastValidContainer = nullptr;
     MiningBonus shipClassMiningBonus;
@@ -770,66 +768,59 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         {
             uint targetId = target->get_id();
             uint objType = target->get_object_type();
-            if ((objType & (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital | DestructibleDepot)) && HkDistance3D(vPos, target->get_position()) < 1000.0f)
+            if (!(objType & (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital | DestructibleDepot)))
+            {
+                goto targetExit;
+            }
+            if (HkDistance3D(vPos, target->get_position()) > 1200.0f)
             {
 
-                CONTAINER_DATA* container = nullptr;
-                if (cd.lastValidTargetId == targetId)
+                goto targetExit;
+            }
+            
+            if (!(objType & DestructibleDepot))
+            {
+                uint iTargetClientID = reinterpret_cast<CShip*>(target->cobj)->ownerPlayer;
+                if (iTargetClientID)
                 {
-                    iSendToClientID = cd.lastValidPlayerId;
+                    iSendToClientID = iTargetClientID;
                 }
-                else if (cd.lastValidContainerId == targetId)
-                {
-                    container = cd.lastValidContainer;
-                }
-                else if (!(objType & DestructibleDepot))
-                {
-                    uint iTargetClientID = ((CShip*)target->cobj)->ownerPlayer;
-                    if (iTargetClientID)
-                    {
-                        iSendToClientID = iTargetClientID;
-                        cd.lastValidTargetId = targetId;
-                        cd.lastValidPlayerId = iTargetClientID;
-                    }
-                }
-                else
-                {
-                    const auto& containerIter = mapMiningContainers.find(targetId);
-                    if (containerIter != mapMiningContainers.end())
-                    {
-                        container = &containerIter->second;
-                        cd.lastValidContainer = container;
-                        cd.lastValidContainerId = targetId;
-                    }
-                }
+                goto targetExit;
+            }
+            const auto& containerIter = mapMiningContainers.find(targetId);
+            if (containerIter == mapMiningContainers.end())
+            {
+                goto targetExit;
+            }
+            CONTAINER_DATA& container = containerIter->second;
 
-                if (container)
-                {
-                    uint* lootCount = nullptr;
-                    if (container->loot1Id == lootId)
-                    {
-                        foundContainer = true;
-                        lootCount = &container->loot1Count;
-                    }
-                    else if (container->loot2Id == lootId)
-                    {
-                        foundContainer = true;
-                        lootCount = &container->loot2Count;
-                    }
-                    if (foundContainer)
-                    {
-                        *lootCount += static_cast<uint>(miningYield * set_containerModifier);
+            uint* lootCount = nullptr;
+            if (container.loot1Id == lootId)
+            {
+                foundContainer = true;
+                lootCount = &container.loot1Count;
+            }
+            else if (container.loot2Id == lootId)
+            {
+                foundContainer = true;
+                lootCount = &container.loot2Count;
+            }
 
-                        uint amountToJettison = static_cast<uint>(static_cast<float>(set_containerJettisonCount) / lootInfo->fVolume);
-                        if (*lootCount >= amountToJettison)
-                        {
-                            Server.MineAsteroid(container->systemId, container->jettisonPos, set_containerLootCrateID, lootId, amountToJettison, container->clientId);
-                            *lootCount -= amountToJettison;
-                        }
-                    }
-                }
+            if (!foundContainer)
+            {
+                goto targetExit;
+            }
+
+            *lootCount += static_cast<uint>(miningYield * set_containerModifier);
+
+            uint amountToJettison = static_cast<uint>(static_cast<float>(set_containerJettisonCount) / lootInfo->fVolume);
+            if (*lootCount >= amountToJettison)
+            {
+                Server.MineAsteroid(container.systemId, container.jettisonPos, set_containerLootCrateID, lootId, amountToJettison, container.clientId);
+                *lootCount -= amountToJettison;
             }
         }
+        targetExit:
 
         uint miningYieldInt = static_cast<uint>(miningYield);
         cd.overminedFraction = miningYield - miningYieldInt; // save the unused decimal portion for the next mining event.
@@ -869,28 +860,27 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
             miningYieldInt = static_cast<uint>(fHoldRemaining / lootInfo->fVolume);
         }
 
-        if (!miningYieldInt)
+        if (!miningYieldInt && ((uint)time(nullptr) - cd.LastTimeMessageAboutBeingFull) > 2)
         {
-            if (((uint)time(nullptr) - mapClients[iClientID].LastTimeMessageAboutBeingFull) > 1)
+            if (iClientID != iSendToClientID)
             {
-                if (iClientID != iSendToClientID)
-                {
-                    PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)));
-                    PrintUserCmdText(iClientID, L"%s's cargo is now full.", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID)));
-                    pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
-                }
-                else
-                {
-                    PrintUserCmdText(iSendToClientID, L"Your cargo is now full.");
-                }
-                pub::Player::SendNNMessage(iSendToClientID, insufficientCargoSoundId);
-                mapClients[iClientID].LastTimeMessageAboutBeingFull = (uint)time(nullptr);
+                PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)));
+                PrintUserCmdText(iClientID, L"%s's cargo is now full.", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID)));
+                pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
             }
+            else
+            {
+                PrintUserCmdText(iSendToClientID, L"Your cargo is now full.");
+            }
+            pub::Player::SendNNMessage(iSendToClientID, insufficientCargoSoundId);
+            cd.LastTimeMessageAboutBeingFull = (uint)time(nullptr);
+        
         }
         else
         {
             pub::Player::AddCargo(iSendToClientID, lootId, miningYieldInt, 1.0, false);
         }
+        break;
     }
 
 }

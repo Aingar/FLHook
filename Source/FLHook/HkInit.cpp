@@ -282,17 +282,6 @@ void LoadUserCharSettings(uint iClientID)
 install the callback hooks
 **************************************************************************************************************/
 
-typedef bool(__thiscall* radType) (IObjRW* iobj, float deltaTime, float* dunno);
-radType radTypeMethod;
-
-#pragma optimize("", off)
-bool __fastcall insteadMethod(IObjRW* iobj, void* edx, float deltaTime, float* dunno)
-{
-	radTypeMethod(iobj, 60.0f, dunno);
-	return true;
-}
-#pragma optimize("", on)
-
 bool InitHookExports()
 {
 	char	*pAddress;
@@ -317,14 +306,15 @@ bool InitHookExports()
 	Patch(piRemoteClientDLL);
 	Patch(piDaLibDLL);
 
-	//PatchCallAddr((char*)hModServer, 0x21258, (char*)insteadMethod);
-	//radTypeMethod = radType((char*)hModServer + 0x212E0);
-
 	// patch rep array free
 	char szNOPs[] = { '\x90','\x90','\x90','\x90','\x90' };
 	pAddress = ((char*)hModServer + ADDR_SRV_REPARRAYFREE);
 	ReadProcMem(pAddress, szRepFreeFixOld, 5);
 	WriteProcMem(pAddress, szNOPs, 5);
+
+	// reverse patch the client hanging fix
+	BYTE patch[] = { 0xFF };
+	WriteProcMem((char*)hModDaLib + 0x4BF4, patch, sizeof(patch));
 
 	// jump past a redundant XOR statement
 	pAddress = SRV_ADDR(0x61D6);

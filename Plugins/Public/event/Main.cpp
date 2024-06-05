@@ -175,10 +175,7 @@ void SendEconOverride()
 		econOverrideMap.insert(te.second.eventEconOverride.begin(), te.second.eventEconOverride.end());
 	}
 
-	if (!econOverrideMap.empty())
-	{
-		Plugin_Communication(CUSTOM_EVENT_ECON_UPDATE, &econOverrideMap);
-	}
+	Plugin_Communication(CUSTOM_EVENT_ECON_UPDATE, &econOverrideMap);
 }
 
 void LoadSettings()

@@ -167,7 +167,6 @@ void SendD5ACCmd(uint client, DWORD* pData, uint iSize)
 	HkFMsgSendChat(client, (char*)pData, iSize);
 }
 
-#pragma optimize("", off)
 void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 {
 
@@ -333,7 +332,6 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 		SendD5ACCmd(pPD->iOnlineID, dsac_update_econ_cmd, dsac_update_econ_cmd_len);
 	}
 }
-#pragma optimize("", on)
 
 void LoadSettings()
 {

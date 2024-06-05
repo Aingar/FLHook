@@ -250,9 +250,12 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	BaseDataList* baseDataList = BaseDataList_get();
 	static map<uint, market_map_t> originalMarketInfo;
 
+	unordered_set<uint> basesAffected;
+
 	//restore
 	for (auto& bi : originalMarketInfo)
 	{
+		basesAffected.insert(bi.first);
 		auto baseData = baseDataList->get_base_data(bi.first);
 		for (auto& mi : bi.second)
 		{
@@ -266,20 +269,18 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	// Reset the commodities and load the price changes.
 	if (eventMarketData)
 	{
-		mapBaseMarketDelta.insert(eventMarketData->begin(), eventMarketData->end());
-
-		for (auto& marketInfo : *eventMarketData)
+		for (auto& baseDataNode : *eventMarketData)
 		{
-			auto baseData = baseDataList->get_base_data(marketInfo.first);
-			for (auto& baseData2 : marketInfo.second)
+			for (auto& marketGoodEntry : baseDataNode.second)
 			{
-				originalMarketInfo[marketInfo.first][baseData2.first] = baseData->market_map[baseData2.first];
+				mapBaseMarketDelta[baseDataNode.first][marketGoodEntry.first] = marketGoodEntry.second;
 			}
 		}
 	}
 
 	for (map<uint, market_map_t>::const_iterator iterBase = mapBaseMarketDelta.begin(); iterBase != mapBaseMarketDelta.end(); iterBase++)
 	{
+		basesAffected.insert(iterBase->first);
 		BaseData* baseData = baseDataList->get_base_data(iterBase->first);
 		for (market_map_t::const_iterator iterMarketDelta = iterBase->second.begin();
 			iterMarketDelta != iterBase->second.end();
@@ -324,7 +325,7 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	struct PlayerData* pPD = 0;
 	while (pPD = Players.traverse_active(pPD))
 	{
-		if (pPD->iBaseID && mapBaseMarketDelta.count(pPD->iBaseID))
+		if (pPD->iBaseID && basesAffected.count(pPD->iBaseID))
 		{
 			PrintUserCmdText(pPD->iOnlineID, L"Base you are on has just had its economy state updated. You will be kicked to avoid de-sync.");
 			HkDelayedKick(pPD->iOnlineID, 3);
@@ -430,7 +431,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Login, PLUGIN_HkIServerImpl_Login, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 0));

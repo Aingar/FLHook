@@ -78,6 +78,7 @@ struct TRADE_EVENT {
 	list<uint> lAllowedIDs;
 	time_t startTime = 0;
 	time_t endTime = 0;
+	map<uint, market_map_t> eventEconOverride;
 	bool isActive = true;
 };
 
@@ -155,6 +156,28 @@ void LoadIDs()
 		}
 		ini.close();
 		ConPrint(L"EVENT DEBUG: Loaded %u IDs\n", idcount);
+	}
+}
+
+void SendEconOverride()
+{
+	std::map<uint, market_map_t> econOverrideMap;
+	for (auto& te : mapTradeEvents)
+	{
+		if (!te.second.isActive)
+		{
+			continue;
+		}
+		if (te.second.eventEconOverride.empty())
+		{
+			continue;
+		}
+		econOverrideMap.insert(te.second.eventEconOverride.begin(), te.second.eventEconOverride.end());
+	}
+
+	if (!econOverrideMap.empty())
+	{
+		Plugin_Communication(CUSTOM_EVENT_ECON_UPDATE, &econOverrideMap);
 	}
 }
 
@@ -285,6 +308,19 @@ void LoadSettings()
 							ConPrint(L"EVENT %ls has loaded, but is already concluded!\n", stows(te.sEventName).c_str());
 						}
 					}
+					else if (ini.is_value("marketgoodinfo"))
+					{
+						uint baseId = CreateID(ini.get_value_string(0));
+						uint iGoodID = CreateID(ini.get_value_string(1));
+						uint iSellPrice = ini.get_value_int(2);
+						float fPrice = ini.get_value_float(3);
+						bool bBaseBuys = (ini.get_value_int(4) == 1);
+
+						te.eventEconOverride[baseId][iGoodID].iGoodID = iGoodID;
+						te.eventEconOverride[baseId][iGoodID].fPrice = fPrice;
+						te.eventEconOverride[baseId][iGoodID].iMin = iSellPrice;
+						te.eventEconOverride[baseId][iGoodID].iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
+					}
 				}
 				if (invalidData)
 				{
@@ -292,6 +328,10 @@ void LoadSettings()
 				}
 				else
 				{
+					if (te.isActive)
+					{
+						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
+					}
 					mapTradeEvents[id] = te;
 					++iLoaded;
 				}
@@ -408,6 +448,10 @@ void LoadSettings()
 				}
 				else
 				{
+					if (ce.isActive)
+					{
+						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
+					}
 					mapCombatEvents[id] = ce;
 					++iLoaded;
 				}
@@ -536,6 +580,8 @@ void LoadSettings()
 		}
 		ini.close();
 	}
+
+	SendEconOverride();
 
 	ConPrint(L"EVENT: Loaded %u events\n", iLoaded);
 	ConPrint(L"EVENT DEBUG: Loaded %u event data\n", iLoaded2);
@@ -723,7 +769,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 
 		if (i->second.bLimited)
 		{
-			uint pID = HookExt::IniGetI(iClientID, "event.shipid");
+			uint pID = GetPlayerId(iClientID);
 			bool bFoundID = false;
 
 			for (list<uint>::iterator i2 = i->second.lAllowedIDs.begin(); i2 != i->second.lAllowedIDs.end(); ++i2)
@@ -1222,6 +1268,10 @@ void CheckActiveEvent()
 			{
 				te.isActive = false;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
+				if (!te.eventEconOverride.empty())
+				{
+					SendEconOverride();
+				}
 			}
 		}
 		else
@@ -1230,6 +1280,11 @@ void CheckActiveEvent()
 			{
 				te.isActive = true;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
+
+				if (!te.eventEconOverride.empty())
+				{
+					SendEconOverride();
+				}
 			}
 		}
 	}
@@ -1251,7 +1306,7 @@ void HkTimerCheckKick()
 		ProcessEventPlayerInfo();
 	}
 
-	if ((curr_time_events % 300) == 0)
+	if ((curr_time_events % 60) == 0)
 	{
 		CheckActiveEvent();
 	}

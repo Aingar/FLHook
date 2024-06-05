@@ -275,7 +275,8 @@ enum PLUGIN_MESSAGE
 	CUSTOM_RESTART_NOTIFICATION = 58,
 	CUSTOM_CLOAK_ALERT = 60,
 	CUSTOM_POB_DOCK_ALERT = 61,
-	CUSTOM_SHIELD_STATE_CHANGE = 62
+	CUSTOM_SHIELD_STATE_CHANGE = 62,
+	CUSTOM_EVENT_ECON_UPDATE = 63,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

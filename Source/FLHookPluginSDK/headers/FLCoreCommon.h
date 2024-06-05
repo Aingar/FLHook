@@ -1196,8 +1196,8 @@ private:
 	void read_Room_block(class INI_Reader *);
 
 public:
-	DWORD idunno;
-	float start_room;
+	uint baseId;
+	uint start_room;
 	float price_variance;
 	float ship_repair_cost;
 	st6::map<uint, MarketGoodInfo> market_map;

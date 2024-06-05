@@ -7,6 +7,11 @@
 #include "Main.h"
 #include "headers/zlib.h"
 
+using st6_malloc_t = void* (*)(size_t);
+using st6_free_t = void(*)(void*);
+IMPORT st6_malloc_t st6_malloc;
+IMPORT st6_free_t st6_free;
+
 PLUGIN_RETURNCODE returncode;
 
 DWORD* dsac_update_infocard_cmd = 0;
@@ -112,7 +117,7 @@ DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_
 {
 	// Calculate the size of the data to compress and allocate a buffer
 	DWORD number_of_updates = 0;
-	DWORD srclen = 8; // header
+	DWORD srclen = 12; // header
 	for (map<uint, market_map_t>::iterator i = mapMarket.begin(); i != mapMarket.end(); ++i)
 	{
 		srclen += i->second.size() * 20;
@@ -162,11 +167,9 @@ void SendD5ACCmd(uint client, DWORD* pData, uint iSize)
 	HkFMsgSendChat(client, (char*)pData, iSize);
 }
 
-void LoadSettings()
+#pragma optimize("", off)
+void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 {
-	returncode = DEFAULT_RETURNCODE;
-
-	AlleyMF::LoadSettings();
 
 	map<uint, market_map_t> mapBaseMarketDelta;
 
@@ -200,9 +203,10 @@ void LoadSettings()
 							const GoodInfo* gi = GoodList::find_by_id(iGoodID);
 							if (gi && gi->iType == GOODINFO_TYPE_COMMODITY)
 							{
-								mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
-								mapBaseMarketDelta[baseId][iGoodID].fPrice = gi->fPrice;
-								mapBaseMarketDelta[baseId][iGoodID].iTransType = TransactionType_Buy;
+								auto& mapEntry = mapBaseMarketDelta[baseId][iGoodID];
+								mapEntry.iGoodID = iGoodID;
+								mapEntry.fPrice = gi->fPrice;
+								mapEntry.iTransType = TransactionType_Buy;
 							}
 						}
 					}
@@ -216,14 +220,26 @@ void LoadSettings()
 					{
 						uint baseId = CreateID(ini.get_value_string(0));
 						uint iGoodID = CreateID(ini.get_value_string(1));
-						float fPrice = ini.get_value_float(2);
-						uint iSellPrice = ini.get_value_int(3);
+						uint iSellPrice = ini.get_value_int(2);
+						float fPrice = ini.get_value_float(3);
 						bool bBaseBuys = (ini.get_value_int(4) == 1);
 
-						mapBaseMarketDelta[baseId][iGoodID].iGoodID = iGoodID;
-						mapBaseMarketDelta[baseId][iGoodID].fPrice = fPrice;
-						mapBaseMarketDelta[baseId][iGoodID].iMin = iSellPrice;
-						mapBaseMarketDelta[baseId][iGoodID].iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
+						if (Universe::get_base(baseId) == nullptr)
+						{
+							ConPrint(L"ERROR: prices.cfg: base %s doesn't exist!\n", stows(ini.get_value_string(0)).c_str());
+							continue;
+						}
+						if (GoodList_get()->find_by_id(iGoodID) == nullptr)
+						{
+							ConPrint(L"ERROR: prices.cfg: good %s doesn't exist!\n", stows(ini.get_value_string(1)).c_str());
+							continue;
+						}
+
+						auto& mapEntry = mapBaseMarketDelta[baseId][iGoodID];
+						mapEntry.iGoodID = iGoodID;
+						mapEntry.fPrice = fPrice;
+						mapEntry.iMin = iSellPrice;
+						mapEntry.iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
 			}
@@ -232,17 +248,40 @@ void LoadSettings()
 	}
 
 
+	BaseDataList* baseDataList = BaseDataList_get();
+	static map<uint, market_map_t> originalMarketInfo;
+
+	//restore
+	for (auto& bi : originalMarketInfo)
+	{
+		auto baseData = baseDataList->get_base_data(bi.first);
+		for (auto& mi : bi.second)
+		{
+			auto& info = mi.second;
+			const GoodInfo* gi = GoodList::find_by_id(info.iGoodID);
+			baseData->set_market_good(info.iGoodID, info.iMin, info.iStock, info.iTransType, info.fPrice / gi->fPrice, info.fRank, info.fRep);
+		}
+	}
+	originalMarketInfo.clear();
+	 
 	// Reset the commodities and load the price changes.
-	BaseDataList_load_market_data("..\\data\\equipment\\market_commodities.ini");
+	if (eventMarketData)
+	{
+		mapBaseMarketDelta.insert(eventMarketData->begin(), eventMarketData->end());
+
+		for (auto& marketInfo : *eventMarketData)
+		{
+			auto baseData = baseDataList->get_base_data(marketInfo.first);
+			for (auto& baseData2 : marketInfo.second)
+			{
+				originalMarketInfo[marketInfo.first][baseData2.first] = baseData->market_map[baseData2.first];
+			}
+		}
+	}
 
 	for (map<uint, market_map_t>::const_iterator iterBase = mapBaseMarketDelta.begin(); iterBase != mapBaseMarketDelta.end(); iterBase++)
 	{
-		const uint& baseId = iterBase->first;
-		BaseData* bd = BaseDataList_get()->get_base_data(baseId);
-		if (!bd)
-		{
-			continue;
-		}
+		BaseData* baseData = baseDataList->get_base_data(iterBase->first);
 		for (market_map_t::const_iterator iterMarketDelta = iterBase->second.begin();
 			iterMarketDelta != iterBase->second.end();
 			iterMarketDelta++)
@@ -256,7 +295,24 @@ void LoadSettings()
 			// The multiplier is the new price / old good (base) price
 			float fMultiplier = mgi.fPrice / gi->fPrice;
 
-			bd->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
+			if (!baseData->market_map.empty() && baseData->market_map.find(iterMarketDelta->first) != baseData->market_map.end())
+			{
+				originalMarketInfo[iterBase->first][iterMarketDelta->first] = baseData->market_map[iterMarketDelta->first];
+			}
+			else
+			{
+				MarketGoodInfo marketinfo;
+
+				marketinfo.iGoodID = iterMarketDelta->first;
+				marketinfo.iMin = static_cast<int>(gi->fPrice);
+				marketinfo.iStock = 0;
+				marketinfo.iTransType = TransactionType(1);
+				marketinfo.fPrice = gi->fPrice;
+				marketinfo.fRank = 0;
+				marketinfo.fRep = -1;
+				originalMarketInfo[iterBase->first][iterMarketDelta->first] = marketinfo;
+			}
+			baseData->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
 		}
 	}
 
@@ -264,13 +320,28 @@ void LoadSettings()
 	if (dsac_update_econ_cmd)
 		delete dsac_update_econ_cmd;
 	dsac_update_econ_cmd = BuildDSACEconUpdateCmd(&dsac_update_econ_cmd_len, 1, mapBaseMarketDelta);
-	
+
 	// For any players in a base, update them.
 	struct PlayerData* pPD = 0;
 	while (pPD = Players.traverse_active(pPD))
 	{
+		if (pPD->iBaseID && mapBaseMarketDelta.count(pPD->iBaseID))
+		{
+			PrintUserCmdText(pPD->iOnlineID, L"Base you are on has just had its economy state updated. You will be kicked to avoid de-sync.");
+			HkDelayedKick(pPD->iOnlineID, 3);
+		}
 		SendD5ACCmd(pPD->iOnlineID, dsac_update_econ_cmd, dsac_update_econ_cmd_len);
 	}
+}
+#pragma optimize("", on)
+
+void LoadSettings()
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	AlleyMF::LoadSettings();
+
+	LoadMarketOverrides(nullptr);
 }
 
 void __stdcall Login(struct SLoginInfo const& li, uint client)
@@ -279,7 +350,6 @@ void __stdcall Login(struct SLoginInfo const& li, uint client)
 	SendD5ACCmd(client, dsac_update_econ_cmd, dsac_update_econ_cmd_len);
 }
 
-#pragma optimize("", off)
 void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -302,7 +372,6 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 	int currPrice = static_cast<int>(marketData->second.fPrice);
 	pub::Player::AdjustCash(client, gsi.iCount * (sellPrice - currPrice));
 }
-#pragma optimize("", on)
 
 void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int client)
 {
@@ -326,6 +395,34 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 	AlleyMF::BaseEnter_AFTER(baseId, client);
 }
 
+void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (msg == CUSTOM_EVENT_ECON_UPDATE)
+	{
+		returncode = SKIPPLUGINS;
+		map<uint, market_map_t>* info = reinterpret_cast<map<uint, market_map_t>*>(data);
+		LoadMarketOverrides(info);
+	}
+}
+
+#define IS_CMD(a) !args.compare(L##a)
+#define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
+bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (IS_CMD("pricereload"))
+	{
+		LoadSettings();
+		cmd->Print(L"Price data reloaded\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+
+	return false;
+}
+
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
@@ -345,6 +442,10 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	return p_PI;
 }

@@ -15,6 +15,8 @@
 
 using namespace std;
 
-
+typedef std::map<uint, struct MarketGoodInfo, struct std::less<uint>, class std::allocator<struct MarketGoodInfo> > market_map_t;
+typedef std::map<uint, struct MarketGoodInfo, struct std::less<uint>, class std::allocator<struct MarketGoodInfo> >::const_iterator market_map_iter_t;
+typedef std::map<uint, struct MarketGoodInfo, struct std::less<uint>, class std::allocator<struct MarketGoodInfo> >::value_type market_map_pair_t;
 
 #endif

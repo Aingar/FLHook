@@ -176,11 +176,21 @@ Replace FLServer's exception handler with our own.
 #ifdef EXTENDED_EXCEPTION_LOGGING
 BYTE oldSetUnhandledExceptionFilter[5];
 
+void DumpOnlinePlayers()
+{
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd))
+	{
+		AddLog("%s - %u", wstos((const wchar_t*)Players.GetActiveCharacterName(pd->iOnlineID)).c_str(), pd->iSystemID);
+	}
+}
+
 LONG WINAPI FLHookTopLevelFilter(struct _EXCEPTION_POINTERS *pExceptionInfo)
 {
 	AddLog("!!TOP LEVEL EXCEPTION!!");
 	SEHException ex(0, pExceptionInfo);
 	WriteMiniDump(&ex);
+	DumpOnlinePlayers();
 	return EXCEPTION_EXECUTE_HANDLER; 	// EXCEPTION_CONTINUE_SEARCH;
 }
 

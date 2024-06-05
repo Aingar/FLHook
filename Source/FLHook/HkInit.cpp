@@ -336,7 +336,7 @@ bool InitHookExports()
 
 	// jump out of the crash trap in TradeLane/SPObjUpdate related code
 	pAddress = (char*)hModCommon + 0xF24A0;
-	char szSkipCrash[2] = { '\xEB', '\x28' };
+	char szSkipCrash[2] = { '\xEB', '\x30' };
 	WriteProcMem(pAddress, szSkipCrash, 2);
 
 	// install hook at new address

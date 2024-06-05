@@ -123,6 +123,7 @@ static unordered_map<uint, OBSCURED_SYSTEM> mapObscuredSystems;
 
 struct CloakSyncData
 {
+	std::vector<uint> clientIds;
 	XActivateEquip eq;
 	int iterationCounter = 0;
 };
@@ -395,6 +396,7 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 			PrintUserCmdText(iClientID, L"Cloaking device on");
 			ClientInfo[iClientID].bCloaked = true;
 			ObscureSystemList(iClientID);
+			cloakSyncData.erase(iClientID);
 			break;
 		}
 		case STATE_CLOAK_OFF:
@@ -676,7 +678,10 @@ void HkTimerCheckKick()
 		++iter->second.iterationCounter;
 		if (iter->second.iterationCounter > 1)
 		{
-			Server.ActivateEquip(iter->first, iter->second.eq);
+			for (uint clientId : iter->second.clientIds)
+			{
+				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(clientId, iter->second.eq);
+			}
 		}
 
 		if (iter->second.iterationCounter > 2)
@@ -1155,13 +1160,20 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 	{
 		return;
 	}
-	if (cd->second.iState == STATE_CLOAK_OFF || cd->second.iState == STATE_CLOAK_CHARGING)
+	if (cd->second.iState != STATE_CLOAK_ON)
 	{
 		XActivateEquip eq;
 		eq.bActivate = false;
 		eq.iSpaceID = pShip.iSpaceID;
 		eq.sID = cd->second.iCloakSlot;
-		cloakSyncData[pShip.clientId] = { eq, 0 };
+		if (cloakSyncData.count(pShip.clientId))
+		{
+			cloakSyncData[pShip.clientId].clientIds.push_back(client);
+		}
+		else
+		{
+			cloakSyncData[pShip.clientId] = { {client}, eq, 0 };
+		}
 	}
 }
 

@@ -76,6 +76,7 @@ namespace RepFixer
 	/// Load the reputations for the specified equipment faction ID nickname.
 	static void LoadFactionReps()
 	{
+		set_mapFactionReps.clear();
 
 		char szCurDir[MAX_PATH];
 		GetCurrentDirectory(sizeof(szCurDir), szCurDir);
@@ -188,6 +189,8 @@ namespace RepFixer
 
 	void LoadTagRephacks()
 	{
+
+		set_mapTagHacks.clear();
 		// The path to the configuration file.
 		char szCurDir[MAX_PATH];
 		GetCurrentDirectory(sizeof(szCurDir), szCurDir);
@@ -230,6 +233,12 @@ namespace RepFixer
 		ini.close();
 
 		ConPrint(L"Playercntl: Loaded %u tag rephacks\n", iLoaded);
+	}
+
+	void ReloadFactionReps()
+	{
+		LoadFactionReps();
+		LoadTagRephacks();
 	}
 
 	/// Load the plugin settings.

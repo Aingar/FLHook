@@ -1672,6 +1672,11 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("reloadbans"))
 	{
+		if (!(cmds->rights & RIGHT_SUPERADMIN))
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
 		IPBans::AdminCmd_ReloadBans(cmds);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
@@ -1684,6 +1689,11 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("rotatelogs"))
 	{
+		if (!(cmds->rights & RIGHT_SUPERADMIN))
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
 		if (fLogDebug)
 		{
 			fclose(fLogDebug);
@@ -1706,12 +1716,11 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("pm") || IS_CMD("privatemsg"))
 	{
-		Message::AdminCmd_SendMail(cmds, cmds->ArgCharname(1), cmds->ArgStrToEnd(2));
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return true;
-	}
-	else if (IS_CMD("pm") || IS_CMD("privatemsg"))
-	{
+		if (!(cmds->rights & RIGHT_SUPERADMIN))
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
 		Message::AdminCmd_SendMail(cmds, cmds->ArgCharname(1), cmds->ArgStrToEnd(2));
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
@@ -1736,7 +1745,23 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("reloadlockedships"))
 	{
+		if (!(cmds->rights & RIGHT_SUPERADMIN))
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
 		Rename::ReloadLockedShips();
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("reloadrephacks"))
+	{
+		if (!(cmds->rights & RIGHT_SUPERADMIN))
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+		RepFixer::ReloadFactionReps();
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

@@ -205,6 +205,7 @@ namespace RepFixer
 	void LoadSettings(const string &scPluginCfgFile);
 	void PlayerLaunch(unsigned int iShip, unsigned int iClientID);
 	void BaseEnter(unsigned int iBaseID, unsigned int iClientID);
+	void ReloadFactionReps();
 }
 
 namespace GiveCash

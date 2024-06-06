@@ -22,16 +22,16 @@ Connecticut Plugin by MadHunter
 
 enum ClientState
 {
-	NONE,
-	TRANSFER,
-	RETURN
+    NONE,
+    TRANSFER,
+    RETURN
 };
 
 struct CONNDATA
 {
-	ClientState clientState = NONE;
-	uint retBase = 0;
-	uint retSystemBackup = 0;
+    ClientState clientState = NONE;
+    uint retBase = 0;
+    uint retSystemBackup = 0;
 };
 
 CONNDATA connInfo[MAX_CLIENT_ID + 1];
@@ -60,345 +60,350 @@ PLUGIN_RETURNCODE returncode;
 /// Clear client info when a client connects.
 void ClearClientInfo(uint iClientID)
 {
-	connInfo[iClientID].clientState = NONE;
-	connInfo[iClientID].retBase = 0;
-	connInfo[iClientID].retSystemBackup = 0;
+    connInfo[iClientID].clientState = NONE;
+    connInfo[iClientID].retBase = 0;
+    connInfo[iClientID].retSystemBackup = 0;
 }
 
 /// Load the configuration
 void LoadSettings()
 {
-	returncode = DEFAULT_RETURNCODE;
+    returncode = DEFAULT_RETURNCODE;
 
-	// The path to the configuration file.
-	char szCurDir[MAX_PATH];
-	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
-	string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\conn.cfg";
+    // The path to the configuration file.
+    char szCurDir[MAX_PATH];
+    GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+    string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\conn.cfg";
 
-	// Load generic settings
-	set_iPluginDebug = IniGetI(scPluginCfgFile, "General", "Debug", 0);
-	set_iTargetBaseID = CreateID(IniGetS(scPluginCfgFile, "General", "TargetBase", "li06_05_base").c_str());
-	set_iTargetSystemID = CreateID(IniGetS(scPluginCfgFile, "General", "TargetSystem", "li06").c_str());
-	set_iDefaultBaseID = CreateID(IniGetS(scPluginCfgFile, "General", "DefaultBase", "li01_proxy_base").c_str());
+    // Load generic settings
+    set_iPluginDebug = IniGetI(scPluginCfgFile, "General", "Debug", 0);
+    set_iTargetBaseID = CreateID(IniGetS(scPluginCfgFile, "General", "TargetBase", "li06_05_base").c_str());
+    set_iTargetSystemID = CreateID(IniGetS(scPluginCfgFile, "General", "TargetSystem", "li06").c_str());
+    set_iDefaultBaseID = CreateID(IniGetS(scPluginCfgFile, "General", "DefaultBase", "li01_proxy_base").c_str());
 
-	INI_Reader ini;
-	set_lRestrictedSystemIDs.clear();
-	if (ini.open(scPluginCfgFile.c_str(), false))
-	{
-		while (ini.read_header())
-		{
-			if (ini.is_header("General"))
-			{
-				while (ini.read_value())
-				{
-					if (ini.is_value("RestrictedSystem"))
-					{
-						string blockedSystem = ini.get_value_string();
-						set_lRestrictedSystemIDs.push_back(CreateID(blockedSystem.c_str()));
-						if (set_iPluginDebug)
-							ConPrint(L"NOTICE: Adding conn restricted system %s\n", stows(blockedSystem).c_str());
-					}
-					else if (ini.is_value("ForbiddenEquipment"))
-					{
-						setForbiddenEquipment.insert(CreateID(ini.get_value_string(0)));
-					}
-				}
-			}
-		}
-		ini.close();
-	}
+    INI_Reader ini;
+    set_lRestrictedSystemIDs.clear();
+    if (ini.open(scPluginCfgFile.c_str(), false))
+    {
+        while (ini.read_header())
+        {
+            if (ini.is_header("General"))
+            {
+                while (ini.read_value())
+                {
+                    if (ini.is_value("RestrictedSystem"))
+                    {
+                        string blockedSystem = ini.get_value_string();
+                        set_lRestrictedSystemIDs.push_back(CreateID(blockedSystem.c_str()));
+                        if (set_iPluginDebug)
+                            ConPrint(L"NOTICE: Adding conn restricted system %s\n", stows(blockedSystem).c_str());
+                    }
+                    else if (ini.is_value("ForbiddenEquipment"))
+                    {
+                        setForbiddenEquipment.insert(CreateID(ini.get_value_string(0)));
+                    }
+                }
+            }
+        }
+        ini.close();
+    }
 }
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
-	static bool patched = false;
-	srand((uint)time(0));
+    static bool patched = false;
+    srand((uint)time(0));
 
-	// If we're being loaded from the command line while FLHook is running then
-	// set_scCfgFile will not be empty so load the settings as FLHook only
-	// calls load settings on FLHook startup and .rehash.
-	if (fdwReason == DLL_PROCESS_ATTACH)
-	{
-		if (set_scCfgFile.length() > 0)
-			LoadSettings();
-		HkLoadStringDLLs();
-	}
-	else if (fdwReason == DLL_PROCESS_DETACH)
-	{
-		HkUnloadStringDLLs();
-	}
-	return true;
+    // If we're being loaded from the command line while FLHook is running then
+    // set_scCfgFile will not be empty so load the settings as FLHook only
+    // calls load settings on FLHook startup and .rehash.
+    if (fdwReason == DLL_PROCESS_ATTACH)
+    {
+        if (set_scCfgFile.length() > 0)
+            LoadSettings();
+        HkLoadStringDLLs();
+    }
+    else if (fdwReason == DLL_PROCESS_DETACH)
+    {
+        HkUnloadStringDLLs();
+    }
+    return true;
 }
 
 bool IsDockedClient(unsigned int client)
 {
-	unsigned int base = 0;
-	pub::Player::GetBase(client, base);
-	if (base)
-		return true;
+    unsigned int base = 0;
+    pub::Player::GetBase(client, base);
+    if (base)
+        return true;
 
-	return false;
+    return false;
 }
 
 bool ValidateCargo(unsigned int client)
 {
-	std::wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(client);
-	std::list<CARGO_INFO> cargo;
-	int holdSize = 0;
+    std::wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(client);
+    std::list<CARGO_INFO> cargo;
+    int holdSize = 0;
 
-	HkEnumCargo(playerName, cargo, holdSize);
+    HkEnumCargo(playerName, cargo, holdSize);
 
-	for (std::list<CARGO_INFO>::const_iterator it = cargo.begin(); it != cargo.end(); ++it)
-	{
-		const CARGO_INFO & item = *it;
+    for (std::list<CARGO_INFO>::const_iterator it = cargo.begin(); it != cargo.end(); ++it)
+    {
+        const CARGO_INFO& item = *it;
 
-		bool flag = false;
-		pub::IsCommodity(item.iArchID, flag);
+        bool flag = false;
+        pub::IsCommodity(item.iArchID, flag);
 
-		// Some commodity present.
-		if (flag)
-		{
-			PrintUserCmdText(client, STR_INFO2);
-			return false;
-		}
-		else if (setForbiddenEquipment.count(item.iArchID))
-		{
-			const GoodInfo* gi = GoodList::find_by_id(item.iArchID);
-			PrintUserCmdText(client, L"Can't enter arena while holding %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
-			return false;
-		}
-	}
+        // Some commodity present.
+        if (flag)
+        {
+            PrintUserCmdText(client, STR_INFO2);
+            return false;
+        }
+        else if (setForbiddenEquipment.count(item.iArchID))
+        {
+            const GoodInfo* gi = GoodList::find_by_id(item.iArchID);
+            PrintUserCmdText(client, L"Can't enter arena while holding %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+            return false;
+        }
+    }
 
-	return true;
+    return true;
 }
 
 void StoreCurrentBase(uint client)
 {
 
-	uint currBase;
-	pub::Player::GetBase(client, currBase);
-	connInfo[client].retBase = currBase;
-	connInfo[client].retSystemBackup = 0;
+    uint currBase;
+    pub::Player::GetBase(client, currBase);
+    connInfo[client].retBase = currBase;
+    connInfo[client].retSystemBackup = 0;
 
 }
 
 void StoreReturnPointForClient(unsigned int client)
 {
-	if (connInfo[client].retBase)
-	{
-		HookExt::IniSetI(client, "conn.retbase", connInfo[client].retBase);
-	}
-	if (connInfo[client].retSystemBackup)
-	{
-		HookExt::IniSetI(client, "conn.retsystembackup", connInfo[client].retSystemBackup);
-	}
+    if (connInfo[client].retBase)
+    {
+        HookExt::IniSetI(client, "conn.retbase", connInfo[client].retBase);
+    }
+    if (connInfo[client].retSystemBackup)
+    {
+        HookExt::IniSetI(client, "conn.retsystembackup", connInfo[client].retSystemBackup);
+    }
 }
 
 void MoveClient(unsigned int client, unsigned int targetBase)
 {
-	// Ask that another plugin handle the beam.
-	CUSTOM_BASE_BEAM_STRUCT info;
-	info.iClientID = client;
-	info.iTargetBaseID = targetBase;
-	info.bBeamed = false;
-	Plugin_Communication(CUSTOM_BASE_BEAM, &info);
-	if (info.bBeamed)
-		return;
+    // Ask that another plugin handle the beam.
+    CUSTOM_BASE_BEAM_STRUCT info;
+    info.iClientID = client;
+    info.iTargetBaseID = targetBase;
+    info.bBeamed = false;
+    Plugin_Communication(CUSTOM_BASE_BEAM, &info);
+    if (info.bBeamed)
+        return;
 
-	uint system;
-	pub::Player::GetSystem(client, system);
+    uint system;
+    pub::Player::GetSystem(client, system);
 
-	// No plugin handled it, do it ourselves.
-	Universe::IBase* base = Universe::get_base(targetBase);
-	if (base)
-	{
-		HkBeamById(client, targetBase);
-	}
-	else
-	{
-		//All else failed, move to proxy base
-		uint returnSys = HookExt::IniGetI(client, "conn.retsystembackup");
-		auto sysInfo = Universe::get_system(returnSys);
-		string scProxyBase = (string)((const char*)sysInfo->nickname) + "_proxy_base";
-		uint proxyBaseID;
-		if (pub::GetBaseID(proxyBaseID, scProxyBase.c_str()) == -4)
-		{
-			PrintUserCmdText(client, L"Return impossible, contact staff");
-			return;
-		}
-		PrintUserCmdText(client, L"Player base renamed/destroyed, ship redirected to a proxy base");
-		HkBeamById(client, proxyBaseID);
-	}
+    // No plugin handled it, do it ourselves.
+    Universe::IBase* base = Universe::get_base(targetBase);
+    if (base)
+    {
+        HkBeamById(client, targetBase);
+    }
+    else
+    {
+        //All else failed, move to proxy base
+        uint returnSys = HookExt::IniGetI(client, "conn.retsystembackup");
+        auto sysInfo = Universe::get_system(returnSys);
+        if (!sysInfo)
+        {
+            PrintUserCmdText(client, L"Return impossible, contact staff");
+            return;
+        }
+        string scProxyBase = (string)((const char*)sysInfo->nickname) + "_proxy_base";
+        uint proxyBaseID;
+        if (pub::GetBaseID(proxyBaseID, scProxyBase.c_str()) == -4)
+        {
+            PrintUserCmdText(client, L"Return impossible, contact staff");
+            return;
+        }
+        PrintUserCmdText(client, L"Player base renamed/destroyed, ship redirected to a proxy base");
+        HkBeamById(client, proxyBaseID);
+    }
 
 }
 
 bool CheckReturnDock(unsigned int client, unsigned int target)
 {
-	unsigned int base = 0;
-	pub::Player::GetBase(client, base);
+    unsigned int base = 0;
+    pub::Player::GetBase(client, base);
 
-	if (base == target)
-		return true;
+    if (base == target)
+        return true;
 
-	return false;
+    return false;
 }
 
 unsigned int ReadReturnPointForClient(unsigned int client)
 {
-	uint returnPoint = HookExt::IniGetI(client, "conn.retbase");
-	connInfo[client].retBase = returnPoint;
-	return returnPoint;
+    uint returnPoint = HookExt::IniGetI(client, "conn.retbase");
+    connInfo[client].retBase = returnPoint;
+    return returnPoint;
 }
 
-bool UserCmd_Process(uint client, const wstring &cmd)
+bool UserCmd_Process(uint client, const wstring& cmd)
 {
-	returncode = DEFAULT_RETURNCODE;
+    returncode = DEFAULT_RETURNCODE;
 
-	if (!cmd.compare(L"/conn"))
-	{
-		// Prohibit jump if in a restricted system or in the target system
-		uint system = 0;
-		pub::Player::GetSystem(client, system);
-		if (find(set_lRestrictedSystemIDs.begin(), set_lRestrictedSystemIDs.end(), system) != set_lRestrictedSystemIDs.end()
-			|| system == set_iTargetSystemID)
-		{
-			PrintUserCmdText(client, L"ERR Cannot use command in this system or base");
-			return true;
-		}
-		CUSTOM_MOBILE_DOCK_CHECK_STRUCT info;
-		info.iClientID = client;
-		info.isMobileDocked = false;
-		Plugin_Communication(CUSTOM_MOBILE_DOCK_CHECK, &info);
-		if (info.isMobileDocked)
-		{
-			PrintUserCmdText(client, L"ERR Cannot go to connecticut while mobile docked");
-			return true;
-		}
+    if (!cmd.compare(L"/conn"))
+    {
+        // Prohibit jump if in a restricted system or in the target system
+        uint system = 0;
+        pub::Player::GetSystem(client, system);
+        if (find(set_lRestrictedSystemIDs.begin(), set_lRestrictedSystemIDs.end(), system) != set_lRestrictedSystemIDs.end()
+            || system == set_iTargetSystemID)
+        {
+            PrintUserCmdText(client, L"ERR Cannot use command in this system or base");
+            return true;
+        }
+        CUSTOM_MOBILE_DOCK_CHECK_STRUCT info;
+        info.iClientID = client;
+        info.isMobileDocked = false;
+        Plugin_Communication(CUSTOM_MOBILE_DOCK_CHECK, &info);
+        if (info.isMobileDocked)
+        {
+            PrintUserCmdText(client, L"ERR Cannot go to connecticut while mobile docked");
+            return true;
+        }
 
-		if (!IsDockedClient(client))
-		{
-			PrintUserCmdText(client, STR_INFO1);
-			return true;
-		}
+        if (!IsDockedClient(client))
+        {
+            PrintUserCmdText(client, STR_INFO1);
+            return true;
+        }
 
-		CUSTOM_BASE_IS_DOCKED_STRUCT info2;
-		info2.iClientID = client;
-		Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info2);
-		if (info2.iDockedBaseID)
-		{
-			PrintUserCmdText(client, L"ERR Cannot go to connecticut from a Player Base");
-			return true;
-		}
+        CUSTOM_BASE_IS_DOCKED_STRUCT info2;
+        info2.iClientID = client;
+        Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info2);
+        if (info2.iDockedBaseID)
+        {
+            PrintUserCmdText(client, L"ERR Cannot go to connecticut from a Player Base");
+            return true;
+        }
 
-		if (!ValidateCargo(client))
-		{
-			return true;
-		}
-		StoreCurrentBase(client);
-		StoreReturnPointForClient(client);
-		PrintUserCmdText(client, L"Redirecting undock to Connecticut.");
-		connInfo[client].clientState = TRANSFER;
+        if (!ValidateCargo(client))
+        {
+            return true;
+        }
+        StoreCurrentBase(client);
+        StoreReturnPointForClient(client);
+        PrintUserCmdText(client, L"Redirecting undock to Connecticut.");
+        connInfo[client].clientState = TRANSFER;
 
-		return true;
-	}
-	else if (!cmd.compare(L"/return"))
-	{
-		if (!IsDockedClient(client))
-		{
-			PrintUserCmdText(client, STR_INFO1);
-			return true;
-		}
+        return true;
+    }
+    else if (!cmd.compare(L"/return"))
+    {
+        if (!IsDockedClient(client))
+        {
+            PrintUserCmdText(client, STR_INFO1);
+            return true;
+        }
 
-		if (!CheckReturnDock(client, set_iTargetBaseID))
-		{
-			PrintUserCmdText(client, L"Not in correct base");
-			return true;
-		}
+        if (!CheckReturnDock(client, set_iTargetBaseID))
+        {
+            PrintUserCmdText(client, L"Not in correct base");
+            return true;
+        }
 
-		if (!ValidateCargo(client))
-		{
-			PrintUserCmdText(client, STR_INFO2);
-			return true;
-		}
+        if (!ValidateCargo(client))
+        {
+            PrintUserCmdText(client, STR_INFO2);
+            return true;
+        }
 
-		if (!connInfo[client].retBase && !ReadReturnPointForClient(client))
-		{
-			PrintUserCmdText(client, L"No return possible");
-			return true;
-		}
+        if (!connInfo[client].retBase && !ReadReturnPointForClient(client))
+        {
+            PrintUserCmdText(client, L"No return possible");
+            return true;
+        }
 
-		PrintUserCmdText(client, L"Redirecting undock to previous base");
-		connInfo[client].clientState = RETURN;
+        PrintUserCmdText(client, L"Redirecting undock to previous base");
+        connInfo[client].clientState = RETURN;
 
-		return true;
-	}
+        return true;
+    }
 
-	return false;
+    return false;
 }
 
-void __stdcall CharacterSelect(struct CHARACTER_ID const &charid, unsigned int client)
+void __stdcall CharacterSelect(struct CHARACTER_ID const& charid, unsigned int client)
 {
-	returncode = DEFAULT_RETURNCODE;
-	connInfo[client].clientState = NONE;
-	connInfo[client].retBase = 0;
-	connInfo[client].retSystemBackup = 0;
+    returncode = DEFAULT_RETURNCODE;
+    connInfo[client].clientState = NONE;
+    connInfo[client].retBase = 0;
+    connInfo[client].retSystemBackup = 0;
 }
 
 void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
-	returncode = DEFAULT_RETURNCODE;
+    returncode = DEFAULT_RETURNCODE;
 
-	if (connInfo[client].clientState == TRANSFER)
-	{
-		if (!ValidateCargo(client))
-		{
-			PrintUserCmdText(client, STR_INFO2);
-			return;
-		}
+    if (connInfo[client].clientState == TRANSFER)
+    {
+        if (!ValidateCargo(client))
+        {
+            PrintUserCmdText(client, STR_INFO2);
+            return;
+        }
 
-		connInfo[client].clientState = NONE;
-		MoveClient(client, set_iTargetBaseID);
-		return;
-	}
+        connInfo[client].clientState = NONE;
+        MoveClient(client, set_iTargetBaseID);
+        return;
+    }
 
-	if (connInfo[client].clientState == RETURN)
-	{
-		if (!ValidateCargo(client))
-		{
-			PrintUserCmdText(client, STR_INFO2);
-			return;
-		}
+    if (connInfo[client].clientState == RETURN)
+    {
+        if (!ValidateCargo(client))
+        {
+            PrintUserCmdText(client, STR_INFO2);
+            return;
+        }
 
-		connInfo[client].clientState = NONE;
-		unsigned int returnPoint = connInfo[client].retBase;
+        connInfo[client].clientState = NONE;
+        unsigned int returnPoint = connInfo[client].retBase;
 
-		if (!returnPoint)
-		{
-			PrintUserCmdText(client, L"Return point not found, contact admins.");
-			return;
-		}
+        if (!returnPoint)
+        {
+            PrintUserCmdText(client, L"Return point not found, contact admins.");
+            return;
+        }
 
-		MoveClient(client, returnPoint);
-		connInfo[client].retBase = 0;
-		connInfo[client].retSystemBackup = 0;
-		return;
-	}
+        MoveClient(client, returnPoint);
+        connInfo[client].retBase = 0;
+        connInfo[client].retSystemBackup = 0;
+        return;
+    }
 }
 
 
 /** Functions to hook */
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
-	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
-	p_PI->sName = "Conn Plugin by MadHunter";
-	p_PI->sShortName = "conn";
-	p_PI->bMayPause = true;
-	p_PI->bMayUnload = true;
-	p_PI->ePluginReturnCode = &returncode;
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
-	return p_PI;
+    PLUGIN_INFO* p_PI = new PLUGIN_INFO();
+    p_PI->sName = "Conn Plugin by MadHunter";
+    p_PI->sShortName = "conn";
+    p_PI->bMayPause = true;
+    p_PI->bMayUnload = true;
+    p_PI->ePluginReturnCode = &returncode;
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
+    return p_PI;
 }

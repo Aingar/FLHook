@@ -182,6 +182,24 @@ void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	set<string> activeEvents;
+
+	for (auto& te : mapTradeEvents)
+	{
+		if (te.second.isActive)
+		{
+			activeEvents.insert(te.first);
+		}
+	}
+
+	for (auto& ce : mapCombatEvents)
+	{
+		if (ce.second.isActive)
+		{
+			activeEvents.insert(ce.first);
+		}
+	}
+
 	mapEventTracking.clear();
 	mapTradeEvents.clear();
 	mapCombatEvents.clear();
@@ -325,7 +343,7 @@ void LoadSettings()
 				}
 				else
 				{
-					if (te.isActive)
+					if (te.isActive && !activeEvents.count(id));
 					{
 						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
 					}
@@ -445,7 +463,7 @@ void LoadSettings()
 				}
 				else
 				{
-					if (ce.isActive)
+					if (ce.isActive && !activeEvents.count(id))
 					{
 						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
 					}
@@ -1483,6 +1501,10 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (!(cmd->rights & RIGHT_SUPERADMIN))
+	{
+		return false;
+	}
 
 	if (IS_CMD("eventreload"))
 	{

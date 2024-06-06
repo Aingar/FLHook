@@ -224,6 +224,8 @@ void LoadSettings()
 			{
 				TRADE_EVENT te;
 				string id;
+
+				set<uint> addedIds;
 				
 				bool invalidData = false;
 				string invalidDataReason;
@@ -290,12 +292,13 @@ void LoadSettings()
 					else if (ini.is_value("allowedid"))
 					{
 						uint idHash = CreateID(ini.get_value_string(0));
-						if (!mapIDs.count(idHash))
+						if (!mapIDs.count(idHash) || addedIds.count(idHash))
 						{
 							invalidData = true;
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
+						addedIds.insert(idHash);
 						te.lAllowedIDs.push_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("flhookbase"))
@@ -331,10 +334,11 @@ void LoadSettings()
 						float fPrice = ini.get_value_float(3);
 						bool bBaseBuys = (ini.get_value_int(4) == 1);
 
-						te.eventEconOverride[baseId][iGoodID].iGoodID = iGoodID;
-						te.eventEconOverride[baseId][iGoodID].fPrice = fPrice;
-						te.eventEconOverride[baseId][iGoodID].iMin = iSellPrice;
-						te.eventEconOverride[baseId][iGoodID].iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
+						auto& MarketGoodEntry = te.eventEconOverride[baseId][iGoodID];
+						MarketGoodEntry.iGoodID = iGoodID;
+						MarketGoodEntry.fPrice = fPrice;
+						MarketGoodEntry.iMin = iSellPrice;
+						MarketGoodEntry.iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
 				}
 				if (invalidData)
@@ -358,6 +362,7 @@ void LoadSettings()
 				string id;
 				bool invalidData = false;
 				string invalidDataReason;
+				set<uint> addedIDs;
 
 				while (ini.read_value())
 				{
@@ -382,23 +387,25 @@ void LoadSettings()
 					else if (ini.is_value("allowedid"))
 					{
 						uint idHash = CreateID(ini.get_value_string(0));
-						if (!mapIDs.count(idHash))
+						if (!mapIDs.count(idHash) || addedIDs.count(idHash))
 						{
 							invalidData = true;
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
+						addedIDs.insert(idHash);
 						ce.lAllowedIDs.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("targetid"))
 					{
 						uint idHash = CreateID(ini.get_value_string(0));
-						if (!mapIDs.count(idHash))
+						if (!mapIDs.count(idHash) || addedIDs.count(idHash))
 						{
 							invalidData = true;
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
+						addedIDs.insert(idHash);
 						ce.lTargetIDs.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("system"))

@@ -1491,6 +1491,42 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
+	else if (IS_CMD("eventsetpoints"))
+	{
+		string eventName = wstos(GetParam(args, ' ', 0));
+		wstring charName = GetParam(args, ' ', 1);
+		int points = ToInt(GetParam(args, ' ', 2));
+
+		if (!mapEventTracking.count(eventName))
+		{
+			cmd->Print(L"This event doesn't exist!\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		mapEventTracking[eventName].PlayerEventData[charName] = points;
+		cmd->Print(L"Event points set\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("eventaddpoints"))
+	{
+		string eventName = wstos(GetParam(args, ' ', 0));
+		wstring charName = GetParam(args, ' ', 1);
+		int points = ToInt(GetParam(args, ' ', 2));
+
+		if (!mapEventTracking.count(eventName))
+		{
+			cmd->Print(L"This event doesn't exist!\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		mapEventTracking[eventName].PlayerEventData[charName] += points;
+		cmd->Print(L"Event points added\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
 
 	return false;
 }

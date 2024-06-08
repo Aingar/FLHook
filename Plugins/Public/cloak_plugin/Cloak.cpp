@@ -1177,6 +1177,24 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 	}
 }
 
+void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
+{
+	const static uint NANOBOT_ARCH_ID = CreateID("ge_s_battery_01");
+	returncode = DEFAULT_RETURNCODE;
+
+	auto& cloakInfo = mapClientsCloak.find(iClientID);
+
+	if (cloakInfo == mapClientsCloak.end() 
+		|| cloakInfo->second.iState != STATE_CLOAK_ON 
+		|| cloakInfo->second.arch->bDropShieldsOnUncloak == false
+		|| cloakInfo->second.bAdmin) 
+	{
+		return;
+	}
+
+	pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_select_reject"));
+	returncode = DEFAULT_RETURNCODE;
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -1200,7 +1218,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete_AFTER, PLUGIN_HkIServerImpl_JumpInComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0)); p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));

@@ -515,36 +515,44 @@ namespace HkIServerImpl
 	void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 	{
 		const static uint NANOBOT_ARCH_ID = CreateID("ge_s_repair_01");
+		const static uint UI_SELECT_REJECT = CreateID("ui_select_reject");
 		const static float NANOBOT_HEAL_AMOUNT = Archetype::GetEquipment(NANOBOT_ARCH_ID)->fHitPoints;
 
 		returncode = DEFAULT_RETURNCODE;
 
-		float currHitPts, maxHitPts;
-		pub::SpaceObj::GetHealth(p1.iUserShip, currHitPts, maxHitPts);
-		if (currHitPts > 0)
+		auto cship = ClientInfo[iClientID].cship;
+
+		if (!cship)
+		{
+			return;
+		}
+
+		if (cship->hitPoints > 0)
 		{
 			return;
 		}
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		for (auto& eq : Players[iClientID].equipDescList.equip)
 		{
-			if (eq.sID == p1.sItemId)
+			if (eq.sID != p1.sItemId)
 			{
-				if (eq.iArchID == NANOBOT_ARCH_ID)
-				{
-					uint amountToUse = static_cast<uint>(ceil((maxHitPts * 1.5) / NANOBOT_HEAL_AMOUNT));
-					if (amountToUse < p1.sAmountUsed)
-					{
-						pub::Player::RemoveCargo(iClientID, p1.sItemId, amountToUse);
-						pub::SpaceObj::SetRelativeHealth(p1.iUserShip, 1.0f);
-					}
-					else
-					{
-						pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_select_reject"));
-					}
-				}
-				break;
+				continue;
 			}
+
+			if (eq.iArchID == NANOBOT_ARCH_ID)
+			{
+				uint amountToUse = static_cast<uint>(ceil((cship->archetype->fHitPoints * 1.5) / NANOBOT_HEAL_AMOUNT));
+				if (amountToUse < p1.sAmountUsed)
+				{
+					pub::Player::RemoveCargo(iClientID, p1.sItemId, amountToUse);
+					pub::SpaceObj::SetRelativeHealth(p1.iUserShip, 1.0f);
+				}
+				else
+				{
+					pub::Audio::PlaySoundEffect(iClientID, UI_SELECT_REJECT);
+				}
+			}
+			break;
 		}
 	}
 

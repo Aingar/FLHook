@@ -347,7 +347,7 @@ void LoadSettings()
 				}
 				else
 				{
-					if (te.isActive && !activeEvents.count(id));
+					if (te.isActive && !activeEvents.count(id))
 					{
 						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
 					}
@@ -622,30 +622,15 @@ uint GetPlayerId(uint clientId)
 		return playerIds[clientId];
 	}
 
-	if (!ClientInfo[clientId].cship)
+	for (auto& equip : Players[clientId].equipDescList.equip)
 	{
-		for (auto& equip : Players[clientId].equipDescList.equip)
+		if (!equip.bMounted || !mapIDs.count(equip.iArchID))
 		{
-			if (!mapIDs.count(equip.iArchID))
-			{
-				continue;
-			}
-
-			playerIds[clientId] = equip.iArchID;
-			break;
-		}
-	}
-	else
-	{
-
-		CEquip* tracBeam = ClientInfo[clientId].cship->equip_manager.FindFirst(EquipmentClass::TractorBeam);
-
-		if (!tracBeam)
-		{
-			return 0;
+			continue;
 		}
 
-		playerIds[clientId] = tracBeam->EquipArch()->iArchID;
+		playerIds[clientId] = equip.iArchID;
+		break;
 	}
 	
 	return playerIds[clientId];
@@ -823,7 +808,17 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 		}
 
-		HookExt::IniSetI(iClientID, "event.quantity", gbi.iCount);
+		int currentCount = gbi.iCount;
+		for (auto& equip : Players[iClientID].equipDescList.equip)
+		{
+			if (equip.iArchID == gbi.iGoodID)
+			{
+				currentCount += equip.iCount;
+				break;
+			}
+		}
+
+		HookExt::IniSetI(iClientID, "event.quantity", currentCount);
 
 		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
 		PrintUserCmdText(iClientID, L"You have entered the event: %s", stows(i->second.sEventName).c_str());

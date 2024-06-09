@@ -1517,11 +1517,12 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	}
 	else if (IS_CMD("eventsetpoints"))
 	{
-		string eventName = wstos(GetParam(args, ' ', 0));
-		wstring charName = GetParam(args, ' ', 1);
-		int points = ToInt(GetParam(args, ' ', 2));
+		string eventName = wstos(cmd->ArgStr(1));
+		wstring charName = cmd->ArgStr(2);
+		int points = cmd->ArgInt(3);
 
-		if (!mapEventTracking.count(eventName))
+		if (!((mapCombatEvents.count(eventName) && mapCombatEvents.at(eventName).isActive)
+			|| (mapTradeEvents.count(eventName) && mapTradeEvents.at(eventName).isActive)))
 		{
 			cmd->Print(L"This event doesn't exist!\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -1535,11 +1536,12 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	}
 	else if (IS_CMD("eventaddpoints"))
 	{
-		string eventName = wstos(GetParam(args, ' ', 0));
-		wstring charName = GetParam(args, ' ', 1);
-		int points = ToInt(GetParam(args, ' ', 2));
+		string eventName = wstos(cmd->ArgStr(1));
+		wstring charName = cmd->ArgStr(2);
+		int points = cmd->ArgInt(3);
 
-		if (!mapEventTracking.count(eventName))
+		if (!((mapCombatEvents.count(eventName) && mapCombatEvents.at(eventName).isActive)
+			|| (mapTradeEvents.count(eventName) && mapTradeEvents.at(eventName).isActive)))
 		{
 			cmd->Print(L"This event doesn't exist!\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;

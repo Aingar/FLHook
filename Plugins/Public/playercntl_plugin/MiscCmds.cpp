@@ -695,16 +695,6 @@ namespace MiscCmds
 		return true;
 	}
 
-	void MiscCmds::BaseEnter(unsigned int iBaseID, unsigned int iClientID)
-	{
-		ConPrint(L"%0.0f %0.0f %0.0f\n", Players[iClientID].vPosition.x, Players[iClientID].vPosition.y, Players[iClientID].vPosition.z);
-		Universe::IBase* ibase = Universe::get_base(iBaseID);
-		CObject* solar = CObject::Find((uint)ibase->lSpaceObjID, CObject::CSOLAR_OBJECT);
-		solar->Release();
-		Players[iClientID].vPosition = solar->get_position();
-		ConPrint(L"%0.0f %0.0f %0.0f\n", Players[iClientID].vPosition.x, Players[iClientID].vPosition.y, Players[iClientID].vPosition.z);
-	}
-
 	bool MiscCmds::UserCmd_SelfDestruct(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
 		IObjInspectImpl *obj = HkGetInspect(iClientID);

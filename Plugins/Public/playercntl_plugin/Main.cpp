@@ -643,20 +643,6 @@ namespace HkIServerImpl
 		HyperJump::ClearClientInfo(iClientID);
 	}
 
-	void __stdcall BaseEnter_AFTER(unsigned int iBaseID, unsigned int iClientID)
-	{
-		returncode = DEFAULT_RETURNCODE;
-		float fValue;
-		MiscCmds::BaseEnter(iBaseID, iClientID);
-		if (HKGetShipValue((const wchar_t*)Players.GetActiveCharacterName(iClientID), fValue) == HKE_OK)
-		{
-			if (fValue > 2'100'000'000.0f)
-			{
-				AddLog("ERROR: Possible corrupt ship charname=%s asset_value=%0.0f", wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID)).c_str(), fValue);
-			}
-		}
-	}
-
 	void __stdcall LocationEnter(unsigned int iLocationID, unsigned int iClientID)
 	{
 		returncode = DEFAULT_RETURNCODE;
@@ -1906,7 +1892,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
-	// check causes lag: p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::LocationEnter, PLUGIN_HkIServerImpl_LocationEnter, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));

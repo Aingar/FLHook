@@ -872,6 +872,10 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 		unordered_set <uint> processedItems;
 		for(auto& item : Players[iClientID].equipDescList.equip)
 		{
+			if (!item.bMounted)
+			{
+				continue;
+			}
 			if (processedItems.count(item.iArchID))
 			{
 				continue;

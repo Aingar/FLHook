@@ -168,7 +168,7 @@ void Init()
 #define POPUPDIALOG_BUTTONS_CENTER_OK 8
 
 static unordered_map<uint, float> notradelist;
-static list<uint> MarkedPlayers;
+static uint PlayerMarkArray[MAX_CLIENT_ID+1];
 //Added this due to idiocy
 static list<uint> MarkUsageTimer;
 static map<uint, bool> reverseTrade;
@@ -640,56 +640,67 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 		}
 	}
 
-	uint iShip, iTargetShip;
-	pub::Player::GetShip(iClientID, iShip);
-	pub::SpaceObj::GetTarget(iShip, iTargetShip);
-	if (!iTargetShip)
+	auto cShip = ClientInfo[iClientID].cship;
+	if (!cShip)
 	{
-		PrintUserCmdText(iClientID, L"Error: you must have something targeted to mark it.");
+		PrintUserCmdText(iClientID, L"ERR Not in space");
 		return true;
 	}
+
+	auto target = cShip->get_target();
+	if (!target)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not in space");
+		return true;
+	}
+
+	if (!target->is_player())
+	{
+		PrintUserCmdText(iClientID, L"ERR Target not a player");
+		return true;
+	}
+
+	uint targetShip = target->get_id();
+	uint iClientIDTarget = ((CShip*)target->cobj)->ownerPlayer;
 
 	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-	uint iClientIDTarget = HkGetClientIDByShip(iTargetShip);
-
-	if (!iClientIDTarget)
-	{
-		PrintUserCmdText(iClientID, L"Error: This is not a player ship.");
-		return true;
-	}
-
+	wstring wscTargetCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
 	list<GROUP_MEMBER> lstMembers;
 	HkGetGroupMembers((const wchar_t*)Players.GetActiveCharacterName(iClientID), lstMembers);
 
+	wstring wscMsg = L"Target: %name";
+	wscMsg = ReplaceStr(wscMsg, L"%name", wscTargetCharname.c_str());
+
+	wstring wscMsg2 = L"%player has set %name as group target.";
+	wscMsg2 = ReplaceStr(wscMsg2, L"%name", wscTargetCharname.c_str());
+	wscMsg2 = ReplaceStr(wscMsg2, L"%player", wscCharname.c_str());
+
+
+	FmtStr caption(0, 0);
+	caption.begin_mad_lib(526999);
+	caption.end_mad_lib();
+
 	foreach(lstMembers, GROUP_MEMBER, gm)
 	{
-		uint iClientShip;
-		pub::Player::GetShip(gm->iClientID, iClientShip);
-		if (iClientShip == iTargetShip)
+		uint iClientShip = Players[gm->iClientID].iShipID;
+		if (iClientShip == targetShip)
 			continue;
-
-
-		wstring wscTargetCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
-
-		wstring wscMsg = L"Target: %name";
-		wscMsg = ReplaceStr(wscMsg, L"%name", wscTargetCharname.c_str());
-
-		wstring wscMsg2 = L"%player has set %name as group target.";
-		wscMsg2 = ReplaceStr(wscMsg2, L"%name", wscTargetCharname.c_str());
-		wscMsg2 = ReplaceStr(wscMsg2, L"%player", wscCharname.c_str());
 
 		PrintUserCmdText(gm->iClientID, wscMsg2.c_str());
 		HkChangeIDSString(gm->iClientID, 526999, wscMsg);
-
-		FmtStr caption(0, 0);
-		caption.begin_mad_lib(526999);
-		caption.end_mad_lib();
 
 		//Register all players informed of the mark
 		MarkUsageTimer.push_back(gm->iClientID);
 
 		pub::Player::DisplayMissionMessage(gm->iClientID, caption, MissionMessageType::MissionMessageType_Type2, true);
 
+		if (PlayerMarkArray[gm->iClientID])
+		{
+			pub::Player::MarkObj(gm->iClientID, PlayerMarkArray[gm->iClientID], 0);
+		}
+
+		pub::Player::MarkObj(gm->iClientID, targetShip, 1);
+		PlayerMarkArray[gm->iClientID] = targetShip;
 	}
 
 	PrintUserCmdText(iClientID, L"OK");
@@ -1033,6 +1044,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int client)
 	ADOCK::PlayerLaunch(iShip, client);
 	SCI::CheckOwned(client);
 	SCI::UpdatePlayerID(client);
+	PlayerMarkArray[client] = 0;
 }
 
 int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int& iCancel, enum DOCK_HOST_RESPONSE& response)

@@ -77,6 +77,22 @@ namespace Rename
 
 namespace MiscCmds
 {
+	struct INFO
+	{
+		/// Lights on/off
+		bool bLightsOn = false;
+
+		/// Shields up/down
+		bool bShieldsUp = true;
+		bool bShieldsExternallyDisabled = false;
+
+		/// Self destruct
+		bool bSelfDestruct = false;
+
+		mstime shieldTimer = 0;
+	};
+	extern unordered_map<uint, INFO> mapInfo;
+
 	void LoadSettings(const string &scPluginCfgFile);
 	void LoadListOfReps();
 	map<wstring, uint> Resetrep_load_Time_limits_for_player_account(string filename);

@@ -26,20 +26,6 @@
 
 namespace MiscCmds
 {
-	struct INFO
-	{
-		/// Lights on/off
-		bool bLightsOn = false;
-
-		/// Shields up/down
-		bool bShieldsUp = true;
-		bool bShieldsDropped = false;
-
-		/// Self destruct
-		bool bSelfDestruct = false;
-
-		mstime shieldTimer = 0;
-	};
 
 	/** An enum list for each mathamatical operation usable for the dice command */
 	enum diceOperation
@@ -759,8 +745,14 @@ namespace MiscCmds
 			PrintUserCmdText(iClientID, L"ERR Not in space!");
 			return true;
 		}
+
 		mstime currTime = timeInMS();
 		auto& clientInfo = mapInfo[iClientID];
+		if (clientInfo.bShieldsExternallyDisabled)
+		{
+			PrintUserCmdText(iClientID, L"ERR Shield control inoperable");
+			return true;
+		}
 		if (set_shieldSwapCooldown && currTime - clientInfo.shieldTimer < set_shieldSwapCooldown)
 		{
 			pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_select_reject"));
@@ -771,24 +763,28 @@ namespace MiscCmds
 		if (wscParam == L"drop")
 		{
 			pub::SpaceObj::DrainShields(ship->id);
-			clientInfo.bShieldsDropped = true;
 			if (!clientInfo.bShieldsUp)
 			{
 				return true;
 			}
 		}
+
 		clientInfo.bShieldsUp = !clientInfo.bShieldsUp;
-		if (clientInfo.bShieldsUp)
-		{
-			clientInfo.bShieldsDropped = false;
-		}
 
 		CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
 		info.client = iClientID;
 		info.newState = clientInfo.bShieldsUp;
+		info.source = ShieldSource::MISC;
 		Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 
-		PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
+		if (!clientInfo.bShieldsUp || info.success)
+		{
+			PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
+		}
+		else
+		{
+			PrintUserCmdText(iClientID, L"Shields cannot be reactivated at this time!");
+		}
 		return true;
 	}
 
@@ -796,7 +792,6 @@ namespace MiscCmds
 	{
 		auto& info =  mapInfo[client];
 		info.bShieldsUp = true;
-		info.bShieldsDropped = false;
 	}
 
 	void AdminCmd_PlayMusic(CCmds* cmds, const wstring &wscMusicname)

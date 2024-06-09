@@ -364,6 +364,7 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
 				info.client = iClientID;
 				info.newState = false;
+				info.source = ShieldSource::CLOAK;
 				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 			}
 			communicationInfo.iClientID = iClientID;
@@ -384,6 +385,7 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
 				info.client = iClientID;
 				info.newState = false;
+				info.source = ShieldSource::CLOAK;
 				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 			}
 			communicationInfo.iClientID = iClientID;
@@ -406,6 +408,7 @@ void SetState(uint iClientID, uint iShipID, int iNewState)
 				CUSTOM_SHIELD_CHANGE_STATE_STRUCT info;
 				info.client = iClientID;
 				info.newState = true;
+				info.source = ShieldSource::CLOAK;
 				Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 			}
 		}

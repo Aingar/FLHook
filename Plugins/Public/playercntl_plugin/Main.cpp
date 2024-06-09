@@ -1871,6 +1871,16 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		CUSTOM_IN_WARP_CHECK_STRUCT* checkData = reinterpret_cast<CUSTOM_IN_WARP_CHECK_STRUCT*>(data);
 		checkData->inWarp = AntiJumpDisconnect::IsInWarp(checkData->clientId);
 	}
+	else if (msg == CUSTOM_SHIELD_STATE_CHANGE)
+	{
+		CUSTOM_SHIELD_CHANGE_STATE_STRUCT* info = reinterpret_cast<CUSTOM_SHIELD_CHANGE_STATE_STRUCT*>(data);
+		if (info->source == ShieldSource::MISC)
+		{
+			return;
+		}
+		MiscCmds::mapInfo[info->client].bShieldsUp = info->newState;
+		MiscCmds::mapInfo[info->client].bShieldsExternallyDisabled = !info->newState;
+	}
 	return;
 }
 

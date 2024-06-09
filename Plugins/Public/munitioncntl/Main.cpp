@@ -32,7 +32,13 @@ unordered_map<uint, MineInfo> mineArmingTimesMap;
 
 uint lastProcessedProjectile = 0;
 
-bool playerShieldState[MAX_CLIENT_ID + 1];
+struct ShieldState
+{
+	bool shieldState;
+	ShieldSource changeSource;
+};
+
+ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 
 struct ShieldSyncData
 {
@@ -383,7 +389,7 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!playerShieldState[pShip.clientId])
+	if (!playerShieldState[pShip.clientId].shieldState)
 	{
 		shieldStateUpdateMap.push_back({ client, pShip.clientId, 0 });
 	}
@@ -394,11 +400,16 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	returncode = DEFAULT_RETURNCODE;
 	if (msg == CUSTOM_SHIELD_STATE_CHANGE)
 	{
-		returncode = SKIPPLUGINS;
 		CUSTOM_SHIELD_CHANGE_STATE_STRUCT* info = reinterpret_cast<CUSTOM_SHIELD_CHANGE_STATE_STRUCT*>(data);
 
 		CShip* cship = ClientInfo[info->client].cship;
 		if (!cship)
+		{
+			return;
+		}
+
+		if (!playerShieldState[info->client].shieldState
+			&& playerShieldState[info->client].changeSource != info->source)
 		{
 			return;
 		}
@@ -416,14 +427,16 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(info->client, eq);
 			Server.ActivateEquip(info->client, eq);
 		}
-		playerShieldState[info->client] = info->newState;
+		playerShieldState[info->client].shieldState = info->newState;
+		playerShieldState[info->client].changeSource = info->source;
+		info->success = true;
 	}
 }
 
 void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
-	playerShieldState[iClientID] = true;
+	playerShieldState[iClientID].shieldState = true;
 	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
 	{
 		if (iter->targetClient == iClientID)
@@ -543,7 +556,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	return p_PI;

@@ -57,6 +57,9 @@ L"<TEXT>Remove the item from the stock list. It cannot be sold to the base by do
 L"<TRA bold=\"true\"/><TEXT>/shop pin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Highlights the selected good, causing its price and stock to be visible on the base infocard.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/shop unpin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Removes the selected good from the pinned list.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/shop [page]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items shown per page.</TEXT>",
 
@@ -1765,6 +1768,7 @@ namespace PlayerCommands
 			status += L"<TEXT>  /shop stock [item] [min stock] [max stock]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop pin [item]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop unpin [item]</TEXT><PARA/>";
 		}
 		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
 		status += L"<POP/></RDL>";
@@ -1898,7 +1902,7 @@ namespace PlayerCommands
 		const wstring& cmd = GetParam(args, ' ', 1);
 
 		auto& cd = clients[client];
-		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"pin" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
+		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"pin" || cmd == L"unpin" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
 		{
 			PrintUserCmdText(client, L"ERROR: Access denied");
 			return;
@@ -2062,25 +2066,53 @@ namespace PlayerCommands
 				{
 					continue;
 				}
-				if (!i.second.is_pinned)
+				if (i.second.is_pinned)
 				{
-					if (base->pinned_market_items.size() >= MAX_PINNED_ITEMS)
-					{
-						PrintUserCmdText(client, L"ERR Already at the limit of pinned items!");
-						return;
-					}
-					i.second.is_pinned = true;
-					base->pinned_market_items.insert(i.first);
-					PrintUserCmdText(client, L"Item pinned!");
+					PrintUserCmdText(client, L"Item already pinned!");
+					return;
 				}
-				else
+
+				if (base->pinned_market_items.size() >= MAX_PINNED_ITEMS)
 				{
-					base->pinned_market_items.erase(i.first);
-					i.second.is_pinned = false;
-					PrintUserCmdText(client, L"Item unpinned!");
+					PrintUserCmdText(client, L"ERR Already at the limit of pinned items!");
+					return;
 				}
+				i.second.is_pinned = true;
+				base->pinned_market_items.insert(i.first);
+				PrintUserCmdText(client, L"Item pinned!");
 				base->Save();
 				base->UpdateBaseInfoText();
+				return;
+			}
+		}
+		else if (cmd == L"unpin")
+		{
+
+			int item = ToInt(GetParam(args, ' ', 2));
+
+			int curr_item = 0;
+			if (item == 0 || item > base->market_items.size())
+			{
+				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
+			}
+			for (auto& i : base->market_items)
+			{
+				++curr_item;
+				if (curr_item != item)
+				{
+					continue;
+				}
+				if (!i.second.is_pinned)
+				{
+					PrintUserCmdText(client, L"Item is not pinned!");
+					return;
+				}
+				base->pinned_market_items.erase(i.first);
+				i.second.is_pinned = false;
+				PrintUserCmdText(client, L"Item unpinned!");
+				base->Save();
+				base->UpdateBaseInfoText();
+				return;
 			}
 		}
 		else

@@ -55,8 +55,6 @@ float set_fSpinImpulseMultiplier;
 
 float set_fMinCLootRoadkillSpeed = 25.0f;
 
-unordered_map<uint, float> jumpLimitMap;
-
 // set of ships which cannot use TradeLane, and are blocked
 // from forming on other ships to bypass the block
 unordered_set<uint> setLaneAndFormationBannedShips;
@@ -229,46 +227,6 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 	}
 }
 
-bool CheckJumpCargo(uint clientId, uint jumpObjId)
-{
-	if (ClientInfo[clientId].cship->bayState != Closed)
-	{
-		PrintUserCmdText(clientId, L"Cannot jump while the cargo bay isn't fully closed.");
-		return false;
-	}
-
-	uint archId;
-	pub::SpaceObj::GetSolarArchetypeID(jumpObjId, archId);
-	
-	if (!jumpLimitMap.count(archId))
-	{
-		return true;
-	}
-
-	CEquipTraverser tr(Cargo);
-	CEquipManager* manager = &ClientInfo[clientId].cship->equip_manager;
-	CECargo* eq;
-	float volumeUsed = 0.0f;
-	while (eq = reinterpret_cast<CECargo*>(manager->Traverse(tr)))
-	{
-		bool flag;
-		pub::IsCommodity(eq->archetype->iArchID, flag);
-		if (flag)
-		{
-			volumeUsed += eq->count * eq->archetype->fVolume;
-		}
-	}
-
-	float holdLimit = jumpLimitMap.at(archId);
-	if (volumeUsed >= holdLimit)
-	{
-		PrintUserCmdText(clientId, L"You cannot jump through! You're carrying: %u cargo, allowed: %u", static_cast<uint>(volumeUsed), static_cast<uint>(holdLimit));
-		return false;
-	}
-
-	return true;
-}
-
 static bool IsDockingAllowed(uint iShip, uint iDockTarget, uint iClientID)
 {
 	// If the player's rep is less/equal -0.55 to the owner of the station
@@ -373,15 +331,6 @@ namespace HkIEngine
 				}
 			}
 
-			if (iTypeID & (JumpGate | JumpHole))
-			{
-				if (!CheckJumpCargo(iClientID, iDockTarget))
-				{
-					dockPort = -1;
-					response = ACCESS_DENIED;
-					return 1;
-				}
-			}
 			if (!HyperJump::Dock_Call(iShip, iDockTarget))
 			{
 				dockPort = -1;

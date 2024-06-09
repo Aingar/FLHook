@@ -325,10 +325,6 @@ namespace HyperJump
 						{
 							set_banJumpSystems.insert(CreateID(ini.get_value_string()));
 						}
-						else if (ini.is_value("CargoJumpLimit"))
-						{
-							jumpLimitMap[CreateID(ini.get_value_string(0))] = ini.get_value_float(1);
-						}
 					}
 				}
 				else if (ini.is_header("shiprestrictions"))

@@ -25,7 +25,6 @@ bool extern set_bLocalTime;
 bool extern set_bEnableDeathMsg;
 float extern set_iLocalChatRange;
 unordered_set<uint> extern doNotDisturbClients;
-unordered_map<uint, float> extern jumpLimitMap;
 
 
 bool GetUserFilePath(string &path, const wstring &wscCharname, const string &extension);

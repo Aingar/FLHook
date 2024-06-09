@@ -737,9 +737,6 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_7(uint iClientID, uint iD
 
 bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE(uint iClientID, FLPACKET_UNKNOWN& pDunno)
 {
-	ISERVER_LOG();
-	ISERVER_LOGARG_UI(iClientID);
-
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_MISCOBJUPDATE(iClientID, pDunno));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -749,12 +746,6 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE(uint iClientID, FLPACKET_
 
 bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_2(uint iClientID, uint iObject, uint iFaction)
 {
-	ISERVER_LOG();
-	ISERVER_LOGARG_UI(iClientID);
-	// TODO: Missing a flag here?
-	ISERVER_LOGARG_UI(iObject);
-	ISERVER_LOGARG_UI(iFaction);
-
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_MISCOBJUPDATE_2(iClientID, iObject, iFaction));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -764,16 +755,7 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_2(uint iClientID, uint iO
 
 bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_3(uint iClientID, uint iTargetID, uint iRank)
 {
-	ISERVER_LOG();
-	ISERVER_LOGARG_UI(iClientID);
-	ISERVER_LOGARG_UI(iTargetID);
-	ISERVER_LOGARG_UI(iRank);
-
-	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_MISCOBJUPDATE_3, bool, __stdcall, (uint, uint, uint), (iClientID, iTargetID, iRank));
-
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_MISCOBJUPDATE_3(iClientID, iTargetID, iRank));
-
-	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_MISCOBJUPDATE_3_AFTER, bool, , (uint, uint, uint), (iClientID, iTargetID, iRank));
 
 	return reinterpret_cast<bool>(vRet);
 }
@@ -783,9 +765,6 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_3(uint iClientID, uint iT
 
 bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_4(uint iClientID, uint iDunno, uint iDunno2)
 {
-	ISERVER_LOG();
-	ISERVER_LOGARG_UI(iClientID);
-
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_MISCOBJUPDATE_4(iClientID, iDunno, iDunno2));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -795,13 +774,6 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_4(uint iClientID, uint iD
 
 bool HkIClientImpl::Send_FLPACKET_SERVER_MISCOBJUPDATE_5(uint iClientID, uint iClientID2, uint iSystemID)
 {
-	ISERVER_LOG();
-	ISERVER_LOGARG_UI(iClientID);
-	ISERVER_LOGARG_UI(iClientID2);
-	ISERVER_LOGARG_UI(iSystemID);
-
-	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_MISCOBJUPDATE_5, bool, __stdcall, (uint, uint, uint), (iClientID, iClientID2, iSystemID));
-
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_MISCOBJUPDATE_5(iClientID, iClientID2, iSystemID));
 	return reinterpret_cast<bool>(vRet);
 }

@@ -1541,6 +1541,43 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
+	else if (IS_CMD("eventobjective"))
+	{
+		uint groupId = cmd->ArgUInt(1);
+
+		auto playerGroup = CPlayerGroup::FromGroupID(groupId);
+
+		if (!playerGroup)
+		{
+			cmd->Print(L"Group doesn't exist\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+		uint memberCount = playerGroup->GetMemberCount(); 
+		if (!memberCount)
+		{
+			cmd->Print(L"Group is empty\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		wstring objectiveText = cmd->ArgStrToEnd(2);
+
+		FmtStr caption(0, 0);
+		caption.begin_mad_lib(526999);
+		caption.end_mad_lib();
+
+		for (int i = 0; i < memberCount; ++i)
+		{
+			uint memberId = playerGroup->GetMember(i);
+			HkChangeIDSString(memberId, 526999, objectiveText);
+			pub::Player::DisplayMissionMessage(memberId, caption, MissionMessageType::MissionMessageType_Type2, true);
+		}
+
+		cmd->Print(L"Objective sent\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
 
 	return false;
 }

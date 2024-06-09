@@ -467,10 +467,18 @@ struct CUSTOM_POB_DOCK_ALERT_STRUCT
 	wstring* msg;
 };
 
+enum class ShieldSource
+{
+	CLOAK,
+	MISC
+};
+
 struct CUSTOM_SHIELD_CHANGE_STATE_STRUCT
 {
 	uint client;
 	bool newState;
+	bool success = false;
+	ShieldSource source;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

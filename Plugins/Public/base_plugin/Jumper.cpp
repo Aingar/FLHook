@@ -136,7 +136,7 @@ void HyperJump::InitJumpHoleConfig()
 		if (mapArchs[pbase->basetype].ishubreturn)
 		{
 			SYSTEMJUMPCOORDS coords = { pbase->destSystem, pbase->destPos, pbase->destOri };
-			completedLoad = SetupCustomExitHole(pbase, coords, exitJumpHoleLoadout, CreateID(base.second->basesolar.c_str()));
+			completedLoad = SetupCustomExitHole(pbase, coords, exitJumpHoleLoadout, exitJumpHoleArchetype);
 		}
 		else if (pub::SpaceObj::ExistsAndAlive(pbase->destObject) == 0) // method returns 0 for alive, -2 otherwise
 		{

@@ -777,12 +777,6 @@ namespace HyperJump
 			return false;
 		}
 
-		if (!set_canJumpWithCommodities && CheckForCommodities(client, false))
-		{
-			PrintUserCmdText(client, L"ERR can't jump with commodities onboard.");
-			return false;
-		}
-
 		jumpObj.remainingCapacity--;
 
 		if (!jumpObj.remainingCapacity)

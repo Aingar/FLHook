@@ -20,46 +20,33 @@ namespace HkIEngine
 	// ship create & destroy
 	**************************************************************************************************************/
 
-	FARPROC fpOldInitCShip;
-	FARPROC fpOldDestroyCShip;
+	FARPROC fpOldUpdateCEGun;
 	FARPROC fpOldLoadRepCharFile;
 
-	void __stdcall CShip_init(CShip* ship)
+	bool __stdcall CEGun_Update(CEGun* gun)
 	{
-		CALL_PLUGINS_V(PLUGIN_HkIEngine_CShip_init, __stdcall, (CShip*), (ship));
-	}
-
-
-	__declspec(naked) void _CShip_init()
-	{
-		__asm
+		if (gun->owner->ownerPlayer)
 		{
-			push ecx
-			push[esp + 8]
-			call fpOldInitCShip
-			call CShip_init
-			ret 4
+			return false;
 		}
+		return true;
 	}
 
-	void __stdcall CShip_destroy(CShip* ship)
-	{
-		CALL_PLUGINS_V(PLUGIN_HkIEngine_CShip_destroy, __stdcall, (CShip*), (ship));
-	}
-
-	__declspec(naked) void _CShip_destroy()
+	__declspec(naked) void CEGun_Update_naked()
 	{
 		__asm
 		{
 			push ecx
 			push ecx
-			call CShip_destroy
+			call CEGun_Update
 			pop ecx
-			jmp fpOldDestroyCShip
+			test al, al
+			jz skipLabel
+			jmp fpOldUpdateCEGun
+			skipLabel:
+			ret 0x8
 		}
 	}
-
-
 
 	/**************************************************************************************************************
 	// flserver memory leak bugfix

@@ -124,6 +124,7 @@ Called when ship was destroyed
 
 void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
+	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	if (!isKill)
 	{
 		return;
@@ -233,8 +234,10 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 }
 
+
 void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
+	HkIEngine::epicSolarMap.erase(iobj->get_id());
 	LOG_CORE_TIMER_START
 	TRY_HOOK
 	if (isKill)

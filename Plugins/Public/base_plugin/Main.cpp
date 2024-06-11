@@ -1122,19 +1122,6 @@ void HkTimerCheckKick()
 		}
 	}
 
-	if (curr_time % 8 == 0)
-	{
-		//fix custom jump solars not being dockable
-		for (uint customSolar : customSolarList)
-		{
-			uint type;
-			pub::SpaceObj::GetType(customSolar, type);
-			if (type & (JumpGate | JumpHole))
-			{
-				pub::SpaceObj::SetRelativeHealth(customSolar, 1);
-			}
-		}
-	}
 	if ((curr_time % 60) == 0)
 	{
 		// Write status to an html formatted page every 60 seconds

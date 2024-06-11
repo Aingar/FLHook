@@ -21,6 +21,7 @@ namespace HkIEngine
 	**************************************************************************************************************/
 
 	FARPROC fpOldUpdateCEGun;
+	FARPROC fpOldRadarRange = FARPROC(0x6CF7278);
 	FARPROC fpOldLoadRepCharFile;
 
 	bool __stdcall CEGun_Update(CEGun* gun)
@@ -45,6 +46,170 @@ namespace HkIEngine
 			jmp fpOldUpdateCEGun
 			skipLabel:
 			ret 0x8
+		}
+	}
+static float* pNPC_range    = ((float*)0x6d66aec);
+static float* pPlayer_range = ((float*)0x6d66af0);
+static float* pGroup_range = ((float*)0x6d66af4);
+	void __fastcall CheckRange(uint player)
+	{
+		float radarRange = ClientInfo[player].fRadarRange;
+		*pNPC_range = *pPlayer_range = radarRange;
+		*pGroup_range = radarRange * 4;
+	}
+
+	__declspec(naked) void Radar_Range_naked()
+	{
+		__asm {
+			mov        ecx, [edi + 0x38]
+			call        CheckRange
+			mov			eax, 0
+			ret
+		}
+	}
+
+	unordered_map<uint, IObjRW*> epicSolarMap;
+	unordered_map<uint, IObjRW*> epicNonSolarMap;
+
+	FARPROC fpOldShipInitialized;
+
+	static IObjRW* lastIObj;
+
+	void __stdcall CShipInitialized(IObjRW* iobj)
+	{
+		lastIObj = iobj;
+	}
+
+	__declspec(naked) void CShipInitializedNaked()
+	{
+		__asm
+		{
+			push ecx
+			push ecx
+			call CShipInitialized
+			pop ecx
+			jmp fpOldShipInitialized
+		}
+	}
+
+	void __stdcall cshipInit(uint* shipId)
+	{
+		epicNonSolarMap[*shipId] = lastIObj;
+	}
+	FARPROC fpOldCshipInit;
+	__declspec(naked) void cshipInitNaked()
+	{
+		__asm
+		{
+			push ecx
+			push [esp+0x8]
+			call cshipInit
+			pop ecx
+			jmp fpOldCshipInit
+		}
+	}
+
+	void __stdcall csolarInit(uint* solarId)
+	{
+		epicSolarMap[*solarId] = lastIObj;
+	}
+
+	FARPROC fpOldCsolarInit;
+	__declspec(naked) void csolarInitNaked()
+	{
+		__asm
+		{
+			push ecx
+			push[esp + 0x8]
+			call csolarInit
+			pop ecx
+			jmp fpOldCsolarInit
+		}
+	}
+
+	FARPROC fpOldSolarInitialized;
+
+	void __stdcall CSolarInitialized(IObjRW* iobj)
+	{
+		lastIObj = iobj;
+	}
+
+	__declspec(naked) void CSolarInitializedNaked()
+	{
+		__asm
+		{
+			push ecx
+			push ecx
+			call CSolarInitialized
+			pop ecx
+			jmp fpOldSolarInitialized
+		}
+	}
+
+	FARPROC FindStarListRet = FARPROC(0x6D0C846);
+
+	static uint mapCounter = 0;
+
+	PBYTE fpOldStarSystemFind;
+
+	typedef IObjRW* (__thiscall* FindIObj)(void* starSystem, uint searchedId);
+	FindIObj FindIObjFunc = FindIObj(0x6D0C840);
+
+	IObjRW* __stdcall FindInStarList(void* starSystem, uint searchedId)
+	{
+		mapCounter++;
+		IObjRW* retVal = nullptr;
+		if (searchedId & 0x80000000)
+		{
+			auto iter = epicSolarMap.find(searchedId);
+			if (iter != epicSolarMap.end())
+			{
+				//ConPrint(L"MapFound %u\n", mapCounter);
+				retVal = iter->second;
+			}
+		}
+		else
+		{
+			auto iter = epicNonSolarMap.find(searchedId);
+			if (iter != epicNonSolarMap.end())
+			{
+				//ConPrint(L"MapFound %u\n", mapCounter);
+				retVal = iter->second;
+			}
+		}
+
+		if (!retVal)
+		{
+			UnDetour(FindIObjFunc, fpOldStarSystemFind);
+			retVal = FindIObjFunc(starSystem, searchedId);
+			Detour(FindIObjFunc, FindInStarListNaked, fpOldStarSystemFind);
+		}
+
+		if (mapCounter % 10000 == 0)
+		{
+			ConPrint(L"%u %u\n", epicSolarMap.size(), epicNonSolarMap.size());
+		}
+
+		return retVal;
+	}
+
+	__declspec(naked) void FindInStarListNaked()
+	{
+		__asm
+		{
+			push ecx
+			push[esp + 0x8]
+			push ecx
+			call FindInStarList
+			pop ecx
+			test al, al
+			jnz skipLabel
+			push esi
+			push edi
+			mov edi, [esp+0xC]
+			jmp FindStarListRet
+			skipLabel:
+			ret 0x4
 		}
 	}
 
@@ -152,6 +317,7 @@ namespace HkIEngine
 
 	/**************************************************************************************************************
 	**************************************************************************************************************/
+
 
 	FARPROC fpOldLaunchPos;
 

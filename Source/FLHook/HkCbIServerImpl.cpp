@@ -322,7 +322,10 @@ namespace HkIServerImpl
 		pub::SpaceObj::SetInvincible2(iShip, false, false, 0.0f);
 
 		CShip* playerCship = reinterpret_cast<CShip*>(CObject::Find(iShip, CObject::CSHIP_OBJECT));
+		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
 		ClientInfo[iClientID].cship = playerCship;
+		ClientInfo[iClientID].fRadarRange = scanner->GetRadarRange();
+		ClientInfo[iClientID].fRadarRange *= ClientInfo[iClientID].fRadarRange;
 		playerCship->Release();
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));

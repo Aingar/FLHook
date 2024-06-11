@@ -593,6 +593,7 @@ struct CLIENT_INFO
 	bool		bSpawnProtected;
 	bool		bUseServersideHitDetection; //used by AC Plugin
 	CShip*		cship;
+	float		fRadarRange;
 	char		unused_data[128];
 };
 
@@ -842,13 +843,30 @@ namespace HkIEngine
 	int __cdecl Dock_Call(unsigned int const &, unsigned int const &, int, enum DOCK_HOST_RESPONSE);
 	void _LaunchPos();
 	void CEGun_Update_naked();
+	void cshipInitNaked();
+	void csolarInitNaked();
+	void Radar_Range_naked();
+	void CShipInitializedNaked();
+	void CSolarInitializedNaked();
 	void _HkLoadRepFromCharFile();
+	void FindInStarListNaked();
+	void InsertStarSystemItemNaked();
 
+	extern FARPROC fpOldCshipInit;
+	extern FARPROC fpOldCsolarInit;
+	extern PBYTE fpOldStarSystemFind;
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;
+	extern FARPROC fpOldShipInitialized;
+	extern FARPROC fpOldSolarInitialized;
+	extern FARPROC fpOldRadarRange;
 	extern FARPROC fpOldLoadRepCharFile;
+	extern unordered_map<uint, IObjRW*> epicSolarMap;
+	extern unordered_map<uint, IObjRW*> epicNonSolarMap;
 	extern bool bAbortEventRequest;
 }
+void UnDetour(void* pOFunc, unsigned char* originalData);
+void Detour(void* pOFunc, void* pHkFunc, unsigned char* originalData);
 
 // HkTimers
 void HkTimerCheckKick();

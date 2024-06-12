@@ -815,6 +815,7 @@ void ShipDestroyedNaked();
 void SolarDestroyedNaked();
 void MineDestroyedNaked();
 void GuidedDestroyedNaked();
+void LootDestroyedNaked();
 void BaseDestroyed(uint iObject, uint iClientIDBy);
 void ShipColGrpDestroyedHookNaked();
 void SolarColGrpDestroyedHookNaked();
@@ -848,9 +849,10 @@ namespace HkIEngine
 	void Radar_Range_naked();
 	void CShipInitializedNaked();
 	void CSolarInitializedNaked();
+	IObjRW* __stdcall FindInStarList(StarSystem* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
-	void InsertStarSystemItemNaked();
+	void FindInStarListNaked2();
 
 	extern FARPROC fpOldCshipInit;
 	extern FARPROC fpOldCsolarInit;
@@ -861,6 +863,7 @@ namespace HkIEngine
 	extern FARPROC fpOldSolarInitialized;
 	extern FARPROC fpOldRadarRange;
 	extern FARPROC fpOldLoadRepCharFile;
+	extern unordered_set<uint> playerShips;
 	extern unordered_map<uint, IObjRW*> epicSolarMap;
 	extern unordered_map<uint, IObjRW*> epicNonSolarMap;
 	extern bool bAbortEventRequest;
@@ -909,6 +912,7 @@ extern FARPROC ColGrpDeathOrigFunc;
 extern FARPROC AllowPlayerDamageOrigFunc;
 extern FARPROC fpOldShipDestroyed;
 extern FARPROC fpOldSolarDestroyed;
+extern FARPROC LootDestroyedOrigFunc;
 extern FARPROC MineDestroyedOrigFunc;
 extern FARPROC GuidedDestroyedOrigFunc;
 extern FARPROC fpOldExplosionHit;

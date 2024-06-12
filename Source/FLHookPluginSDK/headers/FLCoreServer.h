@@ -605,12 +605,37 @@ namespace SrvAsteroid
 
 };
 
+struct MetaListNode
+{
+	MetaListNode* prev;
+	MetaListNode* next;
+	IObjRW* value;
+};
+
+struct MetaList
+{
+	uint vtable;
+	MetaListNode* start;
+	MetaListNode* end;
+	uint dunno[2];
+};
+
 struct IMPORT StarSystem
 {
 	unsigned int count_players(unsigned int)const;
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint systemId; // -4
+	uint vftable; //0, don't ask
+	uint dunno[12]; //4
+	MetaList shipList; // 52/13
+	MetaList lootList; // 72/18
+	MetaList solarList; // 92/23
+	MetaList guidedList; // 112
+	MetaList bulletList; // 132
+	MetaList mineList; // 152
+	MetaList unkList; // 172
+	MetaList asteroidList; // 192
 };
 
 namespace SysDB

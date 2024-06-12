@@ -24,6 +24,7 @@ void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, u
 		return;
 	}
 
+	HkIEngine::playerShips.erase(ClientInfo[iClientIDVictim].cship->id);
 	ClientInfo[iClientIDVictim].cship = nullptr;
 	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 
@@ -124,7 +125,6 @@ Called when ship was destroyed
 
 void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	if (!isKill)
 	{
 		return;
@@ -232,12 +232,12 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	} CATCH_HOOK({})
 	LOG_CORE_TIMER_END
 
+	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 }
 
 
 void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::epicSolarMap.erase(iobj->get_id());
 	LOG_CORE_TIMER_START
 	TRY_HOOK
 	if (isKill)
@@ -246,6 +246,7 @@ void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	}
 	CATCH_HOOK({})
 	LOG_CORE_TIMER_END
+	HkIEngine::epicSolarMap.erase(iobj->get_id());
 }
 FARPROC fpOldSolarDestroyed;
 
@@ -313,6 +314,7 @@ bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		}
 		break;
 	}
+	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	return true;
 	CATCH_HOOK(AddLog("MineDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
@@ -359,6 +361,7 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::VANISH);
 		return false;
 	}
+	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	return true;
 	CATCH_HOOK(AddLog("GuidedDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
@@ -381,6 +384,23 @@ __declspec(naked) void GuidedDestroyedNaked()
 		jmp eax
 		skipLabel :
 		ret 0x8
+	}
+}
+
+void __stdcall LootDestroyed(IObjRW* iobj)
+{
+	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
+}
+
+FARPROC LootDestroyedOrigFunc;
+__declspec(naked) void LootDestroyedNaked()
+{
+	__asm {
+		push ecx
+		push ecx
+		call LootDestroyed
+		pop ecx
+		jmp [LootDestroyedOrigFunc]
 	}
 }
 

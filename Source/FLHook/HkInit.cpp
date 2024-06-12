@@ -44,6 +44,7 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
+		{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
 		{0x6D661C4,		&MineDestroyedNaked,				4, &MineDestroyedOrigFunc,		false},
 		{0x6D66694,		&GuidedDestroyedNaked,				4, &GuidedDestroyedOrigFunc,		false},
 		{0x6D672D4,		&AllowPlayerDamageNaked,			4, &AllowPlayerDamageOrigFunc,		false},
@@ -371,9 +372,11 @@ bool InitHookExports()
 	BYTE patch[] = { 0xFF };
 	WriteProcMem((char*)hModDaLib + 0x4BF4, patch, sizeof(patch));
 
-	HkIEngine::fpOldStarSystemFind = PBYTE(malloc(5));
-	pAddress = SRV_ADDR(0x2C840);
-	Detour((void*)pAddress, HkIEngine::FindInStarListNaked, HkIEngine::fpOldStarSystemFind);
+
+	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
+	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);
+	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x207BF, (char*)HkIEngine::FindInStarListNaked);
 
 	// Simplified reimplementation of ShipRange.dll by Adoxa
 	pAddress = SRV_ADDR(0x17272);

@@ -231,8 +231,6 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		ClientInfo[iClientID].iShip = 0;
 	} CATCH_HOOK({})
 	LOG_CORE_TIMER_END
-
-	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 }
 
 
@@ -246,7 +244,6 @@ void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	}
 	CATCH_HOOK({})
 	LOG_CORE_TIMER_END
-	HkIEngine::epicSolarMap.erase(iobj->get_id());
 }
 FARPROC fpOldSolarDestroyed;
 
@@ -314,7 +311,6 @@ bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		}
 		break;
 	}
-	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	return true;
 	CATCH_HOOK(AddLog("MineDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
@@ -361,7 +357,6 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::VANISH);
 		return false;
 	}
-	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 	return true;
 	CATCH_HOOK(AddLog("GuidedDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
@@ -389,7 +384,6 @@ __declspec(naked) void GuidedDestroyedNaked()
 
 void __stdcall LootDestroyed(IObjRW* iobj)
 {
-	HkIEngine::epicNonSolarMap.erase(iobj->get_id());
 }
 
 FARPROC LootDestroyedOrigFunc;

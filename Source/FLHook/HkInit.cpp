@@ -31,8 +31,8 @@ PATCH_INFO piCommonDLL =
 	{
 
 		{0x639D160,		&HkIEngine::CEGun_Update_naked,				4, &HkIEngine::fpOldUpdateCEGun,		false},
-		{0x639C138,		&HkIEngine::cshipInitNaked,				4, &HkIEngine::fpOldCshipInit,		false},
-		{0x639C138,		&HkIEngine::csolarInitNaked,				4, &HkIEngine::fpOldCsolarInit,		false},
+		//{0x639C138,		&HkIEngine::cshipInitNaked,				4, &HkIEngine::fpOldCshipInit,		false},
+		//{0x639C138,		&HkIEngine::csolarInitNaked,				4, &HkIEngine::fpOldCsolarInit,		false},
 
 
 		{0,0,0,0} // terminate
@@ -44,7 +44,7 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
-		{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
+		//{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
 		{0x6D661C4,		&MineDestroyedNaked,				4, &MineDestroyedOrigFunc,		false},
 		{0x6D66694,		&GuidedDestroyedNaked,				4, &GuidedDestroyedOrigFunc,		false},
 		{0x6D672D4,		&AllowPlayerDamageNaked,			4, &AllowPlayerDamageOrigFunc,		false},
@@ -311,38 +311,11 @@ void UnDetour(void* pOFunc, unsigned char* originalData)
 	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
 }
 
-void InitSolars()
-{
-	CObject* cobj = CObject::FindFirst(CObject::CSOLAR_OBJECT);
-	while (cobj)
-	{
-		if ((cobj->objectClass & CObject::CEQOBJ_MASK) != CObject::CEQOBJ_MASK)
-		{
-			continue;
-		}
-
-
-		uint id = ((CEqObj*)cobj)->id;
-		uint dummy;
-		IObjInspectImpl* iobj;
-		GetShipInspect(id, iobj, dummy);
-
-		if (iobj)
-		{
-			HkIEngine::epicSolarMap[id] = reinterpret_cast<IObjRW*>(iobj);
-		}
-
-		cobj = CObject::FindNext();
-	}
-}
-
 bool InitHookExports()
 {
 	char	*pAddress;
 
 	GetShipInspect = (_GetShipInspect)SRV_ADDR(ADDR_SRV_GETINSPECT);
-
-	InitSolars();
 
 	// install IServerImpl callbacks in remoteclient.dll
 	char *pServer = (char*)&Server;
@@ -372,6 +345,8 @@ bool InitHookExports()
 	BYTE patch[] = { 0xFF };
 	WriteProcMem((char*)hModDaLib + 0x4BF4, patch, sizeof(patch));
 
+	FARPROC GameObjectDestructor = FARPROC(0x6CEE4A0);
+	Detour(GameObjectDestructor, HkIEngine::GameObjectDestructorNaked);
 
 	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
 	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);

@@ -621,6 +621,12 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 	//now that we have identified the stackables, retrieve the current ammo count for stackables
 	for (auto& equip : Players[client].equipDescList.equip)
 	{
+		bool isCommodity;
+		pub::IsCommodity(equip.iArchID, isCommodity);
+		if (isCommodity)
+		{
+			continue;
+		}
 		Archetype::Equipment* eq = Archetype::GetEquipment(equip.iArchID);
 		EQ_TYPE type = HkGetEqType(eq);
 

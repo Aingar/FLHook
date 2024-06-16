@@ -41,6 +41,10 @@ struct SYSTEMJUMPCOORDS
 
 void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 {
+	if (set_SkipUnchartedKill)
+	{
+		return;
+	}
 	if (unchartedSystems.count(Players[client].iSystemID))
 	{
 		pub::SpaceObj::SetRelativeHealth(ship, 0.0f);

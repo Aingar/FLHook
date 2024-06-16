@@ -15,6 +15,8 @@
 #include <sstream>
 #include <hookext_exports.h>
 
+bool set_SkipUnchartedKill = false;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -2414,6 +2416,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		set_plugin_debug_special = cmd->ArgInt(1);
+		return true;
+	}
+	else if (args.find(L"setunchartedkill") == 0)
+	{
+		set_SkipUnchartedKill = !set_SkipUnchartedKill;
+		cmd->Print(L"skip unch kill %u\n", (uint)set_SkipUnchartedKill);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"testmodulerecipe") == 0)

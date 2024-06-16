@@ -83,9 +83,15 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		}
 	}
 
+	struct iobjCache
+	{
+		uint system;
+		CObject::Class objClass;
+	};
+
 	unordered_set<uint> playerShips;
-	unordered_map<uint, uint> epicSolarMap;
-	unordered_map<uint, uint> epicNonSolarMap;
+	unordered_map<uint, iobjCache> epicSolarMap;
+	unordered_map<uint, iobjCache> epicNonSolarMap;
 
 	FARPROC FindStarListRet = FARPROC(0x6D0C846);
 
@@ -102,31 +108,31 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -137,13 +143,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
 		if (node)
 		{
-			epicSolarMap[searchedId] = node->value->cobj->system;
+			epicSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
 		if (node)
 		{
-			epicSolarMap[searchedId] = node->value->cobj->system;
+			epicSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -163,25 +169,35 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			auto iter = epicSolarMap.find(searchedId);
 			if (iter == epicSolarMap.end())
 			{
-				IObjRW* result = FindSolar(starSystem, searchedId);
-				if (result)
-				{
-					epicSolarMap[searchedId] = result->cobj->system;					
-				}
-				return result;
+				return FindSolar(starSystem, searchedId);
 			}
 
-			if (iter->second != starSystem->systemId)
+			if (iter->second.system != starSystem->systemId)
 			{
 				return nullptr;
 			}
 
-			IObjRW* result = FindSolar(starSystem, searchedId);
-			if (!result)
+			MetaListNode* node;
+			switch (iter->second.objClass)
 			{
-				epicSolarMap.erase(searchedId);
+			case CObject::Class::CSOLAR_OBJECT:
+				node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
+				if (node)
+				{
+					return node->value;
+				}
+				break;
+			case CObject::Class::CASTEROID_OBJECT:
+				node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
+				if (node)
+				{
+					return node->value;
+				}
+				break;
 			}
-			return result;
+			
+			epicSolarMap.erase(searchedId);
+			return nullptr;
 		}
 		else
 		{
@@ -190,25 +206,56 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				auto iter = epicNonSolarMap.find(searchedId);
 				if (iter == epicNonSolarMap.end())
 				{
-					IObjRW* result = FindNonSolar(starSystem, searchedId);
-					if (result)
-					{
-						epicNonSolarMap[searchedId] = result->cobj->system;
-					}
-					return result;
+					return FindNonSolar(starSystem, searchedId);;
 				}
 				
-				if (iter->second != starSystem->systemId)
+				if (iter->second.system != starSystem->systemId)
 				{
 					return  nullptr;
 				}
 
-				IObjRW* result = FindNonSolar(starSystem, searchedId);
-				if (!result)
+				MetaListNode* node;
+				switch (iter->second.objClass)
 				{
-					epicNonSolarMap.erase(searchedId);
+				case CObject::Class::CSHIP_OBJECT:
+					node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
+					if (node)
+					{
+						return node->value;
+					}
+					break;
+				case CObject::Class::CLOOT_OBJECT:
+					node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
+					if (node)
+					{
+						return node->value;
+					}
+					break;
+				case CObject::Class::CGUIDED_OBJECT:
+					node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
+					if (node)
+					{
+						return node->value;
+					}
+					break;
+				case CObject::Class::CMINE_OBJECT:
+					node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
+					if (node)
+					{
+						return node->value;
+					}
+					break;
+				case CObject::Class::CCOUNTERMEASURE_OBJECT:
+					node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
+					if (node)
+					{
+						return node->value;
+					}
+					break;
 				}
-				return result;
+
+				epicNonSolarMap.erase(searchedId);
+				return nullptr;
 			}
 			else
 			{

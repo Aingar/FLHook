@@ -1288,7 +1288,9 @@ namespace PlayerCommands
 
 		const uint index1 = ToUInt(GetParam(args, ' ', 2));
 		const uint index2 = ToUInt(GetParam(args, ' ', 3));
-		if (index1 == 0 || index2 == 0)
+		if (index1 == 0 || index2 == 0
+			|| index1 >= base->modules.size()
+			|| index2 >= base->modules.size())
 		{
 			PrintUserCmdText(client, L"ERR Invalid module indexes");
 			return;

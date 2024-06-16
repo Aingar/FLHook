@@ -29,9 +29,6 @@ unordered_set<uint> bannedSystems;
 string scCarrierDataFile;
 
 
-std::mutex saveMutex;
-std::thread saveThread;
-
 enum JettisonResult
 {
 	Success,
@@ -65,7 +62,6 @@ void LoadDockingModules(const string& path, int& carrierCount, int& dockedCount)
 	INI_Reader ini;
 	if (ini.open(path.c_str(), false))
 	{
-		std::lock_guard<std::mutex> saveLock(saveMutex);
 		time_t curTime = time(0);
 		while (ini.read_header())
 		{
@@ -156,7 +152,6 @@ void SaveDataToFile(const string& path)
 	FILE* file = fopen(path.c_str(), "w");
 	if (file)
 	{
-		std::lock_guard<std::mutex> saveLock(saveMutex);
 		for (pair<wstring, CARRIERINFO> ci : nameToCarrierInfoMap)
 		{
 			if (ci.second.dockedShipList.empty())
@@ -186,33 +181,18 @@ void SaveDataToFile(const string& path)
 	}
 }
 
-std::atomic_bool shouldKill = false;
-
 void SaveData()
 {
 	try
 	{
-		while (true)
+		if (nameToCarrierInfoMap.empty())
 		{
-			uint counter = 0;
-			while (++counter != 12)
-			{
-				if (shouldKill)
-				{
-					return;
-				}
-				std::this_thread::sleep_for(std::chrono::seconds(5));
-			}
-
-			if (nameToCarrierInfoMap.empty())
-			{
-				continue;
-			}
-
-			char datapath[MAX_PATH];
-			GetUserDataPath(datapath);
-			SaveDataToFile(scCarrierDataFile);
+			return;
 		}
+
+		char datapath[MAX_PATH];
+		GetUserDataPath(datapath);
+		SaveDataToFile(scCarrierDataFile);
 	}
 	catch (exception& e)
 	{
@@ -460,7 +440,6 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 	{
 		//In case this ship was launched from another mobiledock, unregister it first.
 		RemoveShipFromLists(dockingName, false);
-		std::lock_guard<std::mutex> saveLock(saveMutex);
 
 		nameToCarrierInfoMap[carrierName].dockedShipList.emplace_back(dockingName);
 		nameToDockedInfoMap[dockingName].lastDockedSolar = Players[dockingID].iLastBaseID;
@@ -543,6 +522,12 @@ void HkTimerCheckKick()
 		PrintUserCmdText(dd.dockingID, L"Docking in %us", dd.timeLeft);
 		dockdata++;
 	}
+
+	auto currTime = time(0);
+	if (currTime % 60 == 0)
+	{
+		SaveData();
+	}
 }
 
 void MoveOfflineShipToLastDockedSolar(const wstring& charName)
@@ -586,7 +571,6 @@ void MoveOfflineShipToLastDockedSolar(const wstring& charName)
 		{
 			if (*iter == charName)
 			{
-				std::lock_guard<std::mutex> saveLock(saveMutex);
 				dockedList.erase(iter);
 
 				uint carrierID = HkGetClientIdFromCharname(dockedInfo.carrierName);
@@ -1234,7 +1218,6 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 				PrintUserCmdText(dockedClientID, L"Carrier ship has come online.");
 			}
 		}
-		std::lock_guard<std::mutex> saveLock(saveMutex);
 		idToCarrierInfoMap[iClientID]->lastCarrierLogin = time(nullptr);
 	}
 	else if (nameToDockedInfoMap.count(charname))
@@ -1359,12 +1342,6 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-EXPORT void FreeThreads()
-{
-	shouldKill = true;
-	saveThread.join();
-}
-
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
@@ -1385,8 +1362,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 12));
-
-	saveThread = std::thread(SaveData);
 
 	return p_PI;
 }

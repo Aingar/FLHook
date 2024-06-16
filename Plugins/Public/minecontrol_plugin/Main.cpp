@@ -902,7 +902,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
 {
     returncode = DEFAULT_RETURNCODE;
 
-    if (jc.iCount != 1)
+    if (jc.iCount != 1 || jc.iSlot == 0)
     {
         return;
     }

@@ -84,8 +84,8 @@ static float* pGroup_range = ((float*)0x6d66af4);
 	}
 
 	unordered_set<uint> playerShips;
-	unordered_map<uint, IObjRW*> epicSolarMap;
-	unordered_map<uint, IObjRW*> epicNonSolarMap;
+	unordered_map<uint, uint> epicSolarMap;
+	unordered_map<uint, uint> epicNonSolarMap;
 
 	FARPROC FindStarListRet = FARPROC(0x6D0C846);
 
@@ -96,6 +96,58 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	typedef IObjRW* (__thiscall* FindIObjInSystem)(StarSystemMock& starSystem, uint searchedId);
 	FindIObjInSystem FindIObjFunc = FindIObjInSystem(0x6D0C840);
+
+	IObjRW* FindNonSolar(StarSystemMock* starSystem, uint searchedId)
+	{
+		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		return nullptr;
+	}
+
+	IObjRW* FindSolar(StarSystemMock* starSystem, uint searchedId)
+	{
+		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
+		if (node)
+		{
+			epicSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
+		if (node)
+		{
+			epicSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		return nullptr;
+	}
 
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
 	{
@@ -111,37 +163,25 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			auto iter = epicSolarMap.find(searchedId);
 			if (iter == epicSolarMap.end())
 			{
-				MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
-				if (node)
+				IObjRW* result = FindSolar(starSystem, searchedId);
+				if (result)
 				{
-					epicSolarMap[searchedId] = node->value;
-					return node->value;
+					epicSolarMap[searchedId] = result->cobj->system;					
 				}
-				node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
-				if (node)
-				{
-					epicSolarMap[searchedId] = node->value;
-					return node->value;
-				}
-				return nullptr;
+				return result;
 			}
-			else
-			{
-				retVal = iter->second;
-			}
-			
-			if (retVal)
-			{
-				if (retVal->cobj->system != starSystem->systemId)
-				{
-					return nullptr;
-				}
-				return retVal;
-			}
-			else
+
+			if (iter->second != starSystem->systemId)
 			{
 				return nullptr;
 			}
+
+			IObjRW* result = FindSolar(starSystem, searchedId);
+			if (!result)
+			{
+				epicSolarMap.erase(searchedId);
+			}
+			return result;
 		}
 		else
 		{
@@ -150,51 +190,25 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				auto iter = epicNonSolarMap.find(searchedId);
 				if (iter == epicNonSolarMap.end())
 				{
-					MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
-					if (node)
+					IObjRW* result = FindNonSolar(starSystem, searchedId);
+					if (result)
 					{
-						retVal = node->value;
-						epicNonSolarMap[searchedId] = retVal;
-						return retVal;
+						epicNonSolarMap[searchedId] = result->cobj->system;
 					}
-					node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
-					if (node)
-					{
-						retVal = node->value;
-						epicNonSolarMap[searchedId] = retVal;
-						return retVal;
-					}
-					node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
-					if (node)
-					{
-						retVal = node->value;
-						epicNonSolarMap[searchedId] = retVal;
-						return retVal;
-					}
-					node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
-					if (node)
-					{
-						retVal = node->value;
-						epicNonSolarMap[searchedId] = retVal;
-						return retVal;
-					}
-					node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
-					if (node)
-					{
-						retVal = node->value;
-						epicNonSolarMap[searchedId] = retVal;
-						return retVal;
-					}
-					return nullptr;
+					return result;
 				}
-				else if (iter->second->cobj->system == starSystem->systemId)
+				
+				if (iter->second != starSystem->systemId)
 				{
-					return iter->second;
+					return  nullptr;
 				}
-				else
+
+				IObjRW* result = FindNonSolar(starSystem, searchedId);
+				if (!result)
 				{
-					return nullptr;
+					epicNonSolarMap.erase(searchedId);
 				}
+				return result;
 			}
 			else
 			{

@@ -607,8 +607,8 @@ namespace SrvAsteroid
 
 struct MetaListNode
 {
-	MetaListNode* prev;
 	MetaListNode* next;
+	MetaListNode* prev;
 	IObjRW* value;
 };
 

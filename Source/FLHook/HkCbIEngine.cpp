@@ -72,82 +72,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 	unordered_map<uint, IObjRW*> epicSolarMap;
 	unordered_map<uint, IObjRW*> epicNonSolarMap;
 
-	FARPROC fpOldShipInitialized;
-
-	static IObjRW* lastIObj;
-
-	void __stdcall CShipInitialized(IObjRW* iobj)
-	{
-		lastIObj = iobj;
-	}
-
-	__declspec(naked) void CShipInitializedNaked()
-	{
-		__asm
-		{
-			push ecx
-			push ecx
-			call CShipInitialized
-			pop ecx
-			jmp fpOldShipInitialized
-		}
-	}
-
-	void __stdcall cshipInit(uint* shipId)
-	{
-	}
-	FARPROC fpOldCshipInit;
-	__declspec(naked) void cshipInitNaked()
-	{
-		__asm
-		{
-			push ecx
-			push [esp+0x8]
-			call cshipInit
-			pop ecx
-			jmp fpOldCshipInit
-		}
-	}
-
-	void __stdcall csolarInit(uint* solarId)
-	{
-	}
-
-	FARPROC fpOldCsolarInit;
-	__declspec(naked) void csolarInitNaked()
-	{
-		__asm
-		{
-			push ecx
-			push[esp + 0x8]
-			call csolarInit
-			pop ecx
-			jmp fpOldCsolarInit
-		}
-	}
-
-	FARPROC fpOldSolarInitialized;
-
-	void __stdcall CSolarInitialized(IObjRW* iobj)
-	{
-		lastIObj = iobj;
-	}
-
-	__declspec(naked) void CSolarInitializedNaked()
-	{
-		__asm
-		{
-			push ecx
-			push ecx
-			call CSolarInitialized
-			pop ecx
-			jmp fpOldSolarInitialized
-		}
-	}
-
 	FARPROC FindStarListRet = FARPROC(0x6D0C846);
-
-	static uint mapCounter = 0;
 
 	PBYTE fpOldStarSystemFind;
 
@@ -172,6 +97,12 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			if (iter == epicSolarMap.end())
 			{
 				MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
+				if (node)
+				{
+					epicSolarMap[searchedId] = node->value;
+					return node->value;
+				}
+				node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
 				if (node)
 				{
 					epicSolarMap[searchedId] = node->value;

@@ -855,13 +855,8 @@ namespace HkIEngine
 	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
 
-	extern FARPROC fpOldCshipInit;
-	extern FARPROC fpOldCsolarInit;
-	extern PBYTE fpOldStarSystemFind;
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;
-	extern FARPROC fpOldShipInitialized;
-	extern FARPROC fpOldSolarInitialized;
 	extern FARPROC fpOldRadarRange;
 	extern FARPROC fpOldLoadRepCharFile;
 	extern unordered_set<uint> playerShips;

@@ -664,7 +664,6 @@ bool ProcessSocketCmd(SOCKET_CONNECTION *sc, wstring wscCmd)
 				sc->csock.bAuthed = true;
 				sc->csock.SetRightsByString(scRights);
 				sc->csock.Print(L"OK\n");
-				ConPrint(L"socket: socket authentication successful\n");
 				return false;
 			}
 		}
@@ -841,7 +840,6 @@ void ProcessPendingCommands()
 				sc->csock.bEncrypted = false;
 				sc->wscPending = L"";
 				lstSockets.push_back(sc);
-				ConPrint(L"socket(ascii): new socket connection from %s:%d\n", stows(sc->csock.sIP).c_str(), sc->csock.iPort);
 				sc->csock.Print(L"Welcome to FLHack, please authenticate\n");
 			}
 		}
@@ -867,7 +865,6 @@ void ProcessPendingCommands()
 				sc->wscPending = L"";
 				sc->csock.bEncrypted = false;
 				lstSockets.push_back(sc);
-				ConPrint(L"socket(unicode): new socket connection from %s:%d\n", stows(sc->csock.sIP).c_str(), sc->csock.iPort);
 				sc->csock.Print(L"Welcome to FLHack, please authenticate\n");
 			}
 		}
@@ -894,7 +891,6 @@ void ProcessPendingCommands()
 				sc->csock.bEncrypted = true;
 				sc->csock.bfc = set_BF_CTX;
 				lstSockets.push_back(sc);
-				ConPrint(L"socket(encrypted-ascii): new socket connection from %s:%d\n", stows(sc->csock.sIP).c_str(), sc->csock.iPort);
 				sc->csock.Print(L"Welcome to FLHack, please authenticate\n");
 			}
 		}
@@ -921,7 +917,6 @@ void ProcessPendingCommands()
 				sc->csock.bEncrypted = true;
 				sc->csock.bfc = set_BF_CTX;
 				lstSockets.push_back(sc);
-				ConPrint(L"socket(encrypted-unicode): new socket connection from %s:%d\n", stows(sc->csock.sIP).c_str(), sc->csock.iPort);
 				sc->csock.Print(L"Welcome to FLHack, please authenticate\n");
 			}
 		}
@@ -943,7 +938,6 @@ void ProcessPendingCommands()
 				memset(szData, 0, lSize + 1);
 				if (recv(sc->csock.s, szData, lSize, 0) <= 0)
 				{
-					ConPrint(L"socket: socket connection closed\n");
 					delete[] szData;
 					lstDelete.push_back(sc);
 					continue;

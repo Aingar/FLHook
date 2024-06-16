@@ -553,7 +553,7 @@ namespace PimpShip
 		}
 
 		HkSetEquip(iClientID, equip);
-		PrintUserCmdText(iClientID, L"Ship pimping complete. You bought %i item%ws.", count, endAt == beginFrom ? L"" : L"s");
+		PrintUserCmdText(iClientID, L"Ship pimping complete. You bought %i item%ws. Effect will be visible upon relogging.", count, endAt == beginFrom ? L"" : L"s");
 
 		if (beginFrom == 1 && endAt == mapInfo[iClientID].mapCurrEquip.size() && everyN == 1 && firstArg != L"-")
 		{

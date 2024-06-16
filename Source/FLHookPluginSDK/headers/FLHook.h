@@ -314,6 +314,7 @@ struct CLIENT_INFO
 	bool		bSpawnProtected;
 	bool		bUseServersideHitDetection; //used by AC Plugin
 	CShip*		cship;
+	float		fRadarRange;
 	byte		unused_data[128];
 };
 

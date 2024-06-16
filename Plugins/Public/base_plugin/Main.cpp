@@ -15,6 +15,8 @@
 #include <sstream>
 #include <hookext_exports.h>
 
+bool set_SkipUnchartedKill = false;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -1122,19 +1124,6 @@ void HkTimerCheckKick()
 		}
 	}
 
-	if (curr_time % 8 == 0)
-	{
-		//fix custom jump solars not being dockable
-		for (uint customSolar : customSolarList)
-		{
-			uint type;
-			pub::SpaceObj::GetType(customSolar, type);
-			if (type & (JumpGate | JumpHole))
-			{
-				pub::SpaceObj::SetRelativeHealth(customSolar, 1);
-			}
-		}
-	}
 	if ((curr_time % 60) == 0)
 	{
 		// Write status to an html formatted page every 60 seconds
@@ -2427,6 +2416,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		set_plugin_debug_special = cmd->ArgInt(1);
+		return true;
+	}
+	else if (args.find(L"setunchartedkill") == 0)
+	{
+		set_SkipUnchartedKill = !set_SkipUnchartedKill;
+		cmd->Print(L"skip unch kill %u\n", (uint)set_SkipUnchartedKill);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"testmodulerecipe") == 0)

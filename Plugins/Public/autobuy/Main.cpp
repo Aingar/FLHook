@@ -138,6 +138,10 @@ int __fastcall GetAmmoCapacityDetourHash(CShip* cship, void* edx, uint ammoArch)
 	}
 
 	int maxCount = currAmmoLimit->second.ammoLimit;
+	if (!maxCount)
+	{
+		return cship->get_ammo_capacity_remaining(ammoArch);
+	}
 	int remainingCapacity = maxCount - HkPlayerAutoBuyGetCount(clientId, ammoArch);
 
 	return remainingCapacity;
@@ -617,6 +621,12 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 	//now that we have identified the stackables, retrieve the current ammo count for stackables
 	for (auto& equip : Players[client].equipDescList.equip)
 	{
+		bool isCommodity;
+		pub::IsCommodity(equip.iArchID, isCommodity);
+		if (isCommodity)
+		{
+			continue;
+		}
 		Archetype::Equipment* eq = Archetype::GetEquipment(equip.iArchID);
 		EQ_TYPE type = HkGetEqType(eq);
 
@@ -666,13 +676,9 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 
 	for (auto& ammo : returnMap)
 	{
-		if (!ammo.second.launcherCount)
-		{
-			continue;
-		}
 		if (mapAmmolimits.count(ammo.first))
 		{
-			ammo.second.ammoLimit = ammo.second.launcherCount * mapAmmolimits.at(ammo.first).ammoLimit;
+			ammo.second.ammoLimit = min(1, ammo.second.launcherCount) * mapAmmolimits.at(ammo.first).ammoLimit;
 		}
 		else
 		{

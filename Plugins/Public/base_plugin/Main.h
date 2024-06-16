@@ -795,6 +795,8 @@ extern unordered_set<uint> humanCargoList;
 
 extern unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 
+extern bool set_SkipUnchartedKill;
+
 // From EquipmentUtilities.cpp
 namespace EquipmentUtilities
 {

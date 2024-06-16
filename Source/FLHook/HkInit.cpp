@@ -31,6 +31,9 @@ PATCH_INFO piCommonDLL =
 	{
 
 		{0x639D160,		&HkIEngine::CEGun_Update_naked,				4, &HkIEngine::fpOldUpdateCEGun,		false},
+		//{0x639C138,		&HkIEngine::cshipInitNaked,				4, &HkIEngine::fpOldCshipInit,		false},
+		//{0x639C138,		&HkIEngine::csolarInitNaked,				4, &HkIEngine::fpOldCsolarInit,		false},
+
 
 		{0,0,0,0} // terminate
 	}
@@ -41,28 +44,19 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
-		//{0x6D67288,		&envDmgShip,	4,	&fpEnvDmg,	false},
+		//{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
 		{0x6D661C4,		&MineDestroyedNaked,				4, &MineDestroyedOrigFunc,		false},
 		{0x6D66694,		&GuidedDestroyedNaked,				4, &GuidedDestroyedOrigFunc,		false},
-		{0x6D672D4,		&AllowPlayerDamageNaked,				4, &AllowPlayerDamageOrigFunc,		false},
-		{0x6D6733C,		&ShipColGrpDestroyedHookNaked,				4, &ColGrpDeathOrigFunc,		false},
-		{0x6D6768C,		&SolarColGrpDestroyedHookNaked,				4, 0,							false},
-		{0x6D67274,		&ShipDestroyedNaked,							4, &fpOldShipDestroyed,			false},
-		{0x6D675C4,		&SolarDestroyedNaked,							4, &fpOldSolarDestroyed,			false},
-		//{0x6D641EC,		&_HkCb_AddDmgEntry,							4, 0,							false},
-		{0x6D672A0,		&HookExplosionHitNaked,						4, &fpOldExplosionHit,		false},
-		//{0x6D65448,		&_HookMissileTorpHit,						4, 0,							false},
-		//{0x6D67670,		&_HookMissileTorpHit,						4, 0,							false},
-		//{0x6D653F4,		&_HkCb_GeneralDmg,							4, &fpOldGeneralDmg,			false},
-		{0x6D672CC,		&ShipHullDamageNaked,							4, &ShipHullDamageOrigFunc,							false},
-		{0x6D6761C,		&SolarHullDamageNaked,							4, &SolarHullDamageOrigFunc,							false},
-		//{0x6D6761C,		&_HkCb_GeneralDmg,							4, 0,							false},
-		//{0x6D65458,		&_HkCb_GeneralDmg2,							4, &fpOldGeneralDmg2,			false},
-		//{0x6D67330,		&_HkCb_GeneralDmg2,							4, 0,							false},
-		//{0x6D67680,		&_HkCb_GeneralDmg2,							4, 0,							false},
-		//{0x6D67668,		&_HkCb_NonGunWeaponHitsBase,				4, &fpOldNonGunWeaponHitsBase,	false},
-		{0x6D6420C,		&HkIEngine::_LaunchPos,						4, &HkIEngine::fpOldLaunchPos,	false},
-		{0x6D648E0,		&HkIEngine::FreeReputationVibe,				4, 0,							false},
+		{0x6D672D4,		&AllowPlayerDamageNaked,			4, &AllowPlayerDamageOrigFunc,		false},
+		{0x6D6733C,		&ShipColGrpDestroyedHookNaked,		4, &ColGrpDeathOrigFunc,		false},
+		{0x6D6768C,		&SolarColGrpDestroyedHookNaked,		4, 0,							false},
+		{0x6D67274,		&ShipDestroyedNaked,				4, &fpOldShipDestroyed,			false},
+		{0x6D675C4,		&SolarDestroyedNaked,				4, &fpOldSolarDestroyed,			false},
+		{0x6D672A0,		&HookExplosionHitNaked,				4, &fpOldExplosionHit,		false},
+		{0x6D672CC,		&ShipHullDamageNaked,				4, &ShipHullDamageOrigFunc,							false},
+		{0x6D6761C,		&SolarHullDamageNaked,				4, &SolarHullDamageOrigFunc, false},
+		{0x6D6420C,		&HkIEngine::_LaunchPos,				4, &HkIEngine::fpOldLaunchPos,	false},
+		{0x6D648E0,		&HkIEngine::FreeReputationVibe,		4, 0,							false},
 
 		{0,0,0,0} // terminate
 	}
@@ -280,6 +274,40 @@ void LoadUserCharSettings(uint iClientID)
 /**************************************************************************************************************
 install the callback hooks
 **************************************************************************************************************/
+static FARPROC radarDetour = FARPROC(&HkIEngine::Radar_Range_naked);
+
+void Detour(void* pOFunc, void* pHkFunc)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
+void Detour(void* pOFunc, void* pHkFunc, unsigned char* originalData)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(originalData, pOFunc, 5);
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
+void UnDetour(void* pOFunc, unsigned char* originalData)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	memcpy(pOFunc, originalData, 5);
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
 
 bool InitHookExports()
 {
@@ -315,14 +343,29 @@ bool InitHookExports()
 	BYTE patch[] = { 0xFF };
 	WriteProcMem((char*)hModDaLib + 0x4BF4, patch, sizeof(patch));
 
+	FARPROC GameObjectDestructor = FARPROC(0x6CEE4A0);
+	Detour(GameObjectDestructor, HkIEngine::GameObjectDestructorNaked);
+
+	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
+	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);
+	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x207BF, (char*)HkIEngine::FindInStarListNaked);
+
+	// Simplified reimplementation of ShipRange.dll by Adoxa
+	pAddress = SRV_ADDR(0x17272);
+	FARPROC radarDetour2 = FARPROC(&radarDetour);
+	WriteProcMem(pAddress, &radarDetour2, 4);
+
 	// Optimize Server.dll sub_6CE61D0 that is called A LOT and crashes if it fails anwyay
 	pAddress = SRV_ADDR(0x61D0);
-	BYTE szOptimize[] = { 0x8B, 0x41, 0x10, 0x8b, 0x80, 0xb0, 0x00, 0x00, 0x00, 0xc3 };
+	BYTE szOptimize[] = { 0x8B, 0x41, 0x10, 0x8b, 0x80, 0xb0, 0x00, 0x00, 0x00, 0xc3,
+	0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
 	WriteProcMem(pAddress, szOptimize, sizeof(szOptimize));
 
 	// Optimize Server.dll sub_6CF4F00, also called a lot
 	pAddress = SRV_ADDR(0x14F00);
-	BYTE szOptimize2[] = { 0x57, 0x8B, 0x7C, 0x24, 0x08, 0x8B, 0x41, 0x04, 0xEB, 0x02, 0x8B, 0x00, 0x85, 0xC0, 0x74, 0x10, 0x8B, 0x48, 0x08, 0x8B, 0x49, 0x10, 0x8B, 0x89, 0xB0, 0x00, 0x00, 0x00, 0x39, 0xF9, 0x75, 0xEA, 0x5F, 0xC2, 0x04, 0x00 };
+	BYTE szOptimize2[] = { 0x52, 0x53, 0x57, 0x8B, 0x7C, 0x24, 0x10, 0x8B, 0x41, 0x04, 0xEB, 0x02, 0x8B, 0x00, 0x85, 0xC0, 0x74, 0x10, 0x8B, 0x50, 0x08, 0x8B, 0x5A, 0x10, 0x8B, 0x8B, 0xB0, 0x00, 0x00, 0x00, 0x39, 0xF9, 0x75, 0xEA, 0x5F, 0x5B, 0x5A, 0xC2, 0x04, 0x00,
+		0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
 	WriteProcMem(pAddress, szOptimize2, sizeof(szOptimize2));
 
 	// patch pub::Save method

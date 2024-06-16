@@ -2028,7 +2028,7 @@ struct IMPORT CBase
 	void notify_of_destruction(void *);
 
 public:
-	CObject* cobj;
+	struct CSimple* cobj;
 };
 
 

@@ -21,6 +21,7 @@ namespace HkIEngine
 	**************************************************************************************************************/
 
 	FARPROC fpOldUpdateCEGun;
+	FARPROC fpOldRadarRange = FARPROC(0x6CF7278);
 	FARPROC fpOldLoadRepCharFile;
 
 	bool __stdcall CEGun_Update(CEGun* gun)
@@ -47,6 +48,240 @@ namespace HkIEngine
 			ret 0x8
 		}
 	}
+static float* pNPC_range    = ((float*)0x6d66aec);
+static float* pPlayer_range = ((float*)0x6d66af0);
+static float* pGroup_range = ((float*)0x6d66af4);
+	void __fastcall CheckRange(uint player, uint scannedPlayer)
+	{
+		float radarRange = ClientInfo[player].fRadarRange;
+		if (!ClientInfo[player].cship)
+		{
+			*pNPC_range = *pPlayer_range = radarRange;
+			*pGroup_range = radarRange * 4;
+			return;
+		}
+		float playerInterference = ClientInfo[player].cship->get_scanner_interference();
+		if (scannedPlayer)
+		{
+			float scannedInterference = ClientInfo[scannedPlayer].cship->get_scanner_interference();
+			playerInterference = max(playerInterference, scannedInterference);
+		}
+		radarRange *= (1.0f - playerInterference);
+		*pNPC_range = *pPlayer_range = radarRange;
+		*pGroup_range = radarRange * 4;
+	}
+
+	__declspec(naked) void Radar_Range_naked()
+	{
+		__asm {
+			mov			ecx, [edi + 0x38]
+			mov			edx, [esi + 0x10]
+			mov			edx, [edx + 0xb4]
+			call        CheckRange
+			mov			eax, 0
+			ret
+		}
+	}
+
+	unordered_set<uint> playerShips;
+	unordered_map<uint, uint> epicSolarMap;
+	unordered_map<uint, uint> epicNonSolarMap;
+
+	FARPROC FindStarListRet = FARPROC(0x6D0C846);
+
+	PBYTE fpOldStarSystemFind;
+
+	typedef MetaListNode* (__thiscall* FindIObjOnList)(MetaList&, uint searchedId);
+	FindIObjOnList FindIObjOnListFunc = FindIObjOnList(0x6CF4F00);
+
+	typedef IObjRW* (__thiscall* FindIObjInSystem)(StarSystemMock& starSystem, uint searchedId);
+	FindIObjInSystem FindIObjFunc = FindIObjInSystem(0x6D0C840);
+
+	IObjRW* FindNonSolar(StarSystemMock* starSystem, uint searchedId)
+	{
+		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
+		if (node)
+		{
+			epicNonSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		return nullptr;
+	}
+
+	IObjRW* FindSolar(StarSystemMock* starSystem, uint searchedId)
+	{
+		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
+		if (node)
+		{
+			epicSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
+		if (node)
+		{
+			epicSolarMap[searchedId] = node->value->cobj->system;
+			return node->value;
+		}
+		return nullptr;
+	}
+
+	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
+	{
+		IObjRW* retVal = nullptr;
+		
+		if (searchedId == 0)
+		{
+			return nullptr;
+		}
+
+		if (searchedId & 0x80000000) // check if solar
+		{
+			auto iter = epicSolarMap.find(searchedId);
+			if (iter == epicSolarMap.end())
+			{
+				IObjRW* result = FindSolar(starSystem, searchedId);
+				if (result)
+				{
+					epicSolarMap[searchedId] = result->cobj->system;					
+				}
+				return result;
+			}
+
+			if (iter->second != starSystem->systemId)
+			{
+				return nullptr;
+			}
+
+			IObjRW* result = FindSolar(starSystem, searchedId);
+			if (!result)
+			{
+				epicSolarMap.erase(searchedId);
+			}
+			return result;
+		}
+		else
+		{
+			if (!playerShips.count(searchedId)) // player can swap systems, for them search just the system's shiplist
+			{
+				auto iter = epicNonSolarMap.find(searchedId);
+				if (iter == epicNonSolarMap.end())
+				{
+					IObjRW* result = FindNonSolar(starSystem, searchedId);
+					if (result)
+					{
+						epicNonSolarMap[searchedId] = result->cobj->system;
+					}
+					return result;
+				}
+				
+				if (iter->second != starSystem->systemId)
+				{
+					return  nullptr;
+				}
+
+				IObjRW* result = FindNonSolar(starSystem, searchedId);
+				if (!result)
+				{
+					epicNonSolarMap.erase(searchedId);
+				}
+				return result;
+			}
+			else
+			{
+				MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
+				if (node)
+				{
+					return node->value;
+				}
+				return nullptr;
+			}
+		}
+
+		return retVal;
+	}
+
+	__declspec(naked) void FindInStarListNaked()
+	{
+		__asm
+		{
+			push ecx
+			push[esp + 0x8]
+			sub ecx, 4
+			push ecx
+			call FindInStarList
+			pop ecx
+			ret 0x4
+		}
+	}
+
+	__declspec(naked) void FindInStarListNaked2()
+	{
+		__asm
+		{
+			mov eax, [esp+0x4]
+			mov edx, [eax]
+ 			mov [esp+0x4], edx
+			push ecx
+			push[esp + 0x8]
+			sub ecx, 4
+			push ecx
+			call FindInStarList
+			pop ecx
+			ret 0x4
+		}
+	}
+
+	void __stdcall GameObjectDestructor(uint id)
+	{
+		if (id & 0x8000000)
+		{
+			epicSolarMap.erase(id);
+		}
+		else
+		{
+			epicNonSolarMap.erase(id);
+		}
+	}
+
+	uint GameObjectDestructorRet = 0x6CEE4AD;
+	__declspec(naked) void GameObjectDestructorNaked()
+	{
+		__asm {
+			push ecx
+			mov ecx, [ecx+0x4]
+			mov ecx, [ecx+0xB0]
+			push ecx
+			call GameObjectDestructor
+			pop ecx
+			push 0xFFFFFFFF
+			push 0x6d60776
+			jmp GameObjectDestructorRet
+		}
+	}
 
 	/**************************************************************************************************************
 	// flserver memory leak bugfix
@@ -54,7 +289,6 @@ namespace HkIEngine
 
 	int __cdecl FreeReputationVibe(int const &p1)
 	{
-
 		__asm
 		{
 			mov eax, p1
@@ -152,6 +386,7 @@ namespace HkIEngine
 
 	/**************************************************************************************************************
 	**************************************************************************************************************/
+
 
 	FARPROC fpOldLaunchPos;
 

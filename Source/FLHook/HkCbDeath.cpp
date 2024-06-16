@@ -24,6 +24,7 @@ void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, u
 		return;
 	}
 
+	HkIEngine::playerShips.erase(ClientInfo[iClientIDVictim].cship->id);
 	ClientInfo[iClientIDVictim].cship = nullptr;
 	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 
@@ -230,8 +231,8 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		ClientInfo[iClientID].iShip = 0;
 	} CATCH_HOOK({})
 	LOG_CORE_TIMER_END
-
 }
+
 
 void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
@@ -378,6 +379,22 @@ __declspec(naked) void GuidedDestroyedNaked()
 		jmp eax
 		skipLabel :
 		ret 0x8
+	}
+}
+
+void __stdcall LootDestroyed(IObjRW* iobj)
+{
+}
+
+FARPROC LootDestroyedOrigFunc;
+__declspec(naked) void LootDestroyedNaked()
+{
+	__asm {
+		push ecx
+		push ecx
+		call LootDestroyed
+		pop ecx
+		jmp [LootDestroyedOrigFunc]
 	}
 }
 

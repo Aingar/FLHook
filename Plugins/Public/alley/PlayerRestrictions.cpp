@@ -355,11 +355,6 @@ void LoadSettings()
 	//Init();
 }
 
-void __stdcall SetVisitedState(unsigned int iClientID, unsigned char *p2, int p3)
-{
-	returncode = DEFAULT_RETURNCODE;
-}
-
 void SetFuse(uint iClientID, uint fuse, float lifetime)
 {
 	IObjInspectImpl *obj = HkGetInspect(iClientID);
@@ -1212,7 +1207,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SetVisitedState, PLUGIN_HkIServerImpl_SetVisitedState, 0));
 
 	return p_PI;
 }

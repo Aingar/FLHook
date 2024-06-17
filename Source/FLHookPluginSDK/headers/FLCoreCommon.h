@@ -2388,8 +2388,8 @@ public:
 	CExternalEquip(class CExternalEquip const &);
 	CExternalEquip(unsigned int, struct CEqObj *, unsigned short, struct Archetype::Equipment const *, bool);
 
-	//char* dunnoExtEquip; //8
-	//uint dunnoExtEquip; //9
+	char* dunnoExtEquipChar; //8
+	uint dunnoExtEquipUint; //9
 };
 
 class IMPORT CAttachedEquip : public CExternalEquip
@@ -2420,12 +2420,13 @@ public:
 	struct CObject * GetPhysicsOwner(void)const;
 	struct CObject * RetrieveDebrisObject(void);
 
-//public:
-//	uint dunnoAttEquip[2];
-//	float hitPts;
-//	uint dunnoAttEquip2;
-//	bool dunnoAttEquip;
-//	uint dunnoAttEquip3[4];
+public:
+	uint physicsVfTable;
+	uint dunnoAttEquip;
+	float hitPts;
+	uint dunnoAttEquip2;
+	bool dunnoAttEquip4;
+	uint dunnoAttEquip3[4];
 	//18
 };
 

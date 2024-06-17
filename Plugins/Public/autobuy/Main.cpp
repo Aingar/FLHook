@@ -659,7 +659,7 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 		
 		if(ammoLimit->second.launcherStackingLimit > returnMap[ammo].launcherCount)
 		{
-			++returnMap[ammo].launcherCount;
+			returnMap[ammo].launcherCount++;
 		}
 	}
 
@@ -678,7 +678,7 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 	{
 		if (mapAmmolimits.count(ammo.first))
 		{
-			ammo.second.ammoLimit = min(1, ammo.second.launcherCount) * mapAmmolimits.at(ammo.first).ammoLimit;
+			ammo.second.ammoLimit = max(1, ammo.second.launcherCount) * mapAmmolimits.at(ammo.first).ammoLimit;
 		}
 		else
 		{

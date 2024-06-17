@@ -882,6 +882,12 @@ void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
+	if (cship->hitPoints <= 0.0f)
+	{
+		incDmg = 0.0f;
+		return;
+	}
+
 	const Archetype::Ship* TheShipArchHealed = cship->shiparch();
 
 	const auto& healingData = healingMultipliers.find(TheShipArchHealed->iShipClass);

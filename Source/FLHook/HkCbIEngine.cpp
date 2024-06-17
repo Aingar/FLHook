@@ -61,7 +61,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			return;
 		}
 		float playerInterference = ClientInfo[player].cship->get_scanner_interference();
-		if (scannedPlayer)
+		if (scannedPlayer && ClientInfo[scannedPlayer].cship)
 		{
 			float scannedInterference = ClientInfo[scannedPlayer].cship->get_scanner_interference();
 			playerInterference = max(playerInterference, scannedInterference);

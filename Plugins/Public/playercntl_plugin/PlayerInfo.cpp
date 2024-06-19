@@ -9,6 +9,7 @@
 #include <plugin.h>
 #include <PluginUtilities.h>
 #include <sstream>
+#include <array>
 
 #define POPUPDIALOG_BUTTONS_LEFT_YES 1
 #define POPUPDIALOG_BUTTONS_CENTER_NO 2
@@ -24,7 +25,7 @@ struct PlayerSetInfo
 	bool pulledInfos = false;
 	bool changedSinceLastLaunch = true;
 	wstring playerInfo;
-	vector<wstring> infoVector;
+	array<wstring, 5> infoVector;
 };
 
 PlayerSetInfo playerInfoData[MAX_CLIENT_ID + 1];
@@ -230,7 +231,7 @@ wstring FormatString(wstring& text)
 {
 	wstringstream newString;
 	wstring currFormat = L"00";
-	wstring currColor = GetColorHex(TextColor::Default);
+	wstring currColor = GetColorHex(TextColor::SystemBlue);
 	for (int i = 0; i < text.size(); ++i)
 	{
 		wchar_t currChar = text.at(i);
@@ -303,9 +304,9 @@ void InitializePlayerInfo(uint clientId)
 		return;
 	}
 	wstring playerInfo = L"<RDL><PUSH/>";
-	uint paraCount = 0;
 	while (ini.read_header())
 	{
+		uint paraCounter = 0;
 		if (!ini.is_header("PlayerInfo"))
 		{
 			break;
@@ -316,15 +317,15 @@ void InitializePlayerInfo(uint clientId)
 			{
 				break;
 			}
-			if (++paraCount > MAX_PARAGRAPHS)
+			if (paraCounter > MAX_PARAGRAPHS)
 			{
 				break;
 			}
 			playerInfo += L"<TEXT>";
-			wstring playerInfoLine = stows(ini.get_value_string());
-			playerInfoData[clientId].infoVector.emplace_back(playerInfoLine);
-			playerInfo += FormatString(playerInfoLine);
+			playerInfoData[clientId].infoVector[paraCounter] = stows(ini.get_value_string());
+			playerInfo += FormatString(playerInfoData[clientId].infoVector[paraCounter]);
 			playerInfo += L"</TEXT><PARA/><PARA/>";
+			paraCounter++;
 		}
 	}
 	playerInfo += L"<POP/></RDL>";
@@ -391,18 +392,8 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 	{
 		static wstring temp = L"</TEXT><PARA/><PARA/>";
 		wstring currString = playerInfoData[iClientID].playerInfo;
-
-		if (iPara > infoVec.size())
-		{
-			PrintUserCmdText(iClientID, L"ERR You can't skip paragraphs!");
-			return false;
-		}
-		else if (iPara == infoVec.size())
-		{
-			infoVec.emplace_back(L"");
-		}
 		
-		if (!infoVec.empty() && (wscMsg.size() + infoVec[iPara].length()) > MAX_CHARACTERS)
+		if (wscMsg.size() + infoVec[iPara].length() > MAX_CHARACTERS)
 		{
 			PrintUserCmdText(iClientID, L"ERR Text will be too long!(including formatting) Current lenght: %u, Max Lenght: %u", playerInfoData[iClientID].playerInfo.length(), MAX_CHARACTERS);
 			return false;
@@ -422,7 +413,7 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 			PrintUserCmdText(iClientID, L"ERR Incorrect paragraph!");
 			return false;
 		}
-		infoVec.erase(infoVec.begin() + iPara);
+		infoVec[iPara-1].clear();
 		RecalculateInfoText(iClientID);
 		WriteInfoFile(iClientID, scFilePath);
 		PropagatePlayerInfo(iClientID);
@@ -502,7 +493,10 @@ void PlayerInfo::ClearInfo(uint clientId, bool fullClear)
 {
 	playerInfoData[clientId].initialized = false;
 	playerInfoData[clientId].playerInfo = L"";
-	playerInfoData[clientId].infoVector.clear();
+	for (wstring& str : playerInfoData[clientId].infoVector)
+	{
+		str.clear();
+	}
 	if (fullClear)
 	{
 		playerInfoData[clientId].pulledInfos = false;

@@ -151,12 +151,17 @@ bool BuildModule::Timer(uint time)
 						base->base_level = 4;
 					base->SetupDefaults();
 
+					if (base->modules[0])
+					{
+						// Delete and respawn the old core module
+						delete base->modules[0];
+						base->modules[0] = nullptr;
+						return false;
+					}
+
 					// Clear the build module slot.
 					base->modules[i] = nullptr;
 					builtCore = true;
-
-					// Delete and respawn the old core module
-					delete base->modules[0];
 
 					base->modules[0] = new CoreModule(base);
 					base->modules[0]->Spawn();

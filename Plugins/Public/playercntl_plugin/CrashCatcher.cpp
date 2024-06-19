@@ -157,36 +157,36 @@ const BYTE* __stdcall EngBase124BD_Log(const BYTE* data)
 {
 	try
 	{
-		DWORD addr = *(DWORD*)(data + 12);
-		if (addr)
-			addr = *(DWORD*)(addr + 4);
-		if (addr)
-		{
-			strncpy(cmp, (LPCSTR)addr, sizeof(cmp));
-			cmp[sizeof(cmp) - 1] = '\0';
-		}
-		else
-		{
-			*cmp = '\0';
-		}
-		addr = *(DWORD*)(data + 8);
-		if (addr)
-			addr = *(DWORD*)(addr + 4);
-		if (addr)
-		{
-			strncpy(part, (LPCSTR)addr, sizeof(part));
-			part[sizeof(part) - 1] = '\0';
-		}
-		else
-		{
-			*part = '\0';
-		}
+		//DWORD addr = *(DWORD*)(data + 12);
+		//if (addr)
+		//	addr = *(DWORD*)(addr + 4);
+		//if (addr)
+		//{
+		//	strncpy(cmp, (LPCSTR)addr, sizeof(cmp));
+		//	cmp[sizeof(cmp) - 1] = '\0';
+		//}
+		//else
+		//{
+		//	*cmp = '\0';
+		//}
+		//addr = *(DWORD*)(data + 8);
+		//if (addr)
+		//	addr = *(DWORD*)(addr + 4);
+		//if (addr)
+		//{
+		//	strncpy(part, (LPCSTR)addr, sizeof(part));
+		//	part[sizeof(part) - 1] = '\0';
+		//}
+		//else
+		//{
+		//	*part = '\0';
+		//}
 		data = *(PBYTE*)(data + 16);
 	}
 	catch (...)
 	{
-		AddLog("ERROR: Exception/Crash suppression engbase.dll:0x124BD");
-		AddLog("Cmp=%s Part=%s", cmp, part);
+		//AddLog("ERROR: Exception/Crash suppression engbase.dll:0x124BD");
+		//AddLog("Cmp=%s Part=%s", cmp, part);
 		data = 0;
 	}
 

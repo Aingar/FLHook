@@ -408,7 +408,7 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 	}
 	else if (wscCommand == L"d")
 	{
-		if (infoVec.size() <= iPara)
+		if (infoVec.size() < iPara)
 		{
 			PrintUserCmdText(iClientID, L"ERR Incorrect paragraph!");
 			return false;

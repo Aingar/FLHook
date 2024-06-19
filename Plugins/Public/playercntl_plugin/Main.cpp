@@ -1301,7 +1301,6 @@ bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
 	catch (...)
 	{
 		AddLog("ERROR: Exception in PlayerCntl::UserCmd_Process(iClientID=%u, wscCmd=%s)", iClientID, wstos(wscCmd).c_str());
-		LOG_EXCEPTION;
 	}
 	return false;
 }

@@ -2007,6 +2007,13 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	int count = gsi.iCount;
 	int price = item.sellPrice * count;
 
+	if ((item.quantity + count) > item.max_stock)
+	{
+		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
+		cd.reverse_sell = true;
+		return;
+	}
+
 	if (price < 0)
 	{
 		clients[client].reverse_sell = true;
@@ -2014,10 +2021,12 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 
 		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
-		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price)\n";
+		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price, Good = %good, Base = %base)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%good", stows(itos(gsi.iArchID)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
 		LogCheater(client, wscMsgU);
@@ -2031,13 +2040,6 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	{
 		PrintUserCmdText(client, L"ERR: Base cannot accept goods, insufficient cash");
 		clients[client].reverse_sell = true;
-		return;
-	}
-
-	if ((item.quantity + count) > item.max_stock)
-	{
-		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
-		cd.reverse_sell = true;
 		return;
 	}
 

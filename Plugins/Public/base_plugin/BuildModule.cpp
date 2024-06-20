@@ -146,10 +146,6 @@ bool BuildModule::Timer(uint time)
 				switch (this->active_recipe.shortcut_number)
 				{
 				case Module::TYPE_CORE:
-					base->base_level++;
-					if (base->base_level > 4)
-						base->base_level = 4;
-					base->SetupDefaults();
 
 					if (base->modules[0])
 					{
@@ -158,6 +154,11 @@ bool BuildModule::Timer(uint time)
 						base->modules[0] = nullptr;
 						return false;
 					}
+
+					base->base_level++;
+					if (base->base_level > 4)
+						base->base_level = 4;
+					base->SetupDefaults();
 
 					// Clear the build module slot.
 					base->modules[i] = nullptr;

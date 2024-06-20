@@ -205,9 +205,6 @@ void MoveClient(unsigned int client, unsigned int targetBase)
     if (info.bBeamed)
         return;
 
-    uint system;
-    pub::Player::GetSystem(client, system);
-
     // No plugin handled it, do it ourselves.
     Universe::IBase* base = Universe::get_base(targetBase);
     if (base)

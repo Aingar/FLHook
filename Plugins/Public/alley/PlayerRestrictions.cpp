@@ -1042,6 +1042,11 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int client)
 	//string scText = wstos(wscIp);
 	//PMLogging("PlayerLaunch: %s", scText.c_str());
 
+	if (!ClientInfo[client].cship)
+	{
+		return;
+	}
+
 	ADOCK::PlayerLaunch(iShip, client);
 	SCI::CheckOwned(client);
 	SCI::UpdatePlayerID(client);

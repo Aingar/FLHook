@@ -575,6 +575,10 @@ namespace HkIServerImpl
 
 	void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 	{
+		if (!ClientInfo[iClientID].cship)
+		{
+			return;
+		}
 		HyperJump::InitJumpDriveInfo(iClientID, true);
 		MiscCmds::PlayerLaunch(iClientID);
 		PlayerInfo::PlayerLaunch(iClientID);

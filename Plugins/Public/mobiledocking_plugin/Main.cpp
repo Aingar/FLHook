@@ -770,6 +770,10 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (!ClientInfo[client].cship)
+	{
+		return;
+	}
 
 	if (ClientInfo[client].cship->type & (Cruiser | Capital))
 	{

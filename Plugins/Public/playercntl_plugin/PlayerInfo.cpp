@@ -295,6 +295,10 @@ wstring FormatString(wstring& text)
 void InitializePlayerInfo(uint clientId)
 {
 	playerInfoData[clientId].initialized = true;
+	for (wstring& str : playerInfoData[clientId].infoVector)
+	{
+		str.clear();
+	}
 	wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(clientId);
 
 	string scFilePath = GetUserFilePath(playerName, "-info.ini");

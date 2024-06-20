@@ -217,6 +217,51 @@ namespace BaseGroupMessage
 	enum Type;
 };
 
+struct IObjRW;
+
+struct MetaListNode
+{
+	MetaListNode* next;
+	MetaListNode* prev;
+	IObjRW* value;
+};
+
+struct MetaList
+{
+	uint vtable;
+	MetaListNode* start;
+	MetaListNode* end;
+	uint dunno[2];
+};
+
+struct IMPORT StarSystem
+{
+	unsigned int count_players(unsigned int)const;
+
+public:
+	uint vftable; //0
+	uint dunno[12]; //4
+	MetaList shipList; // 52/13
+	MetaList lootList; // 72/18
+	MetaList solarList; // 92/23
+	MetaList guidedList; // 112
+	MetaList bulletList; // 132
+	MetaList mineList; // 152
+	MetaList counterMeasureList; // 172
+	MetaList asteroidList; // 192
+};
+
+struct StarSystemMock
+{
+	uint systemId;
+	StarSystem starSystem;
+};
+
+namespace SysDB
+{
+	IMPORT  std::map<uint, StarSystem, std::less<uint>, std::allocator<StarSystem>> SysMap;
+};
+
 class IMPORT CPlayerGroup
 {
 public:
@@ -603,50 +648,6 @@ namespace SrvAsteroid
 		unsigned char data[OBJECT_DATA_SIZE];
 	};
 
-};
-
-struct MetaListNode
-{
-	MetaListNode* next;
-	MetaListNode* prev;
-	IObjRW* value;
-};
-
-struct MetaList
-{
-	uint vtable;
-	MetaListNode* start;
-	MetaListNode* end;
-	uint dunno[2];
-};
-
-
-struct IMPORT StarSystem
-{
-	unsigned int count_players(unsigned int)const;
-
-public:
-	uint vftable; //0
-	uint dunno[12]; //4
-	MetaList shipList; // 52/13
-	MetaList lootList; // 72/18
-	MetaList solarList; // 92/23
-	MetaList guidedList; // 112
-	MetaList bulletList; // 132
-	MetaList mineList; // 152
-	MetaList counterMeasureList; // 172
-	MetaList asteroidList; // 192
-};
-
-struct StarSystemMock
-{
-	uint systemId;
-	StarSystem starSystem;
-};
-
-namespace SysDB
-{
-	IMPORT  std::map<uint, StarSystem, std::less<uint>, std::allocator<StarSystem>> SysMap;
 };
 
 namespace Controller

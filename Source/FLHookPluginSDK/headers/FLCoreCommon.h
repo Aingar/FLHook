@@ -2222,9 +2222,9 @@ public:
 	
 	uint dunnoCSimple;       // 39
 	uint dunnoTargetable;    // 40
-	uint dunnoScanner;       // 41
-	uint dunnoCSimple3;      // 42
-	struct IObjDB* objDB;    // 43
+	Universe::IZone* currentDamageZone;// 41
+	float zoneDmgMultiplier; // 42
+	void* starSystem;  // 43
 	uint id;                 // 44
 	uint ownerPlayer;        // 45
 	float hitPoints;         // 46
@@ -5591,6 +5591,20 @@ struct IObjRW : public IObjRWAbstract, public CShipAbstract, public CBase
 	int iDunno_0x84;   // 0x80 length
 	byte bDunno_0x88;  // flagged on ShipDestroyed
 	int iDunno_0x8C;
+	int iDunno_0x90;
+	int iDunno_0x94;
+	bool bDunno_0x98;
+	int iDunno_0x9C;
+	float Dunno_0xA0;
+	int* iDunno_0xA4; // struct size 0x28
+	uint A4Size;
+	int iDunno_0xAC;
+	int iDunno_0xB0;
+	int iDunno_0xB4;
+	bool bDunno_0xB8;
+	float pendingEnvironmentalDamage;
+	float timeSinceLastUpdate;
+	uint equipIdMaker;
 };
 
 class IMPORT ImageNode

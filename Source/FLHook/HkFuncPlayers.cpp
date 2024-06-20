@@ -261,7 +261,7 @@ HK_ERROR HkBeamById(const uint clientId, const uint baseId)
 	if (!baseInfo)
 	{
 		PrintUserCmdText(clientId, L"Beam impossible, invalid base %x!", baseId);
-		return;
+		return HKE_INVALID_BASENAME;
 	}
 	pub::Player::ForceLand(clientId, baseId);
 	if (systemId != baseInfo->iSystemID)

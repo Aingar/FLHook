@@ -13,7 +13,7 @@
 #include <hookext_exports.h>
 
 CoreModule::CoreModule(PlayerBase* the_base) : Module(TYPE_CORE), base(the_base), space_obj(0), dont_eat(false),
-dont_rust(false), wasDamagedSinceLastUpdate(false), undergoingDestruction(false)
+dont_rust(false), baseHealthChanged(false), undergoingDestruction(false)
 {
 	cargoSpace = core_upgrade_storage[the_base->base_level];
 }
@@ -216,7 +216,7 @@ void CoreModule::SaveState(FILE* file)
 	fprintf(file, "dont_rust = %d\n", dont_rust);
 }
 
-void CoreModule::RepairDamage(float max_base_health)
+void CoreModule::RepairDamage()
 {
 	// no food & no water & no oxygen = RIOTS
 	if (!base->isCrewSupplied)
@@ -227,13 +227,14 @@ void CoreModule::RepairDamage(float max_base_health)
 	// The bigger the base the more damage can be repaired.
 	for (REPAIR_ITEM& item : set_base_repair_items)
 	{
-		if (base->base_health >= max_base_health)
+		if (base->base_health >= base->max_base_health)
 			return;
 
 		if (base->HasMarketItem(item.good) >= item.quantity)
 		{
 			base->RemoveMarketGood(item.good, item.quantity);
 			base->base_health += repair_per_repair_cycle * base->base_level;
+			baseHealthChanged = true;
 		}
 	}
 }
@@ -288,7 +289,7 @@ bool CoreModule::Timer(uint time)
 	uint number_of_crew = base->HasMarketItem(set_base_crew_type);
 	bool isCrewSufficient = number_of_crew >= (base->base_level * 200);
 
-	if (wasDamagedSinceLastUpdate)
+	if (baseHealthChanged)
 	{
 		base->base_health = base->baseCSolar->get_hit_pts();
 	}
@@ -305,7 +306,7 @@ bool CoreModule::Timer(uint time)
 
 	if (isCrewSufficient)
 	{
-		RepairDamage(base->max_base_health);
+		RepairDamage();
 	}
 
 	if (base->base_health > base->max_base_health)
@@ -318,9 +319,9 @@ bool CoreModule::Timer(uint time)
 		return SpaceObjDestroyed(space_obj);
 	}
 
-	if (wasDamagedSinceLastUpdate)
+	if (baseHealthChanged)
 	{
-		wasDamagedSinceLastUpdate = false;
+		baseHealthChanged = false;
 		base->baseCSolar->set_hit_pts(base->base_health);
 	}
 
@@ -421,10 +422,10 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		base->shield_strength_multiplier += shield_reinforcement_increment;
 	}
 
-	if (!wasDamagedSinceLastUpdate)
+	if (!baseHealthChanged)
 	{
 		base->baseCSolar->set_hit_pts(base->base_health);
-		wasDamagedSinceLastUpdate = true;
+		baseHealthChanged = true;
 	}
 
 	base->SpaceObjDamaged(space_obj, attacking_space_obj, incoming_damage);

@@ -17,6 +17,8 @@
 
 bool set_SkipUnchartedKill = false;
 
+string lastDespawnedFilename;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -2605,6 +2607,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			return true;
 		}
 
+		lastDespawnedFilename = base->path;
 		base->base_health = 0;
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
@@ -2621,8 +2624,16 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		wstring baseName = cmd->ArgStrToEnd(1);
 
-		// Load and spawn all bases
-		string path = string(datapath) + R"(\Accts\MultiPlayer\player_bases\)" + wstos(baseName) + ".ini";
+		string path;
+
+		if (baseName.empty())
+		{
+			path = lastDespawnedFilename;
+		}
+		else
+		{
+			path = string(datapath) + R"(\Accts\MultiPlayer\player_bases\)" + wstos(baseName) + ".ini";
+		}
 
 		WIN32_FIND_DATA findfile;
 		HANDLE h = FindFirstFile(path.c_str(), &findfile);

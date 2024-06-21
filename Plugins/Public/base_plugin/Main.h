@@ -164,7 +164,7 @@ public:
 	// If true, do not take damage
 	bool dont_rust;
 
-	bool wasDamagedSinceLastUpdate;
+	bool baseHealthChanged;
 	bool undergoingDestruction;
 
 	CoreModule(PlayerBase* the_base);
@@ -181,7 +181,7 @@ public:
 	void SetReputation(int player_rep, float attitude);
 	void EnableShieldFuse(bool shieldState);
 
-	void RepairDamage(float max_base_health);
+	void RepairDamage();
 };
 
 class StorageModule : public Module

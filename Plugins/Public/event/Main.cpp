@@ -609,6 +609,22 @@ void LoadSettings()
 	ConPrint(L"EVENT DEBUG: Loaded %u event data\n", iLoaded2);
 	ConPrint(L"EVENT DEBUG: Loaded %u event player data\n", iLoaded3);
 
+	CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT info;
+	unordered_map<uint, unordered_set<uint>> pobData;
+	for (auto& te : mapTradeEvents)
+	{
+		for (auto& pobEntry : te.second.pobStartBase)
+		{
+			pobData[pobEntry].insert(te.second.uCommodityID);
+		}
+		for (auto& pobExit : te.second.pobEndBase)
+		{
+			pobData[pobExit].insert(te.second.uCommodityID);
+		}
+	}
+	info.data = pobData;
+	Plugin_Communication(CUSTOM_POB_EVENT_NOTIFICATION_INIT, &info);
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1546,6 +1562,26 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 
 	return false;
 }
+
+
+void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (msg == CUSTOM_POB_EVENT_NOTIFICATION_BUY)
+	{
+		auto info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_BUY_STRUCT*>(data);
+		GFGoodBuy_AFTER(info->info, info->clientId);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+	else if (msg == CUSTOM_POB_EVENT_NOTIFICATION_SELL)
+	{
+		auto info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_SELL_STRUCT*>(data);
+		GFGoodSell_AFTER(info->info, info->clientId);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions to hook
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1567,6 +1603,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SendDeathMsg, PLUGIN_SendDeathMsg, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	return p_PI;

@@ -277,6 +277,9 @@ enum PLUGIN_MESSAGE
 	CUSTOM_POB_DOCK_ALERT = 61,
 	CUSTOM_SHIELD_STATE_CHANGE = 62,
 	CUSTOM_EVENT_ECON_UPDATE = 63,
+	CUSTOM_POB_EVENT_NOTIFICATION_INIT = 64,
+	CUSTOM_POB_EVENT_NOTIFICATION_BUY = 65,
+	CUSTOM_POB_EVENT_NOTIFICATION_SELL = 66,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -481,6 +484,22 @@ struct CUSTOM_SHIELD_CHANGE_STATE_STRUCT
 	ShieldSource source;
 };
 
+struct CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT
+{
+	unordered_map<uint, unordered_set<uint>> data;
+};
+
+struct CUSTOM_POB_EVENT_NOTIFICATION_BUY_STRUCT
+{
+	uint clientId;
+	SGFGoodBuyInfo info;
+};
+
+struct CUSTOM_POB_EVENT_NOTIFICATION_SELL_STRUCT
+{
+	uint clientId;
+	SGFGoodSellInfo info;
+};
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif

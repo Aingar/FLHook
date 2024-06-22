@@ -19,6 +19,8 @@ bool set_SkipUnchartedKill = false;
 
 string lastDespawnedFilename;
 
+unordered_map<uint, unordered_set<uint>> eventCommodities;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -2135,6 +2137,15 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	{
 		base->pinned_item_updated = true;
 	}
+
+	auto iter = eventCommodities.find(base->base);
+	if (iter != eventCommodities.end() && iter->second.count(gsi.iArchID))
+	{
+		CUSTOM_POB_EVENT_NOTIFICATION_SELL_STRUCT info;
+		info.clientId = client;
+		info.info = gsi;
+		Plugin_Communication(CUSTOM_POB_EVENT_NOTIFICATION_SELL, &info);
+	}
 }
 
 void __stdcall ReqRemoveItem(unsigned short slot, int count, unsigned int client)
@@ -2258,6 +2269,15 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		{
 			returncode = SKIPPLUGINS;
 			PrintUserCmdText(client, L"Purchased hull");
+		}
+
+		auto iter = eventCommodities.find(base->base);
+		if (iter != eventCommodities.end() && iter->second.count(gbi.iGoodID))
+		{
+			CUSTOM_POB_EVENT_NOTIFICATION_BUY_STRUCT info;
+			info.clientId = client;
+			info.info = gbi;
+			Plugin_Communication(CUSTOM_POB_EVENT_NOTIFICATION_BUY, &info);
 		}
 	}
 }
@@ -3062,6 +3082,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (base)
 		{
 			clients[client].admin = true;
+			SendMarketGoodSync(base, client);
 		}
 
 		PrintUserCmdText(client, L"Logged in as admin");
@@ -3182,6 +3203,12 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 			PrintLocalMsgAroundObject(CreateID(pb->nickname.c_str()), *info->msg, info->range);
 		}
 	}
+	else if (msg == CUSTOM_POB_EVENT_NOTIFICATION_INIT)
+	{
+		returncode = SKIPPLUGINS;
+		CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT* info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT*>(data);
+		eventCommodities = info->data;
+	}
 	return;
 }
 
@@ -3280,7 +3307,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->ePluginReturnCode = &returncode;
   
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Shutdown, PLUGIN_HkIServerImpl_Shutdown, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 1));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect, 0));

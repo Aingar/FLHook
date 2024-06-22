@@ -67,15 +67,15 @@ struct TRADE_EVENT {
 	string sEventName;
 	string sURL;
 	int iBonusCash;
-	uint uStartBase;
-	uint uEndBase;
-	bool bFLHookBase = false;
-	string sFLHookBaseName;
+	unordered_set<uint> uStartBase;
+	unordered_set<uint> pobStartBase;
+	unordered_set<uint> uEndBase;
+	unordered_set<uint> pobEndBase;
 	int iObjectiveMax = INT32_MAX;
 	int iObjectiveCurrent = 0; // Always 0 to prevent having no data
 	uint uCommodityID;
 	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
-	list<uint> lAllowedIDs;
+	unordered_set<uint> lAllowedIDs;
 	time_t startTime = 0;
 	time_t endTime = 0;
 	map<uint, market_map_t> eventEconOverride;
@@ -253,7 +253,7 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						te.uStartBase = baseHash;
+						te.uStartBase.insert(baseHash);
 					}
 					else if (ini.is_value("endbase"))
 					{
@@ -264,7 +264,7 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						te.uEndBase = baseHash;
+						te.uEndBase.insert(baseHash);
 					}
 					else if (ini.is_value("bonus"))
 					{
@@ -299,15 +299,15 @@ void LoadSettings()
 							break;
 						}
 						addedIds.insert(idHash);
-						te.lAllowedIDs.push_back(CreateID(ini.get_value_string(0)));
+						te.lAllowedIDs.insert(CreateID(ini.get_value_string(0)));
 					}
-					else if (ini.is_value("flhookbase"))
+					else if (ini.is_value("flhookstartbase"))
 					{
-						te.bFLHookBase = ini.get_value_bool(0);
+						te.pobStartBase.insert(CreateID(ini.get_value_string()));
 					}
-					else if (ini.is_value("flhookbasename"))
+					else if (ini.is_value("flhookendbase"))
 					{
-						te.sFLHookBaseName = ini.get_value_string(0);
+						te.pobEndBase.insert(CreateID(ini.get_value_string()));
 					}
 					else if (ini.is_value("starttime"))
 					{
@@ -722,8 +722,6 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 			//else disable event mode
 			HookExt::IniSetB(iClientID, "event.enabled", false);
 			HookExt::IniSetWS(iClientID, "event.eventid", L"");
-			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 			HookExt::IniSetI(iClientID, "event.quantity", 0);
 			PrintUserCmdText(iClientID, L"You have been unregistered from an expired event.");
 			Notify_TradeEvent_Exit(iClientID, eventid, "Logged in with expired event data");
@@ -760,18 +758,9 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			//leave event mode
 			HookExt::IniSetB(iClientID, "event.enabled", false);
 			HookExt::IniSetWS(iClientID, "event.eventid", L"");
-			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 			HookExt::IniSetI(iClientID, "event.quantity", 0);
 			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(mapTradeEvents[eventid].sEventName).c_str());
 			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Interacted with commodity on non-event station");
-		}
-
-		//this is as an if so if the player exited event mode he can reenter event mode
-		//check if this is the event's stating point
-		if (gbi.iBaseID != i->second.uStartBase)
-		{
-			continue;
 		}
 
 		if (i->second.bLimited)
@@ -779,16 +768,21 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			uint pID = GetPlayerId(iClientID);
 			bool bFoundID = false;
 
-			for (list<uint>::iterator i2 = i->second.lAllowedIDs.begin(); i2 != i->second.lAllowedIDs.end(); ++i2)
+			if(!i->second.lAllowedIDs.count(pID))
 			{
-				if (*i2 == pID)
-				{
-					bFoundID = true;
-					break;
-				}
+				continue;
 			}
+		}
 
-			if (!bFoundID)
+		//this is as an if so if the player exited event mode he can reenter event mode
+		//check if this is the event's stating point
+		if (!i->second.uStartBase.count(gbi.iBaseID))
+		{
+			CUSTOM_BASE_IS_DOCKED_STRUCT info;
+			info.iClientID = iClientID;
+			info.iDockedBaseID = 0;
+			Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info);
+			if (!i->second.pobStartBase.count(info.iDockedBaseID))
 			{
 				continue;
 			}
@@ -796,17 +790,6 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 
 		HookExt::IniSetB(iClientID, "event.enabled", true);
 		HookExt::IniSetWS(iClientID, "event.eventid", stows(i->first));
-
-		if (i->second.bFLHookBase == true)
-		{
-			HookExt::IniSetWS(iClientID, "event.eventpob", stows(i->second.sFLHookBaseName));
-			HookExt::IniSetI(iClientID, "event.eventpobcommodity", i->second.uCommodityID);
-		}
-		else
-		{
-			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
-		}
 
 		int currentCount = gbi.iCount;
 		for (auto& equip : Players[iClientID].equipDescList.equip)
@@ -851,90 +834,76 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 		pub::Player::GetBase(iClientID, iBaseID);
 
 		//check if this is the event's end point
-		if (iBaseID == i->second.uEndBase)
+		if (!i->second.uEndBase.count(iBaseID))
 		{
-			int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
-
-			if (gsi.iCount > iInitialCount)
+			CUSTOM_BASE_IS_DOCKED_STRUCT info;
+			info.iClientID = iClientID;
+			info.iDockedBaseID = 0;
+			Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info);
+			if (!i->second.pobStartBase.count(info.iDockedBaseID))
 			{
 				//leave event mode
 				HookExt::IniSetB(iClientID, "event.enabled", false);
 				HookExt::IniSetWS(iClientID, "event.eventid", L"");
-				HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-				HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 				HookExt::IniSetI(iClientID, "event.quantity", 0);
-				PrintUserCmdText(iClientID, L"You have been unregistered from the event for having more cargo than you bought: %s", stows(i->second.sEventName).c_str());
-				Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Delivered more cargo than bought at start point");
+				PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
+				Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
 				return;
 			}
-			else
-			{
-				if (i->second.bFLHookBase)
-				{
-					//do nothing as FLHook base rewards are handled differently.
-					continue;
-				}
-
-				HookExt::IniSetB(iClientID, "event.enabled", false);
-				HookExt::IniSetWS(iClientID, "event.eventid", L"");
-				HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-				HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
-				HookExt::IniSetI(iClientID, "event.quantity", 0);
-
-				int bonus = 0;
-
-				pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-				PrintUserCmdText(iClientID, L"You have finished the event: %s", stows(i->second.sEventName).c_str());
-
-				wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-
-				if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
-				{
-					PrintUserCmdText(iClientID, L"Sorry, this event is currently completed.");
-					Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Completed trade run but event is completed");
-					return;
-				}
-				else if ((i->second.iObjectiveCurrent + gsi.iCount) >= i->second.iObjectiveMax)
-				{
-					int amount = (i->second.iObjectiveCurrent + gsi.iCount) - i->second.iObjectiveMax;
-					bonus = i->second.iBonusCash * amount;
-					mapEventTracking[i->first].PlayerEventData[wscCharname] += amount;
-
-					i->second.iObjectiveCurrent = i->second.iObjectiveMax;
-
-					PrintUserCmdText(iClientID, L"You have completed the final delivery. Congratulations !");
-					Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "NOTIFICATION: Final Delivery");
-				}
-				else
-				{
-					bonus = i->second.iBonusCash * gsi.iCount;
-					i->second.iObjectiveCurrent += gsi.iCount;
-					mapEventTracking[i->first].PlayerEventData[wscCharname] += gsi.iCount;
-				}
-
-
-
-
-				HkAddCash(wscCharname, bonus);
-
-				PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
-				Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
-
-
-
-			}
 		}
-		else if (!i->second.bFLHookBase)
+		int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
+
+		if (gsi.iCount > iInitialCount)
 		{
 			//leave event mode
 			HookExt::IniSetB(iClientID, "event.enabled", false);
 			HookExt::IniSetWS(iClientID, "event.eventid", L"");
-			HookExt::IniSetWS(iClientID, "event.eventpob", L"");
-			HookExt::IniSetI(iClientID, "event.eventpobcommodity", 0);
 			HookExt::IniSetI(iClientID, "event.quantity", 0);
-			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
-			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
+			PrintUserCmdText(iClientID, L"You have been unregistered from the event for having more cargo than you bought: %s", stows(i->second.sEventName).c_str());
+			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Delivered more cargo than bought at start point");
+			return;
 		}
+		
+		HookExt::IniSetB(iClientID, "event.enabled", false);
+		HookExt::IniSetWS(iClientID, "event.eventid", L"");
+		HookExt::IniSetI(iClientID, "event.quantity", 0);
+
+		int bonus = 0;
+
+		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
+		PrintUserCmdText(iClientID, L"You have finished the event: %s", stows(i->second.sEventName).c_str());
+
+		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+
+		if (i->second.iObjectiveCurrent == i->second.iObjectiveMax)
+		{
+			PrintUserCmdText(iClientID, L"Sorry, this event is currently completed.");
+			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Completed trade run but event is completed");
+			return;
+		}
+		else if ((i->second.iObjectiveCurrent + gsi.iCount) >= i->second.iObjectiveMax)
+		{
+			int amount = (i->second.iObjectiveCurrent + gsi.iCount) - i->second.iObjectiveMax;
+			bonus = i->second.iBonusCash * amount;
+			mapEventTracking[i->first].PlayerEventData[wscCharname] += amount;
+
+			i->second.iObjectiveCurrent = i->second.iObjectiveMax;
+
+			PrintUserCmdText(iClientID, L"You have completed the final delivery. Congratulations !");
+			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "NOTIFICATION: Final Delivery");
+		}
+		else
+		{
+			bonus = i->second.iBonusCash * gsi.iCount;
+			i->second.iObjectiveCurrent += gsi.iCount;
+			mapEventTracking[i->first].PlayerEventData[wscCharname] += gsi.iCount;
+		}
+
+		HkAddCash(wscCharname, bonus);
+
+		PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
+		Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
+
 	}
 }
 
@@ -994,8 +963,6 @@ void ReadHookExtEventData()
 				//leave event mode
 				HookExt::IniSetB(iter->first, "event.enabled", false);
 				HookExt::IniSetWS(iter->first, "event.eventid", L"");
-				HookExt::IniSetWS(iter->first, "event.eventpob", L"");
-				HookExt::IniSetI(iter->first, "event.eventpobcommodity", 0);
 				HookExt::IniSetI(iter->first, "event.quantity", 0);
 
 				PrintUserCmdText(iter->first, L"You have finished the event: %s", stows(mapTradeEvents[iter->second.eventid].sEventName).c_str());
@@ -1351,8 +1318,6 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 		//else disable event mode
 		HookExt::IniSetB(iClientIDVictim, "event.enabled", false);
 		HookExt::IniSetWS(iClientIDVictim, "event.eventid", L"");
-		HookExt::IniSetWS(iClientIDVictim, "event.eventpob", L"");
-		HookExt::IniSetI(iClientIDVictim, "event.eventpobcommodity", 0);
 		HookExt::IniSetI(iClientIDVictim, "event.quantity", 0);
 		PrintUserCmdText(iClientIDVictim, L"You have died and have been unregistered from the event: %s", stows(mapTradeEvents[sIDVictimEvent].sEventName).c_str());
 	}

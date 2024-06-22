@@ -1,5 +1,4 @@
-#ifndef _HOOK_
-#define _HOOK_
+#pragma once
 
 #include <time.h>
 #if _MSC_VER == 1200
@@ -14,6 +13,12 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // defines
+
+
+using st6_malloc_t = void* (*)(size_t);
+using st6_free_t = void(*)(void*);
+EXPORT extern st6_malloc_t st6_malloc;
+EXPORT extern st6_free_t st6_free;
 
 #define CORE_TIMER_LOGGING
 #define HOOK_TIMER_LOGGING
@@ -821,6 +826,8 @@ void ShipColGrpDestroyedHookNaked();
 void SolarColGrpDestroyedHookNaked();
 
 // HkDamage
+void __fastcall ApplyShipDamageList(IObjRW* ship, void* edx, DamageList* dmg);
+void ApplyShipDamageListNaked();
 void HookExplosionHitNaked();
 void ShipHullDamageNaked();
 void SolarHullDamageNaked();
@@ -902,6 +909,7 @@ extern EXPORT bool g_bMsg;
 extern EXPORT bool g_bMsgS;
 extern EXPORT bool g_bMsgU;
 
+extern FARPROC ApplyShipDamageListOrigFunc;
 extern FARPROC ColGrpDeathOrigFunc;
 extern FARPROC AllowPlayerDamageOrigFunc;
 extern FARPROC fpOldShipDestroyed;
@@ -946,5 +954,3 @@ extern list<stHelpEntry> lstHelpEntries;
 extern EXPORT bool get_bTrue(uint iClientID);
 extern EXPORT void HkAddHelpEntry(const wstring &wscCommand, const wstring &wscArguments, const wstring & wscShortHelp, const wstring &wscLongHelp, _HelpEntryDisplayed fnIsDisplayed);
 extern EXPORT void HkRemoveHelpEntry(const wstring &wscCommand, const wstring &wscArguments);
-
-#endif

@@ -43,6 +43,48 @@ __declspec(naked) void HookExplosionHitNaked()
 Called when ship was damaged
 **************************************************************************************************************/
 
+FARPROC ApplyShipDamageListOrigFunc;
+
+void __stdcall SetDamageToOne(IObjRW* ship, DamageList* dmg, uint source)
+{
+	if (source != 0x6cfe254) // only work when dmg source is a damage fuse
+	{
+		return;
+	}
+	for (auto& dmgEntry : dmg->damageentries)
+	{
+		if (dmgEntry.subobj == 1 && dmgEntry.health <= 0.0f)
+		{
+			dmgEntry.health = 0.1f;
+			CShip* cship = (CShip*)ship->cobj;
+			cship->isAlive = true;
+		}
+	}
+}
+
+__declspec(naked) void ApplyShipDamageListNaked()
+{
+	__asm {
+		push ecx
+		push[esp + 0x4]
+		push[esp + 0xC]
+		push ecx
+		call SetDamageToOne
+		pop ecx
+		jmp ApplyShipDamageListOrigFunc
+	}
+}
+
+
+void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg)
+{
+	if (ship->cobj->ownerPlayer)
+	{
+		ship->damage_hull(15.f, dmg);
+		ConPrint(L"%f %f\n", ship->timer, ship->timeSinceLastUpdate);
+	}
+}
+
 FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
 
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)

@@ -3063,7 +3063,7 @@ public:
 	uint voiceId;                                              // 79
 	float cloakPercentage;                                     // 80
 	CArchGroupManager archGroupManager;                        // 81
-	bool isCELauncher;                                         // 87 sub_6CEA4A0 casts eq to CELauncher only if this is true
+	bool isAlive;											   // 87
 	uint dockTargetId;                                         // 88
 	uint dockTargetId2;				                           // 89
 	INotify* notifyPtr;                                        // 90
@@ -5464,7 +5464,7 @@ struct IObjRWAbstract
 	virtual void sub_6CE9250(void* unk, DamageList*);        // 380
 	virtual void sub_6CE9350(void* unk, DamageList*);        // 384
 	virtual void process_all_explosion_damage(ExplosionDamageEvent*, DamageList*); // calls methods 508-520         //388
-	virtual void sub_6D01A10();                                                    // 392
+	virtual void applyDamageList(DamageList*);                                     // 392 sub_6D01A10
 	virtual bool get_dunno_0x41();                                                 // 396
 	virtual void sub_6CEEFA0();                                                    // 400
 	virtual void sub_6CEF0F0();                                                    // 404

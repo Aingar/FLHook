@@ -4,10 +4,9 @@
 #include "CConsole.h"
 #include "CSocket.h"
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-EXPORT st6_malloc_t st6_malloc;
-EXPORT st6_free_t st6_free;
+st6_malloc_t st6_malloc;
+st6_free_t st6_free;
+
 // structs
 struct SOCKET_CONNECTION
 {

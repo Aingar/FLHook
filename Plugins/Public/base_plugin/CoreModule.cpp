@@ -25,6 +25,7 @@ CoreModule::~CoreModule()
 		if (base->baseCSolar)
 		{
 			POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+			base->baseCSolar = nullptr;
 		}
 		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);

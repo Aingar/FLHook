@@ -196,42 +196,52 @@ void StoreReturnPointForClient(unsigned int client)
 
 void MoveClient(unsigned int client, unsigned int targetBase)
 {
-    // Ask that another plugin handle the beam.
-    CUSTOM_BASE_BEAM_STRUCT info;
-    info.iClientID = client;
-    info.iTargetBaseID = targetBase;
-    info.bBeamed = false;
-    Plugin_Communication(CUSTOM_BASE_BEAM, &info);
-    if (info.bBeamed)
-        return;
-
-    // No plugin handled it, do it ourselves.
-    Universe::IBase* base = Universe::get_base(targetBase);
-    if (base)
+    try
     {
-        HkBeamById(client, targetBase);
-    }
-    else
-    {
-        //All else failed, move to proxy base
-        uint returnSys = HookExt::IniGetI(client, "conn.retsystembackup");
-        auto sysInfo = Universe::get_system(returnSys);
-        if (!sysInfo)
-        {
-            PrintUserCmdText(client, L"Return impossible, contact staff");
+        // Ask that another plugin handle the beam.
+        CUSTOM_BASE_BEAM_STRUCT info;
+        info.iClientID = client;
+        info.iTargetBaseID = targetBase;
+        info.bBeamed = false;
+        Plugin_Communication(CUSTOM_BASE_BEAM, &info);
+        if (info.bBeamed)
             return;
-        }
-        string scProxyBase = (string)((const char*)sysInfo->nickname) + "_proxy_base";
-        uint proxyBaseID;
-        if (pub::GetBaseID(proxyBaseID, scProxyBase.c_str()) == -4)
-        {
-            PrintUserCmdText(client, L"Return impossible, contact staff");
-            return;
-        }
-        PrintUserCmdText(client, L"Player base renamed/destroyed, ship redirected to a proxy base");
-        HkBeamById(client, proxyBaseID);
-    }
 
+        // No plugin handled it, do it ourselves.
+        Universe::IBase* base = Universe::get_base(targetBase);
+        if (base)
+        {
+            HkBeamById(client, targetBase);
+        }
+        else
+        {
+            //All else failed, move to proxy base
+            uint returnSys = HookExt::IniGetI(client, "conn.retsystembackup");
+            auto sysInfo = Universe::get_system(returnSys);
+            if (!sysInfo)
+            {
+                PrintUserCmdText(client, L"Return impossible, contact staff");
+                return;
+            }
+            string scProxyBase = (string)((const char*)sysInfo->nickname) + "_proxy_base";
+            uint proxyBaseID;
+            if (pub::GetBaseID(proxyBaseID, scProxyBase.c_str()) == -4)
+            {
+                PrintUserCmdText(client, L"Return impossible, contact staff");
+                return;
+            }
+            PrintUserCmdText(client, L"Player base renamed/destroyed, ship redirected to a proxy base");
+            HkBeamById(client, proxyBaseID);
+        }
+    }
+    catch (...)
+    {
+        string charName = wstos((const wchar_t*)Players.GetActiveCharacterName(client));
+        AddLog("Exception! %s failed to beam to/from conn. Base %x", charName.c_str(), targetBase);
+
+        CAccount* acc = Players.FindAccountFromClientID(client);
+        acc->ForceLogout();
+    }
 }
 
 bool CheckReturnDock(unsigned int client, unsigned int target)

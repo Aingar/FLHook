@@ -238,10 +238,7 @@ void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	LOG_CORE_TIMER_START
 	TRY_HOOK
-	if (isKill)
-	{
-		CALL_PLUGINS_V(PLUGIN_BaseDestroyed, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
-	}
+	CALL_PLUGINS_V(PLUGIN_BaseDestroyed, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
 	CATCH_HOOK({})
 	LOG_CORE_TIMER_END
 }

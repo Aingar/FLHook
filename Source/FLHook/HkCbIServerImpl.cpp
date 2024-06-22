@@ -322,6 +322,11 @@ namespace HkIServerImpl
 		pub::SpaceObj::SetInvincible2(iShip, false, false, 0.0f);
 
 		CShip* playerCship = reinterpret_cast<CShip*>(CObject::Find(iShip, CObject::CSHIP_OBJECT));
+		if (!playerCship)
+		{
+			AddLog("Player %s failed to launch!", wstos((wchar_t*)Players.GetActiveCharacterName(iClientID)));
+			return;
+		}
 		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
 		ClientInfo[iClientID].cship = playerCship;
 		HkIEngine::playerShips.insert(iShip);

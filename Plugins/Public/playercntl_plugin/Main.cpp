@@ -1304,6 +1304,7 @@ bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
 	}
 	catch (...)
 	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		AddLog("ERROR: Exception in PlayerCntl::UserCmd_Process(iClientID=%u, wscCmd=%s)", iClientID, wstos(wscCmd).c_str());
 	}
 	return false;

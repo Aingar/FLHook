@@ -946,7 +946,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
     uint loot1Id = 0;
     uint loot2Id = 0;
 
-    TranslateX(pos, ori, -400);
+    TranslateZ(pos, ori, -400);
 
     CmnAsteroid::CAsteroidSystem* csys = CmnAsteroid::Find(systemId);
     if (!csys)

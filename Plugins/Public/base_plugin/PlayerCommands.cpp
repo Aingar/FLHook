@@ -1606,12 +1606,18 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"Defense Modules:");
 			for (uint index = 0; index < base->modules.size(); index++)
 			{
+				Matrix transposedRotation = TransposeMatrix(base->rotation);
 				DefenseModule* mod = dynamic_cast<DefenseModule*>(base->modules[index]);
 				if (mod)
 				{
-					PrintUserCmdText(client, L"Module %u: Position %0.0f %0.0f %0.0f Orient %0.0f %0.0f %0.0f",
-						index, mod->pos.x, mod->pos.y, mod->pos.z,
-						mod->rot.z, mod->rot.y, mod->rot.z);
+					Vector relativePos = mod->pos;
+					relativePos.x -= base->position.x;
+					relativePos.y -= base->position.y;
+					relativePos.z -= base->position.z;
+					relativePos = VectorMatrixMultiply(relativePos, transposedRotation);
+
+					PrintUserCmdText(client, L"Module %u: Position %0.0f %0.0f %0.0f",
+						index, relativePos.x, relativePos.y, relativePos.z);
 				}
 			}
 			PrintUserCmdText(client, L"OK");
@@ -1622,16 +1628,16 @@ namespace PlayerCommands
 			float x = (float)ToInt(GetParam(args, ' ', 4));
 			float y = (float)ToInt(GetParam(args, ' ', 5));
 			float z = (float)ToInt(GetParam(args, ' ', 6));
-			float rx = (float)ToInt(GetParam(args, ' ', 7));
-			float ry = (float)ToInt(GetParam(args, ' ', 8));
-			float rz = (float)ToInt(GetParam(args, ' ', 9));
 			if (index < base->modules.size() && base->modules[index])
 			{
 				DefenseModule* mod = dynamic_cast<DefenseModule*>(base->modules[index]);
 				if (mod)
 				{
 					// Distance from base is limited to 5km
-					Vector new_pos = { x, y, z };
+					Vector new_pos = base->position;
+					TranslateX(new_pos, base->rotation, x);
+					TranslateY(new_pos, base->rotation, y);
+					TranslateZ(new_pos, base->rotation, z);
 					if (HkDistance3D(new_pos, base->position) > 5000)
 					{
 						PrintUserCmdText(client, L"ERR Out of range");
@@ -1639,13 +1645,9 @@ namespace PlayerCommands
 					}
 
 					mod->pos = new_pos;
-					mod->rot.x = rx;
-					mod->rot.y = ry;
-					mod->rot.z = rz;
 
-					PrintUserCmdText(client, L"OK Module %u: Position %0.0f %0.0f %0.0f Orient %0.0f %0.0f %0.0f",
-						index, mod->pos.x, mod->pos.y, mod->pos.z,
-						mod->rot.z, mod->rot.y, mod->rot.z);
+					PrintUserCmdText(client, L"OK Module %u: Position %0.0f %0.0f %0.0f",
+						index, x, y, z);
 					base->Save();
 					mod->Reset();
 				}
@@ -1664,7 +1666,7 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"ERR Invalid parameters");
 			PrintUserCmdText(client, L"/base defmod [list|set]");
 			PrintUserCmdText(client, L"|  list - show position and orientations of this bases weapons platform");
-			PrintUserCmdText(client, L"|  set - <index> <x> <y> <z> <rx> <ry> <rz> - set the position and orientation of the <index> weapons platform, where x,y,z is the position and rx,ry,rz is the orientation");
+			PrintUserCmdText(client, L"|  set - <index> <x> <y> <z> - set the position and orientation of the <index> weapons platform, where x,y,z is the relative position to the base");
 		}
 	}
 

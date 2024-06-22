@@ -1191,23 +1191,23 @@ void Rotate180(Matrix &rot)
 
 void TranslateX(Vector &pos, Matrix &rot, float x)
 {
-	pos.x += x * rot.data[0][2];
-	pos.y += x * rot.data[1][2];
-	pos.z += x * rot.data[2][2];
+	pos.x += x * rot.data[0][0];
+	pos.y += x * rot.data[1][0];
+	pos.z += x * rot.data[2][0];
 }
 
 void TranslateY(Vector &pos, Matrix &rot, float y)
 {
-	pos.x += y * rot.data[0][0];
-	pos.y += y * rot.data[1][0];
-	pos.z += y * rot.data[2][0];
+	pos.x += y * rot.data[0][1];
+	pos.y += y * rot.data[1][1];
+	pos.z += y * rot.data[2][1];
 }
 
 void TranslateZ(Vector &pos, Matrix &rot, float z)
 {
-	pos.x += z * rot.data[0][1];
-	pos.y += z * rot.data[1][1];
-	pos.z += z * rot.data[2][1];
+	pos.x += z * rot.data[0][2];
+	pos.y += z * rot.data[1][2];
+	pos.z += z * rot.data[2][2];
 }
 
 // Use this function to get the ticks since system startup. The FLHook timeInMS()

@@ -971,13 +971,13 @@ void ExploreZone(CmnAsteroid::CAsteroidField* field, Vector pos, Matrix& rot, fl
 	if (dir == zzz || !(dir & (N | E)))
 	{
 		Vector vecW = pos;
-		TranslateX(vecW, rot, size);
+		TranslateZ(vecW, rot, size);
 		ExploreZone(field, vecW, rot, size, (direction)(dir | W));
 	}
 	if (dir == zzz || !(dir & (S | W)))
 	{
 		Vector vecE = pos;
-		TranslateX(vecE, rot, -size);
+		TranslateZ(vecE, rot, -size);
 		ExploreZone(field, vecE, rot, size, (direction)(dir | E));
 	}
 	if (dir == zzz || !(dir & (S | E)))

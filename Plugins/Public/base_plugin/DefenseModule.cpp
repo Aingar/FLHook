@@ -507,7 +507,7 @@ static uint CreateWPlatformSolar(PlayerBase* base, uint iSystem, Vector position
 	si.iFlag = 4;
 	si.iSystemID = iSystem;
 	si.vPos = position;
-	si.mOrientation = rotation;
+	si.mOrientation = base->rotation;
 
 	switch (type)
 	{
@@ -564,38 +564,48 @@ static uint CreateWPlatformSolar(PlayerBase* base, uint iSystem, Vector position
 }
 
 DefenseModule::DefenseModule(PlayerBase* the_base)
-	: Module(Module::TYPE_DEFENSE_1), base(the_base), space_obj(0)
+	: Module(Module::TYPE_DEFENSE_1), base(the_base), space_obj1(0), space_obj2(0)
 {
 	pos = base->position;
-	rot = MatrixToEuler(base->rotation);
 	TranslateY(pos, base->rotation, 200);
 }
 
 DefenseModule::DefenseModule(PlayerBase* the_base, uint the_type)
-	: Module(the_type), base(the_base), space_obj(0)
+	: Module(the_type), base(the_base), space_obj1(0), space_obj2(0)
 {
 	pos = base->position;
-	rot = MatrixToEuler(base->rotation);
 	TranslateY(pos, base->rotation, 200);
 }
 
 DefenseModule::~DefenseModule()
 {
-	if (space_obj)
+	if (space_obj1)
 	{
-		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
-		spaceobj_modules.erase(space_obj);
-		space_obj = 0;
+		pub::SpaceObj::Destroy(space_obj1, DestroyType::VANISH);
+		spaceobj_modules.erase(space_obj1);
+		space_obj1 = 0;
+	}
+	if (space_obj2)
+	{
+		pub::SpaceObj::Destroy(space_obj2, DestroyType::VANISH);
+		spaceobj_modules.erase(space_obj2);
+		space_obj2 = 0;
 	}
 }
 
 void DefenseModule::Reset()
 {
-	if (space_obj)
+	if (space_obj1)
 	{
-		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
-		spaceobj_modules.erase(space_obj);
-		space_obj = 0;
+		pub::SpaceObj::Destroy(space_obj1, DestroyType::VANISH);
+		spaceobj_modules.erase(space_obj1);
+		space_obj1 = 0;
+	}
+	if (space_obj2)
+	{
+		pub::SpaceObj::Destroy(space_obj2, DestroyType::VANISH);
+		spaceobj_modules.erase(space_obj2);
+		space_obj2 = 0;
 	}
 }
 
@@ -629,12 +639,6 @@ void DefenseModule::LoadState(INI_Reader& ini)
 			pos.y = ini.get_value_float(1);
 			pos.z = ini.get_value_float(2);
 		}
-		else if (ini.is_value("rot"))
-		{
-			rot.x = ini.get_value_float(0);
-			rot.y = ini.get_value_float(1);
-			rot.z = ini.get_value_float(2);
-		}
 	}
 }
 
@@ -644,25 +648,31 @@ void DefenseModule::SaveState(FILE* file)
 	fprintf(file, "[DefenseModule]\n");
 	fprintf(file, "type = %u\n", type);
 	fprintf(file, "pos = %0.0f, %0.0f, %0.0f\n", pos.x, pos.y, pos.z);
-	fprintf(file, "rot = %0.0f, %0.0f, %0.0f\n", rot.x, rot.y, rot.z);
 }
 
 bool DefenseModule::Timer(uint time)
 {
-	if ((time % set_tick_time) != 0)
-		return false;
-
-	if (!space_obj)
+	if ((time % set_tick_time) == 0)
 	{
-		if (set_new_spawn)
-			space_obj = CreateWPlatformSolar(base, base->system, pos, EulerMatrix(rot), base->solar_ids, type);
-		else
-			space_obj = CreateWPlatformNPC(base->system, pos, EulerMatrix(rot), base->solar_ids, type);
+		if (!space_obj1)
+		{
+			space_obj1 = CreateWPlatformSolar(base, base->system, pos, base->rotation, base->solar_ids, type);
 
-		spaceobj_modules[space_obj] = this;
-		if (set_plugin_debug > 1)
-			ConPrint(L"DefenseModule::created space_obj=%u\n", space_obj);
-		base->SyncReputationForBaseObject(space_obj);
+			spaceobj_modules[space_obj1] = this;
+			base->SyncReputationForBaseObject(space_obj1);
+		}
+		if (!space_obj2)
+		{
+			Vector mirroredPosition;
+			mirroredPosition.x = base->position.x + (base->position.x - pos.x);
+			mirroredPosition.y = base->position.y + (base->position.y - pos.y);
+			mirroredPosition.z = base->position.z + (base->position.z - pos.z);
+
+			space_obj2 = CreateWPlatformSolar(base, base->system, mirroredPosition, base->rotation, base->solar_ids, type);
+
+			spaceobj_modules[space_obj2] = this;
+			base->SyncReputationForBaseObject(space_obj2);
+		}
 	}
 
 	return false;
@@ -676,12 +686,16 @@ float DefenseModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, f
 
 bool DefenseModule::SpaceObjDestroyed(uint space_obj)
 {
-	if (this->space_obj == space_obj)
+	if (this->space_obj1 == space_obj)
 	{
-		if (set_plugin_debug > 1)
-			ConPrint(L"DefenseModule::destroyed space_obj=%u\n", space_obj);
 		spaceobj_modules.erase(space_obj);
-		this->space_obj = 0;
+		this->space_obj1 = 0;
+		return true;
+	}
+	else if (this->space_obj2 == space_obj)
+	{
+		spaceobj_modules.erase(space_obj);
+		this->space_obj2 = 0;
 		return true;
 	}
 	return false;
@@ -689,10 +703,16 @@ bool DefenseModule::SpaceObjDestroyed(uint space_obj)
 
 void DefenseModule::SetReputation(int player_rep, float attitude)
 {
-	if (this->space_obj)
+	if (space_obj1)
 	{
 		int obj_rep;
-		pub::SpaceObj::GetRep(this->space_obj, obj_rep);
+		pub::SpaceObj::GetRep(space_obj1, obj_rep);
+		pub::Reputation::SetAttitude(obj_rep, player_rep, attitude);
+	}
+	if (space_obj2)
+	{
+		int obj_rep;
+		pub::SpaceObj::GetRep(space_obj2, obj_rep);
 		pub::Reputation::SetAttitude(obj_rep, player_rep, attitude);
 	}
 }

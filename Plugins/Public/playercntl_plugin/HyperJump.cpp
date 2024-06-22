@@ -688,7 +688,7 @@ namespace HyperJump
 		Matrix ori;
 		pub::SpaceObj::GetLocation(Players[iClientID].iShipID, pos, ori);
 		Rotate180(ori);
-		TranslateX(pos, ori, 1450);
+		TranslateZ(pos, ori, 1450);
 
 		//create exit first so entry has an existing solar to point to
 		auto systemInfo = Universe::get_system(jd.iTargetSystem);

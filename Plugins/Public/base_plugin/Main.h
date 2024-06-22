@@ -203,13 +203,11 @@ public:
 	PlayerBase* base;
 
 	// The space object of the platform
-	uint space_obj;
+	uint space_obj1;
+	uint space_obj2;
 
 	// The position of the platform
 	Vector pos;
-
-	// The orientation of the platform
-	Vector rot;
 
 	DefenseModule(PlayerBase* the_base);
 	DefenseModule(PlayerBase* the_base, uint the_type);

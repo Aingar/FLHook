@@ -856,7 +856,7 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 			info.iClientID = iClientID;
 			info.iDockedBaseID = 0;
 			Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info);
-			if (!i->second.pobStartBase.count(info.iDockedBaseID))
+			if (!i->second.pobEndBase.count(info.iDockedBaseID))
 			{
 				//leave event mode
 				HookExt::IniSetB(iClientID, "event.enabled", false);

@@ -3063,7 +3063,7 @@ public:
 	uint voiceId;                                              // 79
 	float cloakPercentage;                                     // 80
 	CArchGroupManager archGroupManager;                        // 81
-	bool isAlive;											   // 87
+	bool isUndergoingDeathFuse;											   // 87
 	uint dockTargetId;                                         // 88
 	uint dockTargetId2;				                           // 89
 	INotify* notifyPtr;                                        // 90

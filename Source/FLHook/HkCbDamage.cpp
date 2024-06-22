@@ -57,7 +57,7 @@ void __stdcall SetDamageToOne(IObjRW* ship, DamageList* dmg, uint source)
 		{
 			dmgEntry.health = 0.1f;
 			CShip* cship = (CShip*)ship->cobj;
-			cship->isAlive = true;
+			cship->isUndergoingDeathFuse = true;
 		}
 	}
 }

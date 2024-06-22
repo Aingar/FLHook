@@ -1186,6 +1186,26 @@ void HkTimerCheckKick()
 	AP::Timer();
 }
 
+void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (msg == CLIENT_CLOAK_INFO)
+	{
+		CLIENT_CLOAK_STRUCT* info = reinterpret_cast<CLIENT_CLOAK_STRUCT*>(data);
+		if (info->isCloaked)
+		{
+			uint shipId = Players[info->iClientID].iShipID;
+			for (int i = 1; i<250 ; ++i)
+			{
+				if (shipId == PlayerMarkArray[i])
+				{
+					pub::Player::MarkObj(i, shipId, 0);
+					PlayerMarkArray[i] = 0;
+				}
+			}
+		}
+	}
+}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions to hook
@@ -1218,6 +1238,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 
 	return p_PI;
 }

@@ -302,6 +302,11 @@ void LoadSettings()
 void ClearClientInfo(uint iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
+	auto iter = mapClientsCloak.find(iClientID);
+	if (iter != mapClientsCloak.end() && iter->second.iState == STATE_CLOAK_ON)
+	{
+		cloakStateChanged = true;
+	}
 	mapClientsCloak.erase(iClientID);
 }
 
@@ -327,7 +332,8 @@ void ObscureSystemList(uint clientId)
 	}
 	else
 	{
-		PrintUserCmdText(clientId, L"ERR unable to mask your system (%08x) on playerlist, contact admins", system);
+		static const uint fallbackSystemId = CreateID("fp7_system");
+		Players.SendSystemID(clientId, fallbackSystemId);
 	}
 }
 

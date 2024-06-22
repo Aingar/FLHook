@@ -638,6 +638,35 @@ void DefenseModule::LoadState(INI_Reader& ini)
 			pos.x = ini.get_value_float(0);
 			pos.y = ini.get_value_float(1);
 			pos.z = ini.get_value_float(2);
+
+			float baseDistance = HkDistance3D(pos, base->position);
+			if (baseDistance < 100.f)
+			{
+				pos.y += 300.f;
+			}
+
+			for (auto modIter = base->modules.begin() ; modIter != base->modules.end() ; )
+			{
+				if (*modIter == this)
+				{
+					modIter++;
+					continue;
+				}
+				DefenseModule* defMod = dynamic_cast<DefenseModule*>(*modIter);
+				if (!defMod)
+				{
+					modIter++;
+					continue;
+				}
+				float distance = HkDistance3D(defMod->pos, pos);
+				if (distance < 50.f)
+				{
+					pos.y += 50.f;
+					modIter = base->modules.begin();
+					continue;
+				}
+				modIter++;
+			}
 		}
 	}
 }

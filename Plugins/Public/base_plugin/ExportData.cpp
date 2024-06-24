@@ -126,9 +126,10 @@ void ExportData::ToJSON()
 		PlayerBase* base = iter.second;
 		//grab the affiliation before we begin
 		string theaffiliation;
-		if (repNameMap.count(base->affiliation))
+		auto repNameIter = repNameMap.find(base->affiliation);
+		if (repNameIter == repNameMap.end())
 		{
-			theaffiliation = repNameMap.at(base->affiliation);
+			theaffiliation = repNameIter->second;
 		}
 		else
 		{

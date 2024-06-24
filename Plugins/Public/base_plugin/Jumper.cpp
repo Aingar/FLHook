@@ -300,12 +300,13 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					{
 						string nickname = ini.get_value_string(0);
 						uint nicknameHash = CreateID(nickname.c_str());
-						if (!player_bases.count(nicknameHash))
+						auto baseIter = player_bases.find(nicknameHash);
+						if (baseIter == player_bases.end())
 						{
 							ConPrint(L"HYPERSPACE HUB: Warning! Uncharted to Hub jumphole %s not found, check config!\n", stows(nickname).c_str());
 							continue;
 						}
-						if (player_bases.at(nicknameHash)->system == unchartedSystemToExclude)
+						if (baseIter->second->system == unchartedSystemToExclude)
 						{
 							continue;
 						}

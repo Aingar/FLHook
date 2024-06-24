@@ -217,11 +217,12 @@ void BuildModule::LoadState(INI_Reader& ini)
 		if (ini.is_value("build_type"))
 		{
 			uint nickname = CreateID(ini.get_value_string());
-			if (!recipeMap.count(nickname))
+			auto recipeEntry = recipeMap.find(nickname);
+			if (recipeEntry == recipeMap.end())
 			{
 				return;
 			}
-			active_recipe = recipeMap.at(nickname);
+			active_recipe = recipeEntry->second;
 			active_recipe.consumed_items.clear();
 			active_recipe.credit_cost = 0;
 		}

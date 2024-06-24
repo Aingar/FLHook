@@ -373,9 +373,10 @@ void FactoryModule::SaveState(FILE* file)
 void FactoryModule::SetActiveRecipe(uint product)
 {
 	active_recipe = RECIPE(recipeMap[product]);
-	if (active_recipe.affiliationBonus.count(base->affiliation))
+	auto recipeBonusIter = active_recipe.affiliationBonus.find(base->affiliation);
+	if (recipeBonusIter == active_recipe.affiliationBonus.end())
 	{
-		float productionModifier = active_recipe.affiliationBonus.at(base->affiliation);
+		float productionModifier = recipeBonusIter->second;
 		active_recipe.credit_cost = static_cast<uint>(ceil(static_cast<float>(active_recipe.credit_cost) * productionModifier));
 		active_recipe.cooking_rate = static_cast<uint>(ceil(static_cast<float>(active_recipe.cooking_rate) * productionModifier));
 		for (auto& item : active_recipe.consumed_items)

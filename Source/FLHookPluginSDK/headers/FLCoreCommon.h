@@ -105,6 +105,8 @@ enum EquipmentClass : uint
 	InternalFX = 1 << 22,
 	TradeLaneEquip = 1 << 23,
 	Armor = 1 << 24,
+	ExternalEquipment = Mine | CM | Gun | ShieldGenerator | Thruster | CargoPod | CloakingDevice,
+	InternalEquipment = Engine | Power | Scanner | TractorBeam | RepairDroid | InternalFX | TradeLaneEquip | Armor,
 };
 
 enum BayState : uint
@@ -5483,7 +5485,7 @@ struct IObjRWAbstract
 	virtual void sub_6CE8CD0();                         // collision group related                                                          //456
 	virtual void sub_6CE8E90();                         // hardpoint eq related                                                             //460
 	virtual void sub_6CE8E10();                         // hardpoint eq related                                                             //464
-	virtual bool sub_6CE8F50(const char*, DamageList*); // iterate over cargo, dunno                                //468
+	virtual bool drop_all_cargo(const char* hardpoint, DamageList*); // 468 sub_6CE8F50
 	virtual bool hit_shield_bubble(DamageList*);        // 472
 	virtual void sub_6CE88D0();                         // iterate over all equipped equipment and run an update?                           //476
 	virtual void sub_6CE8930();                         // processes values under 0x74 and 0x78 pointers                                    //480
@@ -5499,7 +5501,7 @@ struct IObjRWAbstract
 	virtual void process_explosion_damage_energy(ExplosionDamageEvent* explosion, DamageList* dmgList);        // 520 sub_6CE9940
 	virtual void damage_shield(CEShield* shield, Archetype::Munition* munition, DamageList* dmgList);          // 524 sub_6CE94B0
 	virtual bool damage_ext_eq(CEquip* eq, float dmgDealt, DamageList* dmgList);                               // 528 sub_6CEA4A0
-	virtual bool damage_general(IObjInspectImpl* target, float dmg, DamageList* dmgList);                      // NakedDamageHit2        //532 sub_6CEA740
+	virtual bool damage_shield_direct(CEShield* shield, float dmg, DamageList* dmgList);                       //532 sub_6CEA740
 	virtual bool damage_col_grp(CArchGroup*, float, DamageList*);                                              // 536 sub_6CEAA80
 	virtual bool damage_energy(float energyDamage, DamageList* dmgList);                       // deal energy damage                      //540 sub_6CEAFC0
 	virtual void col_grp_death(CArchGroup*, DamageEntry::SubObjFate, DamageList*);             // 544 sub_6CEA9F0
@@ -5519,36 +5521,36 @@ struct IObjRWAbstract
 
 struct CShipAbstract
 {
-	virtual void set_throttle(float);                           // 0
-	virtual void set_axis_throttle(const Vector&);              // 4
-	virtual void set_nudge_vec(const Vector&);                  // 8
-	virtual int set_strafe_dir(StrafeDir);                      // 12
-	virtual void sub_6D029C0();                                 // 16
-	virtual void sub_6D02940();                                 // 20
-	virtual FORMATION_RTYPE add_formation_follower(IObjRW*);    // 24
-	virtual FORMATION_RTYPE remove_formation_follower(IObjRW*); // 28
-	virtual int get_formation_follower_count();                 // 32
-	virtual void set_follow_leader(IObjRW*);                    // 36
-	virtual void set_follow_offset(const Vector&);              // 40
-	virtual FORMATION_RTYPE add_follow_follower(IObjRW*);       // 44
-	virtual FORMATION_RTYPE remove_follow_follower(IObjRW*);    // 48
-	virtual void sub_6CE68A0();                                 // 52
-	virtual void sub_6D020D0();                                 // 56
-	virtual void sub_6CE6D80();                                 // 60
-	virtual void sub_6CE6BA0();                                 // 64
-	virtual void sub_6CE6F60();                                 // 68
-	virtual void sub_6D02340();                                 // 72
-	virtual void sub_6CE70B0();                                 // 76
-	virtual void sub_6D02410();                                 // 80
-	virtual void sub_6D02500();                                 // 84
-	virtual void sub_6CE7210();                                 // 88
-	virtual void sub_6D02670();                                 // 92
-	virtual void sub_6D027A0();                                 // 96
-	virtual void sub_6D028C0();                                 // 100
-	virtual void sub_6D02880();                                 // 104
-	virtual void sub_6CEF350();                                 // 108
-	virtual void sub_6D02000();                                 // 112
-	virtual void sub_6D02070();                                 // 116
+	virtual int set_throttle(float);                           // 0
+	virtual int set_axis_throttle(const Vector&);              // 4
+	virtual int set_nudge_vec(const Vector&);                  // 8
+	virtual int set_strafe_dir(StrafeDir);                     // 12
+	virtual int basewatcher_setpointer(IObjInspect*);          // 16
+	virtual int basewatcher_removepointer(IObjInspect*);       // 20
+	virtual FORMATION_RTYPE add_formation_follower(IObjRW*);   // 24
+	virtual FORMATION_RTYPE remove_formation_follower(IObjRW*);// 28
+	virtual int get_formation_follower_count();                // 32
+	virtual int set_follow_leader(IObjRW*);                    // 36
+	virtual int set_follow_offset(const Vector&);              // 40
+	virtual FORMATION_RTYPE add_follow_follower(IObjRW*);      // 44
+	virtual FORMATION_RTYPE remove_follow_follower(IObjRW*);   // 48
+	virtual int fire_weapons(ushort startIndex, ushort endIndex, void* unk, void* unk2); // 52
+	virtual int jettison_cargo(ushort sID, ushort amount, void* unused, void* unused2); // 56
+	virtual int tractor_all(ushort tractorSId, st6::vector<IObjRW*> tractorArray, int clientId); // 60
+	virtual int tractor_single(ushort sId, IObjRW* loot, int clientId); // 64
+	virtual int set_gun_target(ushort gunSId, uint target, ushort targetSId, int flag); // 68
+	virtual int set_target(IObjRW* target, ushort sId, int dunno); // 72
+	virtual int sub_6CE70B0(ushort sId, int dunno, int flag);  // 76 something about strafing/thrusting
+	virtual int toggle_cruise(bool cruiseActive, bool disruptCruise, int dunno2); // 80 engine related, engage cruise?
+	virtual int sub_6D02500();                                 // 84 activates thrusters?
+	virtual int use_item(ushort sId, uint amount, int unused); // 88 sub_6CE7210
+	virtual int request_event(uint eventType, uint requestTarget, uint param1, uint param2, uint dunno); // 92
+	virtual int request_cancel(uint eventType, uint param1, uint param2); // 96
+	virtual int go_tradelane(const IObjInspect* startRing, const IObjInspect* nextRing, IObjRW* jumpingIObj, bool unk1, float unk2); // 100
+	virtual int stop_tradelane();                             // 104 switch from one pair of tradelane to another midflight?
+	virtual int sub_6CEF350();                                 // 108 null
+	virtual int sub_6D02000();                                 // 112 unknown
+	virtual int sub_6D02070(uint spaceObjId);                  // 116 sendmessage 0x26
 	virtual void abstractMethod() = 0;
 
 	Watchable watchable;

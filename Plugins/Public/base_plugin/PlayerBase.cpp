@@ -70,12 +70,11 @@ void PlayerBase::Spawn()
 		}
 	}
 
-	auto mapArch = mapArchs.find(basetype);
-	if (mapArch == mapArchs.end())
+	if (mapArchs.count(basetype))
 	{
-		has_shield = mapArch->second.hasShield;
-		siege_gun_only = mapArch->second.siegeGunOnly;
-		use_vulnerability_window = mapArch->second.vulnerabilityWindowUse;
+		has_shield = mapArchs.at(basetype).hasShield;
+		siege_gun_only = mapArchs.at(basetype).siegeGunOnly;
+		use_vulnerability_window = mapArchs.at(basetype).vulnerabilityWindowUse;
 	}
 
 	SyncReputationForBase();
@@ -282,12 +281,7 @@ wstring PlayerBase::GetBaseHeaderText()
 		base_status += L"<TEXT>Highlighted commodities:</TEXT>";
 		for (auto& goodId : pinned_market_items)
 		{
-			auto itemIter = market_items.find(goodId);
-			if (itemIter == market_items.end())
-			{
-				continue;
-			}
-			const auto& item = itemIter->second;
+			const auto& item = market_items.at(goodId);
 			wchar_t buf[120];
 			const GoodInfo* gi = GoodList::find_by_id(goodId);
 			if (!gi)

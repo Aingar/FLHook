@@ -2009,7 +2009,7 @@ namespace PlayerCommands
 				i.second.min_stock = 0;
 				i.second.max_stock = 0;
 				SendMarketGoodUpdated(base, i.first, i.second);
-				if (base->pinned_market_items.count(i.first))
+				if (base->pinned_market_items.count(curr_item))
 				{
 					base->pinned_market_items.erase(i.first);
 					base->pinned_item_updated = true;

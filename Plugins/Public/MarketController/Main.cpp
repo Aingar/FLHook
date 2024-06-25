@@ -79,39 +79,6 @@ void LoadMarketGoodsIni(const string& scPath, map<uint, market_map_t >& mapBaseM
 	ini.close();
 }
 
-struct VC7_MAP
-{
-	VC7_MAP* left;
-	VC7_MAP* parent;
-	VC7_MAP* right;
-	DWORD first;
-	DWORD second;
-};
-
-static DWORD* stl_map_find(DWORD* map, DWORD item)
-{
-	DWORD* start = (DWORD*)map[1];
-	VC7_MAP* curr = (VC7_MAP*)start[1];
-	VC7_MAP* end = (VC7_MAP*)map[2];
-
-	VC7_MAP* res = 0;
-	while (curr != end)
-	{
-		if (curr->first >= item)
-		{
-			res = curr;
-			curr = curr->left;
-		}
-		else
-		{
-			curr = curr->right;
-		}
-	}
-	if (res && item == res->first)
-		return (DWORD*)&(res->second);
-	else
-		return 0;
-}
 /// Return a infocard update packet with the size of the packet in the cmdsize parameter.
 DWORD* BuildDSACEconUpdateCmd(DWORD* cmdsize, bool bReset, map<uint, market_map_t>& mapMarket)
 {
@@ -261,6 +228,11 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 		{
 			auto& info = mi.second;
 			const GoodInfo* gi = GoodList::find_by_id(info.iGoodID);
+			if (!gi)
+			{
+				ConPrint(L"marketcontroller: %u not found for %u\n", mi.first, bi.first);
+				continue;
+			}
 			baseData->set_market_good(info.iGoodID, info.iMin, info.iStock, info.iTransType, info.fPrice / gi->fPrice, info.fRank, info.fRep);
 		}
 	}
@@ -278,12 +250,12 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 		}
 	}
 
-	for (map<uint, market_map_t>::const_iterator iterBase = mapBaseMarketDelta.begin(); iterBase != mapBaseMarketDelta.end(); iterBase++)
+	for (auto iterBase : mapBaseMarketDelta)
 	{
-		basesAffected.insert(iterBase->first);
-		BaseData* baseData = baseDataList->get_base_data(iterBase->first);
-		for (market_map_t::const_iterator iterMarketDelta = iterBase->second.begin();
-			iterMarketDelta != iterBase->second.end();
+		basesAffected.insert(iterBase.first);
+		BaseData* baseData = baseDataList->get_base_data(iterBase.first);
+		for (market_map_t::const_iterator iterMarketDelta = iterBase.second.begin();
+			iterMarketDelta != iterBase.second.end();
 			iterMarketDelta++)
 		{
 			const MarketGoodInfo& mgi = iterMarketDelta->second;
@@ -295,9 +267,11 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 			// The multiplier is the new price / old good (base) price
 			float fMultiplier = mgi.fPrice / gi->fPrice;
 
-			if (!baseData->market_map.empty() && baseData->market_map.find(iterMarketDelta->first) != baseData->market_map.end())
+			auto marketDataIter = baseData->market_map.find(iterMarketDelta->first);
+			if (marketDataIter != baseData->market_map.end())
 			{
-				originalMarketInfo[iterBase->first][iterMarketDelta->first] = baseData->market_map[iterMarketDelta->first];
+				auto& origMarketNode = originalMarketInfo[iterBase.first];
+				origMarketNode[iterMarketDelta->first] = marketDataIter->second;
 			}
 			else
 			{
@@ -310,7 +284,7 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 				marketinfo.fPrice = gi->fPrice;
 				marketinfo.fRank = 0;
 				marketinfo.fRep = -1;
-				originalMarketInfo[iterBase->first][iterMarketDelta->first] = marketinfo;
+				originalMarketInfo[iterBase.first][iterMarketDelta->first] = marketinfo;
 			}
 			baseData->set_market_good(mgi.iGoodID, mgi.iMin, !mgi.iTransType, (TransactionType)mgi.iTransType, fMultiplier, 0.0f, -1.0f);
 		}

@@ -645,7 +645,7 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 	auto target = cShip->get_target();
 	if (!target)
 	{
-		PrintUserCmdText(iClientID, L"ERR Not in space");
+		PrintUserCmdText(iClientID, L"ERR No target selected");
 		return true;
 	}
 

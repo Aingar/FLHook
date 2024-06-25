@@ -994,6 +994,11 @@ namespace Message
 	/** Send a message to the last/current target. */
 	bool Message::UserCmd_SendToLastTarget(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
+		if (!HkIsValidClientID(iClientID) || HkIsInCharSelectMenu(iClientID))
+		{
+			PrintUserCmdText(iClientID, L"ERR Player logged out");
+			return true;
+		}
 		map<uint, INFO>::iterator iter = mapInfo.find(iClientID);
 		if (iter == mapInfo.end())
 		{

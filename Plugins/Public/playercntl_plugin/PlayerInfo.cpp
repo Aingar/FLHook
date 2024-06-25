@@ -491,7 +491,8 @@ bool PlayerInfo::UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, con
 void PlayerInfo::ClearInfo(uint clientId, bool fullClear)
 {
 	playerInfoData[clientId].initialized = false;
-	playerInfoData[clientId].playerInfo = L"";
+	playerInfoData[clientId].playerInfo = L"<RDL><PUSH/><POP/></RDL>";
+	playerInfoData[clientId].changedSinceLastLaunch = true;
 	for (wstring& str : playerInfoData[clientId].infoVector)
 	{
 		str.clear();

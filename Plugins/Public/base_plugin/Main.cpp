@@ -2401,8 +2401,9 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (!dmg->iInflictorID)
+	if (!dmg->iInflictorPlayerID)
 	{
+		incDmg = 0;
 		return;
 	}
 
@@ -2418,11 +2419,6 @@ void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		return;
 	}
 
-	if (!dmg->iInflictorPlayerID)
-	{
-		incDmg = 0;
-		return;
-	}
 
 	Module* damagedModule = spaceobj_modules.at(base->id);
 

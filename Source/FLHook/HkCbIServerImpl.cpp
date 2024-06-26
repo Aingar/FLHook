@@ -771,28 +771,19 @@ namespace HkIServerImpl
 
 	void __stdcall ActivateEquip(unsigned int iClientID, struct XActivateEquip const &aq)
 	{
-		ISERVER_LOG();
-		ISERVER_LOGARG_UI(iClientID);
-
 		CHECK_FOR_DISCONNECT
 
-			TRY_HOOK {
+		TRY_HOOK{
 
-			list<CARGO_INFO> lstCargo;
-			int iRem;
-			HkEnumCargo(ARG_CLIENTID(iClientID), lstCargo, iRem);
-
-			foreach(lstCargo, CARGO_INFO, it) {
-				if (it->iID == aq.sID) {
-					Archetype::Equipment *eq = Archetype::GetEquipment(it->iArchID);
-					EQ_TYPE eqType = HkGetEqType(eq);
-
-					if (eqType == ET_ENGINE) {
-						ClientInfo[iClientID].bEngineKilled = !aq.bActivate;
-						if (!aq.bActivate)
-							ClientInfo[iClientID].bCruiseActivated = false; // enginekill enabled
-					}
-
+			CShip* cship = ClientInfo[iClientID].cship;
+			if (cship)
+			{
+				CEquip* equip = cship->equip_manager.FindByID(aq.sID);
+				if (equip && equip->CEquipType == ET_ENGINE)
+				{
+					ClientInfo[iClientID].bEngineKilled = !aq.bActivate;
+					if (!aq.bActivate)
+						ClientInfo[iClientID].bCruiseActivated = false; // enginekill enabled
 				}
 			}
 

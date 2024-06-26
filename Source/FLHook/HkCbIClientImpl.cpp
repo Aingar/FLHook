@@ -1064,6 +1064,64 @@ void HkIClientImpl::Shutdown()
 
 /**************************************************************************************************************
 **************************************************************************************************************/
+void LoadZoneDamageData(const char* path)
+{
+	string pathStr = "..\\data\\universe\\" + string(path);
+
+	INI_Reader ini;
+	if (!ini.open(pathStr.c_str(), false))
+	{
+		return;
+	}
+
+	while (ini.read_header())
+	{
+		if (!ini.is_header("zone"))
+		{
+			continue;
+		}
+
+		uint nickname;
+		ZoneSpecialData data;
+
+		while (ini.read_value())
+		{
+			if (ini.is_value("nickname"))
+			{
+				nickname = CreateID(ini.get_value_string());
+			}
+			else if (ini.is_value("damage"))
+			{
+				data.flatDamage = ini.get_value_float(0);
+				data.percentageDamage = ini.get_value_float(1) * 0.01;
+				data.distanceScaling = ini.get_value_float(2);
+				data.logScale = ini.get_value_float(3);
+				data.dmgType = ZONEDMG_HULL;
+				string propertiesStr = ini.get_value_string(4);
+				if (propertiesStr.find("shield") != string::npos)
+					data.dmgType |= ZONEDMG_SHIELD;
+				if (propertiesStr.find("cruise") != string::npos)
+					data.dmgType |= ZONEDMG_CRUISE;
+				if (propertiesStr.find("energy") != string::npos)
+					data.dmgType |= ZONEDMG_ENERGY;
+				if (propertiesStr.find("nohull") != string::npos)
+					data.dmgType -= ZONEDMG_HULL;
+				if (data.logScale == 0)
+				{
+					data.logScale = 1;
+				}
+
+				data.shieldMult = ini.get_value_float(5);
+				data.energyMult = ini.get_value_float(6);
+
+				zoneSpecialData[nickname] = data;
+				break;
+			}
+		}
+	}
+
+	ini.close();
+}
 
 bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 {
@@ -1091,9 +1149,16 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 		bi.scBasename = szBaseName;
 		bi.iBaseID = CreateID(szBaseName);
 		lstBases[bi.iBaseID] = bi;
-		pub::System::LoadSystem(base->iSystemID);
 
 		base = Universe::GetNextBase();
+	}
+
+	Universe::ISystem* system = Universe::GetFirstSystem();
+	while (system)
+	{
+		pub::System::LoadSystem(system->id);
+		LoadZoneDamageData((const char*)system->file);
+		system = Universe::GetNextSystem();
 	}
 
 	CALL_CLIENT_METHOD(Startup(iDunno, iDunno2));

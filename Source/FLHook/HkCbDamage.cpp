@@ -75,14 +75,151 @@ __declspec(naked) void ApplyShipDamageListNaked()
 	}
 }
 
+typedef float(__thiscall* GetZoneDistanceFunc)(Universe::IZone* zone, Vector& pos);
+GetZoneDistanceFunc GetZoneDistance = GetZoneDistanceFunc(0x6339B00);
 
+unordered_map<uint, ZoneSpecialData> zoneSpecialData;
 void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg)
 {
-	if (ship->cobj->ownerPlayer)
+	if (!ship->cobj->ownerPlayer)
 	{
-		ship->damage_hull(15.f, dmg);
-		ConPrint(L"%f %f\n", ship->timer, ship->timeSinceLastUpdate);
+		return;
 	}
+
+	auto zoneDataIter = zoneSpecialData.find(ship->cobj->currentDamageZone->iZoneID);
+	if (zoneDataIter == zoneSpecialData.end())
+	{
+		return;
+	}
+	const ZoneSpecialData& zd = zoneDataIter->second;
+	uint zoneType = zd.dmgType;
+
+	ConPrint(L"Detected zone %u, type %u ", zoneDataIter->first, zd.dmgType);
+
+	if (zoneType & ZONEDMG_CRUISE)
+	{
+		ship->toggle_cruise(false, true, 0);
+		zoneType -= ZONEDMG_CRUISE;
+		if (!zoneType)
+		{
+			return;
+		}
+	}
+
+	float damage = zd.flatDamage;
+
+	if (damage <= 0.0f)
+	{
+		return;
+	}
+
+	float dmgMultiplier = 1.0f;
+
+	if (zd.distanceScaling != 0.0f)
+	{
+		float edgeDistance = -GetZoneDistance(ship->cobj->currentDamageZone, ship->cobj->vPos);
+		ConPrint(L"distance %0.0f \n", edgeDistance);
+		if (zd.distanceScaling > 0.0f)
+		{
+			if (edgeDistance <= zd.distanceScaling)
+			{
+				dmgMultiplier = powf(edgeDistance / zd.distanceScaling, zd.logScale);
+				ConPrint(L"ScalingType1 %0.0f, %0.3f\n", damage, dmgMultiplier);
+			}
+			else
+			{
+				ConPrint(L"ScalingType1 NoDmg\n");
+				return;
+			}
+		}
+		else
+		{
+			if (edgeDistance <= -zd.distanceScaling)
+			{
+				dmgMultiplier = powf(1.0 - (edgeDistance / -zd.distanceScaling), zd.logScale);
+			}
+			else
+			{
+				ConPrint(L"ScalingType2 NoDmg\n");
+				return;
+			}
+		}
+	}
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+
+	if (zoneType & ZONEDMG_SHIELD)
+	{
+		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
+		if (!shield)
+		{
+			return;
+		}
+		float shielddamage = (damage + zd.percentageDamage * shield->maxShieldHitPoints) * dmgMultiplier * zd.shieldMult;
+		ship->damage_shield_direct(shield, shielddamage, dmg);
+		zoneType -= ZONEDMG_SHIELD;
+		if (!zoneType)
+		{
+			return;
+		}
+	}
+
+	if (zoneType & ZONEDMG_ENERGY)
+	{
+		float energydamage = (damage + zd.percentageDamage * cship->maxPower) * zd.energyMult;
+		ship->damage_energy(energydamage, dmg);
+		zoneType -= ZONEDMG_ENERGY;
+		if (!zoneType)
+		{
+			return;
+		}
+	}
+
+	CEquipManager& eqMan = cship->equip_manager;
+
+	CEquipTraverser tr(ExternalEquipment);
+	CEquip* eq = nullptr;
+	while (eq = eqMan.Traverse(tr))
+	{
+		float eqDamage = (damage + (eq->archetype->fHitPoints * zd.percentageDamage)) * dmgMultiplier;
+		dmg->add_damage_entry(eq->iSubObjId, eq->GetHitPoints() - eqDamage, DamageEntry::SubObjFate(0));
+	}
+
+	float hulldamage = dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints));
+	ConPrint(L"hullDamage %0.0f, %0.0f, %0.0f\n", hulldamage, damage, zd.percentageDamage * ship->cobj->archetype->fHitPoints);
+
+	CArchGroupManager& carchMan = cship->archGroupManager;
+	CArchGrpTraverser tr2;
+
+	CArchGroup* carch = nullptr;
+	uint colGrpCount = 0;
+	while (carch = carchMan.Traverse(tr2))
+	{
+		if (carch->colGrp->hitPts < 100.f)
+		{
+			continue;
+		}
+		colGrpCount++;
+	}
+	tr2.Restart();
+	if (colGrpCount)
+	{
+		while (carch = carchMan.Traverse(tr2))
+		{
+			if (carch->colGrp->hitPts < 100.f)
+			{
+				continue;
+			}
+			float colGrpDamage = dmgMultiplier * ((hulldamage + (carch->colGrp->hitPts * zd.percentageDamage)) / colGrpCount);
+			dmg->add_damage_entry(carch->colGrp->id, carch->hitPts - colGrpDamage, DamageEntry::SubObjFate(0));
+			if (carch->colGrp->rootHealthProxy)
+			{
+				hulldamage -= colGrpDamage;
+			}
+		}
+	}
+
+	dmg->add_damage_entry(1, ship->cobj->hitPoints - hulldamage, DamageEntry::SubObjFate(0));
+	ConPrint(L"newHp %0.0f %0.0f\n", ship->cobj->hitPoints - hulldamage, ship->cobj->hitPoints);
 }
 
 FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;

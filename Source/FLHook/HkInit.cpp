@@ -352,6 +352,15 @@ bool InitHookExports()
 	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);
 	PatchCallAddr((char*)hModServer, 0x207BF, (char*)HkIEngine::FindInStarListNaked);
 
+	{
+		// Radiation patch, stop the division math
+		BYTE patch2[] = { 0x8B, 0x86, 0xBC, 0x00, 0x00, 0x00, 0x89, 0x44, 0x24, 0x38, 0x8B, 0x86, 0xC0, 0x00, 0x00, 0x00, 0x31, 0xC0, 0x89, 0x86, 0xC0, 0x00, 0x00, 0x00, 0x8B, 0x07, 
+			0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
+		WriteProcMem((char*)hModServer + 0x211F0, patch2, sizeof(patch2));
+		// Override damage applying logic with our own
+		PatchCallAddr((char*)hModServer, 0x21258, (char*)ShipRadiationDamage);
+	}
+
 	// Simplified reimplementation of ShipRange.dll by Adoxa
 	pAddress = SRV_ADDR(0x17272);
 	FARPROC radarDetour2 = FARPROC(&radarDetour);

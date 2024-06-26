@@ -20,6 +20,14 @@ DWORD dsac_update_infocard_cmd_len = 0;
 DWORD* dsac_update_econ_cmd = 0;
 DWORD dsac_update_econ_cmd_len = 0;
 
+struct LootData
+{
+	uint maxDropPlayer = 5000;
+	uint maxDropNPC = 5000;
+	float dropChance = 1.0f;
+};
+unordered_map<uint, LootData> lootData;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
@@ -368,6 +376,75 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 	AlleyMF::BaseEnter_AFTER(baseId, client);
 }
 
+void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+	uint killerClientId = HkGetClientIDByShip(killerId);
+	if (killerId && !killerClientId)
+	{
+		cship->clear_equip_and_cargo();
+		return;
+	}
+
+
+	auto goodList = GoodList_get();
+
+	if (!cship->ownerPlayer)
+	{
+		PlayerData& killerData = Players[killerClientId];
+		uint targetAffiliation;
+		float attitude;
+		Reputation::Vibe::GetAffiliation(cship->repVibe, targetAffiliation, false);
+		pub::Reputation::GetGroupFeelingsTowards(killerData.iReputation, targetAffiliation, attitude);
+
+		if (attitude >= 0.0f)
+		{
+			cship->clear_equip_and_cargo();
+			return;
+		}
+	}
+	
+	CEquipTraverser tr(Cargo);
+	CECargo* cargo = nullptr;
+	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
+	{
+		auto lootIter = lootData.find(cargo->archetype->iArchID);
+
+		LootData& ld = lootIter == lootData.end() ? LootData() : lootIter->second;
+
+		uint amountToDrop;
+		if (cship->ownerPlayer)
+		{
+			amountToDrop = ld.maxDropPlayer;
+		}
+		else
+		{
+			amountToDrop = ld.maxDropNPC;
+		}
+
+		if (ld.dropChance < 1.0f)
+		{
+			float roll = static_cast<float>(rand()) / RAND_MAX;
+			if (roll > ld.dropChance)
+			{
+				continue;
+			}
+		}
+
+		if (!amountToDrop)
+		{
+			continue;
+		}
+
+		Server.MineAsteroid(cship->system, cship->vPos, cargo->archetype->get_loot_appearance()->iArchID,
+			cargo->archetype->iArchID, min(cargo->count, amountToDrop), 0);
+	}
+	
+	cship->clear_equip_and_cargo();
+}
+
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -415,6 +492,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 

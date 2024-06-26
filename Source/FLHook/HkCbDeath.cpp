@@ -443,3 +443,8 @@ __declspec(naked) void SolarColGrpDestroyedHookNaked()
 		jmp eax
 	}
 }
+
+bool __fastcall ShipDropLootDummy(IObjRW*, void* edx, char*, DamageList*)
+{
+	return true;
+}

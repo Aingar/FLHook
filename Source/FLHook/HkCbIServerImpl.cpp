@@ -810,7 +810,19 @@ namespace HkIServerImpl
 		CHECK_FOR_DISCONNECT
 
 		ClientInfo[iClientID].bCruiseActivated = ac.bActivate;
-
+		if (ac.bActivate)
+		{
+			CShip* cship = ClientInfo[iClientID].cship;
+			if (cship)
+			{
+				CEquip* equip;
+				CEquipTraverser tr(Engine);
+				while (equip = cship->equip_manager.Traverse(tr))
+				{
+					equip->Activate(true);
+				}
+			}
+		}
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ActivateCruise, __stdcall, (unsigned int iClientID, struct XActivateCruise const &ac), (iClientID, ac));
 
 		LOG_CORE_TIMER_START

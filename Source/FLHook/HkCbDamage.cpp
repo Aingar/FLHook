@@ -94,7 +94,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	const ZoneSpecialData& zd = zoneDataIter->second;
 	uint zoneType = zd.dmgType;
 
-	ConPrint(L"Detected zone %u, type %u ", zoneDataIter->first, zd.dmgType);
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
 
 	if (zoneType & ZONEDMG_CRUISE)
 	{
@@ -118,17 +118,14 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	if (zd.distanceScaling != 0.0f)
 	{
 		float edgeDistance = -GetZoneDistance(ship->cobj->currentDamageZone, ship->cobj->vPos);
-		ConPrint(L"distance %0.0f \n", edgeDistance);
 		if (zd.distanceScaling > 0.0f)
 		{
 			if (edgeDistance <= zd.distanceScaling)
 			{
 				dmgMultiplier = powf(edgeDistance / zd.distanceScaling, zd.logScale);
-				ConPrint(L"ScalingType1 %0.0f, %0.3f\n", damage, dmgMultiplier);
 			}
 			else
 			{
-				ConPrint(L"ScalingType1 NoDmg\n");
 				return;
 			}
 		}
@@ -138,28 +135,21 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 			{
 				dmgMultiplier = powf(1.0 - (edgeDistance / -zd.distanceScaling), zd.logScale);
 			}
-			else
-			{
-				ConPrint(L"ScalingType2 NoDmg\n");
-				return;
-			}
 		}
 	}
-	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
 
 	if (zoneType & ZONEDMG_SHIELD)
 	{
 		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-		if (!shield)
+		if (shield)
 		{
-			return;
-		}
-		float shielddamage = (damage + zd.percentageDamage * shield->maxShieldHitPoints) * dmgMultiplier * zd.shieldMult;
-		ship->damage_shield_direct(shield, shielddamage, dmg);
-		zoneType -= ZONEDMG_SHIELD;
-		if (!zoneType)
-		{
-			return;
+			float shielddamage = (damage + zd.percentageDamage * shield->maxShieldHitPoints) * dmgMultiplier * zd.shieldMult;
+			ship->damage_shield_direct(shield, shielddamage, dmg);
+			zoneType -= ZONEDMG_SHIELD;
+			if (!zoneType)
+			{
+				return;
+			}
 		}
 	}
 
@@ -185,7 +175,6 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	}
 
 	float hulldamage = dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints));
-	ConPrint(L"hullDamage %0.0f, %0.0f, %0.0f\n", hulldamage, damage, zd.percentageDamage * ship->cobj->archetype->fHitPoints);
 
 	CArchGroupManager& carchMan = cship->archGroupManager;
 	CArchGrpTraverser tr2;
@@ -219,7 +208,6 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	}
 
 	dmg->add_damage_entry(1, ship->cobj->hitPoints - hulldamage, DamageEntry::SubObjFate(0));
-	ConPrint(L"newHp %0.0f %0.0f\n", ship->cobj->hitPoints - hulldamage, ship->cobj->hitPoints);
 }
 
 FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;

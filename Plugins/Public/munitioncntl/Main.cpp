@@ -168,8 +168,60 @@ void ReadMunitionDataFromInis()
 						{
 							guidedArmingTimesMap[currNickname] = armingTime;
 						}
-						break;
 					}
+					else if (ini.is_value("no_tracking_alert") && ini.get_value_bool(0))
+					{
+						setNoTrackingAlertProjectiles.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("tracking_blacklist"))
+					{
+						uint blacklistedTrackingTypesBitmap = 0;
+						string typeStr = ToLower(ini.get_value_string(0));
+						if (typeStr.find("fighter") != string::npos)
+							blacklistedTrackingTypesBitmap |= Fighter;
+						if (typeStr.find("freighter") != string::npos)
+							blacklistedTrackingTypesBitmap |= Freighter;
+						if (typeStr.find("transport") != string::npos)
+							blacklistedTrackingTypesBitmap |= Transport;
+						if (typeStr.find("gunboat") != string::npos)
+							blacklistedTrackingTypesBitmap |= Gunboat;
+						if (typeStr.find("cruiser") != string::npos)
+							blacklistedTrackingTypesBitmap |= Cruiser;
+						if (typeStr.find("capital") != string::npos)
+							blacklistedTrackingTypesBitmap |= Capital;
+						if (typeStr.find("guided") != string::npos)
+							blacklistedTrackingTypesBitmap |= Guided;
+						if (typeStr.find("mine") != string::npos)
+								blacklistedTrackingTypesBitmap |= Mine;
+
+						mapTrackingByObjTypeBlacklistBitmap[currNickname] = blacklistedTrackingTypesBitmap;
+					}
+				}
+			}
+			else if (ini.is_header("Engine"))
+			{
+				EngineProperties ep;
+				bool FoundValue = false;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("disruptor_engine_kill") && !ini.get_value_bool(0))
+					{
+						ep.ignoreCDWhenEKd = true;
+						FoundValue = true;
+					}
+					else if (ini.is_value("disruptor_engine_kill_speed_limit"))
+					{
+						ep.engineKillCDSpeedLimit = ini.get_value_float(0);
+						FoundValue = true;
+					}
+				}
+				if (FoundValue)
+				{
+					engineData[currNickname] = ep;
 				}
 			}
 		}
@@ -201,72 +253,8 @@ void LoadSettings()
 	PatchCallAddr((char*)servHandle, 0xD921, (char*)PlayerFireRemoveAmmoDetour);
 	PlayerFireRemoveAmmoFunc = (PlayerFireRemoveAmmo)(DWORD(servHandle) + 0x6F260);
 
-	INI_Reader ini;
-
-	char szCurDir[MAX_PATH];
-	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
-	string scPluginCfgFile = string(szCurDir) + R"(\flhook_plugins\munitioncntl.cfg)";
-
 	ReadMunitionDataFromInis();
 
-	if (!ini.open(scPluginCfgFile.c_str(), false))
-	{
-		return;
-	}
-	while (ini.read_header())
-	{
-		if (ini.is_header("NoTrackingAlert"))
-		{
-			while (ini.read_value())
-			{
-				if (ini.is_value("MissileArch"))
-				{
-					setNoTrackingAlertProjectiles.insert(CreateID(ini.get_value_string(0)));
-				}
-			}
-		}
-		else if (ini.is_header("TrackingBlacklist"))
-		{
-			uint missileArch = 0;
-			uint blacklistedTrackingTypesBitmap = 0;
-			while (ini.read_value())
-			{
-				if (ini.is_value("MissileArch"))
-				{
-					missileArch = CreateID(ini.get_value_string(0));
-				}
-				else if (ini.is_value("Type"))
-				{
-					string typeStr = ToLower(ini.get_value_string(0));
-					if (typeStr.find("fighter") != string::npos)
-						blacklistedTrackingTypesBitmap |= Fighter;
-					if (typeStr.find("freighter") != string::npos)
-						blacklistedTrackingTypesBitmap |= Freighter;
-					if (typeStr.find("transport") != string::npos)
-						blacklistedTrackingTypesBitmap |= Transport;
-					if (typeStr.find("gunboat") != string::npos)
-						blacklistedTrackingTypesBitmap |= Gunboat;
-					if (typeStr.find("cruiser") != string::npos)
-						blacklistedTrackingTypesBitmap |= Cruiser;
-					if (typeStr.find("capital") != string::npos)
-						blacklistedTrackingTypesBitmap |= Capital;
-					if (typeStr.find("guided") != string::npos)
-						blacklistedTrackingTypesBitmap |= Guided;
-					if (typeStr.find("mine") != string::npos)
-						blacklistedTrackingTypesBitmap |= Mine;
-				}
-			}
-			if (missileArch && blacklistedTrackingTypesBitmap)
-			{
-				mapTrackingByObjTypeBlacklistBitmap[missileArch] = blacklistedTrackingTypesBitmap;
-			}
-			else
-			{
-				ConPrint(L"MunitionCntl: Error! Incomplete [TrackingBlacklist] definition in config files!\n");
-			}
-		}
-	}
-	ini.close();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

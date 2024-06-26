@@ -433,6 +433,24 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	}
 }
 
+
+void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& charId, unsigned int iClientID)
+{
+	returncode = DEFAULT_RETURNCODE;
+	playerShieldState[iClientID].shieldState = true;
+	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
+	{
+		if (iter->targetClient == iClientID)
+		{
+			iter = shieldStateUpdateMap.erase(iter);
+		}
+		else
+		{
+			++iter;
+		}
+	}
+}
+
 void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -554,6 +572,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));

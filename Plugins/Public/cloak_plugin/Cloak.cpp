@@ -1202,7 +1202,7 @@ void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 	}
 
 	pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_select_reject"));
-	returncode = DEFAULT_RETURNCODE;
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -51,7 +51,12 @@ vector<ShieldSyncData> shieldStateUpdateMap;
 
 constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
-bool debug = false;
+struct EngineProperties
+{
+	bool ignoreCDWhenEKd = false;
+	float engineKillCDSpeedLimit;
+};
+unordered_map<uint, EngineProperties> engineData;
 
 enum TRACKING_STATE {
 	TRACK_ALERT,
@@ -276,10 +281,6 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 
 	if (!targetId) // prevent missiles from tracking cloaked ships, and missiles sticking targeting to last selected target
 	{
-		if (debug)
-		{
-			ConPrint(L"Projectile %x notarget notrack\n", createGuidedPacket.iMunitionId);
-		}
 		tracking = NOTRACK_NOALERT;
 	}
 	else if (setNoTrackingAlertProjectiles.count(createGuidedPacket.iMunitionId)) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
@@ -293,11 +294,6 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 		const auto& blacklistedShipTypeTargets = mapTrackingByObjTypeBlacklistBitmap.at(createGuidedPacket.iMunitionId);
 		if (blacklistedShipTypeTargets & targetType)
 		{
-			if (debug)
-			{
-				ConPrint(L"Projectile %08x notarget notrack\n", createGuidedPacket.iMunitionId);
-				ConPrint(L"filter %08x target %08x\n", blacklistedShipTypeTargets, targetType);
-			}
 			tracking = NOTRACK_NOALERT;
 		}
 	}
@@ -525,19 +521,53 @@ void Timer()
 	eqSids.clear();
 }
 
+void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (dmg->damageCause != DamageCause::CruiseDisrupter)
+	{
+		return;
+	}
+	
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+	if (!cship->ownerPlayer)
+	{
+		return;
+	}
+
+	if (!ClientInfo[cship->ownerPlayer].bEngineKilled)
+	{
+		return;
+	}
+
+	bool isCDImmune = false;
+	CEEngine* engine = nullptr;
+	CEquipTraverser tr(Engine);
+	while (engine = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+	{
+		auto engineDataIter = engineData.find(engine->archetype->iArchID);
+		if (engineDataIter == engineData.end() || !engineDataIter->second.ignoreCDWhenEKd)
+		{
+			continue;
+		}
+
+		Vector velocity = cship->get_velocity();
+
+		float velocityMagnitude = sqrtf(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
+
+		if (velocityMagnitude <= engineDataIter->second.engineKillCDSpeedLimit)
+		{
+			dmg->damageCause = DamageCause::DummyDisrupter;
+		}
+		return;
+	}
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
-
-	if (IS_CMD("munitiondebug"))
-	{
-		debug = !debug;
-		ConPrint(L"munitioncntl debug %u\n", (uint)debug);
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return false;
-	}
 
 	return true;
 }
@@ -562,7 +592,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
-
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
+	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 

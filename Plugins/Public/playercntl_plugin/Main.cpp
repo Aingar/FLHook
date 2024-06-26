@@ -620,6 +620,7 @@ namespace HkIServerImpl
 		ClearClientInfo(iClientID);
 		Rename::CharacterSelect_AFTER(charId, iClientID);
 		PlayerInfo::ClearInfo(iClientID, false);
+		MiscCmds::ClearClientInfo(iClientID);
 	}
 
 	void __stdcall JumpInComplete_AFTER(unsigned int iSystem, unsigned int iShip)

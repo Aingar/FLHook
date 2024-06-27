@@ -1081,7 +1081,7 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (((response == PROCEED_DOCK || response == DOCK) && iCancel != -1))
+	if (!((response == PROCEED_DOCK || response == DOCK) && iCancel != -1))
 	{
 		return 0;
 	}
@@ -1116,7 +1116,8 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 		HkAddCheaterLog(wscCharname, L"About to enter a JG/JH while under cloak charging mode");
 		return 0;
 	}
-	else if (cloakInfo->second.iState == STATE_CLOAK_ON)
+	
+	if (cloakInfo->second.iState == STATE_CLOAK_ON)
 	{
 		jumpingPlayers[client] = 20;
 	}

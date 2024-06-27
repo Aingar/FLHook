@@ -164,7 +164,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		}
 	}
 
-	float hulldamage = dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints));
+	float hulldamage = min(cship->hitPoints, dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints)));
 
 	CArchGroupManager& carchMan = cship->archGroupManager;
 	CArchGrpTraverser tr2;
@@ -188,8 +188,22 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 			{
 				continue;
 			}
-			float colGrpDamage = (((damage + (carch->colGrp->hitPts * zd.percentageDamage)) * dmgMultiplier) / colGrpCount);
-			dmg->add_damage_entry(carch->colGrp->id, max(0.1, carch->hitPts - colGrpDamage), DamageEntry::SubObjFate(0));
+			float colGrpDamage = min(carch->hitPts, ((damage + (carch->colGrp->hitPts * zd.percentageDamage)) * dmgMultiplier) / colGrpCount);
+			if (colGrpDamage <= 0.0f)
+			{
+				continue;
+			}
+
+			DamageEntry::SubObjFate fate;
+			if (colGrpDamage >= carch->hitPts)
+			{
+				fate = DamageEntry::SubObjFate(1);
+			}
+			else
+			{
+				fate = DamageEntry::SubObjFate(0);
+			}
+			dmg->add_damage_entry(carch->colGrp->id, carch->hitPts - colGrpDamage, fate);
 			if (carch->colGrp->rootHealthProxy)
 			{
 				hulldamage -= colGrpDamage;
@@ -197,7 +211,10 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		}
 	}
 
-	dmg->add_damage_entry(1, max(0, ship->cobj->hitPoints - hulldamage), DamageEntry::SubObjFate(0));
+	if (hulldamage > 0.0f)
+	{
+		dmg->add_damage_entry(1, cship->hitPoints - hulldamage, DamageEntry::SubObjFate(0));
+	}
 }
 
 FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;

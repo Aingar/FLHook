@@ -164,16 +164,6 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		}
 	}
 
-	CEquipManager& eqMan = cship->equip_manager;
-
-	CEquipTraverser tr(ExternalEquipment);
-	CEquip* eq = nullptr;
-	while (eq = eqMan.Traverse(tr))
-	{
-		float eqDamage = (damage + (eq->archetype->fHitPoints * zd.percentageDamage)) * dmgMultiplier;
-		dmg->add_damage_entry(eq->iSubObjId, eq->GetHitPoints() - eqDamage, DamageEntry::SubObjFate(0));
-	}
-
 	float hulldamage = dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints));
 
 	CArchGroupManager& carchMan = cship->archGroupManager;
@@ -199,7 +189,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 				continue;
 			}
 			float colGrpDamage = (((damage + (carch->colGrp->hitPts * zd.percentageDamage)) * dmgMultiplier) / colGrpCount);
-			dmg->add_damage_entry(carch->colGrp->id, carch->hitPts - colGrpDamage, DamageEntry::SubObjFate(0));
+			dmg->add_damage_entry(carch->colGrp->id, max(0.1, carch->hitPts - colGrpDamage), DamageEntry::SubObjFate(0));
 			if (carch->colGrp->rootHealthProxy)
 			{
 				hulldamage -= colGrpDamage;
@@ -207,7 +197,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		}
 	}
 
-	dmg->add_damage_entry(1, ship->cobj->hitPoints - hulldamage, DamageEntry::SubObjFate(0));
+	dmg->add_damage_entry(1, max(0, ship->cobj->hitPoints - hulldamage), DamageEntry::SubObjFate(0));
 }
 
 FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;

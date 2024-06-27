@@ -155,7 +155,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 
 	if (zoneType & ZONEDMG_ENERGY)
 	{
-		float energydamage = (damage + zd.percentageDamage * cship->maxPower) * zd.energyMult;
+		float energydamage = (damage + zd.percentageDamage * cship->maxPower) * dmgMultiplier * zd.energyMult;
 		ship->damage_energy(energydamage, dmg);
 		zoneType -= ZONEDMG_ENERGY;
 		if (!zoneType)
@@ -198,7 +198,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 			{
 				continue;
 			}
-			float colGrpDamage = dmgMultiplier * ((hulldamage + (carch->colGrp->hitPts * zd.percentageDamage)) / colGrpCount);
+			float colGrpDamage = (((damage + (carch->colGrp->hitPts * zd.percentageDamage)) * dmgMultiplier) / colGrpCount);
 			dmg->add_damage_entry(carch->colGrp->id, carch->hitPts - colGrpDamage, DamageEntry::SubObjFate(0));
 			if (carch->colGrp->rootHealthProxy)
 			{

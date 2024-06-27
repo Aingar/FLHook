@@ -382,7 +382,7 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 
 	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
 	uint killerClientId = HkGetClientIDByShip(killerId);
-	if (killerId && !killerClientId)
+	if (killerId && !killerClientId && !cship->ownerPlayer)
 	{
 		cship->clear_equip_and_cargo();
 		return;

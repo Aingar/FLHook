@@ -638,6 +638,7 @@ namespace HkIServerImpl
 			HyperJump::JumpInComplete(iShip);
 			HyperJump::SetJumpInFuse(iClientID);
 			HyperJump::SetJumpInPvPInvulnerability(iClientID);
+			pub::Save(iClientID, 1);
 		}
 	}
 

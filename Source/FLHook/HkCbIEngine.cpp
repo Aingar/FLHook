@@ -51,22 +51,16 @@ namespace HkIEngine
 static float* pNPC_range    = ((float*)0x6d66aec);
 static float* pPlayer_range = ((float*)0x6d66af0);
 static float* pGroup_range = ((float*)0x6d66af4);
-	void __fastcall CheckRange(uint player, uint scannedPlayer)
+	void __fastcall CheckRange(uint player, CSimple* scannedObject)
 	{
-		float radarRange = ClientInfo[player].fRadarRange;
 		if (!ClientInfo[player].cship)
 		{
-			*pNPC_range = *pPlayer_range = radarRange;
-			*pGroup_range = radarRange * 4;
 			return;
 		}
-		float playerInterference = ClientInfo[player].cship->get_scanner_interference();
-		if (scannedPlayer && ClientInfo[scannedPlayer].cship)
-		{
-			float scannedInterference = ClientInfo[scannedPlayer].cship->get_scanner_interference();
-			playerInterference = max(playerInterference, scannedInterference);
-		}
-		radarRange *= (1.0f - playerInterference);
+		float radarRange = ClientInfo[player].fRadarRange;
+		float scannerInterference = ClientInfo[player].cship->get_scanner_interference();
+		scannerInterference = max(scannerInterference, scannedObject->get_scanner_interference());
+		radarRange *= (1.0f - scannerInterference);
 		*pNPC_range = *pPlayer_range = radarRange;
 		*pGroup_range = radarRange * 4;
 	}
@@ -76,7 +70,6 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		__asm {
 			mov			ecx, [edi + 0x38]
 			mov			edx, [esi + 0x10]
-			mov			edx, [edx + 0xb4]
 			call        CheckRange
 			mov			eax, 0
 			ret

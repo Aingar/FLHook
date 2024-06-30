@@ -98,7 +98,8 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 
 	if (zoneType & ZONEDMG_CRUISE)
 	{
-		ship->toggle_cruise(false, true, 0);
+		dmg->damageCause = DamageCause::CruiseDisrupter;
+		dmg->add_damage_entry(1, cship->hitPoints, DamageEntry::SubObjFate(0));
 		zoneType -= ZONEDMG_CRUISE;
 		if (!zoneType)
 		{

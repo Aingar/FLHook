@@ -1572,13 +1572,13 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	{
 		auto info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_BUY_STRUCT*>(data);
 		GFGoodBuy_AFTER(info->info, info->clientId);
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		returncode = SKIPPLUGINS;
 	}
 	else if (msg == CUSTOM_POB_EVENT_NOTIFICATION_SELL)
 	{
 		auto info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_SELL_STRUCT*>(data);
 		GFGoodSell_AFTER(info->info, info->clientId);
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		returncode = SKIPPLUGINS;
 	}
 }
 

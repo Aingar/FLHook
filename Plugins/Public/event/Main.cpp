@@ -820,7 +820,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 		HookExt::IniSetI(iClientID, "event.quantity", currentCount);
 
 		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-		PrintUserCmdText(iClientID, L"You have entered the event: %s", stows(i->second.sEventName).c_str());
+		PrintUserCmdText(iClientID, L"You have entered the event: %s, you will be paid %d extra credits for every unit you deliver.", stows(i->second.sEventName).c_str(), i->second.iBonusCash);
 		Notify_TradeEvent_Start(iClientID, i->second.sEventName);
 
 		continue;

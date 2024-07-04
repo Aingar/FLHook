@@ -1116,7 +1116,7 @@ void HkTimerCheckKick()
 			auto& pb = baseSaveIterator->second;
 			if (pb->logic == 1 || pb->invulnerable == 0)
 			{
-				if (pb->pinned_item_updated)
+				if (pb->pinned_item_updated && pb->baseCSolar)
 				{
 					pb->UpdateBaseInfoText();
 					pb->pinned_item_updated = false;

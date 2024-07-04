@@ -34,8 +34,16 @@ struct CObject * __cdecl HkCb_GetRoot(struct CObject *child)
 	}
 	catch (...)
 	{
-		AddLog("ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
-		ConPrint(L"ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f\n", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
+		try
+		{
+			AddLog("ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
+			ConPrint(L"ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f\n", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
+		}
+		catch (...)
+		{
+			AddLog("ERROR: Crash suppression in GetRoot. No data recoverable.");
+			ConPrint(L"ERROR: Crash suppression in GetRoot. No data recoverable.\n");
+		}
 		return child;
 	}
 }

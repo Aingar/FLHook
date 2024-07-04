@@ -737,10 +737,12 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 	if (playerData[iClientID].eventEnabled)
 	{
 		playerData[iClientID].eventName = wstos(HookExt::IniGetWS(iClientID, "event.eventid"));
+		playerData[iClientID].quantity = HookExt::IniGetI(iClientID, "event.quantity");
 		//check if this event still exist
 		if ((!empty(playerData[iClientID].eventName)) && (mapTradeEvents.find(playerData[iClientID].eventName) != mapTradeEvents.end()))
 		{
 			PrintUserCmdText(iClientID, L"You are still eligible to complete the event: %s", stows(mapTradeEvents[playerData[iClientID].eventName].sEventName).c_str());
+			PrintUserCmdText(iClientID, L"Amount of registered cargo: %u", playerData[iClientID].quantity);
 		}
 		else
 		{
@@ -751,6 +753,9 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 			playerData[iClientID].eventEnabled = false;
 			playerData[iClientID].eventName.clear();
 			playerData[iClientID].quantity = 0;
+			HookExt::IniSetB(iClientID, "event.enabled", false);
+			HookExt::IniSetWS(iClientID, "event.eventid", L"");
+			HookExt::IniSetI(iClientID, "event.quantity", 0);
 		}
 	}
 }
@@ -800,11 +805,18 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 		playerData[iClientID].eventName = i->first;
 		playerData[iClientID].quantity += gbi.iCount;
 
+		HookExt::IniSetB(iClientID, "event.enabled", playerData[iClientID].eventEnabled);
+		HookExt::IniSetWS(iClientID, "event.eventid", stows(playerData[iClientID].eventName));
+		HookExt::IniSetI(iClientID, "event.quantity", playerData[iClientID].quantity);
+
 		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
 		PrintUserCmdText(iClientID, L"You have entered the event: %s, you will be paid %d extra credits for every unit you deliver.", stows(i->second.sEventName).c_str(), i->second.iBonusCash);
+		PrintUserCmdText(iClientID, L"Amount of registered cargo: %u", playerData[iClientID].quantity);
 		Notify_TradeEvent_Start(iClientID, i->second.sEventName);
 
-		continue;
+		pub::Save(iClientID, 1);
+
+		break;
 	}
 }
 
@@ -826,10 +838,16 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 		return;
 	}
 
+	int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
+
 	playerData[iClientID].eventInteraction = true;
 	playerData[iClientID].eventEnabled = false;
 	playerData[iClientID].eventName.clear();
 	playerData[iClientID].quantity = 0;
+
+	HookExt::IniSetB(iClientID, "event.enabled", false);
+	HookExt::IniSetWS(iClientID, "event.eventid", L"");
+	HookExt::IniSetI(iClientID, "event.quantity", 0);
 
 	uint iBaseID = Players[iClientID].iBaseID;
 
@@ -845,11 +863,10 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 			//leave event mode
 			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
 			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
+			pub::Save(iClientID, 1);
 			return;
 		}
 	}
-	int iInitialCount = HookExt::IniGetI(iClientID, "event.quantity");
-
 	iInitialCount = max(iInitialCount, gsi.iCount);
 
 	int bonus = 0;
@@ -887,7 +904,6 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 
 	PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
 	Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
-
 }
 
 void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)

@@ -733,6 +733,8 @@ void Notify_CombatEvent_PlayerKill(uint iClientIDKiller, uint iClientIDVictim, s
 
 void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)
 {
+	playerData[iClientID].eventName.clear();
+	playerData[iClientID].quantity = 0;
 	playerData[iClientID].eventEnabled = HookExt::IniGetB(iClientID, "event.enabled");
 	if (playerData[iClientID].eventEnabled)
 	{
@@ -867,7 +869,7 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 			return;
 		}
 	}
-	iInitialCount = max(iInitialCount, gsi.iCount);
+	iInitialCount = min(iInitialCount, gsi.iCount);
 
 	int bonus = 0;
 

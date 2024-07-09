@@ -307,7 +307,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		}
 	}
 
-	uint GameObjectDestructorRet = 0x6CEE4AD;
+	uint GameObjectDestructorRet = 0x6CEE4A7;
 	__declspec(naked) void GameObjectDestructorNaked()
 	{
 		__asm {

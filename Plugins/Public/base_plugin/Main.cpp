@@ -1116,7 +1116,7 @@ void HkTimerCheckKick()
 			auto& pb = baseSaveIterator->second;
 			if (pb->logic == 1 || pb->invulnerable == 0)
 			{
-				if (pb->pinned_item_updated)
+				if (pb->pinned_item_updated && pb->baseCSolar)
 				{
 					pb->UpdateBaseInfoText();
 					pb->pinned_item_updated = false;
@@ -1779,6 +1779,21 @@ void __stdcall BaseEnter(uint base, uint client)
 		PlayerBase *base = GetPlayerBaseForClient(client);
 		if (base)
 		{
+			if (!IsDockingAllowed(base, client))
+			{
+				wstring rights;
+				HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights);
+				if (rights.find(L"superadmin") == wstring::npos
+					&& rights.find(L"beamkill") == wstring::npos)
+				{
+					ForceLaunch(client);
+					SendResetMarketOverride(client);
+					DeleteDockState(client);
+					PrintUserCmdText(client, L"You are no longer welcome on this base.");
+
+					return;
+				}
+			}
 			// Reset the commodity list	and send a dummy entry if there are no
 			// commodities in the market
 			SaveDockState(client);

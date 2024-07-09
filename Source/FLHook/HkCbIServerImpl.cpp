@@ -1029,6 +1029,8 @@ namespace HkIServerImpl
 		ISERVER_LOGARG_WS(&li);
 		ISERVER_LOGARG_UI(iClientID);
 
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_Login_BEFORE, __stdcall, (struct SLoginInfo const& li, unsigned int iClientID), (li, iClientID));
+
 		LOG_CORE_TIMER_START
 		TRY_HOOK {
 

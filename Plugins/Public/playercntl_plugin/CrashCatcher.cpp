@@ -34,8 +34,16 @@ struct CObject * __cdecl HkCb_GetRoot(struct CObject *child)
 	}
 	catch (...)
 	{
-		AddLog("ERROR: Crash suppression in GetRoot(child=%08x)", child);
-		ConPrint(L"ERROR: Crash suppression in GetRoot(child=%08x)\n", child);
+		try
+		{
+			AddLog("ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
+			ConPrint(L"ERROR: Crash suppression in GetRoot. Arch: %u Sys: %u Pos: %0.0f %0.0f %0.0f\n", child->archetype->iArchID, child->system, child->vPos.x, child->vPos.y, child->vPos.z);
+		}
+		catch (...)
+		{
+			AddLog("ERROR: Crash suppression in GetRoot. No data recoverable.");
+			ConPrint(L"ERROR: Crash suppression in GetRoot. No data recoverable.\n");
+		}
 		return child;
 	}
 }
@@ -146,6 +154,7 @@ void __cdecl HkCb_CrashProc6F671A0(int arg1)
 	}
 	catch (...)
 	{
+		AddLog("arg: %d", arg1);
 		LOG_EXCEPTION
 	}
 }
@@ -363,13 +372,13 @@ void CrashCatcher::Init()
 					PatchCallAddr((char*)hModContentAC, 0x47bc2 + 1, (char*)HkCb_47bc4Naked);
 				}
 
-				// Patch for crash at engbase.dll + 0x0124BD ~ adoxa (thanks man)
-				// This is caused by a bad cmp.	
-				{
-					byte patch[] = { 0xe8 };
-					WriteProcMem((char*)hEngBase + 0x0124BD, patch, 1);
-					PatchCallAddr((char*)hEngBase, 0x0124BD, (char*)HkCb_EngBase124BDNaked);
-				}
+				//// Patch for crash at engbase.dll + 0x0124BD ~ adoxa (thanks man)
+				//// This is caused by a bad cmp.	
+				//{
+				//	byte patch[] = { 0xe8 };
+				//	WriteProcMem((char*)hEngBase + 0x0124BD, patch, 1);
+				//	PatchCallAddr((char*)hEngBase, 0x0124BD, (char*)HkCb_EngBase124BDNaked);
+				//}
 
 				// Patch for crash at engbase.dll + 0x011a6d
 				// This is caused by a bad cmp I suspect

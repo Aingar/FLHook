@@ -65,7 +65,6 @@ namespace HyperJump
 	static uint BeaconCommodity = 0;
 	static float JumpCargoSizeRestriction = 7000;
 	static uint set_blindJumpOverrideSystem = 0;
-	static boolean set_canJumpWithCommodities = true;
 	static uint set_jumpInPvPInvulnerabilityPeriod = 5000;
 	static uint set_exitJumpHoleLoadout = CreateID("wormhole_unstable");
 	static uint set_exitJumpHoleArchetype = CreateID("jumphole_noentry");
@@ -298,10 +297,6 @@ namespace HyperJump
 						else if (ini.is_value("BlindJumpOverrideSystem"))
 						{
 							set_blindJumpOverrideSystem = CreateID(ini.get_value_string());
-						}
-						else if (ini.is_value("CanJumpWithCommodities"))
-						{
-							set_canJumpWithCommodities = ini.get_value_bool(0);
 						}
 						else if (ini.is_value("JumpInInvulnerabilityPeriod"))
 						{
@@ -652,31 +647,6 @@ namespace HyperJump
 				return make_pair(true, depth);
 		}
 		return make_pair(false, 0);
-	}
-
-	bool CheckForCommodities(uint iClientID, bool removeIfFound)
-	{
-		int iRemHoldSize;
-		std::list<CARGO_INFO> lstCargo;
-		HkEnumCargo(ARG_CLIENTID(iClientID), lstCargo, iRemHoldSize);
-		for (auto& cargo : lstCargo)
-		{
-			bool flag = false;
-			pub::IsCommodity(cargo.iArchID, flag);
-			if (!flag)
-			{
-				continue;
-			}
-			if (removeIfFound)
-			{
-				pub::Player::RemoveCargo(iClientID, (short)cargo.iID, cargo.iCount);
-			}
-			else
-			{
-				return true;
-			}
-		}
-		return false;
 	}
 
 	void CreateJumpHolePair(uint iClientID)
@@ -1393,12 +1363,6 @@ namespace HyperJump
 			PrintUserCmdText(clientId, L"Entering jump anomaly. Discharging jump drive.");
 			ShutdownJumpDrive(clientId);
 		}
-
-
-		if (!set_canJumpWithCommodities && jumpObjMap.count(spaceObjId))
-		{
-			CheckForCommodities(clientId, true);
-		}
 	}
 
 	bool HyperJump::SystemSwitchOutComplete(unsigned int iShip, unsigned int iClientID)
@@ -1655,11 +1619,6 @@ namespace HyperJump
 			PrintUserCmdText(iClientID, L"ERR Jump Drive will not function on this ship type");
 			pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_failed"));
 			return true;
-		}
-
-		if (!set_canJumpWithCommodities && CheckForCommodities(iClientID, false))
-		{
-			PrintUserCmdText(iClientID, L"Warning! You cannot jump without clearing your cargo hold!");
 		}
 
 		wstring& input = ToLower(GetParamToEnd(wscParam, ' ', 0));

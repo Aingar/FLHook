@@ -1189,7 +1189,7 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 
 void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 {
-	const static uint NANOBOT_ARCH_ID = CreateID("ge_s_battery_01");
+	const static uint BATTERY_ARCH_ID = CreateID("ge_s_battery_01");
 	returncode = DEFAULT_RETURNCODE;
 
 	auto& cloakInfo = mapClientsCloak.find(iClientID);
@@ -1198,6 +1198,17 @@ void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 		|| cloakInfo->second.iState != STATE_CLOAK_ON 
 		|| cloakInfo->second.arch->bDropShieldsOnUncloak == false
 		|| cloakInfo->second.bAdmin) 
+	{
+		return;
+	}
+
+	CShip* cship = ClientInfo[iClientID].cship;
+	if (!cship)
+	{
+		return;
+	}
+	CEquip* equip = cship->equip_manager.FindByID(p1.sItemId);
+	if (equip->archetype->iArchID != BATTERY_ARCH_ID)
 	{
 		return;
 	}

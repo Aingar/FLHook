@@ -290,7 +290,7 @@ bool CoreModule::Timer(uint time)
 	uint number_of_crew = base->HasMarketItem(set_base_crew_type);
 	bool isCrewSufficient = number_of_crew >= (base->base_level * 200);
 
-	if (baseHealthChanged)
+	if (baseHealthChanged && base->baseCSolar)
 	{
 		base->base_health = base->baseCSolar->get_hit_pts();
 	}
@@ -320,7 +320,7 @@ bool CoreModule::Timer(uint time)
 		return SpaceObjDestroyed(space_obj);
 	}
 
-	if (baseHealthChanged)
+	if (baseHealthChanged && base->baseCSolar)
 	{
 		baseHealthChanged = false;
 		base->baseCSolar->set_hit_pts(base->base_health);
@@ -423,10 +423,10 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		base->shield_strength_multiplier += shield_reinforcement_increment;
 	}
 
-	if (!baseHealthChanged)
+	if (baseHealthChanged && base->baseCSolar)
 	{
 		base->baseCSolar->set_hit_pts(base->base_health);
-		baseHealthChanged = true;
+		baseHealthChanged = false;
 	}
 
 	base->SpaceObjDamaged(space_obj, attacking_space_obj, incoming_damage);

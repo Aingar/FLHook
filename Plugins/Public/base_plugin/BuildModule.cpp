@@ -161,7 +161,6 @@ bool BuildModule::Timer(uint time)
 					base->SetupDefaults();
 
 					// Clear the build module slot.
-					base->modules[i] = nullptr;
 					builtCore = true;
 
 					base->modules[0] = new CoreModule(base);
@@ -190,13 +189,12 @@ bool BuildModule::Timer(uint time)
 						base->RecalculateCargoSpace();
 						break;
 					}
-					base->modules[i] = nullptr;
 					break;
 				 default:
-					base->modules[i] = nullptr;
 				}
 				base->Save();
 				delete this;
+				base->modules[i] = nullptr;
 				return false;
 			}
 		}

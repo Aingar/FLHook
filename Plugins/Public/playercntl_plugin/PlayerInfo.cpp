@@ -271,6 +271,11 @@ wstring FormatString(wstring& text)
 			newString << L"</TEXT><PARA/><TEXT>";
 			continue;
 		}
+		else if (currChar == L'S')
+		{
+			newString << L' ';
+			continue;
+		}
 		++i;
 		if (i == text.size())
 		{
@@ -418,12 +423,52 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 		PropagatePlayerInfo(iClientID);
 		PrintUserCmdText(iClientID, L"OK");
 	}
+	else if (wscCommand == L"re")
+	{
+		uint charsToRemove = ToUInt(wscMsg);
+		if (!charsToRemove)
+		{
+			PrintUserCmdText(iClientID, L"ERR Invalid parameters");
+			return true;
+		}
+		if (charsToRemove >= infoVec[iPara].length())
+		{
+			PrintUserCmdText(iClientID, L"ERR You try to remove more characters than the paragraph contains!");
+			return true;
+		}
+
+		infoVec[iPara] = infoVec[iPara].substr(0, infoVec[iPara].length() - charsToRemove);
+		RecalculateInfoText(iClientID);
+		WriteInfoFile(iClientID, scFilePath);
+		PropagatePlayerInfo(iClientID);
+		PrintUserCmdText(iClientID, L"OK");
+	}
+	else if (wscCommand == L"rs")
+	{
+		uint charsToRemove = ToUInt(wscMsg);
+		if (!charsToRemove)
+		{
+			PrintUserCmdText(iClientID, L"ERR Invalid parameters");
+			return true;
+		}
+		if (charsToRemove >= infoVec[iPara].length())
+		{
+			PrintUserCmdText(iClientID, L"ERR You try to remove more characters than the paragraph contains!");
+			return true;
+		}
+
+		infoVec[iPara] = infoVec[iPara].substr(charsToRemove);
+		RecalculateInfoText(iClientID);
+		WriteInfoFile(iClientID, scFilePath);
+		PropagatePlayerInfo(iClientID);
+		PrintUserCmdText(iClientID, L"OK");
+	}
 	else
 	{
 		PrintUserCmdText(iClientID, L"ERR Invalid parameters");
 		PrintUserCmdText(iClientID, L"/setinfo <paragraph> <command> <text>");
 		PrintUserCmdText(iClientID, L"|  <paragraph> The paragraph number in the range 1-%d", MAX_PARAGRAPHS);
-		PrintUserCmdText(iClientID, L"|  <command> The command to perform on the paragraph, 'a' for append, 'd' for delete");
+		PrintUserCmdText(iClientID, L"|  <command> The command to perform on the paragraph, 'a' for append, 'd' for delete, 'rs' to remove X characters from the start, 're' to remove X characters from end.");
 	}
 
 	return true;

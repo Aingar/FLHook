@@ -191,6 +191,7 @@ bool BuildModule::Timer(uint time)
 					}
 					break;
 				 default:
+					 break;
 				}
 				base->Save();
 				delete this;

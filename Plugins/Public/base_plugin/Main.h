@@ -110,6 +110,8 @@ struct MARKET_ITEM
 
 	// Making public to all players without restrictions
 	bool is_public;
+
+	uint shipHullId;
 };
 
 struct NEWS_ITEM

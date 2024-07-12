@@ -503,7 +503,16 @@ void PlayerBase::Load()
 						{
 							mi.sellPrice = mi.price;
 						}
-						market_items[good] = mi;
+
+						const GoodInfo* gi = GoodList_get()->find_by_id(good);
+						if (gi)
+						{
+							if (gi->iType == GOODINFO_TYPE_SHIP)
+							{
+								mi.shipHullId = gi->iHullGoodID;
+							}
+							market_items[good] = mi;
+						}
 					}
 					else if (ini.is_value("health"))
 					{

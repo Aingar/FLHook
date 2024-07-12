@@ -2216,6 +2216,7 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 	}
 }
 
+int shipPurchasePrice = 0;
 void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -2279,6 +2280,8 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		{
 			returncode = SKIPPLUGINS;
 			PrintUserCmdText(client, L"Purchased ship");
+
+			shipPurchasePrice = curr_money - price;
 		}
 		else if (gi && gi->iType == GOODINFO_TYPE_HULL)
 		{
@@ -2387,10 +2390,23 @@ void __stdcall ReqChangeCash(int cash, unsigned int client)
 void __stdcall ReqSetCash(int cash, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (shipPurchasePrice)
+	{
+		return;
+	}
 	if (clients[client].player_base)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 }
 
+void __stdcall ReqSetCash_AFTER(int cash, unsigned int client)
+{
+	if (shipPurchasePrice)
+	{
+		int moneyDiff = shipPurchasePrice - Players[client].iInspectCash;
+		pub::Player::AdjustCash(client, moneyDiff);
+		shipPurchasePrice = 0;
+	}
+}
 
 void __stdcall ReqEquipment(class EquipDescList const &edl, unsigned int client)
 {
@@ -3340,6 +3356,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem_AFTER, PLUGIN_HkIServerImpl_ReqAddItem_AFTER, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash_AFTER, PLUGIN_HkIServerImpl_ReqSetCash_AFTER, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));

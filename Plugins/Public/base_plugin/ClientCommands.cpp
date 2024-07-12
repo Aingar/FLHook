@@ -84,6 +84,15 @@ void SendMarketGoodSync(PlayerBase* base, uint client)
 		uint good = i->first;
 		MARKET_ITEM& item = i->second;
 		wchar_t buf[200];
+
+		if (item.shipHullId)
+		{
+			good = item.shipHullId;
+			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
+				base->proxy_base, item.shipHullId, item.price, 1, 0, item.sellPrice);
+			SendCommand(client, buf);
+		}
+
 		// If the base has none of the item then it is buy-only at the client.
 		if (item.quantity == 0)
 		{

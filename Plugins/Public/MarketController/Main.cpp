@@ -20,6 +20,9 @@ DWORD dsac_update_infocard_cmd_len = 0;
 DWORD* dsac_update_econ_cmd = 0;
 DWORD dsac_update_econ_cmd_len = 0;
 
+unordered_map<uint, unordered_map<ushort, float>> colGrpCargoMap;
+float playerCargoCapacity[MAX_CLIENT_ID + 1];
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
@@ -36,6 +39,85 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 {
 	return returncode;
+}
+
+void LoadColGrpData()
+{
+	colGrpCargoMap.clear();
+
+	INI_Reader ini;
+
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	string currDir = string(szCurDir);
+	string scFreelancerIniFile = currDir + R"(\freelancer.ini)";
+
+	string gameDir = currDir.substr(0, currDir.length() - 4);
+	gameDir += string(R"(\DATA\)");
+
+	if (!ini.open(scFreelancerIniFile.c_str(), false))
+	{
+		return;
+	}
+
+	vector<string> shipFiles;
+
+	while (ini.read_header())
+	{
+		if (!ini.is_header("Data"))
+		{
+			continue;
+		}
+		while (ini.read_value())
+		{
+			if (ini.is_value("ships"))
+			{
+				shipFiles.emplace_back(ini.get_value_string());
+			}
+		}
+	}
+
+	ini.close();
+
+	for (string equipFile : shipFiles)
+	{
+		equipFile = gameDir + equipFile;
+		if (!ini.open(equipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+		ushort currSID = 3;
+		while (ini.read_header())
+		{
+			if (ini.is_header("Ship"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+						currSID = 3;
+						break;
+					}
+				}
+			}
+			else if (ini.is_header("CollisionGroup"))
+			{
+				currSID++;
+				while (ini.read_value())
+				{
+					if (ini.is_value("cargo_capacity"))
+					{
+						colGrpCargoMap[currNickname][currSID] = ini.get_value_float(0);
+						break;
+					}
+				}
+			}
+		}
+		ini.close();
+	}
 }
 
 void LoadMarketGoodsIni(const string& scPath, map<uint, market_map_t >& mapBaseMarket)
@@ -313,6 +395,7 @@ void LoadSettings()
 	returncode = DEFAULT_RETURNCODE;
 
 	AlleyMF::LoadSettings();
+	LoadColGrpData();
 
 	LoadMarketOverrides(nullptr);
 }
@@ -368,6 +451,86 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 	AlleyMF::BaseEnter_AFTER(baseId, client);
 }
 
+unordered_map<uint, float> dropMap;
+
+void Timer()
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	for (auto& item : dropMap)
+	{
+		uint shipId = item.first;
+		IObjInspectImpl* iobj1;
+		uint dummy;
+		GetShipInspect(shipId, iobj1, dummy);
+
+		if (!iobj1)
+		{
+			continue;
+		}
+
+		IObjRW* iobj = (IObjRW*)iobj1;
+
+		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+
+		if (cship->hitPoints <= 1.0f)
+		{
+			continue;
+		}
+
+		float totalCargoToJettison = item.second;
+		CEquipTraverser tr(Cargo);
+		CEquipManager& eqManager = cship->equip_manager;
+
+		CECargo* cargo = nullptr;
+		while (cargo = reinterpret_cast<CECargo*>(eqManager.Traverse(tr)))
+		{
+			if (cargo->archetype->fVolume == 0.0f)
+			{
+				continue;
+			}
+			bool flag = false;
+			pub::IsCommodity(cargo->archetype->iArchID, flag);
+			if (!flag)
+			{
+				continue;
+			}
+
+			float amountToJettison = min(cargo->count, ceilf(totalCargoToJettison / cargo->archetype->fVolume));
+			iobj->jettison_cargo(cargo->iSubObjId, static_cast<ushort>(amountToJettison), cship->ownerPlayer);
+
+			totalCargoToJettison -= amountToJettison * cargo->archetype->fVolume;
+			if (totalCargoToJettison <= 0.0f)
+			{
+				break;
+			}
+		}
+	}
+
+	dropMap.clear();
+}
+
+void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFate fate, DamageList* dmgList)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+	const auto shipColGrpInfo = colGrpCargoMap.find(cship->archetype->iArchID);
+	if (shipColGrpInfo == colGrpCargoMap.end())
+	{
+		return;
+	}
+
+	const auto colGrpInfo = shipColGrpInfo->second.find(colGrp->colGrp->id);
+	if (colGrpInfo == shipColGrpInfo->second.end())
+	{
+		return;
+	}
+
+	uint id = iobj->get_id();
+	dropMap[id] += dropMap[id] + colGrpInfo->second;
+}
+
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -411,6 +574,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));

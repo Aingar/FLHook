@@ -81,7 +81,7 @@ GetZoneDistanceFunc GetZoneDistance = GetZoneDistanceFunc(0x6339B00);
 unordered_map<uint, ZoneSpecialData> zoneSpecialData;
 void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg)
 {
-	if (!ship->cobj->ownerPlayer)
+	if (!ship->cobj->ownerPlayer || ship->cobj->hitPoints <= 0.0f || !ship->cobj->currentDamageZone)
 	{
 		return;
 	}

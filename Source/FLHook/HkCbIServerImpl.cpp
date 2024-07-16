@@ -779,7 +779,7 @@ namespace HkIServerImpl
 			if (cship)
 			{
 				CEquip* equip = cship->equip_manager.FindByID(aq.sID);
-				if (equip && equip->CEquipType == ET_ENGINE)
+				if (equip && equip->CEquipType == Engine)
 				{
 					ClientInfo[iClientID].bEngineKilled = !aq.bActivate;
 					if (!aq.bActivate)

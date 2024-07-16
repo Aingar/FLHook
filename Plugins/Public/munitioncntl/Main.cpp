@@ -124,6 +124,8 @@ void ReadMunitionDataFromInis()
 		}
 	}
 
+	ini.close();
+
 	for (string equipFile : equipFiles)
 	{
 		equipFile = gameDir + equipFile;
@@ -173,6 +175,7 @@ void ReadMunitionDataFromInis()
 				}
 			}
 		}
+		ini.close();
 	}
 }
 

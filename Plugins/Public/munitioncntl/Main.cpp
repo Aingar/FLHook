@@ -25,10 +25,11 @@ struct MineInfo
 {
 	float armingTime = 0.0f;
 	bool detonateOnEndLifetime = false;
+	bool stopSpin = false;
 };
 
 unordered_map<uint, float> guidedArmingTimesMap;
-unordered_map<uint, MineInfo> mineArmingTimesMap;
+unordered_map<uint, MineInfo> mineInfoMap;
 
 uint lastProcessedProjectile = 0;
 
@@ -152,11 +153,15 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("self_detonate"))
 					{
-						mineArmingTimesMap[currNickname].detonateOnEndLifetime = ini.get_value_bool(0);
+						mineInfoMap[currNickname].detonateOnEndLifetime = ini.get_value_bool(0);
 					}
 					else if (ini.is_value("mine_arming_time"))
 					{
-						mineArmingTimesMap[currNickname].armingTime = ini.get_value_float(0);
+						mineInfoMap[currNickname].armingTime = ini.get_value_float(0);
+					}
+					else if (ini.is_value("stop_spin"))
+					{
+						mineInfoMap[currNickname].stopSpin = ini.get_value_bool(0);
 					}
 				}
 			}
@@ -253,16 +258,26 @@ void __fastcall PlayerFireRemoveAmmoDetour(PlayerData* pd, void* edx, uint archI
 	PlayerFireRemoveAmmoFunc(pd, archId, launcher->GetProjectilesPerFire(), hp, syncPlayer);
 }
 
+void MineSpin(CMine* mine, Vector& spinVec)
+{
+	auto mineInfo = mineInfoMap.find(mine->archetype->iArchID);
+	if (mineInfo == mineInfoMap.end() || !mineInfo->second.stopSpin)
+	{
+		PhySys::AddToAngularVelocityOS(mine, spinVec);
+	}
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	HANDLE servHandle = GetModuleHandle("server.dll");
+	HANDLE commonHandle = GetModuleHandle("common.dll");
 	PatchCallAddr((char*)servHandle, 0xD921, (char*)PlayerFireRemoveAmmoDetour);
+	PatchCallAddr((char*)commonHandle, 0x4CB81, (char*)MineSpin);
 	PlayerFireRemoveAmmoFunc = (PlayerFireRemoveAmmo)(DWORD(servHandle) + 0x6F260);
 
 	ReadMunitionDataFromInis();
-
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -337,8 +352,8 @@ int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	CMine* mine = reinterpret_cast<CMine*>(iobj->cobj);
 	Archetype::Mine* mineArch = reinterpret_cast<Archetype::Mine*>(mine->archetype);
 
-	auto& mineInfo = mineArmingTimesMap.find(mineArch->iArchID);
-	if (mineInfo != mineArmingTimesMap.end())
+	auto& mineInfo = mineInfoMap.find(mineArch->iArchID);
+	if (mineInfo != mineInfoMap.end())
 	{
 		if (mineArch->fLifeTime - mine->remainingLifetime < mineInfo->second.armingTime)
 		{

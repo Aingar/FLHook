@@ -331,7 +331,7 @@ void SCI::UpdatePlayerID(unsigned int iClientID)
 
 	foreach(lstCargo, CARGO_INFO, i)
 	{
-		if (i->bMounted)
+		if (!i->bMounted)
 		{
 			continue;
 		}

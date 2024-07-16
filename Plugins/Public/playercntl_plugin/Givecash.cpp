@@ -352,7 +352,7 @@ namespace GiveCash
 			if (HkAntiCheat(targetClientId) != HKE_OK)
 			{
 				PrintUserCmdText(iClientID, L"ERR: Transfer failed");
-				AddLog("NOTICE: Possible cheating when sending %s credits from %s (%s) to %s (%s)",
+				AddLog("NOTICE: Possible cheating(1) when sending %s credits from %s (%s) to %s (%s)",
 					wstos(ToMoneyStr(cash)).c_str(),
 					wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
 					wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str());
@@ -377,45 +377,26 @@ namespace GiveCash
 
 		// Remove cash from current character and save it checking that the
 		// save completes before allowing the cash to be added to the target ship.
-		if ((err = HkAddCash(wscCharname, 0 - cash)) != HKE_OK)
-		{
-			PrintUserCmdText(iClientID, L"ERR: Remove cash failed err=" + HkErrGetText(err));
-			return true;
-		}
-
 		if (HkAntiCheat(iClientID) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR: Transfer failed");
-			AddLog("NOTICE: Possible cheating when sending %s credits from %s (%s) to %s (%s)",
+			AddLog("NOTICE: Possible cheating(2) when sending %s credits from %s (%s) to %s (%s)",
 				wstos(ToMoneyStr(cash)).c_str(),
 				wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
 				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str());
 			return true;
 		}
+		pub::Player::AdjustCash(iClientID, -cash);
 		HkSaveChar(iClientID);
 
 		// Add cash to target character
 		if ((err = HkAddCash(wscTargetCharname, cash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR: Add cash failed err=" + HkErrGetText(err));
+			pub::Player::AdjustCash(iClientID, cash);
+			HkSaveChar(iClientID);
 			return true;
 		}
-
-		targetClientId = HkGetClientIdFromCharname(wscTargetCharname);
-		if (targetClientId != -1 && !HkIsInCharSelectMenu(targetClientId))
-		{
-			if (HkAntiCheat(targetClientId) != HKE_OK)
-			{
-				PrintUserCmdText(iClientID, L"ERR: Transfer failed");
-				AddLog("NOTICE: Possible cheating when sending %s credits from %s (%s) to %s (%s)",
-					wstos(ToMoneyStr(cash)).c_str(),
-					wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
-					wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str());
-				return true;
-			}
-			HkSaveChar(targetClientId);
-		}
-
 
 		// Check that receiving character has the correct ammount of cash.
 		int iCurrCash;

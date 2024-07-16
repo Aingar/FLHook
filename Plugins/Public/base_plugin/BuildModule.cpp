@@ -165,8 +165,9 @@ bool BuildModule::Timer(uint time)
 
 					base->modules[0] = new CoreModule(base);
 					base->modules[0]->Spawn();
-					base->RecalculateCargoSpace();
 
+					base->modules[i] = nullptr;
+					base->RecalculateCargoSpace();
 					break;
 				case Module::TYPE_STORAGE:
 					base->modules[i] = new StorageModule(base);
@@ -189,13 +190,12 @@ bool BuildModule::Timer(uint time)
 						base->RecalculateCargoSpace();
 						break;
 					}
+					base->modules[i] = nullptr;
 					break;
 				 default:
-					 break;
+					base->modules[i] = nullptr;
 				}
 				base->Save();
-				delete this;
-				base->modules[i] = nullptr;
 				return false;
 			}
 		}

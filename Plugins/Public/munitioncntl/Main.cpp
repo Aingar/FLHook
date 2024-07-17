@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <FLHook.h>
 #include <plugin.h>
+#include <PluginUtilities.h>
 
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
@@ -24,6 +25,7 @@ unordered_map<uint, uint> mapTrackingByObjTypeBlacklistBitmap;
 struct MineInfo
 {
 	float armingTime = 0.0f;
+	float dispersionAngle = 0.0f;
 	bool detonateOnEndLifetime = false;
 	bool stopSpin = false;
 };
@@ -163,6 +165,10 @@ void ReadMunitionDataFromInis()
 					{
 						mineInfoMap[currNickname].stopSpin = ini.get_value_bool(0);
 					}
+					else if (ini.is_value("dispersion_angle"))
+					{
+						mineInfoMap[currNickname].dispersionAngle = ini.get_value_float(0) / (180.f / 3.14f);
+					}
 				}
 			}
 			else if (ini.is_header("Munition"))
@@ -267,6 +273,30 @@ void MineSpin(CMine* mine, Vector& spinVec)
 	}
 }
 
+void MineImpulse(CMine* mine, Vector& launchVec)
+{
+	auto mineInfo = mineInfoMap.find(mine->archetype->iArchID);
+	if (mineInfo != mineInfoMap.end() && mineInfo->second.dispersionAngle > 0.0f)
+	{
+		Vector randVecAxis = RandomVector(1.0f);
+
+		Vector vxp = VectorCross(randVecAxis, launchVec);
+		Vector vxvxp = VectorCross(randVecAxis, vxp);
+
+		float angle = mineInfo->second.dispersionAngle;
+		angle *= rand() % 10000 / 10000.f;
+
+		vxp = VectorMultiply(vxp, sinf(angle));
+		vxvxp = VectorMultiply(vxvxp, 1.0f - cosf(angle));
+
+		launchVec.x += vxp.x + vxvxp.x;
+		launchVec.y += vxp.y + vxvxp.y;
+		launchVec.z += vxp.z + vxvxp.z;
+	}
+
+	PhySys::AddToVelocity(mine, launchVec);
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -275,6 +305,7 @@ void LoadSettings()
 	HANDLE commonHandle = GetModuleHandle("common.dll");
 	PatchCallAddr((char*)servHandle, 0xD921, (char*)PlayerFireRemoveAmmoDetour);
 	PatchCallAddr((char*)commonHandle, 0x4CB81, (char*)MineSpin);
+	PatchCallAddr((char*)commonHandle, 0x4CAF1, (char*)MineImpulse);
 	PlayerFireRemoveAmmoFunc = (PlayerFireRemoveAmmo)(DWORD(servHandle) + 0x6F260);
 
 	ReadMunitionDataFromInis();

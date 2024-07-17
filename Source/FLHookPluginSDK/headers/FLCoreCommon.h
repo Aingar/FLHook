@@ -1813,8 +1813,8 @@ namespace PhySys
 	IMPORT  float  ANOM_LIMITS_MAX_ANGULAR_VELOCITY_PER_PSI;
 	IMPORT  float  ANOM_LIMITS_MAX_VELOCITY;
 	IMPORT  void  AddImpulseAtPoint(struct CObject *, class Vector const &, class Vector const &);
-	IMPORT  void  AddToAngularVelocityOS(struct CObject *, class Vector const &);
-	IMPORT  void  AddToVelocity(struct CObject *, class Vector const &);
+	IMPORT  void  AddToAngularVelocityOS(::CObject *, class Vector const &);
+	IMPORT  void  AddToVelocity(::CObject *, class Vector const &);
 	IMPORT  void  AngularImpulse(struct CObject *, class Vector const &, float);
 	IMPORT  void  AngularImpulseOS(struct CObject *, class Vector const &, float);
 	IMPORT  bool  AnyActive(void);

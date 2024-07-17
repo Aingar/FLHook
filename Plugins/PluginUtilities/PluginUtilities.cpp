@@ -1032,6 +1032,20 @@ Vector NormalizeVector(Vector& v)
 	return ret;
 }
 
+Vector VectorMultiply(Vector& a, float b)
+{
+	return { a.x * b, a.y * b, a.z * b };
+}
+
+Vector VectorCross(Vector& v1, Vector& v2)
+{
+	Vector vec;
+	vec.x = v1.y * v2.z - v1.z * v2.y;
+	vec.y = v1.z * v2.x - v1.x * v2.z;
+	vec.z = v1.x * v2.y - v1.y * v2.x;
+	return vec;
+}
+
 // Format a chat string in accordance with the receiver's preferences and send it. Will
 // check that the receiver accepts messages from wscSender and refuses to send if necessary.
 void FormatSendChat(uint iToClientID, const wstring &wscSender, const wstring &wscText,

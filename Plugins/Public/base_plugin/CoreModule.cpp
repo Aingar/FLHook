@@ -421,6 +421,12 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 	{
 		base->damage_taken_since_last_threshold -= base->base_shield_reinforcement_threshold;
 		base->shield_strength_multiplier += shield_reinforcement_increment;
+
+		PrintLocalMsgAroundObject(space_obj, base->basename + L" shield reinforced!", 50000.f);
+		if (base->shield_strength_multiplier >= 1.0f)
+		{
+			PrintLocalMsgAroundObject(space_obj, base->basename + L" is now impervious to damage!", 50000.f);
+		}
 	}
 
 	if (baseHealthChanged && base->baseCSolar)

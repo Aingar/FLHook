@@ -1843,6 +1843,10 @@ namespace PlayerCommands
 				item++;
 				continue;
 			}
+			if (gi->iType == GOODINFO_TYPE_SHIP)
+			{
+				gi = GoodList::find_by_id(i.second.shipHullId);
+			}
 
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);
 			if (ToLower(name).find(substring) != std::wstring::npos)

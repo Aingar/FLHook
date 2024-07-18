@@ -288,6 +288,10 @@ wstring PlayerBase::GetBaseHeaderText()
 			{
 				continue;
 			}
+			if (gi->iType == GOODINFO_TYPE_SHIP)
+			{
+				gi = GoodList::find_by_id(gi->iHullGoodID);
+			}
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);
 			wstring stock = UIntToPrettyStr(item.quantity);
 			wstring buyPrice = UIntToPrettyStr(item.price);

@@ -88,7 +88,7 @@ struct ARCHTYPE_STRUCT
 
 struct MARKET_ITEM
 {
-	MARKET_ITEM() : quantity(0), price(1), sellPrice(1), min_stock(100000), max_stock(100000), is_pinned(false), is_public(false) {}
+	MARKET_ITEM() : quantity(0), price(1), sellPrice(1), min_stock(100000), max_stock(100000), is_pinned(false), is_public(false), shipHullId(0) {}
 
 	// Number of units of commodity stored in this base
 	uint quantity;

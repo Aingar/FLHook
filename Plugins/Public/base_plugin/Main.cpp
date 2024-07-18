@@ -2009,7 +2009,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	if (base->market_items.find(gsi.iArchID) == base->market_items.end()
 		&& !cd.admin)
 	{
-		PrintUserCmdText(client, L"ERR: Base will not accept goods");
+		PrintUserCmdText(client, L"ERR: Base will not accept goods, goods not approved by base owner.");
 		cd.reverse_sell = true;
 		return;
 	}
@@ -2028,7 +2028,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 
 	if ((item.quantity + count) > item.max_stock)
 	{
-		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached");
+		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached.");
 		cd.reverse_sell = true;
 		return;
 	}
@@ -2106,7 +2106,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	}
 	else
 	{
-		PrintUserCmdText(client, L"ERR: Base will not accept goods");
+		PrintUserCmdText(client, L"ERR: Base will not accept goods, insufficient storage capacity.");
 		cd.reverse_sell = true;
 		return;
 	}

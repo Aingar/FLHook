@@ -1497,6 +1497,10 @@ namespace PlayerCommands
 			for (const auto& product : recipe->produced_items)
 			{
 				const GoodInfo* gi = GoodList::find_by_id(product.first);
+				if (gi->iType == GOODINFO_TYPE_SHIP)
+				{
+					gi = GoodList::find_by_id(i.second.shipHullId);
+				}
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), product.second);
 			}
 			if (!recipe->catalyst_items.empty())

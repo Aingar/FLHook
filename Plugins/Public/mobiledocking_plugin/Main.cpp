@@ -80,8 +80,8 @@ void LoadDockingModules(const string& path, int& carrierCount, int& dockedCount)
 						ini_get_wstring(ini, carrierName);
 						if (nameToCarrierInfoMap.count(carrierName))
 						{
-							carrierAlreadyFound = true;
-							break;
+							ci.dockedShipList = nameToCarrierInfoMap[carrierName].dockedShipList;
+							continue;
 						}
 						const auto& accData = HkGetAccountByCharname(carrierName);
 						// don't load renamed/deleted ships
@@ -106,6 +106,14 @@ void LoadDockingModules(const string& path, int& carrierCount, int& dockedCount)
 					{
 						skipDockedShip = false;
 						ini_get_wstring(ini, dockedShipName);
+						for (const wstring& name : ci.dockedShipList)
+						{
+							if (name == dockedShipName)
+							{
+								skipDockedShip = true;
+								break;
+							}
+						}
 						const auto& accData = HkGetAccountByCharname(dockedShipName);
 						// skip loading renamed/deleted docked ships
 						if (!accData)
@@ -126,19 +134,16 @@ void LoadDockingModules(const string& path, int& carrierCount, int& dockedCount)
 						dockedCount++;
 					}
 				}
-				if (!carrierAlreadyFound)
+				if (validData)
 				{
-					if (validData)
+					nameToCarrierInfoMap[carrierName] = ci;
+					carrierCount++;
+				}
+				else
+				{
+					for (const wstring& dockedShipName : ci.dockedShipList)
 					{
-						nameToCarrierInfoMap[carrierName] = ci;
-						carrierCount++;
-					}
-					else
-					{
-						for (const wstring& dockedShipName : ci.dockedShipList)
-						{
-							MoveOfflineShipToLastDockedSolar(dockedShipName);
-						}
+						MoveOfflineShipToLastDockedSolar(dockedShipName);
 					}
 				}
 			}

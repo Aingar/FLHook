@@ -1499,7 +1499,7 @@ namespace PlayerCommands
 				const GoodInfo* gi = GoodList::find_by_id(product.first);
 				if (gi->iType == GOODINFO_TYPE_SHIP)
 				{
-					gi = GoodList::find_by_id(i.second.shipHullId);
+					gi = GoodList::find_by_id(gi->iShipGoodID);
 				}
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), product.second);
 			}

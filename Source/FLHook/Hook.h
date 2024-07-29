@@ -832,6 +832,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 void HookExplosionHitNaked();
 void ShipHullDamageNaked();
 void SolarHullDamageNaked();
+void ShipShieldDamageNaked();
 bool AllowPlayerDamageIds(const uint clientVictim, const uint clientAttacker);
 void AllowPlayerDamageNaked();
 enum ZoneDamageType
@@ -938,7 +939,7 @@ extern FARPROC LootDestroyedOrigFunc;
 extern FARPROC MineDestroyedOrigFunc;
 extern FARPROC GuidedDestroyedOrigFunc;
 extern FARPROC fpOldExplosionHit;
-extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
+extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc;
 
 extern EXPORT CDPClientProxy **g_cClientProxyArray;
 extern EXPORT void *pClient;

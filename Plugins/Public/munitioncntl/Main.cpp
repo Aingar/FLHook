@@ -39,6 +39,8 @@ struct ShieldState
 {
 	bool shieldState;
 	ShieldSource changeSource;
+	mstime boostUntil;
+	float damageReduction;
 };
 
 ShieldState playerShieldState[MAX_CLIENT_ID + 1];
@@ -51,6 +53,21 @@ struct ShieldSyncData
 };
 
 vector<ShieldSyncData> shieldStateUpdateMap;
+
+struct ShieldBoostData
+{
+	float durationPerBattery;
+	float damageReduction;
+};
+
+unordered_map<uint, ShieldBoostData> shieldBoostMap;
+
+struct shieldBoostFuseInfo
+{
+	uint fuseId;
+	mstime lastUntil;
+};
+unordered_map<uint, shieldBoostFuseInfo> shieldFuseMap;
 
 constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
@@ -240,6 +257,29 @@ void ReadMunitionDataFromInis()
 				if (FoundValue)
 				{
 					engineData[currNickname] = ep;
+				}
+			}
+			else if (ini.is_header("ShieldGenerator"))
+			{
+				ShieldBoostData sb;
+				bool FoundValue = false;
+
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("shield_boost"))
+					{
+						sb.durationPerBattery = ini.get_value_float(0);
+						sb.damageReduction = ini.get_value_float(1);
+						FoundValue = true;
+					}
+				}
+				if (FoundValue)
+				{
+					shieldBoostMap[currNickname] = sb;
 				}
 			}
 		}
@@ -568,6 +608,28 @@ void Timer()
 		delete iter.second;
 	}
 	eqSids.clear();
+
+	mstime currTime = timeInMS();
+	vector<uint> keysToRemove;
+	for (auto& shieldFuse : shieldFuseMap)
+	{
+		if (shieldFuse.second.lastUntil < currTime)
+		{
+			IObjInspectImpl* iobj1;
+			uint dummy;
+			GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
+			IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
+			if (iobj)
+			{
+				HkUnLightFuse(iobj, shieldFuse.second.fuseId, 0.0f);
+			}
+			keysToRemove.emplace_back(shieldFuse.first);
+		}
+	}
+	for (uint key : keysToRemove)
+	{
+		shieldFuseMap.erase(key);
+	}
 }
 
 void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
@@ -612,6 +674,119 @@ void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, Damag
 	}
 }
 
+bool usedBatts = false;
+void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
+{
+	returncode = DEFAULT_RETURNCODE;
+	const static uint BATTERY_ARCH_ID = CreateID("ge_s_battery_01");
+	usedBatts = false;
+
+	if (!ClientInfo[iClientID].cship)
+	{
+		return;
+	}
+	const auto& eqManager = ClientInfo[iClientID].cship->equip_manager;
+	const auto& usedItem = reinterpret_cast<const CECargo*>(eqManager.FindByID(p1.sItemId));
+	if (!usedItem)
+	{
+		return;
+	}
+	uint itemArchId = usedItem->archetype->iArchID;
+	if (itemArchId == BATTERY_ARCH_ID)
+	{
+		usedBatts = true;
+	}
+}
+
+void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID)
+{
+	static uint shieldFuse = CreateID("intermed_damage_smallship01");
+	returncode = DEFAULT_RETURNCODE;
+
+	if (!usedBatts)
+	{
+		return;
+	}
+	usedBatts = false;
+
+	const auto& eqManager = ClientInfo[iClientID].cship->equip_manager;
+	const CEquip* shield = eqManager.FindFirst(ShieldGenerator);
+	if (!shield)
+	{
+		return;
+	}
+	const auto& shieldData = shieldBoostMap.find(shield->archetype->iArchID);
+	if (shieldData == shieldBoostMap.end())
+	{
+		return;
+	}
+
+	const auto& usedItem = reinterpret_cast<const CECargo*>(eqManager.FindByID(p1.sItemId));
+	int currBattCount = 0;
+	if (usedItem)
+	{
+		currBattCount = usedItem->count;
+	}
+	uint usedAmount = p1.sAmountUsed - currBattCount;
+	mstime boostDuration = shieldData->second.durationPerBattery * usedAmount * 1000;
+
+	mstime currTime = timeInMS();
+	ShieldState& shieldState = playerShieldState[iClientID];
+	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
+	{
+		shieldState.boostUntil += boostDuration;
+	}
+	else
+	{
+		shieldState.boostUntil = currTime + boostDuration;
+	}
+	shieldState.damageReduction = shieldData->second.damageReduction;
+
+	IObjInspectImpl* iobj2;
+	uint dummy;
+	GetShipInspect(Players[iClientID].iShipID, iobj2, dummy);
+
+	if (!iobj2)
+	{
+		return;
+	}
+
+	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
+	HkLightFuse(iobj, shieldFuse, 0.0f, 0.0f, 0.0f);
+	shieldFuseMap[iClientID] = { shieldFuse, shieldState.boostUntil };
+}
+
+void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	uint clientId = iobj->cobj->ownerPlayer;
+	if (!iobj->cobj->ownerPlayer)
+	{
+		return;
+	}
+
+	auto& shieldState = playerShieldState[clientId];
+	if (!shieldState.damageReduction)
+	{
+		return;
+	}
+	if (!shieldState.boostUntil)
+	{
+		return;
+	}
+	mstime currTime = timeInMS();
+	if (shieldState.boostUntil > currTime)
+	{
+		dmg *= 1.0f - shieldState.damageReduction;
+	}
+	else
+	{
+		shieldState.boostUntil = 0;
+		shieldState.damageReduction = 0;
+	}
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
@@ -642,6 +817,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldDamage, PLUGIN_ShipShieldDmg, 0));
 	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));

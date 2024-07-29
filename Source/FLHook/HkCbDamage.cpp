@@ -130,7 +130,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		{
 			if (edgeDistance <= -zd.distanceScaling)
 			{
-				dmgMultiplier = powf(1.0 - (edgeDistance / -zd.distanceScaling), zd.logScale);
+				dmgMultiplier = powf(1.0f - (edgeDistance / -zd.distanceScaling), zd.logScale);
 			}
 			else
 			{
@@ -214,7 +214,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	}
 }
 
-FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
+FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc;
 
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
@@ -261,6 +261,24 @@ __declspec(naked) void SolarHullDamageNaked()
 		call SolarHullDamage
 		pop ecx
 		jmp [SolarHullDamageOrigFunc]
+	}
+}
+
+void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
+{
+	CALL_PLUGINS_V(PLUGIN_ShipShieldDmg, __stdcall, (IObjRW * iobj, float& incDmg), (iobj, incDmg));
+}
+
+__declspec(naked) void ShipShieldDamageNaked()
+{
+	__asm {
+		push ecx
+		lea eax, [esp + 0xC]
+		push eax
+		push ecx
+		call ShipShieldDamage
+		pop ecx
+		jmp[ShipShieldDamageOrigFunc]
 	}
 }
 

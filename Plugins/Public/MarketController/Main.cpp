@@ -24,7 +24,8 @@ struct LootData
 {
 	uint maxDropPlayer = 5000;
 	uint maxDropNPC = 5000;
-	float dropChance = 1.0f;
+	float dropChanceUnmounted = 1.0f;
+	float dropChanceMounted = 0.0f;
 };
 unordered_map<uint, LootData> lootData;
 
@@ -49,7 +50,7 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 	return returncode;
 }
 
-void LoadColGrpData()
+void LoadGameData()
 {
 	colGrpCargoMap.clear();
 
@@ -69,6 +70,7 @@ void LoadColGrpData()
 	}
 
 	vector<string> shipFiles;
+	vector<string> equipFiles;
 
 	while (ini.read_header())
 	{
@@ -82,15 +84,19 @@ void LoadColGrpData()
 			{
 				shipFiles.emplace_back(ini.get_value_string());
 			}
+			else if (ini.is_value("equipment"))
+			{
+				equipFiles.emplace_back(ini.get_value_string());
+			}
 		}
 	}
 
 	ini.close();
 
-	for (string equipFile : shipFiles)
+	for (string& shipFile : shipFiles)
 	{
-		equipFile = gameDir + equipFile;
-		if (!ini.open(equipFile.c_str(), false))
+		shipFile = gameDir + shipFile;
+		if (!ini.open(shipFile.c_str(), false))
 		{
 			continue;
 		}
@@ -122,6 +128,56 @@ void LoadColGrpData()
 						break;
 					}
 				}
+			}
+		}
+		ini.close();
+	}
+
+	for (string& equipFile : equipFiles)
+	{
+		equipFile = gameDir + equipFile;
+
+		if (!ini.open(equipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+
+		while (ini.read_header())
+		{
+			LootData ld;
+			bool hasValue = false;
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("max_drop_npc"))
+				{
+					ld.maxDropNPC = ini.get_value_int(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("max_drop_player"))
+				{
+					ld.maxDropPlayer = ini.get_value_int(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("drop_chance_npc_unmounted"))
+				{
+					ld.dropChanceUnmounted = ini.get_value_float(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("drop_chance_npc_mounted"))
+				{
+					ld.dropChanceMounted = ini.get_value_float(0);
+					hasValue = true;
+				}
+			}
+			if (hasValue)
+			{
+				lootData[currNickname] = ld;
 			}
 		}
 		ini.close();
@@ -403,7 +459,7 @@ void LoadSettings()
 	returncode = DEFAULT_RETURNCODE;
 
 	AlleyMF::LoadSettings();
-	LoadColGrpData();
+	LoadGameData();
 
 	LoadMarketOverrides(nullptr);
 }
@@ -459,6 +515,8 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 	AlleyMF::BaseEnter_AFTER(baseId, client);
 }
 
+const LootData defaults;
+
 void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -495,7 +553,7 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 	{
 		auto lootIter = lootData.find(cargo->archetype->iArchID);
 
-		LootData& ld = lootIter == lootData.end() ? LootData() : lootIter->second;
+		const LootData& ld = lootIter == lootData.end() ? defaults : lootIter->second;
 
 		uint amountToDrop;
 		if (cship->ownerPlayer)
@@ -507,10 +565,10 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 			amountToDrop = ld.maxDropNPC;
 		}
 
-		if (ld.dropChance < 1.0f)
+		if (ld.dropChanceUnmounted < 1.0f)
 		{
 			float roll = static_cast<float>(rand()) / RAND_MAX;
-			if (roll > ld.dropChance)
+			if (roll > ld.dropChanceUnmounted)
 			{
 				continue;
 			}
@@ -546,7 +604,7 @@ void Timer()
 			continue;
 		}
 
-		IObjRW* iobj = (IObjRW*)iobj1;
+		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 

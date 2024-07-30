@@ -710,16 +710,49 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 	usedBatts = false;
 
+	ShieldState& shieldState = playerShieldState[iClientID];
+	shieldState = ShieldState();
+
 	const auto& eqManager = ClientInfo[iClientID].cship->equip_manager;
-	const CEquip* shield = eqManager.FindFirst(ShieldGenerator);
-	if (!shield)
+	CEquipTraverser tr(ShieldGenerator);
+	const CEquip* shield;
+
+	mstime boostDuration = 0;
+	float boostReduction = 0.0f;
+	uint fuse = 0;
+	bool isFirst = true;
+	while (shield = eqManager.Traverse(tr))
+	{
+		const auto& shieldData = shieldBoostMap.find(shield->archetype->iArchID);
+		if (shieldData == shieldBoostMap.end())
+		{
+			continue;
+		}
+
+		if (isFirst)
+		{
+			isFirst = false;
+			fuse = shieldData->second.fuseId;
+		}
+		boostDuration += shieldData->second.durationPerBattery;
+		boostReduction += shieldData->second.damageReduction;
+	}
+
+	if (!boostDuration || !boostReduction)
 	{
 		return;
 	}
-	const auto& shieldData = shieldBoostMap.find(shield->archetype->iArchID);
-	if (shieldData == shieldBoostMap.end())
+
+	shieldState.damageReduction = min(1.0f, boostReduction);
+
+	mstime currTime = timeInMS();
+	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
 	{
-		return;
+		shieldState.boostUntil += boostDuration;
+	}
+	else
+	{
+		shieldState.boostUntil = currTime + boostDuration;
 	}
 
 	const auto& usedItem = reinterpret_cast<const CECargo*>(eqManager.FindByID(p1.sItemId));
@@ -729,19 +762,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		currBattCount = usedItem->count;
 	}
 	uint usedAmount = p1.sAmountUsed - currBattCount;
-	mstime boostDuration = shieldData->second.durationPerBattery * usedAmount * 1000;
-
-	mstime currTime = timeInMS();
-	ShieldState& shieldState = playerShieldState[iClientID];
-	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
-	{
-		shieldState.boostUntil += boostDuration;
-	}
-	else
-	{
-		shieldState.boostUntil = currTime + boostDuration;
-	}
-	shieldState.damageReduction = shieldData->second.damageReduction;
+	boostDuration *= usedAmount * 1000;
 
 	IObjInspectImpl* iobj2;
 	uint dummy;
@@ -753,8 +774,8 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
-	HkLightFuse(iobj, shieldData->second.fuseId, 0.0f, 0.0f, 0.0f);
-	shieldFuseMap[iClientID] = { shieldData->second.fuseId, shieldState.boostUntil };
+	HkLightFuse(iobj, fuse, 0.0f, 0.0f, 0.0f);
+	shieldFuseMap[iClientID] = { fuse, shieldState.boostUntil };
 }
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)

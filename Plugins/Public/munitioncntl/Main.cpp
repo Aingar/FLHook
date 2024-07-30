@@ -57,6 +57,7 @@ vector<ShieldSyncData> shieldStateUpdateMap;
 struct ShieldBoostData
 {
 	float durationPerBattery;
+	float minimumDuration;
 	float damageReduction;
 	uint fuseId;
 };
@@ -281,8 +282,9 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("shield_boost"))
 					{
 						sb.durationPerBattery = ini.get_value_float(0);
-						sb.damageReduction = ini.get_value_float(1);
-						sb.fuseId = CreateID(ini.get_value_string(2));
+						sb.minimumDuration = ini.get_value_float(1);
+						sb.damageReduction = ini.get_value_float(2);
+						sb.fuseId = CreateID(ini.get_value_string(3));
 						FoundValue = true;
 					}
 				}
@@ -312,6 +314,33 @@ void ReadMunitionDataFromInis()
 			}
 		}
 		ini.close();
+	}
+
+	if (ini.open((gameDir + "\\FX\\explosions.ini").c_str(), false))
+	{
+		while (ini.read_header())
+		{
+			if (ini.is_header("explosion"))
+			{
+				uint currNickname;
+				ExplosionDamageType damageType;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("weapon_type"))
+					{
+						damageType.type = CreateID(ini.get_value_string(0));
+					}
+				}
+				if (damageType.type)
+				{
+					explosionTypeMap[currNickname] = damageType;
+				}
+			}
+		}
 	}
 }
 
@@ -745,6 +774,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	float boostDuration = 0;
 	float boostReduction = 0.0f;
+	float minimumDuration = 0.0f;
 	uint fuse = 0;
 	bool isFirst = true;
 	while (shield = eqManager.Traverse(tr))
@@ -759,12 +789,13 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		{
 			isFirst = false;
 			fuse = shieldData->second.fuseId;
+			minimumDuration = shieldData->second.minimumDuration;
 		}
 		boostDuration += shieldData->second.durationPerBattery;
 		boostReduction += shieldData->second.damageReduction;
 	}
 
-	if (!boostDuration || !boostReduction)
+	if (!boostDuration || !boostReduction || boostDuration < minimumDuration)
 	{
 		return;
 	}

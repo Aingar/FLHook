@@ -28,4 +28,5 @@ _ReSharper*/
 *.pdb
 Plugins/Public/*/headers/
 Plugins/Public/*/libs/
-Binaries/bin-vc14/*
+[Bb]inaries/*
+Source/FLHookPluginSDK/libs/FLHook.lib

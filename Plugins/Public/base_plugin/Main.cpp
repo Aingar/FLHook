@@ -2640,8 +2640,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		lastDespawnedFilename = base->path;
 		base->base_health = 0;
+		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		return retVal;
 
 	}
 	else if (args.find(L"baserespawn") == 0)

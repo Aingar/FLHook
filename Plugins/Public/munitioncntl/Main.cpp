@@ -58,6 +58,7 @@ struct ShieldBoostData
 {
 	float durationPerBattery;
 	float damageReduction;
+	uint fuseId;
 };
 
 unordered_map<uint, ShieldBoostData> shieldBoostMap;
@@ -274,6 +275,7 @@ void ReadMunitionDataFromInis()
 					{
 						sb.durationPerBattery = ini.get_value_float(0);
 						sb.damageReduction = ini.get_value_float(1);
+						sb.fuseId = CreateID(ini.get_value_string(2));
 						FoundValue = true;
 					}
 				}
@@ -700,7 +702,6 @@ void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 
 void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID)
 {
-	static uint shieldFuse = CreateID("intermed_damage_smallship01");
 	returncode = DEFAULT_RETURNCODE;
 
 	if (!usedBatts)
@@ -752,8 +753,8 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
-	HkLightFuse(iobj, shieldFuse, 0.0f, 0.0f, 0.0f);
-	shieldFuseMap[iClientID] = { shieldFuse, shieldState.boostUntil };
+	HkLightFuse(iobj, shieldData->second.fuseId, 0.0f, 0.0f, 0.0f);
+	shieldFuseMap[iClientID] = { shieldData->second.fuseId, shieldState.boostUntil };
 }
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)

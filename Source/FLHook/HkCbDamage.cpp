@@ -214,7 +214,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 	}
 }
 
-FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc;
+FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc;
 
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
@@ -242,6 +242,31 @@ __declspec(naked) void ShipHullDamageNaked()
 		call ShipHullDamage
 		pop ecx
 		jmp [ShipHullDamageOrigFunc]
+	}
+}
+
+bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmgList)
+{
+	CALL_PLUGINS(PLUGIN_ShipShieldExplosionDmg, bool, __stdcall, (IObjRW*, ExplosionDamageEvent*, DamageList*), (iobj, explosion, dmgList));
+
+	return true;
+}
+
+__declspec(naked) void ShipShieldExplosionDamageNaked()
+{
+	__asm {
+		push ecx
+		push[esp + 0xC]
+		push[esp + 0xC]
+		push ecx
+		call ShipShieldExplosionDamage
+		pop ecx
+		test al, al
+		jz abort_lbl
+		jmp ShipShieldExplosionDamageOrigFunc
+	abort_lbl:
+		mov al, 1
+		retn 8
 	}
 }
 

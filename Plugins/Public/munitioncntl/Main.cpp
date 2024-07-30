@@ -63,12 +63,12 @@ struct ShieldBoostData
 
 unordered_map<uint, ShieldBoostData> shieldBoostMap;
 
-struct shieldBoostFuseInfo
+struct ShieldBoostFuseInfo
 {
 	uint fuseId;
 	mstime lastUntil;
 };
-unordered_map<uint, shieldBoostFuseInfo> shieldFuseMap;
+unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 
 constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
@@ -78,6 +78,13 @@ struct EngineProperties
 	float engineKillCDSpeedLimit;
 };
 unordered_map<uint, EngineProperties> engineData;
+
+struct ExplosionDamageType
+{
+	uint type = 0;
+};
+
+unordered_map<uint, ExplosionDamageType> explosionTypeMap;
 
 enum TRACKING_STATE {
 	TRACK_ALERT,
@@ -282,6 +289,25 @@ void ReadMunitionDataFromInis()
 				if (FoundValue)
 				{
 					shieldBoostMap[currNickname] = sb;
+				}
+			}
+			else if (ini.is_header("Explosion"))
+			{
+				ExplosionDamageType damageType;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("weapon_type"))
+					{
+						damageType.type = CreateID(ini.get_value_string(0));
+					}
+				}
+				if (damageType.type)
+				{
+					explosionTypeMap[currNickname] = damageType;
 				}
 			}
 		}
@@ -717,7 +743,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	CEquipTraverser tr(ShieldGenerator);
 	const CEquip* shield;
 
-	mstime boostDuration = 0;
+	float boostDuration = 0;
 	float boostReduction = 0.0f;
 	uint fuse = 0;
 	bool isFirst = true;
@@ -745,16 +771,6 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	shieldState.damageReduction = min(1.0f, boostReduction);
 
-	mstime currTime = timeInMS();
-	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
-	{
-		shieldState.boostUntil += boostDuration;
-	}
-	else
-	{
-		shieldState.boostUntil = currTime + boostDuration;
-	}
-
 	const auto& usedItem = reinterpret_cast<const CECargo*>(eqManager.FindByID(p1.sItemId));
 	int currBattCount = 0;
 	if (usedItem)
@@ -763,6 +779,17 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 	uint usedAmount = p1.sAmountUsed - currBattCount;
 	boostDuration *= usedAmount * 1000;
+
+	mstime currTime = timeInMS();
+	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
+	{
+		shieldState.boostUntil += static_cast<mstime>(boostDuration);
+	}
+	else
+	{
+		shieldState.boostUntil = currTime + static_cast<mstime>(boostDuration);
+	}
+
 
 	IObjInspectImpl* iobj2;
 	uint dummy;
@@ -780,8 +807,6 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)
 {
-	returncode = DEFAULT_RETURNCODE;
-
 	uint clientId = iobj->cobj->ownerPlayer;
 	if (!iobj->cobj->ownerPlayer)
 	{
@@ -807,6 +832,57 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)
 		shieldState.boostUntil = 0;
 		shieldState.damageReduction = 0;
 	}
+}
+
+bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmgList)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uint, float>>*)(0x658A9C0);
+	typedef bool(__thiscall* ShipShieldExlosionHit)(IObjRW*, ExplosionDamageEvent*, DamageList*);
+	static ShipShieldExlosionHit ShipShieldExlosionHitFunc = ShipShieldExlosionHit(0x6CE9A90);
+
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(ShieldGenerator));
+	if (!shield)
+	{
+		return true;
+	}
+	
+	auto explosionIter = explosionTypeMap.find(explosion->explosionArchetype->iID);
+	if (explosionIter == explosionTypeMap.end())
+	{
+		return true;
+	}
+	
+	uint shieldType = shield->ShieldGenArch()->iShieldTypeID;
+	
+	auto shieldResistIter = shieldResistMap->find(explosionIter->second.type);
+	if (shieldResistIter == shieldResistMap->end())
+	{
+		return true;
+	}
+	
+	auto shieldResistMap2 = shieldResistIter.value();
+	auto shieldResistIter2 = shieldResistMap2->find(shieldType);
+	if (shieldResistIter2 != shieldResistMap2->end())
+	{
+		return true;
+	}
+
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
+	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
+
+	explosion->explosionArchetype->fHullDamage *= *shieldResistIter2.value();
+	explosion->explosionArchetype->fEnergyDamage *= *shieldResistIter2.value();
+
+	ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
+
+	explosion->explosionArchetype->fHullDamage = originalHullDmg;
+	explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
+	return false;
 }
 
 #define IS_CMD(a) !args.compare(L##a)
@@ -842,7 +918,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldDamage, PLUGIN_ShipShieldDmg, 0));
-	
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldExplosionDamage, PLUGIN_ShipShieldExplosionDmg, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 

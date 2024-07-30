@@ -276,6 +276,11 @@ wstring FormatString(wstring& text)
 			newString << L' ';
 			continue;
 		}
+		else if (currChar == L'c')
+		{
+			newString << L';';
+			continue;
+		}
 		++i;
 		if (i == text.size())
 		{

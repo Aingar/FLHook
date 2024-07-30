@@ -306,6 +306,12 @@ namespace GiveCash
 			return true;
 		}
 
+		if (ToLower(wscTargetCharname) == ToLower(wscCharname))
+		{
+			PrintUserCmdText(iClientID, L"ERR: You can't send money to yourself!");
+			return true;
+		}
+
 		// Read the current number of credits for the player
 		// and check that the character has enough cash.
 		int iCash = 0;
@@ -581,6 +587,12 @@ namespace GiveCash
 		if (InBlockedSystem(wscCharname) || InBlockedSystem(wscTargetCharname) || IsBannedAccount(iTargetAcc))
 		{
 			PrintUserCmdText(iClientID, L"ERR cash transfer blocked");
+			return true;
+		}
+
+		if (ToLower(wscTargetCharname) == ToLower(wscCharname))
+		{
+			PrintUserCmdText(iClientID, L"ERR: You can't draw money from yourself!");
 			return true;
 		}
 

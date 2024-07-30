@@ -322,6 +322,10 @@ wstring GetLastBaseName(uint client)
 {
 	const auto& dockedInfo = idToDockedInfoMap[client];
 	const auto& baseInfo = Universe::get_base(dockedInfo->lastDockedSolar);
+	if (!dockedInfo->lastDockedSolar)
+	{
+		return L"ERROR";
+	}
 	if (!baseInfo)
 	{
 		PrintUserCmdText(client, L"ERR base %u not found! Contact Developers.", dockedInfo->lastDockedSolar);
@@ -1277,7 +1281,14 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 		{
 			wstring& lastBaseName = GetLastBaseName(iClientID);
 
-			PrintUserCmdText(iClientID, L"Carrier currently offline. Last docked base: %ls", lastBaseName.c_str());
+			if (lastBaseName == L"ERROR")
+			{
+				RemoveShipFromLists(charname, false);
+			}
+			else
+			{
+				PrintUserCmdText(iClientID, L"Carrier currently offline. Last docked base: %ls", lastBaseName.c_str());
+			}
 		}
 	}
 }

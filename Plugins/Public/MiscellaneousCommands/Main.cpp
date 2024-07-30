@@ -110,6 +110,25 @@ bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstr
 	return true;
 }
 
+bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	uint groupId = ToUInt(GetParam(wscParam, ' ', 0));
+	auto groupMap = reinterpret_cast<st6::map<const uint, CPlayerGroup*>*>(0x6D90400);
+	auto groupIter = groupMap->find(groupId);
+	if (!groupId || groupIter == groupMap->end() || groupIter->second->GetMemberCount() == 0)
+	{
+		PrintUserCmdText(iClientID, L"ERR No such group");
+		return false;
+	}
+
+	PrintUserCmdText(iClientID, L"Target group size: %u", groupIter->second->GetMemberCount());
+	if (Players[iClientID].PlayerGroup && groupIter->second != Players[iClientID].PlayerGroup)
+	{
+		PrintUserCmdText(iClientID, L"Your group size: %u", Players[iClientID].PlayerGroup->GetMemberCount());
+	}
+	return true;
+}
+
 bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 	if (!Players[iClientID].iShipID)
@@ -372,6 +391,8 @@ USERCMD UserCmds[] =
 	{ L"/wpp", UserCmd_WayPointPlayer, L"" },
 	{ L"/rally", UserCmd_WayPointRally, L"" },
 	{ L"/missionbug", UserCmd_ForceAbortMission, L""},
+	{ L"/groupsize", UserCmd_GroupSize, L""},
+	{ L"/gs", UserCmd_GroupSize, L""},
 };
 
 /**

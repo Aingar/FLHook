@@ -8,90 +8,24 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Includes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-#include <unordered_set>
-#include <unordered_map>
-#include <FLHook.h>
-#include <plugin.h>
-#include <PluginUtilities.h>
+#include "MunitionCntl.h"
 
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
+
 unordered_set<uint> setNoTrackingAlertProjectiles;
-
 unordered_map<uint, uint> mapTrackingByObjTypeBlacklistBitmap;
-
-struct MineInfo
-{
-	float armingTime = 0.0f;
-	float dispersionAngle = 0.0f;
-	bool detonateOnEndLifetime = false;
-	bool stopSpin = false;
-};
-
 unordered_map<uint, float> guidedArmingTimesMap;
 unordered_map<uint, MineInfo> mineInfoMap;
-
-uint lastProcessedProjectile = 0;
-
-struct ShieldState
-{
-	bool shieldState;
-	ShieldSource changeSource;
-	mstime boostUntil;
-	float damageReduction;
-};
-
 ShieldState playerShieldState[MAX_CLIENT_ID + 1];
-
-struct ShieldSyncData
-{
-	uint client;
-	uint targetClient;
-	uint count = 0;
-};
-
 vector<ShieldSyncData> shieldStateUpdateMap;
-
-struct ShieldBoostData
-{
-	float durationPerBattery;
-	float minimumDuration;
-	float damageReduction;
-	uint fuseId;
-};
-
 unordered_map<uint, ShieldBoostData> shieldBoostMap;
-
-struct ShieldBoostFuseInfo
-{
-	uint fuseId;
-	mstime lastUntil;
-};
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
-
-constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
-
-struct EngineProperties
-{
-	bool ignoreCDWhenEKd = false;
-	float engineKillCDSpeedLimit;
-};
 unordered_map<uint, EngineProperties> engineData;
-
-struct ExplosionDamageType
-{
-	uint type = 0;
-};
-
 unordered_map<uint, ExplosionDamageType> explosionTypeMap;
 
-enum TRACKING_STATE {
-	TRACK_ALERT,
-	TRACK_NOALERT,
-	NOTRACK_NOALERT
-};
+uint lastProcessedProjectile = 0;
 
 void LoadSettings();
 
@@ -283,8 +217,9 @@ void ReadMunitionDataFromInis()
 					{
 						sb.durationPerBattery = ini.get_value_float(0);
 						sb.minimumDuration = ini.get_value_float(1);
-						sb.damageReduction = ini.get_value_float(2);
-						sb.fuseId = CreateID(ini.get_value_string(3));
+						sb.maximumDuration = ini.get_value_float(2);
+						sb.damageReduction = ini.get_value_float(3);
+						sb.fuseId = CreateID(ini.get_value_string(4));
 						FoundValue = true;
 					}
 				}
@@ -429,6 +364,7 @@ void LoadSettings()
 	WriteProcMem((char*)servHandle + 0x8426C, &addr, sizeof(addr));
 
 	ReadMunitionDataFromInis();
+	LoadHookOverrides();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -799,6 +735,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	float boostDuration = 0;
 	float boostReduction = 0.0f;
 	float minimumDuration = 0.0f;
+	float maximumDuration = FLT_MAX;
 	uint fuse = 0;
 	bool isFirst = true;
 	while (shield = eqManager.Traverse(tr))
@@ -814,6 +751,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 			isFirst = false;
 			fuse = shieldData->second.fuseId;
 			minimumDuration = shieldData->second.minimumDuration;
+			maximumDuration = shieldData->second.maximumDuration;
 		}
 		boostDuration += shieldData->second.durationPerBattery;
 		boostReduction += shieldData->second.damageReduction;
@@ -842,6 +780,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	boostDuration *= 1000;
+	boostDuration = min(maximumDuration * 1000, boostDuration);
 
 	mstime currTime = timeInMS();
 	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
@@ -871,76 +810,6 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
 	HkLightFuse(iobj, fuse, 0.0f, 0.0f, 0.0f);
-}
-
-void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)
-{
-	uint clientId = iobj->cobj->ownerPlayer;
-	if (!iobj->cobj->ownerPlayer)
-	{
-		return;
-	}
-
-	auto& shieldState = playerShieldState[clientId];
-	if (!shieldState.damageReduction)
-	{
-		return;
-	}
-	if (!shieldState.boostUntil)
-	{
-		return;
-	}
-	mstime currTime = timeInMS();
-	if (shieldState.boostUntil > currTime)
-	{
-		dmg *= 1.0f - shieldState.damageReduction;
-	}
-	else
-	{
-		shieldState.boostUntil = 0;
-		shieldState.damageReduction = 0;
-	}
-}
-
-bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmgList)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	typedef bool(__thiscall* ShipShieldExlosionHit)(IObjRW*, ExplosionDamageEvent*, DamageList*);
-	static ShipShieldExlosionHit ShipShieldExlosionHitFunc = ShipShieldExlosionHit(0x6CE9A90);
-
-	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
-	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-	if (!shield)
-	{
-		return true;
-	}
-	
-	auto explosionIter = explosionTypeMap.find(explosion->explosionArchetype->iID);
-	if (explosionIter == explosionTypeMap.end())
-	{
-		return true;
-	}
-	
-	float modifier = GetWeaponModifier(shield, nullptr, explosionIter->second.type);
-
-	if (modifier == 1.0f)
-	{
-		return true;
-	}
-
-	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
-	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
-
-	explosion->explosionArchetype->fHullDamage *= modifier;
-	explosion->explosionArchetype->fEnergyDamage *= modifier;
-
-	ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
-
-	explosion->explosionArchetype->fHullDamage = originalHullDmg;
-	explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
-	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-	return false;
 }
 
 #define IS_CMD(a) !args.compare(L##a)
@@ -975,8 +844,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldDamage, PLUGIN_ShipShieldDmg, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldExplosionDamage, PLUGIN_ShipShieldExplosionDmg, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 

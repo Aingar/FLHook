@@ -31,8 +31,6 @@ PATCH_INFO piCommonDLL =
 	{
 
 		{0x639D160,		&HkIEngine::CEGun_Update_naked,				4, &HkIEngine::fpOldUpdateCEGun,		false},
-		//{0x639C138,		&HkIEngine::cshipInitNaked,				4, &HkIEngine::fpOldCshipInit,		false},
-		//{0x639C138,		&HkIEngine::csolarInitNaked,				4, &HkIEngine::fpOldCsolarInit,		false},
 
 
 		{0,0,0,0} // terminate
@@ -58,8 +56,6 @@ PATCH_INFO piServerDLL =
 		{0x6D675C4,		&SolarDestroyedNaked,				4, &fpOldSolarDestroyed,			false},
 		{0x6D672A0,		&HookExplosionHitNaked,				4, &fpOldExplosionHit,		false},
 		{0x6D672CC,		&ShipHullDamageNaked,				4, &ShipHullDamageOrigFunc,							false},
-		{0x6D67330,		&ShipShieldDamageNaked,				4, &ShipShieldDamageOrigFunc,							false},
-		{0x6D67320,		&ShipShieldExplosionDamageNaked,	4, &ShipShieldExplosionDamageOrigFunc,							false},
 		{0x6D6761C,		&SolarHullDamageNaked,				4, &SolarHullDamageOrigFunc, false},
 		{0x6D6420C,		&HkIEngine::_LaunchPos,				4, &HkIEngine::fpOldLaunchPos,	false},
 		{0x6D648E0,		&HkIEngine::FreeReputationVibe,		4, 0,							false},

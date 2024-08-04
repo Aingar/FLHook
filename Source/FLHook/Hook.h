@@ -832,8 +832,6 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 void HookExplosionHitNaked();
 void ShipHullDamageNaked();
 void SolarHullDamageNaked();
-void ShipShieldDamageNaked();
-void ShipShieldExplosionDamageNaked();
 bool AllowPlayerDamageIds(const uint clientVictim, const uint clientAttacker);
 void AllowPlayerDamageNaked();
 enum ZoneDamageType

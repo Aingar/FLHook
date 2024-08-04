@@ -220,8 +220,6 @@ enum PLUGIN_CALLBACKS
 	PLUGIN_MineDestroyed,
 	PLUGIN_HKIServerImpl_PopUpDialog,
 	PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER,
-	PLUGIN_ShipShieldDmg,
-	PLUGIN_ShipShieldExplosionDmg,
 	PLUGIN_CALLBACKS_AMOUNT,
 };
 

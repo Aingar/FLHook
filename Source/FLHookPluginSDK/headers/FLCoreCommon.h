@@ -2868,7 +2868,9 @@ public:
 	void RemGen(class CEShieldGenerator *);
 	uint dunnoShield;
 	float currShieldHitPoints;
-	uint dunnoShield2[8];
+	uint dunnoShield2[3];
+	st6::vector<CEShieldGenerator*> linkedShieldGen;
+	Archetype::ShieldGenerator* mainShieldGenArch;
 	float offlineThreshold;
 	float rebuildTime;
 	float maxShieldHitPoints;
@@ -2891,6 +2893,8 @@ public:
 	bool IsLinked(void)const;
 	void LinkShield(class CEShield *);
 	void UnLinkShield(void);
+
+	CEShield* mainShield;
 };
 
 class IMPORT CEThruster : public CAttachedEquip, public CPhysControllerEquip

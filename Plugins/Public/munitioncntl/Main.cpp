@@ -394,6 +394,26 @@ void MineImpulse(CMine* mine, Vector& launchVec)
 	PhySys::AddToVelocity(mine, launchVec);
 }
 
+static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uint, float>>*)(0x658A9C0);
+
+float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
+{
+	auto shieldResistIter = shieldResistMap->find(weaponType);
+	if (shieldResistIter == shieldResistMap->end())
+	{
+		return 1.0f;
+	}
+
+	auto shieldResistMap2 = shieldResistIter.value();
+	auto shieldResistIter2 = shieldResistMap2->find(shield->mainShieldGenArch->iShieldTypeID);
+	if (shieldResistIter2 == shieldResistMap2->end() || !shieldResistIter2.key())
+	{
+		return 1.0f;
+	}
+
+	return *shieldResistIter2.value();
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -404,6 +424,9 @@ void LoadSettings()
 	PatchCallAddr((char*)commonHandle, 0x4CB81, (char*)MineSpin);
 	PatchCallAddr((char*)commonHandle, 0x4CAF1, (char*)MineImpulse);
 	PlayerFireRemoveAmmoFunc = (PlayerFireRemoveAmmo)(DWORD(servHandle) + 0x6F260);
+
+	uint addr = (uint)GetWeaponModifier;
+	WriteProcMem((char*)servHandle + 0x8426C, &addr, sizeof(addr));
 
 	ReadMunitionDataFromInis();
 }
@@ -882,12 +905,11 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uint, float>>*)(0x658A9C0);
 	typedef bool(__thiscall* ShipShieldExlosionHit)(IObjRW*, ExplosionDamageEvent*, DamageList*);
 	static ShipShieldExlosionHit ShipShieldExlosionHitFunc = ShipShieldExlosionHit(0x6CE9A90);
 
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
-	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(ShieldGenerator));
+	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
 	if (!shield)
 	{
 		return true;
@@ -899,18 +921,9 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 		return true;
 	}
 	
-	
-	auto shieldResistIter = shieldResistMap->find(explosionIter->second.type);
-	if (shieldResistIter == shieldResistMap->end())
-	{
-		return true;
-	}
+	float modifier = GetWeaponModifier(shield, nullptr, explosionIter->second.type);
 
-	uint shieldType = reinterpret_cast<Archetype::ShieldGenerator*>(shield->archetype)->iShieldTypeID;
-
-	auto shieldResistMap2 = shieldResistIter.value();
-	auto shieldResistIter2 = shieldResistMap2->find(shieldType);
-	if (shieldResistIter2 == shieldResistMap2->end())
+	if (modifier == 1.0f)
 	{
 		return true;
 	}
@@ -918,8 +931,8 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
 	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
 
-	explosion->explosionArchetype->fHullDamage *= *shieldResistIter2.value();
-	explosion->explosionArchetype->fEnergyDamage *= *shieldResistIter2.value();
+	explosion->explosionArchetype->fHullDamage *= modifier;
+	explosion->explosionArchetype->fEnergyDamage *= modifier;
 
 	ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
 
@@ -946,8 +959,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
 	p_PI->sName = "Munition Controller";
 	p_PI->sShortName = "munitioncntl";
-	p_PI->bMayPause = true;
-	p_PI->bMayUnload = true;
+	p_PI->bMayPause = false;
+	p_PI->bMayUnload = false;
 	p_PI->ePluginReturnCode = &returncode;
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));

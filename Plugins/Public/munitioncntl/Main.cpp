@@ -795,7 +795,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		boostReduction += shieldData->second.damageReduction;
 	}
 
-	if (!boostDuration || !boostReduction || boostDuration < minimumDuration)
+	if (!boostDuration || !boostReduction)
 	{
 		return;
 	}
@@ -809,7 +809,15 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		currBattCount = usedItem->count;
 	}
 	uint usedAmount = p1.sAmountUsed - currBattCount;
-	boostDuration *= usedAmount * 1000;
+
+	boostDuration *= usedAmount;
+
+	if (boostDuration < minimumDuration)
+	{
+		return;
+	}
+
+	boostDuration *= 1000;
 
 	mstime currTime = timeInMS();
 	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
@@ -820,6 +828,8 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	{
 		shieldState.boostUntil = currTime + static_cast<mstime>(boostDuration);
 	}
+
+	shieldFuseMap[iClientID] = { fuse, shieldState.boostUntil };
 
 	if (!fuse)
 	{
@@ -837,7 +847,6 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
 	HkLightFuse(iobj, fuse, 0.0f, 0.0f, 0.0f);
-	shieldFuseMap[iClientID] = { fuse, shieldState.boostUntil };
 }
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& dmg)
@@ -890,22 +899,21 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 		return true;
 	}
 	
-	uint shieldType = shield->ShieldGenArch()->iShieldTypeID;
 	
 	auto shieldResistIter = shieldResistMap->find(explosionIter->second.type);
 	if (shieldResistIter == shieldResistMap->end())
 	{
 		return true;
 	}
-	
+
+	uint shieldType = reinterpret_cast<Archetype::ShieldGenerator*>(shield->archetype)->iShieldTypeID;
+
 	auto shieldResistMap2 = shieldResistIter.value();
 	auto shieldResistIter2 = shieldResistMap2->find(shieldType);
-	if (shieldResistIter2 != shieldResistMap2->end())
+	if (shieldResistIter2 == shieldResistMap2->end())
 	{
 		return true;
 	}
-
-	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
 	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
@@ -917,6 +925,7 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 
 	explosion->explosionArchetype->fHullDamage = originalHullDmg;
 	explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 	return false;
 }
 

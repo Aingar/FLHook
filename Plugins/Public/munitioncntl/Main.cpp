@@ -562,6 +562,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		}
 
 		if (!playerShieldState[info->client].shieldState
+			&& playerShieldState[info->client].changeSource != ShieldSource::UNSET
 			&& playerShieldState[info->client].changeSource != info->source)
 		{
 			return;

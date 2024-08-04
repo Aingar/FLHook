@@ -767,7 +767,7 @@ namespace MiscCmds
 		info.source = ShieldSource::MISC;
 		Plugin_Communication(CUSTOM_SHIELD_STATE_CHANGE, &info);
 
-		if (!clientInfo.bShieldsUp || info.success)
+		if (info.success)
 		{
 			PrintUserCmdText(iClientID, L"Shields %s", clientInfo.bShieldsUp ? L"Enabled" : L"Disabled");
 		}

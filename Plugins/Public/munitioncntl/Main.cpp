@@ -821,6 +821,10 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		shieldState.boostUntil = currTime + static_cast<mstime>(boostDuration);
 	}
 
+	if (!fuse)
+	{
+		return;
+	}
 
 	IObjInspectImpl* iobj2;
 	uint dummy;

@@ -149,6 +149,11 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				return FindSolar(starSystem, searchedId);
 			}
 
+			if (!iter->second->cobj)
+			{
+				return nullptr;
+			}
+
 			if (iter->second->cobj->starSystem == starSystem)
 			{
 				return iter->second;
@@ -160,6 +165,11 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			if (iter == iobjNonSolarCache.end())
 			{
 				return FindNonSolar(starSystem, searchedId);;
+			}
+
+			if (!iter->second->cobj)
+			{
+				return nullptr;
 			}
 
 			if (iter->second->cobj->starSystem == starSystem)

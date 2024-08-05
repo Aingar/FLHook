@@ -333,6 +333,10 @@ static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uin
 
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
 {
+	if (!weaponType)
+	{
+		return 1.0f;
+	}
 	auto shieldResistIter = shieldResistMap->find(weaponType);
 	if (shieldResistIter == shieldResistMap->end())
 	{
@@ -809,7 +813,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
-	HkLightFuse(iobj, fuse, 0.0f, 0.0f, 0.0f);
+	HkLightFuse(iobj, fuse, 0.0f, -1.0f, -1.0f);
 }
 
 #define IS_CMD(a) !args.compare(L##a)

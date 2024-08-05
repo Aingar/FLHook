@@ -856,7 +856,7 @@ namespace HkIEngine
 	void Radar_Range_naked();
 	void CShipInitializedNaked();
 	void CSolarInitializedNaked();
-	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
+	IObjRW* __stdcall FindInStarList(StarSystem* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
@@ -866,7 +866,6 @@ namespace HkIEngine
 	extern FARPROC fpOldUpdateCEGun;
 	extern FARPROC fpOldRadarRange;
 	extern FARPROC fpOldLoadRepCharFile;
-	extern unordered_set<uint> playerShips;
 	extern bool bAbortEventRequest;
 }
 void UnDetour(void* pOFunc, unsigned char* originalData);

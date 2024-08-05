@@ -134,6 +134,10 @@ namespace PlayerCommands
 			currentString += stows(itos(recipe.second.shortcut_number));
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
+			if (recipe.second.restricted)
+			{
+				currentString += L" (restricted)";
+			}
 			generatedHelpStringList.emplace_back(currentString.c_str());
 		}
 		return generatedHelpStringList;
@@ -1523,11 +1527,30 @@ namespace PlayerCommands
 			}
 			if (!recipe->affiliationBonus.empty())
 			{
-				PrintUserCmdText(client, L"IFF bonuses:");
-				for (const auto& rep : recipe->affiliationBonus)
+				if (!recipe->restricted)
 				{
-					PrintUserCmdText(client, L"|   %ls - +%u%% efficiency bonus",
-						HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+					PrintUserCmdText(client, L"IFF bonuses:");
+					for (const auto& rep : recipe->affiliationBonus)
+					{
+						PrintUserCmdText(client, L"|   %ls - +%u%% efficiency bonus",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+					}
+				}
+				else
+				{
+					PrintUserCmdText(client, L"Available to:");
+					for (const auto& rep : recipe->affiliationBonus)
+					{
+						if (rep.second != 1.0f)
+						{
+							PrintUserCmdText(client, L"|   %ls - +%u%% efficiency bonus",
+								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+						}
+						else
+						{
+							PrintUserCmdText(client, L"|   %ls", HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str());
+						}
+					}
 				}
 			}
 			return;
@@ -1538,6 +1561,11 @@ namespace PlayerCommands
 			if (!base->availableCraftList.count(recipe->craft_type))
 			{
 				PrintUserCmdText(client, L"ERR incorrect craftlist, for more information use /craft help");
+				return;
+			}
+			if (recipe->restricted && !recipe->affiliationBonus.count(base->affiliation))
+			{
+				PrintUserCmdText(client, L"ERR This recipe is not available for this base's affiliation");
 				return;
 			}
 			FactoryModule* factory = base->craftTypeTofactoryModuleMap[recipe->craft_type];

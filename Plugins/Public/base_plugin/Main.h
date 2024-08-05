@@ -44,6 +44,7 @@ struct RECIPE
 	vector<pair<uint, uint>> produced_items;
 	uint shortcut_number = 0;
 	bool loop_production = false;
+	bool restricted = false;
 	wstring infotext = L"";
 	wstring craft_type = L"";
 	uint cooking_rate = 0;

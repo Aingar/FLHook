@@ -881,6 +881,10 @@ void LoadSettingsActual()
 					{
 						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
 					}
+					else if (ini.is_value("restricted"))
+					{
+						recipe.restricted = ini.get_value_bool(0);
+					}
 				}
 				AddFactoryRecipeToMaps(recipe);
 			}

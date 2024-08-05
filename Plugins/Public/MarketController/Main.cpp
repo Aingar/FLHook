@@ -29,7 +29,7 @@ struct LootData
 };
 unordered_map<uint, LootData> lootData;
 
-unordered_map<uint, unordered_map<ushort, float>> colGrpCargoMap;
+unordered_map<uint, pair<float, unordered_map<ushort, float>>> colGrpCargoMap;
 float playerCargoCapacity[MAX_CLIENT_ID + 1];
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -103,6 +103,7 @@ void LoadGameData()
 
 		uint currNickname = 0;
 		ushort currSID = 3;
+		float totalColGrpCapacity = 0.0f;
 		while (ini.read_header())
 		{
 			if (ini.is_header("Ship"))
@@ -113,6 +114,7 @@ void LoadGameData()
 					{
 						currNickname = CreateID(ini.get_value_string());
 						currSID = 3;
+						totalColGrpCapacity = 0.0f;
 						break;
 					}
 				}
@@ -124,7 +126,9 @@ void LoadGameData()
 				{
 					if (ini.is_value("cargo_capacity"))
 					{
-						colGrpCargoMap[currNickname][currSID] = ini.get_value_float(0);
+						totalColGrpCapacity += ini.get_value_float(0);
+						colGrpCargoMap[currNickname].first = totalColGrpCapacity;
+						colGrpCargoMap[currNickname].second[currSID] = ini.get_value_float(0);
 						break;
 					}
 				}
@@ -454,6 +458,77 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	}
 }
 
+float __fastcall CShipGetCargoRemainingDetour(CShip* ship)
+{
+	float usedCargo = 0.0f;
+	CEquipTraverser tr(Cargo | InternalEquipment | ExternalEquipment);
+	CEquip* equip;
+	while (equip = ship->equip_manager.Traverse(tr))
+	{
+		if (equip->CEquipType == Cargo)
+		{
+			usedCargo += reinterpret_cast<CECargo*>(equip)->count * equip->archetype->fVolume;
+		}
+		else
+		{
+			usedCargo += equip->archetype->fVolume;
+		}
+	}
+
+	float cargoCapacity = ship->shiparch()->fHoldSize;
+	auto shipColGrpData = colGrpCargoMap.find(ship->archetype->iArchID);
+	if (shipColGrpData != colGrpCargoMap.end())
+	{
+		float totalColGrpCapacity = shipColGrpData->second.first;
+		cargoCapacity -= totalColGrpCapacity;
+
+		auto& capacityPerColGrp = shipColGrpData->second.second;
+		CArchGrpTraverser ctr;
+		CArchGroup* colGrp;
+		while (colGrp = ship->archGroupManager.Traverse(ctr))
+		{
+			if (colGrp->hitPts <= 0.0f)
+			{
+				continue;
+			}
+			auto colGrpData = capacityPerColGrp.find(colGrp->colGrp->id);
+			if (colGrpData != capacityPerColGrp.end())
+			{
+				cargoCapacity += colGrpData->second;
+			}
+		}
+	}
+
+	float finalCapacity = cargoCapacity - usedCargo;
+
+	return max(0.0f, finalCapacity);
+}
+
+int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment* equipArch)
+{
+	int spaceForCargo = ship->get_space_for_cargo_type(equipArch);
+
+	if (equipArch->fVolume > 0.0f)
+	{
+		float actualFreeSpace = CShipGetCargoRemainingDetour(ship);
+		return min(spaceForCargo, static_cast<int>(floorf(actualFreeSpace / equipArch->fVolume)));
+	}
+
+	return spaceForCargo;
+}
+
+void Detour(void* pOFunc, void* pHkFunc)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -461,6 +536,12 @@ void LoadSettings()
 	AlleyMF::LoadSettings();
 	LoadGameData();
 
+	HANDLE commonHandle = GetModuleHandleA("Common");
+	HANDLE serverHandle = GetModuleHandleA("Server");
+
+	Detour((char*)commonHandle + 0x53040, CShipGetCargoRemainingDetour);
+	void* funcAddr = (void*)CShipGetSpaceForCargoType;
+	WriteProcMem((char*)serverHandle + 0x84654, &funcAddr, 4);
 	LoadMarketOverrides(nullptr);
 }
 
@@ -656,8 +737,8 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 		return;
 	}
 
-	const auto colGrpInfo = shipColGrpInfo->second.find(colGrp->colGrp->id);
-	if (colGrpInfo == shipColGrpInfo->second.end())
+	const auto colGrpInfo = shipColGrpInfo->second.second.find(colGrp->colGrp->id);
+	if (colGrpInfo == shipColGrpInfo->second.second.end())
 	{
 		return;
 	}

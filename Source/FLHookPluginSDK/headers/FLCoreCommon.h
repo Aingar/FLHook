@@ -105,7 +105,7 @@ enum EquipmentClass : uint
 	InternalFX = 1 << 22,
 	TradeLaneEquip = 1 << 23,
 	Armor = 1 << 24,
-	ExternalEquipment = Mine | CM | Gun | ShieldGenerator | Thruster | CargoPod | CloakingDevice,
+	ExternalEquipment = MineLauncher | CM | Gun | ShieldGenerator | Thruster | CargoPod | CloakingDevice,
 	InternalEquipment = Engine | Power | Scanner | TractorBeam | RepairDroid | InternalFX | TradeLaneEquip | Armor,
 };
 

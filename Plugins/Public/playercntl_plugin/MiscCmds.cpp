@@ -974,7 +974,7 @@ namespace MiscCmds
 		if (obj)
 		{
 			HkUnLightFuse((IObjRW*)obj, fuseId, 0.0f); // in case it's a one-time fuse, we want to pre-emptively remove the previous, lingering fuse.
-			HkLightFuse((IObjRW*)obj, fuseId, 0.0f, 0.0f, 0.0f);
+			HkLightFuse((IObjRW*)obj, fuseId, 0.0f, 0.0f, -1.0f);
 		}
 	}
 

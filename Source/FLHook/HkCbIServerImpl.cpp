@@ -329,7 +329,6 @@ namespace HkIServerImpl
 		}
 		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
 		ClientInfo[iClientID].cship = playerCship;
-		HkIEngine::playerShips.insert(iShip);
 		ClientInfo[iClientID].fRadarRange = scanner->GetRadarRange();
 		ClientInfo[iClientID].fRadarRange *= ClientInfo[iClientID].fRadarRange;
 		playerCship->Release();
@@ -553,10 +552,6 @@ namespace HkIServerImpl
 
 			CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
 
-		if (ClientInfo[iClientID].cship)
-		{
-			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
-		}
 		ClientInfo[iClientID].cship = nullptr;
 		/*
 		try {

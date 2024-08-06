@@ -330,7 +330,7 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_CHARACTERINFO(uint iClientID, FLPACKET_
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	ClientInfo[iClientID].iCharMenuEnterTime = time(0);
+	ClientInfo[iClientID].iCharMenuEnterTime = static_cast<uint>(time(0));
 
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_CHARACTERINFO(iClientID, pDunno));
 	return reinterpret_cast<bool>(vRet);

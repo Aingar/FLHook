@@ -790,7 +790,7 @@ void CCmds::CmdSetPerfTimer(int loggingTime)
 {
 	RIGHT_CHECK(RIGHT_SUPERADMIN);
 
-	set_perfTimerLength = time(0) + loggingTime;
+	set_perfTimerLength = static_cast<int>(time(0)) + loggingTime;
 	set_logPerfTimers = true;
 
 	Print(L"OK\n");
@@ -802,7 +802,7 @@ void CCmds::CmdSetHookPerfTimer(string hookName, int loggingTime)
 {
 	RIGHT_CHECK(RIGHT_SUPERADMIN);
 
-	set_hookPerfTimerLength = time(0) + loggingTime;
+	set_perfTimerLength = static_cast<int>(time(0)) + loggingTime;
 	set_perfTimedHookName = hookName;
 
 	Print(L"OK\n");
@@ -812,7 +812,7 @@ void CCmds::CmdDumpCorePerfTimers(int loggingTime)
 {
 	RIGHT_CHECK(RIGHT_SUPERADMIN);
 
-	set_corePerfTimerLength = time(0) + loggingTime;
+	set_perfTimerLength = static_cast<int>(time(0)) + loggingTime;
 
 	Print(L"OK\n");
 }

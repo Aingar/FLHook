@@ -114,6 +114,21 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 	{
 		incDmg *= 1.0f - shieldState.damageReduction;
 		shieldState.damageTaken += incDmg;
+
+		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
+		if (shield && shield->currShieldHitPoints <= incDmg)
+		{
+			uint fuseId = shieldFuseMap[cship->ownerPlayer].boostData->fuseId;
+
+			HkUnLightFuse(iobj, fuseId, 0.0f);
+
+			shieldFuseMap.erase(cship->ownerPlayer);
+
+			shieldState.boostUntil = 0;
+			shieldState.damageReduction = 0;
+			shieldState.damageTaken = 0;
+		}
 	}
 	else
 	{

@@ -62,7 +62,6 @@ struct ShieldBoostData
 struct ShieldBoostFuseInfo
 {
 	mstime lastUntil;
-	float damageReduction;
 	ShieldBoostData* boostData;
 };
 
@@ -84,4 +83,5 @@ enum TRACKING_STATE {
 };
 
 extern unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];

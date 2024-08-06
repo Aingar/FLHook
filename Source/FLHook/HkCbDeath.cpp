@@ -24,6 +24,7 @@ void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, u
 		return;
 	}
 
+	HkIEngine::playerShips.erase(ClientInfo[iClientIDVictim].cship->id);
 	ClientInfo[iClientIDVictim].cship = nullptr;
 	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 

@@ -24,6 +24,7 @@ unordered_map<uint, ShieldBoostData> shieldBoostMap;
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+Archetype::Explosion* shieldExplosion;
 
 uint lastProcessedProjectile = 0;
 
@@ -222,6 +223,17 @@ void ReadMunitionDataFromInis()
 						sb.fuseId = CreateID(ini.get_value_string(4));
 						FoundValue = true;
 					}
+					else if (ini.is_value("shield_boost_explosion"))
+					{
+						sb.hullBaseDamage = ini.get_value_float(0);
+						sb.hullReflectDamagePercentage = ini.get_value_float(1);
+						sb.hullDamageCap = ini.get_value_float(2);
+						sb.energyBaseDamage = ini.get_value_float(3);
+						sb.energyReflectDamagePercentage = ini.get_value_float(4);
+						sb.energyDamageCap = ini.get_value_float(5);
+						sb.radius = ini.get_value_float(6);
+						sb.explosionFuseId = CreateID(ini.get_value_string(7));
+					}
 				}
 				if (FoundValue)
 				{
@@ -369,6 +381,10 @@ void LoadSettings()
 
 	ReadMunitionDataFromInis();
 	LoadHookOverrides();
+
+	ID_String str;
+	str.id = CreateID("missile03_mark04_explosion");
+	shieldExplosion = Archetype::GetExplosion(str);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -629,33 +645,81 @@ void Timer()
 		delete iter.second;
 	}
 	eqSids.clear();
+}
+
+int Update()
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (shieldFuseMap.empty())
+	{
+		return 0;
+	}
 
 	mstime currTime = timeInMS();
-	vector<uint> keysToRemove;
+	static vector<uint> keysToRemove;
 	for (auto& shieldFuse : shieldFuseMap)
 	{
-		if (shieldFuse.second.lastUntil < currTime)
+		if (shieldFuse.second.lastUntil > currTime)
 		{
-			IObjInspectImpl* iobj1;
-			uint dummy;
-			GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
-			IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
-			if (iobj)
-			{
-				HkUnLightFuse(iobj, shieldFuse.second.fuseId, 0.0f);
-			}
-			keysToRemove.emplace_back(shieldFuse.first);
+			continue;
+		}
+
+		IObjInspectImpl* iobj1;
+		uint dummy;
+		GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
+		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
+		if (iobj)
+		{
+			HkUnLightFuse(iobj, shieldFuse.second.boostData->fuseId, 0.0f);
+		}
+		keysToRemove.emplace_back(shieldFuse.first);
+
+		ShieldBoostData* boostData = shieldFuse.second.boostData;
+
+		if (boostData->radius == 0.0f)
+		{
+			continue;
+		}
+
+		shieldExplosion->fRadius = boostData->radius;
+		shieldExplosion->fHullDamage = min(boostData->hullDamageCap, boostData->hullBaseDamage + boostData->hullReflectDamagePercentage * playerShieldState[shieldFuse.first].damageTaken);
+		shieldExplosion->fEnergyDamage = min(boostData->energyDamageCap, boostData->energyBaseDamage + boostData->energyReflectDamagePercentage * playerShieldState[shieldFuse.first].damageTaken);
+
+		auto starSystem = StarSystemMap->find(Players[shieldFuse.first].iSystemID);
+		ExplosionDamageEvent expl;
+		expl.attackerId = Players[shieldFuse.first].iShipID;
+		expl.projectileId = expl.attackerId;
+		expl.dmgCause = DamageCause::Mine;
+		expl.explosionPosition = iobj->cobj->vPos;
+		expl.explosionArchetype = shieldExplosion;
+		expl.dunno = 0;
+		TriggerExplosionFunc(&starSystem->second, &expl);
+
+		if (boostData->explosionFuseId)
+		{
+			HkLightFuse(iobj, boostData->explosionFuseId, 0.0f, 0.0f, -1.0f);
 		}
 	}
+
 	for (uint key : keysToRemove)
 	{
 		shieldFuseMap.erase(key);
 	}
+	keysToRemove.clear();
+
+	return 0;
 }
 
 void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	if (engineData.empty())
+	{
+		return;
+	}
+
 	if (dmg->damageCause != DamageCause::CruiseDisrupter)
 	{
 		return;
@@ -736,12 +800,8 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	CEquipTraverser tr(ShieldGenerator);
 	const CEquip* shield;
 
-	float boostDuration = 0;
-	float boostReduction = 0.0f;
-	float minimumDuration = 0.0f;
-	float maximumDuration = FLT_MAX;
-	uint fuse = 0;
-	bool isFirst = true;
+	ShieldBoostData* primaryBoost = nullptr;
+
 	while (shield = eqManager.Traverse(tr))
 	{
 		const auto& shieldData = shieldBoostMap.find(shield->archetype->iArchID);
@@ -750,23 +810,15 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 			continue;
 		}
 
-		if (isFirst)
-		{
-			isFirst = false;
-			fuse = shieldData->second.fuseId;
-			minimumDuration = shieldData->second.minimumDuration;
-			maximumDuration = shieldData->second.maximumDuration;
-		}
-		boostDuration += shieldData->second.durationPerBattery;
-		boostReduction += shieldData->second.damageReduction;
+		primaryBoost = &shieldData->second;
 	}
 
-	if (!boostDuration || !boostReduction)
+	if (!primaryBoost)
 	{
 		return;
 	}
 
-	shieldState.damageReduction = min(1.0f, boostReduction);
+	shieldState.damageReduction = min(1.0f, primaryBoost->damageReduction);
 
 	const auto& usedItem = reinterpret_cast<const CECargo*>(eqManager.FindByID(p1.sItemId));
 	int currBattCount = 0;
@@ -776,15 +828,15 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 	uint usedAmount = p1.sAmountUsed - currBattCount;
 
-	boostDuration *= usedAmount;
+	float boostDuration = primaryBoost->durationPerBattery * usedAmount;
 
-	if (boostDuration < minimumDuration)
+	if (boostDuration < primaryBoost->minimumDuration)
 	{
 		return;
 	}
 
+	boostDuration = min(primaryBoost->maximumDuration, boostDuration);
 	boostDuration *= 1000;
-	boostDuration = min(maximumDuration * 1000, boostDuration);
 
 	mstime currTime = timeInMS();
 	if (shieldState.boostUntil && shieldState.boostUntil > currTime)
@@ -796,9 +848,11 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		shieldState.boostUntil = currTime + static_cast<mstime>(boostDuration);
 	}
 
-	shieldFuseMap[iClientID] = { fuse, shieldState.boostUntil };
+	ShieldBoostFuseInfo& boostInfo = shieldFuseMap[iClientID];
+	boostInfo.boostData = primaryBoost;
+	boostInfo.lastUntil = shieldState.boostUntil;
 
-	if (!fuse)
+	if (!primaryBoost->fuseId)
 	{
 		return;
 	}
@@ -813,7 +867,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
-	HkLightFuse(iobj, fuse, 0.0f, -1.0f, -1.0f);
+	HkLightFuse(iobj, primaryBoost->fuseId, 0.0f, 0.0f, -1.0f);
 }
 
 #define IS_CMD(a) !args.compare(L##a)
@@ -844,10 +898,13 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));
+
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 

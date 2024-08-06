@@ -113,11 +113,13 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 	if (shieldState.boostUntil > currTime)
 	{
 		incDmg *= 1.0f - shieldState.damageReduction;
+		shieldState.damageTaken += incDmg;
 	}
 	else
 	{
 		shieldState.boostUntil = 0;
 		shieldState.damageReduction = 0;
+		shieldState.damageTaken = 0;
 	}
 }
 

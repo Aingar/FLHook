@@ -11,6 +11,10 @@ void ShipShieldExplosionDamageNaked();
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 
+typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
+static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
+static st6::map<uint, StarSystem>* StarSystemMap = (st6::map<uint, StarSystem>*)0x6D8DA2C;
+
 constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
 
 struct MineInfo
@@ -21,15 +25,14 @@ struct MineInfo
 	bool stopSpin = false;
 };
 
-
 struct ShieldState
 {
 	bool shieldState;
 	ShieldSource changeSource;
 	mstime boostUntil;
 	float damageReduction;
+	float damageTaken = 0.0f;
 };
-
 
 struct ShieldSyncData
 {
@@ -38,7 +41,6 @@ struct ShieldSyncData
 	uint count = 0;
 };
 
-
 struct ShieldBoostData
 {
 	float durationPerBattery;
@@ -46,15 +48,23 @@ struct ShieldBoostData
 	float maximumDuration;
 	float damageReduction;
 	uint fuseId;
-};
 
+	float hullBaseDamage = 0.0f;
+	float hullReflectDamagePercentage = 0.0f;
+	float hullDamageCap = 0.0f;
+	float energyBaseDamage = 0.0f;
+	float energyReflectDamagePercentage = 0.0f;
+	float energyDamageCap = 0.0f;
+	float radius = 0.0f;
+	uint explosionFuseId = 0;
+};
 
 struct ShieldBoostFuseInfo
 {
-	uint fuseId;
 	mstime lastUntil;
+	float damageReduction;
+	ShieldBoostData* boostData;
 };
-
 
 struct EngineProperties
 {
@@ -66,7 +76,6 @@ struct ExplosionDamageType
 {
 	uint type = 0;
 };
-
 
 enum TRACKING_STATE {
 	TRACK_ALERT,

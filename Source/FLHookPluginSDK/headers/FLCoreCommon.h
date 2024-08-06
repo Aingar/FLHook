@@ -649,7 +649,19 @@ namespace Archetype
 		/*  2 */ float fImpulse;
 		/*  3 */ float fHullDamage;
 		/*  4 */ float fEnergyDamage;
-		// and some other stuff
+		/*  5 */ uint processType;
+		/*  6 */ float lifeTime1;
+		/*  7 */ float lifeTime2;
+		/*  8 */ st6::list<void*> effectList;
+		/*  11 */ int numChildPieces;
+		/*  12 */ float debrisImpulse;
+		/*  13 */ float innardsDebrisStartTime;
+		/*  14 */ float innardsDebrisNum;
+		/*  15 */ float innardsDebrisRadius;
+		/*  16 */ st6::vector<struct IObjInspect*> innardsDebrisObject;
+		/*  20 */ uint dunno;
+		/*  21 */ uint debrisType1;
+		/*  22 */ uint debrisType2;
 	};
 
 	struct IMPORT Launcher : public AttachedEquipment
@@ -5368,11 +5380,12 @@ public:
 
 struct ExplosionDamageEvent
 {
-	uint victimId;
+	uint projectileId;
 	uint attackerId;
 	DamageCause dmgCause;
 	Vector explosionPosition;
 	Archetype::Explosion* explosionArchetype;
+	uint dunno;
 };
 
 struct IObjRWAbstract
@@ -5575,7 +5588,7 @@ struct IObjRW : public IObjRWAbstract, public CShipAbstract, public CBase
 	void* pDunno_0x18; // struct size: 12 bytes
 	int iDunnos_0x1C;  // length of 0x1C
 	double timer;
-	int iDunnos_0x28; // has something to do with fuses
+	struct StarSystem* starSystem; // has something to do with fuses
 	byte bDunno_0x2C;
 	void* pDunno_0x30;   // struct size: 20 bytes
 	int iDunno_0x34;     // length of 0x30

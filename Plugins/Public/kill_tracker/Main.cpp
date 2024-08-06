@@ -491,7 +491,7 @@ void __stdcall PlayerLaunch(uint shipId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	ClearDamageTaken(client);
-	ClearDamageDone(client, true);
+	ClearDamageDone(client, false);
 }
 
 void __stdcall CharacterSelect(CHARACTER_ID const& cid, uint client)

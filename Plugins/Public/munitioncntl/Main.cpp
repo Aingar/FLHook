@@ -564,7 +564,9 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& charId, unsigned
 void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
-	playerShieldState[iClientID].shieldState = true;
+	playerShieldState[iClientID] = ShieldState();
+	shieldFuseMap.erase(iClientID);
+
 	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
 	{
 		if (iter->targetClient == iClientID)
@@ -698,6 +700,7 @@ int Update()
 
 		if (boostData->explosionFuseId)
 		{
+			HkUnLightFuse(iobj, boostData->explosionFuseId, 0.0f);
 			HkLightFuse(iobj, boostData->explosionFuseId, 0.0f, 0.0f, -1.0f);
 		}
 	}
@@ -867,6 +870,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
+	HkUnLightFuse(iobj, primaryBoost->fuseId, 0.0f);
 	HkLightFuse(iobj, primaryBoost->fuseId, 0.0f, 0.0f, -1.0f);
 }
 

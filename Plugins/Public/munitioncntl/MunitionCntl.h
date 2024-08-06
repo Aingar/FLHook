@@ -27,10 +27,10 @@ struct MineInfo
 
 struct ShieldState
 {
-	bool shieldState;
-	ShieldSource changeSource;
-	mstime boostUntil;
-	float damageReduction;
+	bool shieldState = true;
+	ShieldSource changeSource = ShieldSource::UNSET;
+	mstime boostUntil = 0;
+	float damageReduction = 0.0f;
 	float damageTaken = 0.0f;
 };
 

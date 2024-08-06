@@ -149,7 +149,12 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				return FindSolar(starSystem, searchedId);
 			}
 
-			if (iter->second->starSystem == starSystem)
+			if (!iter->second->cobj)
+			{
+				return nullptr;
+			}
+
+			if (iter->second->cobj->starSystem == starSystem)
 			{
 				return iter->second;
 			}
@@ -162,7 +167,12 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				return FindNonSolar(starSystem, searchedId);;
 			}
 
-			if (iter->second->starSystem == starSystem)
+			if (!iter->second->cobj)
+			{
+				return nullptr;
+			}
+
+			if (iter->second->cobj->starSystem == starSystem)
 			{
 				return iter->second;
 			}

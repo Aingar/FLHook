@@ -5565,7 +5565,7 @@ struct IObjRW : public IObjRWAbstract, public CShipAbstract, public CBase
 	void* pDunno_0x18; // struct size: 12 bytes
 	int iDunnos_0x1C;  // length of 0x1C
 	double timer;
-	int iDunnos_0x28; // has something to do with fuses
+	struct StarSystem* starSystem; // has something to do with fuses
 	byte bDunno_0x2C;
 	void* pDunno_0x30;   // struct size: 20 bytes
 	int iDunno_0x34;     // length of 0x30

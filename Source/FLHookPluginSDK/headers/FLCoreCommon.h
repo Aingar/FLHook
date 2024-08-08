@@ -5478,7 +5478,7 @@ struct IObjRWAbstract
 	virtual ObjectType get_object_type() const;                                                                     // 340
 
 	virtual bool ShipDestroyed(bool isKill, uint dunno);     // NakedShipDestroyed                                      //344 sub_6CE8080
-	virtual int Disconnect();                                // 348 sub_6CE7C80
+	virtual bool Disconnect();                                // 348 sub_6CE7C80
 	virtual bool get_dunno_0x40();                           // 352 sub_6CEE6D0
 	virtual int instantiate_cship(Archetype::Root* archPtr); // 356 sub_6D01040
 	virtual bool set_cship(uint shipId);                     // 360 sub_6D010A0

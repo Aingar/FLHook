@@ -1085,6 +1085,38 @@ void LoadSettingsActual()
 }
 
 
+void RebuildCSolarSystemList()
+{
+	POBSolarsBySystemMap.clear();
+	for (auto base : player_bases)
+	{
+		if (!base.second->baseCSolar)
+		{
+			continue;
+		}
+
+		CSolar* csolar = reinterpret_cast<CSolar*>(CObject::Find(base.second->base, CObject::CSOLAR_OBJECT));
+		if (csolar)
+		{
+			csolar->Release();
+			if (csolar != base.second->baseCSolar)
+			{
+				base.second->baseCSolar = csolar;
+				ConPrint(L"Base solar changed! %ls\n", base.second->basename.c_str());
+				AddLog("Base solar changed! %s", wstos(base.second->basename).c_str());
+			}
+			POBSolarsBySystemMap[base.second->system].insert(csolar);
+		}
+		else
+		{
+			ConPrint(L"Base solar went missing! %ls\n", base.second->basename.c_str());
+			AddLog("Base solar went missing! %s", wstos(base.second->basename).c_str());
+			base.second->baseCSolar = nullptr;
+		}
+
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void HkTimerCheckKick()
@@ -1145,6 +1177,11 @@ void HkTimerCheckKick()
 		{
 			ExportData::ToJSON();
 		}
+	}
+
+	if (curr_time % 300 == 0)
+	{
+		RebuildCSolarSystemList();
 	}
 }
 
@@ -2660,8 +2697,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		lastDespawnedFilename = base->path;
 		base->base_health = 0;
+		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		return retVal;
 
 	}
 	else if (args.find(L"baserespawn") == 0)

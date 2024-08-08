@@ -876,12 +876,21 @@ namespace HkIEngine
 	void Radar_Range_naked();
 	void CShipInitializedNaked();
 	void CSolarInitializedNaked();
-	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
-	void GameObjectDestructorNaked();
+	void IObjDisconnectLoot();
+	void IObjDisconnectCM();
 
+	struct iobjCache
+	{
+		StarSystem* system;
+		CObject::Class objClass;
+		IObjRW* iobj;
+	};
+	extern unordered_map<uint, iobjCache> solarIObjCache;
+	extern unordered_map<uint, iobjCache> nonSolarIObjCache;
+	extern FARPROC IObjDisconnectLootFunc, IObjDisconnectCMFunc;
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;
 	extern FARPROC fpOldRadarRange;

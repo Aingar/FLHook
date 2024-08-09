@@ -125,7 +125,6 @@ Called when ship was destroyed
 
 void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::nonSolarIObjCache.erase(iobj->cobj->id);
 	if (!isKill)
 	{
 		return;
@@ -237,7 +236,6 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 void __stdcall SolarDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::solarIObjCache.erase(iobj->cobj->id);
 	LOG_CORE_TIMER_START
 	TRY_HOOK
 	CALL_PLUGINS_V(PLUGIN_BaseDestroyed, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
@@ -288,7 +286,6 @@ inline int MineDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId)
 
 bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::nonSolarIObjCache.erase(iobj->cobj->id);
 	LOG_CORE_TIMER_START
 	TRY_HOOK
 	int pluginResult = MineDestroyedPluginCaller(iobj, isKill, killerId);
@@ -350,7 +347,6 @@ inline bool GuidedDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId
 
 bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
-	HkIEngine::nonSolarIObjCache.erase(iobj->cobj->id);
 	LOG_CORE_TIMER_START
 	TRY_HOOK
 	if (!GuidedDestroyedPluginCaller(iobj, isKill, killerId))
@@ -380,6 +376,22 @@ __declspec(naked) void GuidedDestroyedNaked()
 		jmp eax
 		skipLabel :
 		ret 0x8
+	}
+}
+
+void __stdcall LootDestroyed(IObjRW* iobj)
+{
+}
+
+FARPROC LootDestroyedOrigFunc;
+__declspec(naked) void LootDestroyedNaked()
+{
+	__asm {
+		push ecx
+		push ecx
+		call LootDestroyed
+		pop ecx
+		jmp [LootDestroyedOrigFunc]
 	}
 }
 

@@ -251,6 +251,12 @@ public:
 	MetaList asteroidList; // 192
 };
 
+struct StarSystemMock
+{
+	uint systemId;
+	StarSystem starSystem;
+};
+
 namespace SysDB
 {
 	IMPORT  std::map<uint, StarSystem, std::less<uint>, std::allocator<StarSystem>> SysMap;

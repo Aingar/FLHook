@@ -1093,7 +1093,7 @@ void LoadZoneDamageData(const char* path)
 			else if (ini.is_value("damage"))
 			{
 				data.flatDamage = ini.get_value_float(0);
-				data.percentageDamage = ini.get_value_float(1) * 0.01;
+				data.percentageDamage = ini.get_value_float(1) * 0.01f;
 				data.distanceScaling = ini.get_value_float(2);
 				data.logScale = ini.get_value_float(3);
 				data.dmgType = ZONEDMG_HULL;

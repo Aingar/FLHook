@@ -59,9 +59,6 @@ PATCH_INFO piServerDLL =
 		{0x6D6420C,		&HkIEngine::_LaunchPos,				4, &HkIEngine::fpOldLaunchPos,	false},
 		{0x6D648E0,		&HkIEngine::FreeReputationVibe,		4, 0,							false},
 
-		{0x6D67F4C,		&HkIEngine::IObjDisconnectLoot,		4, &HkIEngine::IObjDisconnectLootFunc, false},
-		{0x6D65124,		&HkIEngine::IObjDisconnectCM,		4, &HkIEngine::IObjDisconnectCMFunc, false},
-
 		{0,0,0,0} // terminate
 	}
 };
@@ -346,6 +343,9 @@ bool InitHookExports()
 	// reverse patch the client hanging fix
 	BYTE patch[] = { 0xFF };
 	WriteProcMem((char*)hModDaLib + 0x4BF4, patch, sizeof(patch));
+
+	FARPROC GameObjectDestructor = FARPROC(0x6CEE4A0);
+	Detour(GameObjectDestructor, HkIEngine::GameObjectDestructorNaked);
 
 	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
 	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);

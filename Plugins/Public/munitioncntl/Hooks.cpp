@@ -95,7 +95,7 @@ __declspec(naked) void ShipShieldExplosionDamageNaked()
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 {
 	uint clientId = iobj->cobj->ownerPlayer;
-	if (!iobj->cobj->ownerPlayer)
+	if (!clientId)
 	{
 		return;
 	}
@@ -117,13 +117,13 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-		if (shield && shield->currShieldHitPoints <= incDmg)
+		if (shield && (shield->currShieldHitPoints - incDmg) <= (shield->maxShieldHitPoints * shield->offlineThreshold))
 		{
-			uint fuseId = shieldFuseMap[cship->ownerPlayer].boostData->fuseId;
+			uint fuseId = shieldFuseMap[clientId].boostData->fuseId;
 
 			HkUnLightFuse(iobj, fuseId, 0.0f);
 
-			shieldFuseMap.erase(cship->ownerPlayer);
+			shieldFuseMap.erase(clientId);
 
 			shieldState.boostUntil = 0;
 			shieldState.damageReduction = 0;

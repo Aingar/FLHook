@@ -17,64 +17,62 @@ wstring BuildModule::GetInfo(bool xml)
 	std::wstring Status;
 	if (Paused)	Status = L"(Paused) ";
 	else Status = L"(Active) ";
+	wstring openLine;
+	wstring start;
+	wstring end;
 	if (xml)
 	{
-
-		info = L"<TEXT>Constructing " + Status + active_recipe.infotext + L". Waiting for:</TEXT>";
-
-		for (auto& i = active_recipe.consumed_items.begin();
-			i != active_recipe.consumed_items.end(); ++i)
-		{
-			uint good = i->first;
-			uint quantity = i->second;
-
-			const GoodInfo* gi = GoodList::find_by_id(good);
-			if (gi)
-			{
-				info += L"<PARA/><TEXT>      - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-				if (base->HasMarketItem(good) < quantity)
-					info += L" [Out of stock]";
-				info += L"</TEXT>";
-			}
-		}
-		if (active_recipe.credit_cost)
-		{
-			info += L"<PARA/><TEXT>      - Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
-			if (base->money < active_recipe.credit_cost)
-			{
-				info += L" [Insufficient cash]";
-			}
-			info += L"</TEXT>";
-		}
+		openLine = L"</TEXT><PARA/><TEXT>      ";
+		start = L"<TEXT>";
+		end = L"</TEXT>";
 	}
 	else
 	{
-		info = L"Constructing " + Status + active_recipe.infotext + L". Waiting for: ";
-
-		for (auto& i = active_recipe.consumed_items.begin();
-			i != active_recipe.consumed_items.end(); ++i)
-		{
-			uint good = i->first;
-			uint quantity = i->second;
-
-			const GoodInfo* gi = GoodList::find_by_id(good);
-			if (gi)
-			{
-				info += stows(itos(quantity)) + L"x" + HkGetWStringFromIDS(gi->iIDSName) + L" ";
-				if (base->HasMarketItem(good) < quantity)
-					info += L" [Out of stock]";
-			}
-		}
-		if (active_recipe.credit_cost)
-		{
-			info += L"Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
-			if (base->money < active_recipe.credit_cost)
-			{
-				info += L" [Insufficient cash]";
-			}
-		}
+		openLine = L"\n - ";
+		start = L"";
+		end = L"";
 	}
 
+
+	info = start + L"Constructing " + Status + active_recipe.infotext + L". Waiting for:";
+
+	uint minutesToCompletion = 0;
+
+	for (auto& i = active_recipe.consumed_items.begin();
+		i != active_recipe.consumed_items.end(); ++i)
+	{
+		uint good = i->first;
+		uint quantity = i->second;
+
+		minutesToCompletion += quantity / active_recipe.cooking_rate;
+
+		const GoodInfo* gi = GoodList::find_by_id(good);
+		if (!gi)
+		{
+			continue;
+		}
+		info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		uint currStock = base->HasMarketItem(good);
+		if (!currStock)
+		{
+			info += L" [Out of stock]";
+		}
+		else
+		{
+			info += L" [" + stows(itos(currStock)) + L" in stock]";
+		}
+	}
+	if (active_recipe.credit_cost)
+	{
+		info += openLine + L"- Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
+		minutesToCompletion = max(minutesToCompletion, active_recipe.credit_cost / (active_recipe.cooking_rate * 100));
+		if (base->money < active_recipe.credit_cost)
+		{
+			info += L" [Insufficient cash]";
+		}
+	}
+	info += openLine + L"Time until completion: " + TimeString(minutesToCompletion * 60);
+	info += end;
 	return info;
 }
 

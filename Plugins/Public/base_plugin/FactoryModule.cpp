@@ -18,7 +18,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 		base->craftTypeTofactoryModuleMap[craftType] = this;
 	}
 }
-
+#pragma optimize("", off)
 wstring FactoryModule::GetInfo(bool xml)
 {
 	wstring info;
@@ -33,104 +33,132 @@ wstring FactoryModule::GetInfo(bool xml)
 		Status = L"(Active) ";
 	}
 
-	info += recipeMap[factoryNickname].infotext;
 
 	wstring openLine;
+	wstring start;
+	wstring end;
 	if (xml)
 	{
 		openLine = L"</TEXT><PARA/><TEXT>      ";
+		start = L"<TEXT>";
+		end = L"</TEXT>";
 	}
 	else
 	{
 		openLine = L"\n - ";
+		start = L"";
+		end = L"";
 	}
+
+	info += start + recipeMap[factoryNickname].infotext;
+
 	if (!build_queue.empty())
 	{
 		info += openLine + L"Pending " + stows(itos(build_queue.size())) + L" items";
 	}
-	if (active_recipe.nickname)
+	if (!active_recipe.nickname)
 	{
-		if (pendingSpace)
+		info += end;
+		return info;
+	}
+	if (pendingSpace)
+	{
+		info += openLine + active_recipe.infotext + L": Waiting for free cargo storage" + openLine + L"or available max stock limit to drop off:";
+		for (auto& item : active_recipe.produced_items)
 		{
-			info += openLine + active_recipe.infotext + L": Waiting for free cargo storage" + openLine + L"or available max stock limit to drop off:";
-			for (auto item : active_recipe.produced_items)
-			{
-				if (!item.second)
-				{
-					continue;
-				}
-				uint good = item.first;
-				uint quantity = item.second;
-				const GoodInfo* gi = GoodList::find_by_id(good);
-				info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-			}
-			return info;
-		}
-
-		info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
-
-		for (auto& i : active_recipe.consumed_items)
-		{
-			uint good = i.first;
-			uint quantity = i.second;
-			if (!quantity)
+			if (!item.second)
 			{
 				continue;
 			}
+			uint good = item.first;
+			uint quantity = item.second;
+			const GoodInfo* gi = GoodList::find_by_id(good);
+			info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		}
+		info += end;
+		return info;
+	}
+
+	info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
+
+	uint minutesToCompletion = 0;
+
+	for (auto& i : active_recipe.consumed_items)
+	{
+		uint good = i.first;
+		uint quantity = i.second;
+		if (!quantity)
+		{
+			continue;
+		}
+
+		const GoodInfo* gi = GoodList::find_by_id(good);
+		if (!gi)
+		{
+			continue;
+		}
+		info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		if (quantity > 0)
+		{
+			uint currStock = base->HasMarketItem(good);
+			minutesToCompletion += quantity / active_recipe.cooking_rate;
+			if (!currStock)
+			{
+				info += L" [Out of stock]";
+			}
+			else
+			{
+				info += L" [" + stows(itos(currStock)) + L" in stock]";
+			}
+		}
+	}
+	if (active_recipe.credit_cost)
+	{
+		info += openLine + L" - Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
+		minutesToCompletion = max(minutesToCompletion, active_recipe.credit_cost / (active_recipe.cooking_rate * 100));
+		if (base->money < active_recipe.credit_cost)
+		{
+			info += L" [Insufficient cash]";
+		}
+	}
+	if (!active_recipe.catalyst_items.empty() && !sufficientCatalysts)
+	{
+		info += openLine + L"Needed catalysts ";
+
+		for (const auto& catalyst : active_recipe.catalyst_items)
+		{
+			uint good = catalyst.first;
+			uint quantity = catalyst.second;
 
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-				if (quantity > 0 && base->HasMarketItem(good) < active_recipe.cooking_rate)
-				{
-					info += L" [Out of stock]";
-				}
+				info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 			}
 		}
-		if (active_recipe.credit_cost)
+	}
+	if (!active_recipe.catalyst_workforce.empty() && !sufficientCatalysts)
+	{
+		info += openLine + L"Needed workforce:";
+		for (const auto& worker : active_recipe.catalyst_workforce)
 		{
-			info += openLine + L" - Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
-			if (base->money < active_recipe.credit_cost)
-			{
-				info += L" [Insufficient cash]";
-			}
-		}
-		if (!active_recipe.catalyst_items.empty() && !sufficientCatalysts)
-		{
-			info += openLine + L"Needed catalysts ";
+			uint good = worker.first;
+			uint quantity = worker.second;
 
-			for (const auto& catalyst : active_recipe.catalyst_items)
+			const GoodInfo* gi = GoodList::find_by_id(good);
+			if (gi)
 			{
-				uint good = catalyst.first;
-				uint quantity = catalyst.second;
-
-				const GoodInfo* gi = GoodList::find_by_id(good);
-				if (gi)
-				{
-					info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-				}
-			}
-		}
-		if (!active_recipe.catalyst_workforce.empty() && !sufficientCatalysts)
-		{
-			info += openLine + L"Needed workforce:";
-			for (const auto& worker : active_recipe.catalyst_workforce)
-			{
-				uint good = worker.first;
-				uint quantity = worker.second;
-
-				const GoodInfo* gi = GoodList::find_by_id(good);
-				if (gi)
-				{
-					info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-				}
+				info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 			}
 		}
 	}
 
+	info += openLine + L"Time until completion: " + TimeString(minutesToCompletion*60);
+	info += end;
+
 	return info;
 }
+#pragma optimize("", on)
 
 // Every 10 seconds we consume goods for the active recipe at the cooking rate
 // and if every consumed item has been used then declare the the cooking complete

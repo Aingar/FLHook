@@ -564,6 +564,7 @@ IMPORT float IniGetF(const string &scFile, const string &scApp, const string &sc
 IMPORT void IniGetSection(const string &scFile, const string &scApp, list<INISECTIONVALUE> &lstValues);
 IMPORT float ToFloat(const wstring &wscStr);
 IMPORT mstime timeInMS();
+IMPORT wstring TimeString(uint seconds);
 IMPORT void SwapBytes(void *ptr, uint iLen);
 IMPORT FARPROC PatchCallAddr(char *hMod, DWORD dwInstallAddress, char *dwHookFunction);
 

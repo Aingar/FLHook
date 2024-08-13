@@ -1956,11 +1956,11 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"stock")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 			uint min_stock = ToUInt(GetParam(args, ' ', 3));
 			uint max_stock = ToUInt(GetParam(args, ' ', 4));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -1990,9 +1990,9 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"remove")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2056,9 +2056,9 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"pin")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2092,9 +2092,9 @@ namespace PlayerCommands
 		else if (cmd == L"unpin")
 		{
 
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");

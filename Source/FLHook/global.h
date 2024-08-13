@@ -126,6 +126,7 @@ EXPORT float IniGetF(const string &scFile, const string &scApp, const string &sc
 EXPORT void IniGetSection(const string &scFile, const string &scApp, list<INISECTIONVALUE> &lstValues);
 EXPORT float ToFloat(const wstring &wscStr);
 EXPORT mstime timeInMS();
+EXPORT wstring TimeString(uint seconds);
 EXPORT void SwapBytes(void *ptr, uint iLen);
 EXPORT FARPROC PatchCallAddr(char *hMod, DWORD dwInstallAddress, char *dwHookFunction);
 

@@ -2866,6 +2866,16 @@ public:
 	void AddGen(class CEShieldGenerator *);
 	bool CanActivate(void)const;
 	void RemGen(class CEShieldGenerator *);
+	uint dunnoShield;
+	float currShieldHitPoints;
+	uint dunnoShield2[3];
+	st6::vector<CEShieldGenerator*> linkedShieldGen;
+	Archetype::ShieldGenerator* mainShieldGenArch;
+	float offlineThreshold;
+	float rebuildTime;
+	float maxShieldHitPoints;
+	void* IntruderCheckerPhySys1;
+	void* IntruderCheckerPhySys2;
 };
 
 class IMPORT CEShieldGenerator : public CAttachedEquip

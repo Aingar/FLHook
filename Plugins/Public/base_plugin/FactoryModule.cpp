@@ -18,7 +18,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 		base->craftTypeTofactoryModuleMap[craftType] = this;
 	}
 }
-#pragma optimize("", off)
+
 wstring FactoryModule::GetInfo(bool xml)
 {
 	wstring info;
@@ -158,7 +158,6 @@ wstring FactoryModule::GetInfo(bool xml)
 
 	return info;
 }
-#pragma optimize("", on)
 
 // Every 10 seconds we consume goods for the active recipe at the cooking rate
 // and if every consumed item has been used then declare the the cooking complete

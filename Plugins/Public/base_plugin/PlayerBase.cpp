@@ -158,8 +158,20 @@ void PlayerBase::LogDamageDealers()
 
 // Dispatch timer to modules and exit immediately if the timer indicates
 // that this base has been deleted.
-bool PlayerBase::Timer(uint curr_time)
+void PlayerBase::Timer(uint curr_time)
 {
+	if (failed_update_counter >= 3)
+	{
+		AddLog("Base %s error count exceeded, respawning", wstos(basename).c_str());
+		basesToRespawn.push_back({ path, 60 });
+		base_health = 0;
+		CoreModule* core = reinterpret_cast<CoreModule*>(modules[0]);
+		core->SpaceObjDestroyed(core->space_obj, false, false);
+		return;
+	}
+
+	failed_update_counter++;
+
 	if (set_plugin_debug_special && (curr_time % 60 == 0))
 	{
 		AddLog("Started processing %s\n", wstos(this->basename).c_str());
@@ -179,10 +191,12 @@ bool PlayerBase::Timer(uint curr_time)
 		{
 			bool is_deleted = pobModule->Timer(curr_time);
 			if (is_deleted)
-				return true;
+				break;
 		}
 	}
-	return false;
+	failed_update_counter = 0;
+
+	return;
 }
 
 void PlayerBase::SetupDefaults()

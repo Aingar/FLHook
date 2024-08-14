@@ -29,6 +29,8 @@ unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
 
+vector<ScheduledRespawn> basesToRespawn;
+
 /// 0 = HTML, 1 = JSON, 2 = Both
 int ExportType = 0;
 
@@ -938,10 +940,6 @@ void LoadSettingsActual()
 					{
 						archstruct.display = ini.get_value_bool(0);
 					}
-					else if (ini.is_value("mining"))
-					{
-						archstruct.mining = ini.get_value_bool(0);
-					}
 					else if (ini.is_value("miningevent"))
 					{
 						archstruct.miningevent = ini.get_value_string(0);
@@ -1124,6 +1122,50 @@ void HkTimerCheckKick()
 		load_settings_required = false;
 		LoadSettingsActual();
 	}
+
+	if (!basesToRespawn.empty())
+	{
+		for (auto& iter = basesToRespawn.begin() ; iter != basesToRespawn.end();)
+		{
+			if (--iter->secondsUntil != 0)
+			{
+				iter++;
+				continue;
+			}
+
+			char datapath[MAX_PATH];
+			GetUserDataPath(datapath);
+
+			WIN32_FIND_DATA findfile;
+			HANDLE h = FindFirstFile(iter->path.c_str(), &findfile);
+			if (h == INVALID_HANDLE_VALUE)
+			{
+				iter++;
+				continue;
+			}
+
+			uint baseNickname = CreateID(IniGetS(iter->path, "Base", "nickname", "").c_str());
+
+			if (pub::SpaceObj::ExistsAndAlive(baseNickname) == 0) // -2 for nonexistant object, 0 for existing and alive
+			{
+				iter++;
+				continue;
+			}
+
+			PlayerBase* base = new PlayerBase(iter->path);
+
+			FindClose(h);
+			if (base && !base->nickname.empty())
+			{
+				player_bases[base->base] = base;
+				base->Spawn();
+				iter = basesToRespawn.erase(iter);
+				continue;
+			}
+			iter++;
+		}
+	}
+
 	uint curr_time = (uint)time(0);
 	for(auto& iter : player_bases)
 	{
@@ -2675,11 +2717,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			return true;
 		}
 
-		lastDespawnedFilename = base->path;
-		base->base_health = 0;
-		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		base->failed_update_counter = 5;
+
+		//lastDespawnedFilename = base->path;
+		//base->base_health = 0;
+		//bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return retVal;
+		return true;
 
 	}
 	else if (args.find(L"baserespawn") == 0)

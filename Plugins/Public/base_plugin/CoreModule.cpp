@@ -176,17 +176,6 @@ void CoreModule::Spawn()
 
 		pub::AI::SetPersonalityParams pers = CreateSolar::MakePersonality();
 		pub::AI::SubmitState(space_obj, &pers);
-
-		if (mapArchs[base->basetype].mining)
-		{
-			HookExt::AddMiningObj(space_obj, mapArchs[base->basetype].miningevent);
-			spaceobj_modules[space_obj]->mining = true;
-		}
-		else
-		{
-			spaceobj_modules[space_obj]->mining = false;
-		}
-
 	}
 }
 

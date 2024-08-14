@@ -79,7 +79,6 @@ struct ARCHTYPE_STRUCT
 	bool isjump = false;
 	bool ishubreturn = false;
 	bool display = false;
-	bool mining = false;
 	bool hasShield = false;
 	bool siegeGunOnly = false;
 	bool vulnerabilityWindowUse = false;
@@ -125,7 +124,6 @@ class Module
 public:
 	int type;
 	int cargoSpace = 0;
-	int mining;
 	static const int TYPE_BUILD = 0;
 	static const int TYPE_CORE = 1;
 	static const int TYPE_FACTORY = 2;
@@ -305,7 +303,7 @@ public:
 
 	void Spawn();
 
-	bool Timer(uint curr_time);
+	void Timer(uint curr_time);
 
 	void SetupDefaults();
 	void Load();
@@ -424,6 +422,8 @@ public:
 
 	bool use_vulnerability_window = false;
 
+	uint failed_update_counter = 0;
+
 	unordered_map<wstring, float> damageTakenMap;
 
 	//shield strength parameters
@@ -530,7 +530,7 @@ enum class POPUPWINDOWTYPE
 
 struct CLIENT_DATA
 {
-	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false), docking_base(0),
+	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false), viewshop(false), docking_base(0),
 		player_base(0), last_player_base(0), lastPopupPage(0), lastPopupWindowType(POPUPWINDOWTYPE::NONE){}
 
 	// If true reverse the last sell by readding the item.
@@ -617,7 +617,6 @@ namespace PlayerCommands
 	void BaseBuildModDestroy(uint client, const wstring& args);
 	void BaseFacMod(uint client, const wstring& args);
 	void PopulateHelpMenus();
-	void BaseShieldMod(uint client, const wstring& args);
 	void Bank(uint client, const wstring& args);
 	void Shop(uint client, const wstring& args);
 	void BaseSwapModule(uint client, const wstring& args);
@@ -795,10 +794,18 @@ extern unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 
 extern bool set_SkipUnchartedKill;
 
+struct ScheduledRespawn
+{
+	string path;
+	uint secondsUntil;
+};
+
+extern vector<ScheduledRespawn> basesToRespawn;
+
 // From EquipmentUtilities.cpp
 namespace EquipmentUtilities
 {
 	void ReadIniNicknames();
-	const char* FindNickname(unsigned int hash);
+	const char* FindNickname(uint hash);
 }
 #endif

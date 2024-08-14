@@ -51,7 +51,7 @@ wstring BuildModule::GetInfo(bool xml)
 		{
 			continue;
 		}
-		info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		uint currStock = base->HasMarketItem(good);
 		if (!currStock)
 		{
@@ -59,7 +59,7 @@ wstring BuildModule::GetInfo(bool xml)
 		}
 		else
 		{
-			info += L" [" + stows(itos(currStock)) + L" in stock]";
+			info += L" [" + itows(currStock) + L" in stock]";
 		}
 	}
 	if (active_recipe.credit_cost)

@@ -216,7 +216,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 		uint nextCheckInSeconds = set_crew_check_frequency - (currTime % set_crew_check_frequency);
 		uint nextCheckHour = nextCheckInSeconds / 3600;
 		uint nextCheckMinute = (nextCheckInSeconds % 3600) / 60;
-		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Refusing to work over lack of supplies, next supply check in " + stows(itos(nextCheckHour)) + L"h " + stows(itos(nextCheckMinute)) + L"m</TEXT><PARA/>";
+		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Refusing to work over lack of supplies, next supply check in " + itows(nextCheckHour) + L"h " + itows(nextCheckMinute) + L"m</TEXT><PARA/>";
 		base_status += L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}
 
@@ -225,7 +225,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 
 	for (uint i = 1; i < base->modules.size(); i++)
 	{
-		base_status += L"<TEXT>  " + stows(itos(i)) + L": ";
+		base_status += L"<TEXT>  " + itows(i) + L": ";
 		Module* module = base->modules[i];
 		if (module)
 		{

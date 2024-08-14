@@ -320,7 +320,7 @@ void Notify_Event_Commodity_Sold(uint iClientID, string commodity, int count, st
 	wstring wscMsgLog = L"<%player> has sold <%units> of the event commodity <%eventname> to the POB <%pob>";
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%player", wscCharname.c_str());
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%eventname", stows(commodity).c_str());
-	wscMsgLog = ReplaceStr(wscMsgLog, L"%units", stows(itos(count)).c_str());
+	wscMsgLog = ReplaceStr(wscMsgLog, L"%units", itows(count).c_str());
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%pob", stows(basename).c_str());
 	string scText = wstos(wscMsgLog);
 	LoggingEventCommodity("%s", scText.c_str());
@@ -420,7 +420,7 @@ wstring HtmlEncode(wstring text)
 			if (text[i] > 159)
 			{
 				sb.append(L"&#");
-				sb.append(stows(itos((int)text[i])));
+				sb.append(itows((int)text[i]));
 				sb.append(L";");
 			}
 			else
@@ -2121,9 +2121,9 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price, Good = %good, Base = %base)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%good", stows(itos(gsi.iArchID)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%good", itows(gsi.iArchID).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
@@ -2149,8 +2149,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
@@ -3378,11 +3378,11 @@ void PopUpDialogue(uint client, uint buttonPressed)
 	{
 		if (buttonPressed == POPUPDIALOG_BUTTONS_RIGHT_LATER)
 		{
-			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage + 1)));
+			PlayerCommands::BaseHelp(client, L"/base help " + itows(cd.lastPopupPage + 1));
 		}
 		else if (buttonPressed == POPUPDIALOG_BUTTONS_LEFT_YES)
 		{
-			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage - 1)));
+			PlayerCommands::BaseHelp(client, L"/base help " + itows(cd.lastPopupPage - 1));
 		}
 	}
 }

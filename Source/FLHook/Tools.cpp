@@ -35,6 +35,13 @@ string itos(int i)
 	return szBuf;
 }
 
+wstring itows(int i)
+{
+	wchar_t szBuf[16];
+	swprintf(szBuf, L"%d", i);
+	return szBuf;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 wstring ToLower(const wstring &wscStr)

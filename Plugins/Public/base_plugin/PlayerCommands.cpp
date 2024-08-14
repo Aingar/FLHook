@@ -118,7 +118,7 @@ namespace PlayerCommands
 		for (const auto& recipe : craftListNumberModuleMap[buildType])
 		{
 			wstring currentString = L"|    ";
-			currentString += stows(itos(recipe.first));
+			currentString += itows(recipe.first);
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
 			generatedHelpStringList.emplace_back(currentString);
@@ -131,7 +131,7 @@ namespace PlayerCommands
 		for (const auto& recipe : recipeCraftTypeNumberMap[craftType])
 		{
 			wstring currentString = L"|     ";
-			currentString += stows(itos(recipe.second.shortcut_number));
+			currentString += itows(recipe.second.shortcut_number);
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
 			generatedHelpStringList.emplace_back(currentString.c_str());
@@ -2716,8 +2716,8 @@ namespace PlayerCommands
 		int param1 = ToInt(param1Str);
 		int param2 = ToInt(param2Str);
 
-		if (stows(itos(param1)) != param1Str
-			|| (!single_vulnerability_window && stows(itos(param2)) != param2Str))
+		if (itows(param1) != param1Str
+			|| (!single_vulnerability_window && itows(param2) != param2Str))
 		{
 			PrintUserCmdText(client, L"ERR Provided parameter is not a number!");
 			if (single_vulnerability_window)

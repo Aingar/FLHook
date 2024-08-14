@@ -54,7 +54,7 @@ wstring FactoryModule::GetInfo(bool xml)
 
 	if (!build_queue.empty())
 	{
-		info += openLine + L"Pending " + stows(itos(build_queue.size())) + L" items";
+		info += openLine + L"Pending " + itows(build_queue.size()) + L" items";
 	}
 	if (!active_recipe.nickname)
 	{
@@ -73,7 +73,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			uint good = item.first;
 			uint quantity = item.second;
 			const GoodInfo* gi = GoodList::find_by_id(good);
-			info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+			info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		}
 		info += end;
 		return info;
@@ -97,7 +97,7 @@ wstring FactoryModule::GetInfo(bool xml)
 		{
 			continue;
 		}
-		info += openLine + L"- " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		if (quantity > 0)
 		{
 			uint currStock = base->HasMarketItem(good);
@@ -108,7 +108,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			}
 			else
 			{
-				info += L" [" + stows(itos(currStock)) + L" in stock]";
+				info += L" [" + itows(currStock) + L" in stock]";
 			}
 		}
 	}
@@ -133,7 +133,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 			}
 		}
 	}
@@ -148,7 +148,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + stows(itos(quantity)) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 			}
 		}
 	}

@@ -6,9 +6,9 @@
 
 wstring stows(const string &scText)
 {
-	int iSize = MultiByteToWideChar(CP_ACP, 0, scText.c_str(), -1, 0, 0);
+	int iSize = MultiByteToWideChar(CP_UTF8, 0, scText.c_str(), -1, 0, 0);
 	wchar_t *wszText = new wchar_t[iSize];
-	MultiByteToWideChar(CP_ACP, 0, scText.c_str(), -1, wszText, iSize);
+	MultiByteToWideChar(CP_UTF8, 0, scText.c_str(), -1, wszText, iSize);
 	wstring wscRet = wszText;
 	delete[] wszText;
 	return wscRet;
@@ -20,7 +20,7 @@ string wstos(const wstring &wscText)
 {
 	uint iLen = (uint)wscText.length() + 1;
 	char *szBuf = new char[iLen];
-	WideCharToMultiByte(CP_ACP, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
+	WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
 	string scRet = szBuf;
 	delete[] szBuf;
 	return scRet;

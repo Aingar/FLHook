@@ -1477,7 +1477,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		caption.begin_mad_lib(526999);
 		caption.end_mad_lib();
 
-		for (int i = 0; i < memberCount; ++i)
+		for (uint i = 0; i < memberCount; ++i)
 		{
 			uint memberId = playerGroup->GetMember(i);
 			HkChangeIDSString(memberId, 526999, objectiveText);

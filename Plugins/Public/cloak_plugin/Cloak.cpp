@@ -573,7 +573,7 @@ void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
 	mstime now = timeInMS();
-	uint timeNow = time(0);
+	uint timeNow = static_cast<uint>(time(0));
 
 	for (auto& ci = mapClientsCloak.begin(); ci != mapClientsCloak.end(); ++ci)
 	{

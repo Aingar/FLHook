@@ -78,7 +78,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	struct iobjCache
 	{
-		uint system;
+		StarSystem* cacheStarSystem;
 		CObject::Class objClass;
 	};
 
@@ -101,31 +101,31 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
 		if (node)
 		{
-			cacheNonsolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
 		if (node)
 		{
-			cacheNonsolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
 		if (node)
 		{
-			cacheNonsolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
 		if (node)
 		{
-			cacheNonsolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
 		if (node)
 		{
-			cacheNonsolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -136,13 +136,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
 		if (node)
 		{
-			cacheSolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheSolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
 		if (node)
 		{
-			cacheSolarIObjs[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheSolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -150,9 +150,16 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
 	{
+		static uint lastFoundInSystem = 0;
+		static uint lastFoundItem = 0;
 		IObjRW* retVal = nullptr;
 		
 		if (searchedId == 0)
+		{
+			return nullptr;
+		}
+
+		if (lastFoundItem == searchedId && lastFoundInSystem != starSystem->systemId)
 		{
 			return nullptr;
 		}
@@ -162,10 +169,16 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			auto iter = cacheSolarIObjs.find(searchedId);
 			if (iter == cacheSolarIObjs.end())
 			{
-				return FindSolar(starSystem, searchedId);
+				IObjRW* iobj = FindSolar(starSystem, searchedId);
+				if (iobj)
+				{
+					lastFoundInSystem = iobj->cobj->system;
+					lastFoundItem = searchedId;
+				}
+				return iobj;
 			}
 
-			if (iter->second.system != starSystem->systemId)
+			if (iter->second.cacheStarSystem != &starSystem->starSystem)
 			{
 				return nullptr;
 			}
@@ -198,10 +211,16 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				auto iter = cacheNonsolarIObjs.find(searchedId);
 				if (iter == cacheNonsolarIObjs.end())
 				{
-					return FindNonSolar(starSystem, searchedId);;
+					IObjRW* iobj = FindSolar(starSystem, searchedId);
+					if (iobj)
+					{
+						lastFoundInSystem = iobj->cobj->system;
+						lastFoundItem = searchedId;
+					}
+					return iobj;
 				}
-				
-				if (iter->second.system != starSystem->systemId)
+
+				if (iter->second.cacheStarSystem != &starSystem->starSystem)
 				{
 					return nullptr;
 				}

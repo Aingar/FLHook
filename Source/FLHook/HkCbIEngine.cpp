@@ -211,7 +211,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				auto iter = cacheNonsolarIObjs.find(searchedId);
 				if (iter == cacheNonsolarIObjs.end())
 				{
-					IObjRW* iobj = FindSolar(starSystem, searchedId);
+					IObjRW* iobj = FindNonSolar(starSystem, searchedId);
 					if (iobj)
 					{
 						lastFoundInSystem = iobj->cobj->system;

@@ -559,26 +559,27 @@ int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equi
 float GetEquipDescListVolume(uint shipClass, EquipDescList& eqList)
 {
 	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(shipClass);
-	if (cargoVolumeOverrideIter == cargoVolumeOverrideMap.end())
+	unordered_map<uint, float>* cargoOverrideMap = nullptr;
+	if (cargoVolumeOverrideIter != cargoVolumeOverrideMap.end())
 	{
-		return eqList.get_cargo_space_occupied();
+		cargoOverrideMap = &cargoVolumeOverrideIter->second;
 	}
-
-	auto& cargoOverride = cargoVolumeOverrideIter->second;
 
 	float cargoUsed = 0.0f;
 	for (auto& eq : eqList.equip)
 	{
-		auto cargoData = cargoOverride.find(eq.iArchID);
-		if (cargoData != cargoOverride.end())
+		if (cargoOverrideMap)
 		{
-			cargoUsed += eq.iCount * cargoData->second;
+			auto cargoData = cargoOverrideMap->find(eq.iArchID);
+			if (cargoData != cargoOverrideMap->end())
+			{
+				cargoUsed += eq.iCount * cargoData->second;
+				continue;
+			}
 		}
-		else
-		{
-			auto archData = Archetype::GetEquipment(eq.iArchID);
-			cargoUsed += eq.iCount * archData->fVolume;
-		}
+		auto archData = Archetype::GetEquipment(eq.iArchID);
+		cargoUsed += eq.iCount * archData->fVolume;
+		
 	}
 
 	return cargoUsed;

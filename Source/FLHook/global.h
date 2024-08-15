@@ -101,6 +101,7 @@ void ProcessPendingCommands();
 EXPORT wstring stows(const string &scText);
 EXPORT string wstos(const wstring &wscText);
 EXPORT string itos(int i);
+EXPORT wstring itows(int i);
 EXPORT string IniGetS(const string &scFile, const string &scApp, const string &scKey, const string &scDefault);
 EXPORT int IniGetI(const string &scFile, const string &scApp, const string &scKey, int iDefault);
 EXPORT bool IniGetB(const string &scFile, const string &scApp, const string &scKey, bool bDefault);
@@ -126,6 +127,7 @@ EXPORT float IniGetF(const string &scFile, const string &scApp, const string &sc
 EXPORT void IniGetSection(const string &scFile, const string &scApp, list<INISECTIONVALUE> &lstValues);
 EXPORT float ToFloat(const wstring &wscStr);
 EXPORT mstime timeInMS();
+EXPORT wstring TimeString(uint seconds);
 EXPORT void SwapBytes(void *ptr, uint iLen);
 EXPORT FARPROC PatchCallAddr(char *hMod, DWORD dwInstallAddress, char *dwHookFunction);
 

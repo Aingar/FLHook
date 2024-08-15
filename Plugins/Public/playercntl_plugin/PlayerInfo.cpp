@@ -71,7 +71,7 @@ void FetchPlayerInfo(uint clientId)
 wstring GetFormatHex(uint newFormat)
 {
 	wchar_t buf[3];
-	swprintf(buf, L"%02x", newFormat);
+	swprintf_s(buf, L"%02x", newFormat);
 	return buf;
 }
 
@@ -80,7 +80,7 @@ static uint RgbToBgr(const uint color) { return color & 0xFF000000 | (color & 0x
 wstring GetColorHex(TextColor newColor)
 {
 	wchar_t buf[7];
-	swprintf(buf, L"%06x", RgbToBgr(static_cast<uint>(newColor)));
+	swprintf_s(buf, L"%06x", RgbToBgr(static_cast<uint>(newColor)));
 	return buf;
 }
 
@@ -232,7 +232,7 @@ wstring FormatString(wstring& text)
 	wstringstream newString;
 	wstring currFormat = L"00";
 	wstring currColor = GetColorHex(TextColor::SystemBlue);
-	for (int i = 0; i < text.size(); ++i)
+	for (uint i = 0; i < text.size(); ++i)
 	{
 		wchar_t currChar = text.at(i);
 		if (currChar == L'<')

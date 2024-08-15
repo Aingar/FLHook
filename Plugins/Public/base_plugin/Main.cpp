@@ -29,6 +29,8 @@ unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
 
+vector<ScheduledRespawn> basesToRespawn;
+
 /// 0 = HTML, 1 = JSON, 2 = Both
 int ExportType = 0;
 
@@ -318,7 +320,7 @@ void Notify_Event_Commodity_Sold(uint iClientID, string commodity, int count, st
 	wstring wscMsgLog = L"<%player> has sold <%units> of the event commodity <%eventname> to the POB <%pob>";
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%player", wscCharname.c_str());
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%eventname", stows(commodity).c_str());
-	wscMsgLog = ReplaceStr(wscMsgLog, L"%units", stows(itos(count)).c_str());
+	wscMsgLog = ReplaceStr(wscMsgLog, L"%units", itows(count).c_str());
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%pob", stows(basename).c_str());
 	string scText = wstos(wscMsgLog);
 	LoggingEventCommodity("%s", scText.c_str());
@@ -418,7 +420,7 @@ wstring HtmlEncode(wstring text)
 			if (text[i] > 159)
 			{
 				sb.append(L"&#");
-				sb.append(stows(itos((int)text[i])));
+				sb.append(itows((int)text[i]));
 				sb.append(L";");
 			}
 			else
@@ -942,10 +944,6 @@ void LoadSettingsActual()
 					{
 						archstruct.display = ini.get_value_bool(0);
 					}
-					else if (ini.is_value("mining"))
-					{
-						archstruct.mining = ini.get_value_bool(0);
-					}
 					else if (ini.is_value("miningevent"))
 					{
 						archstruct.miningevent = ini.get_value_string(0);
@@ -1128,6 +1126,50 @@ void HkTimerCheckKick()
 		load_settings_required = false;
 		LoadSettingsActual();
 	}
+
+	if (!basesToRespawn.empty())
+	{
+		for (auto& iter = basesToRespawn.begin() ; iter != basesToRespawn.end();)
+		{
+			if (--iter->secondsUntil != 0)
+			{
+				iter++;
+				continue;
+			}
+
+			char datapath[MAX_PATH];
+			GetUserDataPath(datapath);
+
+			WIN32_FIND_DATA findfile;
+			HANDLE h = FindFirstFile(iter->path.c_str(), &findfile);
+			if (h == INVALID_HANDLE_VALUE)
+			{
+				iter++;
+				continue;
+			}
+
+			uint baseNickname = CreateID(IniGetS(iter->path, "Base", "nickname", "").c_str());
+
+			if (pub::SpaceObj::ExistsAndAlive(baseNickname) == 0) // -2 for nonexistant object, 0 for existing and alive
+			{
+				iter++;
+				continue;
+			}
+
+			PlayerBase* base = new PlayerBase(iter->path);
+
+			FindClose(h);
+			if (base && !base->nickname.empty())
+			{
+				player_bases[base->base] = base;
+				base->Spawn();
+				iter = basesToRespawn.erase(iter);
+				continue;
+			}
+			iter++;
+		}
+	}
+
 	uint curr_time = (uint)time(0);
 	for(auto& iter : player_bases)
 	{
@@ -2083,9 +2125,9 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price, Good = %good, Base = %base)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%good", stows(itos(gsi.iArchID)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%good", itows(gsi.iArchID).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
@@ -2111,8 +2153,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
 		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%count", stows(itos(count)).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", stows(itos(item.price)).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);
@@ -2695,11 +2737,13 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			return true;
 		}
 
-		lastDespawnedFilename = base->path;
-		base->base_health = 0;
-		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		base->failed_update_counter = 5;
+
+		//lastDespawnedFilename = base->path;
+		//base->base_health = 0;
+		//bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return retVal;
+		return true;
 
 	}
 	else if (args.find(L"baserespawn") == 0)
@@ -3354,11 +3398,11 @@ void PopUpDialogue(uint client, uint buttonPressed)
 	{
 		if (buttonPressed == POPUPDIALOG_BUTTONS_RIGHT_LATER)
 		{
-			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage + 1)));
+			PlayerCommands::BaseHelp(client, L"/base help " + itows(cd.lastPopupPage + 1));
 		}
 		else if (buttonPressed == POPUPDIALOG_BUTTONS_LEFT_YES)
 		{
-			PlayerCommands::BaseHelp(client, L"/base help " + stows(itos(cd.lastPopupPage - 1)));
+			PlayerCommands::BaseHelp(client, L"/base help " + itows(cd.lastPopupPage - 1));
 		}
 	}
 }

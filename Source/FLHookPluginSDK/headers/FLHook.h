@@ -543,6 +543,7 @@ IMPORT void PrintUserCmdText(uint iClientID, wstring wscText, ...);
 IMPORT wstring stows(const string &scText);
 IMPORT string wstos(const wstring &wscText);
 IMPORT string itos(int i);
+EXPORT wstring itows(int i);
 IMPORT string IniGetS(const string &scFile, const string &scApp, const string &scKey, const string &scDefault);
 IMPORT int IniGetI(const string &scFile, const string &scApp, const string &scKey, int iDefault);
 IMPORT bool IniGetB(const string &scFile, const string &scApp, const string &scKey, bool bDefault);
@@ -564,6 +565,7 @@ IMPORT float IniGetF(const string &scFile, const string &scApp, const string &sc
 IMPORT void IniGetSection(const string &scFile, const string &scApp, list<INISECTIONVALUE> &lstValues);
 IMPORT float ToFloat(const wstring &wscStr);
 IMPORT mstime timeInMS();
+IMPORT wstring TimeString(uint seconds);
 IMPORT void SwapBytes(void *ptr, uint iLen);
 IMPORT FARPROC PatchCallAddr(char *hMod, DWORD dwInstallAddress, char *dwHookFunction);
 

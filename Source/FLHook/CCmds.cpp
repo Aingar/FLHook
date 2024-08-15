@@ -1279,6 +1279,10 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 			{
 				CmdDumpCorePerfTimers(ArgInt(1));
 			}
+			else if (IS_CMD("cobjcounter"))
+			{
+				HkIEngine::printcobjCounter();
+			}
 			else {
 				Print(L"ERR unknown command\n");
 			}

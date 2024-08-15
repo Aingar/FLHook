@@ -2204,7 +2204,11 @@ public:
 		struct CreateParms & operator=(struct CreateParms const &);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		uint id;
+		struct StarSystem* starSystem;
+		uint ownerPlayer;
+		float hitpts;
+		uint dunno[20];
 	};
 
 	virtual ~CSimple(void);
@@ -2886,6 +2890,8 @@ public:
 	float offlineThreshold;
 	float rebuildTime;
 	float maxShieldHitPoints;
+	void* IntruderCheckerPhySys1;
+	void* IntruderCheckerPhySys2;
 };
 
 class IMPORT CEShieldGenerator : public CAttachedEquip

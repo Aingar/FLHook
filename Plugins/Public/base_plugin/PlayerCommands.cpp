@@ -118,7 +118,7 @@ namespace PlayerCommands
 		for (const auto& recipe : craftListNumberModuleMap[buildType])
 		{
 			wstring currentString = L"|    ";
-			currentString += stows(itos(recipe.first));
+			currentString += itows(recipe.first);
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
 			generatedHelpStringList.emplace_back(currentString);
@@ -131,7 +131,7 @@ namespace PlayerCommands
 		for (const auto& recipe : recipeCraftTypeNumberMap[craftType])
 		{
 			wstring currentString = L"|     ";
-			currentString += stows(itos(recipe.second.shortcut_number));
+			currentString += itows(recipe.second.shortcut_number);
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
 			if (recipe.second.restricted)
@@ -1992,11 +1992,11 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"stock")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 			uint min_stock = ToUInt(GetParam(args, ' ', 3));
 			uint max_stock = ToUInt(GetParam(args, ' ', 4));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2026,9 +2026,9 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"remove")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2092,9 +2092,9 @@ namespace PlayerCommands
 		}
 		else if (cmd == L"pin")
 		{
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2128,9 +2128,9 @@ namespace PlayerCommands
 		else if (cmd == L"unpin")
 		{
 
-			int item = ToInt(GetParam(args, ' ', 2));
+			uint item = ToUInt(GetParam(args, ' ', 2));
 
-			int curr_item = 0;
+			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{
 				PrintUserCmdText(client, L"ERR incorrect input! Provide id number of desired commodity!");
@@ -2752,8 +2752,8 @@ namespace PlayerCommands
 		int param1 = ToInt(param1Str);
 		int param2 = ToInt(param2Str);
 
-		if (stows(itos(param1)) != param1Str
-			|| (!single_vulnerability_window && stows(itos(param2)) != param2Str))
+		if (itows(param1) != param1Str
+			|| (!single_vulnerability_window && itows(param2) != param2Str))
 		{
 			PrintUserCmdText(client, L"ERR Provided parameter is not a number!");
 			if (single_vulnerability_window)

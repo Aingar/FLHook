@@ -6,9 +6,9 @@
 
 wstring stows(const string &scText)
 {
-	int iSize = MultiByteToWideChar(CP_ACP, 0, scText.c_str(), -1, 0, 0);
+	int iSize = MultiByteToWideChar(CP_UTF8, 0, scText.c_str(), -1, 0, 0);
 	wchar_t *wszText = new wchar_t[iSize];
-	MultiByteToWideChar(CP_ACP, 0, scText.c_str(), -1, wszText, iSize);
+	MultiByteToWideChar(CP_UTF8, 0, scText.c_str(), -1, wszText, iSize);
 	wstring wscRet = wszText;
 	delete[] wszText;
 	return wscRet;
@@ -20,7 +20,7 @@ string wstos(const wstring &wscText)
 {
 	uint iLen = (uint)wscText.length() + 1;
 	char *szBuf = new char[iLen];
-	WideCharToMultiByte(CP_ACP, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
+	WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
 	string scRet = szBuf;
 	delete[] szBuf;
 	return scRet;
@@ -32,6 +32,13 @@ string itos(int i)
 {
 	char szBuf[16];
 	sprintf(szBuf, "%d", i);
+	return szBuf;
+}
+
+wstring itows(int i)
+{
+	wchar_t szBuf[16];
+	swprintf(szBuf, L"%d", i);
 	return szBuf;
 }
 
@@ -306,6 +313,17 @@ mstime timeInMS()
 	mstime iFreq;
 	QueryPerformanceFrequency((LARGE_INTEGER*)&iFreq);
 	return 1000 * iCount / iFreq;
+}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+wstring TimeString(uint seconds)
+{
+	uint hours = seconds / 3600;
+	uint minutes = (seconds % 3600) / 60;
+	wchar_t buf[7];
+	swprintf_s(buf, L"%uh%um", hours, minutes);
+	return buf;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

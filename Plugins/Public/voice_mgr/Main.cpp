@@ -245,7 +245,7 @@ bool UserCmd_TestVoice(uint clientID, const wstring& cmd, const wstring& param, 
 		}
 		return true;
 	}
-	int index = ToInt(input);
+	uint index = ToUInt(input);
 	if (!index || index > voiceData.size())
 	{
 		PrintUserCmdText(clientID, L"ERR invalid selection");
@@ -294,7 +294,7 @@ bool UserCmd_SetVoice(uint clientID, const wstring& cmd, const wstring& param, c
 		}
 		return true;
 	}
-	int index = ToInt(input);
+	uint index = ToUInt(input);
 	if (!index || index > voiceData.size())
 	{
 		PrintUserCmdText(clientID, L"ERR invalid selection");

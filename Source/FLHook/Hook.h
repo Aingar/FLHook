@@ -865,6 +865,17 @@ extern FARPROC fpOldDiscPacketSent;
 // HkIEngine
 namespace HkIEngine
 {
+	struct UnkOptimize {
+		uint dunno[29];
+		Vector vec1;
+		uint dunno2;
+		Vector vec2;
+		uint dunno3;
+		Vector vec3;
+		uint dunno4;
+		Vector vec4;
+	};
+	int __fastcall VectorOptimize(UnkOptimize*);
 	int __cdecl FreeReputationVibe(int const &p1);
 	void __cdecl Update_Time(double);
 	void __stdcall Elapse_Time(float p1);
@@ -881,6 +892,12 @@ namespace HkIEngine
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
+	void CSimpleInitNaked();
+	void CSimpleDestrOrgNaked();
+	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass);
+
+	extern unordered_map<uint, uint> CObjectFindCounter;
+	void printcobjCounter();
 
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;

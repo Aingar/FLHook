@@ -78,13 +78,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	struct iobjCache
 	{
-		uint system;
+		StarSystem* cacheStarSystem;
 		CObject::Class objClass;
 	};
 
 	unordered_set<uint> playerShips;
-	unordered_map<uint, iobjCache> epicSolarMap;
-	unordered_map<uint, iobjCache> epicNonSolarMap;
+	unordered_map<uint, iobjCache> cacheSolarIObjs;
+	unordered_map<uint, iobjCache> cacheNonsolarIObjs;
 
 	FARPROC FindStarListRet = FARPROC(0x6D0C846);
 
@@ -101,31 +101,31 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
 		if (node)
 		{
-			epicNonSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheNonsolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -136,13 +136,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
 		if (node)
 		{
-			epicSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheSolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
 		if (node)
 		{
-			epicSolarMap[searchedId] = { node->value->cobj->system, node->value->cobj->objectClass };
+			cacheSolarIObjs[searchedId] = { node->value->starSystem, node->value->cobj->objectClass };
 			return node->value;
 		}
 		return nullptr;
@@ -150,6 +150,8 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
 	{
+		static StarSystem* lastFoundInSystem = nullptr;
+		static uint lastFoundItem = 0;
 		IObjRW* retVal = nullptr;
 		
 		if (searchedId == 0)
@@ -157,16 +159,23 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			return nullptr;
 		}
 
+		if (lastFoundItem == searchedId && lastFoundInSystem != &starSystem->starSystem)
+		{
+			return nullptr;
+		}
+
 		if (searchedId & 0x80000000) // check if solar
 		{
-			auto iter = epicSolarMap.find(searchedId);
-			if (iter == epicSolarMap.end())
+			auto iter = cacheSolarIObjs.find(searchedId);
+			if (iter == cacheSolarIObjs.end())
 			{
 				return FindSolar(starSystem, searchedId);
 			}
 
-			if (iter->second.system != starSystem->systemId)
+			if (iter->second.cacheStarSystem != &starSystem->starSystem)
 			{
+				lastFoundItem = searchedId;
+				lastFoundInSystem = iter->second.cacheStarSystem;
 				return nullptr;
 			}
 
@@ -177,34 +186,35 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				node = FindIObjOnListFunc(starSystem->starSystem.solarList, searchedId);
 				if (node)
 				{
-					return node->value;
+					retVal = node->value;
 				}
 				break;
 			case CObject::Class::CASTEROID_OBJECT:
 				node = FindIObjOnListFunc(starSystem->starSystem.asteroidList, searchedId);
 				if (node)
 				{
-					return node->value;
+					retVal = node->value;
 				}
 				break;
 			}
 			
-			epicSolarMap.erase(searchedId);
-			return nullptr;
+			cacheSolarIObjs.erase(searchedId);
 		}
 		else
 		{
 			if (!playerShips.count(searchedId)) // player can swap systems, for them search just the system's shiplist
 			{
-				auto iter = epicNonSolarMap.find(searchedId);
-				if (iter == epicNonSolarMap.end())
+				auto iter = cacheNonsolarIObjs.find(searchedId);
+				if (iter == cacheNonsolarIObjs.end())
 				{
-					return FindNonSolar(starSystem, searchedId);;
+					return FindNonSolar(starSystem, searchedId);
 				}
-				
-				if (iter->second.system != starSystem->systemId)
+
+				if (iter->second.cacheStarSystem != &starSystem->starSystem)
 				{
-					return  nullptr;
+					lastFoundItem = searchedId;
+					lastFoundInSystem = iter->second.cacheStarSystem;
+					return nullptr;
 				}
 
 				MetaListNode* node;
@@ -214,50 +224,48 @@ static float* pGroup_range = ((float*)0x6d66af4);
 					node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
 					if (node)
 					{
-						return node->value;
+						retVal = node->value;
 					}
 					break;
 				case CObject::Class::CLOOT_OBJECT:
 					node = FindIObjOnListFunc(starSystem->starSystem.lootList, searchedId);
 					if (node)
 					{
-						return node->value;
+						retVal = node->value;
 					}
 					break;
 				case CObject::Class::CGUIDED_OBJECT:
 					node = FindIObjOnListFunc(starSystem->starSystem.guidedList, searchedId);
 					if (node)
 					{
-						return node->value;
+						retVal = node->value;
 					}
 					break;
 				case CObject::Class::CMINE_OBJECT:
 					node = FindIObjOnListFunc(starSystem->starSystem.mineList, searchedId);
 					if (node)
 					{
-						return node->value;
+						retVal = node->value;
 					}
 					break;
 				case CObject::Class::CCOUNTERMEASURE_OBJECT:
 					node = FindIObjOnListFunc(starSystem->starSystem.counterMeasureList, searchedId);
 					if (node)
 					{
-						return node->value;
+						retVal = node->value;
 					}
 					break;
 				}
 
-				epicNonSolarMap.erase(searchedId);
-				return nullptr;
+				cacheNonsolarIObjs.erase(searchedId);
 			}
 			else
 			{
 				MetaListNode* node = FindIObjOnListFunc(starSystem->starSystem.shipList, searchedId);
 				if (node)
 				{
-					return node->value;
+					retVal = node->value;
 				}
-				return nullptr;
 			}
 		}
 
@@ -299,11 +307,11 @@ static float* pGroup_range = ((float*)0x6d66af4);
 	{
 		if (id & 0x8000000)
 		{
-			epicSolarMap.erase(id);
+			cacheSolarIObjs.erase(id);
 		}
 		else
 		{
-			epicNonSolarMap.erase(id);
+			cacheNonsolarIObjs.erase(id);
 		}
 	}
 
@@ -320,6 +328,159 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			push 0xFFFFFFFF
 			push 0x6d60776
 			jmp GameObjectDestructorRet
+		}
+	}
+
+	int __fastcall VectorOptimize(UnkOptimize* obj)
+	{
+		obj->vec3.x += obj->vec1.x;
+		obj->vec3.y += obj->vec1.y;
+		obj->vec3.z += obj->vec1.z;
+
+		obj->vec4.x += obj->vec2.x;
+		obj->vec4.y += obj->vec2.y;
+		obj->vec4.z += obj->vec2.z;
+
+		obj->vec1.x = 0;
+		obj->vec1.y = 0;
+		obj->vec1.z = 0;
+
+		obj->vec2.x = 0;
+		obj->vec2.y = 0;
+		obj->vec2.z = 0;
+
+		return 0;
+	}
+
+	unordered_map<uint, CObject*> CSolarMap;
+	unordered_map<uint, CObject*> CLootMap;
+	unordered_map<uint, CObject*> CShipMap;
+	unordered_map<uint, CObject*> CAsteroidMap;
+	unordered_map<uint, CObject*> CProjectileMap;
+
+	void __fastcall CSimpleInit(CSimple* csimple, void* edx, CSimple::CreateParms& param)
+	{
+		switch (csimple->objectClass)
+		{
+		case CObject::CSOLAR_OBJECT:
+			CSolarMap[param.id] = csimple;
+			break;
+		case CObject::CSHIP_OBJECT:
+			CShipMap[param.id] = csimple;
+			break;
+		case CObject::CLOOT_OBJECT:
+			CLootMap[param.id] = csimple;
+			break;
+		case CObject::CASTEROID_OBJECT:
+			CAsteroidMap[param.id] = csimple;
+			break;
+		default:
+			if ((csimple->objectClass & CObject::CPROJECTILE_MASK) == CObject::CPROJECTILE_MASK)
+			{
+				CProjectileMap[param.id] = csimple;
+				break;
+			}
+		}
+	}
+
+	uint CSimpleInitRetAddr = 0x62B5B66;
+	__declspec(naked) void CSimpleInitNaked()
+	{
+		__asm {
+			push ecx
+			push [esp+0x8]
+			call CSimpleInit
+			pop ecx
+			push ebx
+			push ebp
+			mov ebp, [esp+0xC]
+			jmp CSimpleInitRetAddr
+		}
+	}
+
+
+	void __fastcall CSimpleDestr(CSimple* csimple)
+	{
+		switch (csimple->objectClass)
+		{
+		case CObject::CSOLAR_OBJECT:
+			CSolarMap.erase(csimple->id);
+			break;
+		case CObject::CSHIP_OBJECT:
+			CShipMap.erase(csimple->id);
+			break;
+		case CObject::CLOOT_OBJECT:
+			CLootMap.erase(csimple->id);
+			break;
+		case CObject::CASTEROID_OBJECT:
+			CAsteroidMap.erase(csimple->id);
+			break;
+		default:
+			if ((csimple->objectClass & CObject::CPROJECTILE_MASK) == CObject::CPROJECTILE_MASK)
+			{
+				CProjectileMap.erase(csimple->id);
+				break;
+			}
+		}
+	}
+
+	uint CSimpleDestrRetAddr = 0x62B5987;
+	__declspec(naked) void CSimpleDestrOrgNaked()
+	{
+		__asm {
+			push ecx
+			call CSimpleDestr
+			pop ecx
+			push 0xFFFFFFFF
+			push 0x0639473F
+			jmp CSimpleDestrRetAddr
+		}
+	}
+
+	unordered_map<uint, uint> CObjectFindCounter;
+
+	void printcobjCounter()
+	{
+		for (auto& item : CObjectFindCounter)
+		{
+			ConPrint(L"%u\t%u\n", item.first, item.second);
+		}
+	}
+
+	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass)
+	{
+		CObjectFindCounter[objClass]++;
+		unordered_map<uint, CObject*> cobjMap;
+		switch (objClass) {
+		case CObject::CSOLAR_OBJECT:
+			cobjMap = CSolarMap;
+			break;
+		case CObject::CSHIP_OBJECT:
+			cobjMap = CShipMap;
+			break;
+		case CObject::CLOOT_OBJECT:
+			cobjMap = CLootMap;
+			break;
+		case CObject::CASTEROID_OBJECT:
+			cobjMap = CAsteroidMap;
+			break;
+		default:
+			if ((objClass & CObject::CPROJECTILE_MASK) == CObject::CPROJECTILE_MASK)
+			{
+				cobjMap = CProjectileMap;
+				break;
+			}
+		}
+
+		auto result = cobjMap.find(spaceObjId);
+		if (result != cobjMap.end())
+		{
+			++result->second->referenceCounter;
+			return result->second;
+		}
+		else
+		{
+			return CObject::Find(spaceObjId, objClass);
 		}
 	}
 

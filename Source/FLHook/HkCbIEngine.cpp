@@ -150,7 +150,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
 	{
-		static uint lastFoundInSystem = 0;
+		static StarSystem* lastFoundInSystem = nullptr;
 		static uint lastFoundItem = 0;
 		IObjRW* retVal = nullptr;
 		
@@ -159,7 +159,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			return nullptr;
 		}
 
-		if (lastFoundItem == searchedId && lastFoundInSystem != starSystem->systemId)
+		if (lastFoundItem == searchedId && lastFoundInSystem != &starSystem->starSystem)
 		{
 			return nullptr;
 		}
@@ -169,17 +169,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			auto iter = cacheSolarIObjs.find(searchedId);
 			if (iter == cacheSolarIObjs.end())
 			{
-				IObjRW* iobj = FindSolar(starSystem, searchedId);
-				if (iobj)
-				{
-					lastFoundInSystem = iobj->cobj->system;
-					lastFoundItem = searchedId;
-				}
-				return iobj;
+				return FindSolar(starSystem, searchedId);
 			}
 
 			if (iter->second.cacheStarSystem != &starSystem->starSystem)
 			{
+				lastFoundItem = searchedId;
+				lastFoundInSystem = iter->second.cacheStarSystem;
 				return nullptr;
 			}
 
@@ -211,17 +207,13 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				auto iter = cacheNonsolarIObjs.find(searchedId);
 				if (iter == cacheNonsolarIObjs.end())
 				{
-					IObjRW* iobj = FindNonSolar(starSystem, searchedId);
-					if (iobj)
-					{
-						lastFoundInSystem = iobj->cobj->system;
-						lastFoundItem = searchedId;
-					}
-					return iobj;
+					return FindNonSolar(starSystem, searchedId);
 				}
 
 				if (iter->second.cacheStarSystem != &starSystem->starSystem)
 				{
+					lastFoundItem = searchedId;
+					lastFoundInSystem = iter->second.cacheStarSystem;
 					return nullptr;
 				}
 

@@ -32,6 +32,8 @@ unordered_map<uint, LootData> lootData;
 unordered_map<uint, pair<float, unordered_map<ushort, float>>> colGrpCargoMap;
 float playerCargoCapacity[MAX_CLIENT_ID + 1];
 
+unordered_map<uint, unordered_map<uint, float>> cargoVolumeOverrideMap;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
@@ -177,6 +179,10 @@ void LoadGameData()
 				{
 					ld.dropChanceMounted = ini.get_value_float(0);
 					hasValue = true;
+				}
+				else if (ini.is_value("volume_class_override"))
+				{
+					cargoVolumeOverrideMap[ini.get_value_int(0)][currNickname] = ini.get_value_float(1);
 				}
 			}
 			if (hasValue)
@@ -463,11 +469,29 @@ float __fastcall CShipGetCargoRemainingDetour(CShip* ship)
 	float usedCargo = 0.0f;
 	CEquipTraverser tr(Cargo | InternalEquipment | ExternalEquipment);
 	CEquip* equip;
+	unordered_map<uint, float>* overrideMap = nullptr;
+
+	auto shipClassOverrideIter = cargoVolumeOverrideMap.find(ship->shiparch()->iShipClass);
+	if (shipClassOverrideIter != cargoVolumeOverrideMap.end())
+	{
+		overrideMap = &shipClassOverrideIter->second;
+	}
+
 	while (equip = ship->equip_manager.Traverse(tr))
 	{
 		if (equip->CEquipType == Cargo)
 		{
-			usedCargo += reinterpret_cast<CECargo*>(equip)->count * equip->archetype->fVolume;
+			float volume = equip->archetype->fVolume;
+			if (overrideMap)
+			{
+				auto cargoVolumeOverride = overrideMap->find(equip->archetype->iArchID);
+				if (cargoVolumeOverride != overrideMap->end())
+				{
+					volume = cargoVolumeOverride->second;
+				}
+			}
+
+			usedCargo += reinterpret_cast<CECargo*>(equip)->count * volume;
 		}
 		else
 		{
@@ -506,15 +530,79 @@ float __fastcall CShipGetCargoRemainingDetour(CShip* ship)
 
 int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment* equipArch)
 {
-	int spaceForCargo = ship->get_space_for_cargo_type(equipArch);
-
-	if (equipArch->fVolume > 0.0f)
+	if (equipArch->fVolume <= 0.0f || equipArch->get_class_type() != Archetype::COMMODITY)
 	{
-		float actualFreeSpace = CShipGetCargoRemainingDetour(ship);
-		return min(spaceForCargo, static_cast<int>(floorf(actualFreeSpace / equipArch->fVolume)));
+		return ship->get_space_for_cargo_type(equipArch);
 	}
 
-	return spaceForCargo;
+	float volume = equipArch->fVolume;
+
+	auto iter = cargoVolumeOverrideMap.find(ship->shiparch()->iShipClass);
+	if (iter != cargoVolumeOverrideMap.end())
+	{
+		auto iter2 = iter->second.find(equipArch->iArchID);
+		if (iter2 != iter->second.end())
+		{
+			volume = iter2->second;
+		}
+	}
+
+	if (volume == 0.0f)
+	{
+		return INT_MAX;
+	}
+
+	float freeSpace = CShipGetCargoRemainingDetour(ship);
+	return static_cast<int>(freeSpace / volume);
+}
+
+float GetEquipDescListVolume(uint shipClass, EquipDescList& eqList)
+{
+	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(shipClass);
+	if (cargoVolumeOverrideIter == cargoVolumeOverrideMap.end())
+	{
+		return eqList.get_cargo_space_occupied();
+	}
+
+	auto& cargoOverride = cargoVolumeOverrideIter->second;
+
+	float cargoUsed = 0.0f;
+	for (auto& eq : eqList.equip)
+	{
+		auto cargoData = cargoOverride.find(eq.iArchID);
+		if (cargoData != cargoOverride.end())
+		{
+			cargoUsed += eq.iCount * cargoData->second;
+		}
+		else
+		{
+			auto archData = Archetype::GetEquipment(eq.iArchID);
+			cargoUsed += eq.iCount * archData->fVolume;
+		}
+	}
+
+	return cargoUsed;
+}
+
+bool __fastcall ShipCargoSpaceExceededAntiCheat(PlayerData* pd)
+{
+	Archetype::Ship* ship = Archetype::GetShip(pd->iShipArchetype);
+	if (!ship)
+	{
+		return false;
+	}
+
+	return GetEquipDescListVolume(ship->iShipClass, pd->equipDescList) > ship->fHoldSize;
+}
+
+__declspec(naked) void ShipCargoSpaceExceededAntiCheatNaked()
+{
+	__asm {
+		sub ecx, 0x278
+		call ShipCargoSpaceExceededAntiCheat
+		add ecx, 0x278
+		ret
+	}
 }
 
 void Detour(void* pOFunc, void* pHkFunc)
@@ -542,6 +630,9 @@ void LoadSettings()
 	Detour((char*)commonHandle + 0x53040, CShipGetCargoRemainingDetour);
 	void* funcAddr = (void*)CShipGetSpaceForCargoType;
 	WriteProcMem((char*)serverHandle + 0x84654, &funcAddr, 4);
+
+	Detour((char*)commonHandle + 0xAA8E0, (char*)ShipCargoSpaceExceededAntiCheatNaked);
+
 	LoadMarketOverrides(nullptr);
 }
 

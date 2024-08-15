@@ -872,6 +872,9 @@ namespace HkIEngine
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
+	void CSimpleInitNaked();
+	void CSimpleDestrOrgNaked();
+	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass);
 
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;

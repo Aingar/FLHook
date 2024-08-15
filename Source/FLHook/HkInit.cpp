@@ -347,6 +347,9 @@ bool InitHookExports()
 	FARPROC GameObjectDestructor = FARPROC(0x6CEE4A0);
 	Detour(GameObjectDestructor, HkIEngine::GameObjectDestructorNaked);
 
+	FARPROC optimizeVector = FARPROC(0x6346DD0);
+	Detour(optimizeVector, HkIEngine::VectorOptimize);
+
 	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
 	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);
 	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);

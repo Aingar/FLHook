@@ -845,6 +845,17 @@ extern FARPROC fpOldDiscPacketSent;
 // HkIEngine
 namespace HkIEngine
 {
+	struct UnkOptimize {
+		uint dunno[29];
+		Vector vec1;
+		uint dunno2;
+		Vector vec2;
+		uint dunno3;
+		Vector vec3;
+		uint dunno4;
+		Vector vec4;
+	};
+	int __fastcall VectorOptimize(UnkOptimize*);
 	int __cdecl FreeReputationVibe(int const &p1);
 	void __cdecl Update_Time(double);
 	void __stdcall Elapse_Time(float p1);

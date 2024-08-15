@@ -331,6 +331,27 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		}
 	}
 
+	int __fastcall VectorOptimize(UnkOptimize* obj)
+	{
+		obj->vec3.x += obj->vec1.x;
+		obj->vec3.y += obj->vec1.y;
+		obj->vec3.z += obj->vec1.z;
+
+		obj->vec4.x += obj->vec2.x;
+		obj->vec4.y += obj->vec2.y;
+		obj->vec4.z += obj->vec2.z;
+
+		obj->vec1.x = 0;
+		obj->vec1.y = 0;
+		obj->vec1.z = 0;
+
+		obj->vec2.x = 0;
+		obj->vec2.y = 0;
+		obj->vec2.z = 0;
+
+		return 0;
+	}
+
 	/**************************************************************************************************************
 	// flserver memory leak bugfix
 	**************************************************************************************************************/

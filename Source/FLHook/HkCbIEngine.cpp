@@ -437,19 +437,8 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		}
 	}
 
-	unordered_map<uint, uint> CObjectFindCounter;
-
-	void printcobjCounter()
-	{
-		for (auto& item : CObjectFindCounter)
-		{
-			ConPrint(L"%u\t%u\n", item.first, item.second);
-		}
-	}
-
 	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass)
 	{
-		CObjectFindCounter[objClass]++;
 		unordered_map<uint, CObject*> cobjMap;
 		switch (objClass) {
 		case CObject::CSOLAR_OBJECT:

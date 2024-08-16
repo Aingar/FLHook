@@ -876,9 +876,6 @@ namespace HkIEngine
 	void CSimpleDestrOrgNaked();
 	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass);
 
-	extern unordered_map<uint, uint> CObjectFindCounter;
-	void printcobjCounter();
-
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;
 	extern FARPROC fpOldRadarRange;

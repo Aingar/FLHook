@@ -351,11 +351,11 @@ bool InitHookExports()
 	FARPROC optimizeVector = FARPROC(0x6346DD0);
 	Detour(optimizeVector, HkIEngine::VectorOptimize);
 
-	FARPROC CSimpleInit = FARPROC(0x62B5B60);
-	Detour(CSimpleInit, HkIEngine::CSimpleInitNaked);
+	FARPROC CAsteroidInit = FARPROC(0x62A28F0);
+	Detour(CAsteroidInit, HkIEngine::CAsteroidInitNaked);
 
-	FARPROC CSimpleDestr = FARPROC(0x62B5980);
-	Detour(CSimpleDestr, HkIEngine::CSimpleDestrOrgNaked);
+	FARPROC CAsteroidDestr = FARPROC(0x62A2880);
+	Detour(CAsteroidDestr, HkIEngine::CSimpleDestrOrgNaked);
 
 	FARPROC CObjectFindDetourFunc = FARPROC(&HkIEngine::CObjectFindDetour);
 	WriteProcMem((char*)hModServer + 0x84464, &CObjectFindDetourFunc, 4);

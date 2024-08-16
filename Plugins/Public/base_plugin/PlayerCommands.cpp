@@ -2487,9 +2487,12 @@ namespace PlayerCommands
 		Rotate180(rotation);
 		TranslateX(position, rotation, 1000);
 		auto& cooldown = deploymentCooldownMap.find(client);
-		if (cooldown != deploymentCooldownMap.end() && (uint)time(0) < cooldown->second)
+
+		uint currTime = static_cast<uint>(time(0));
+
+		if (cooldown != deploymentCooldownMap.end() && currTime < cooldown->second)
 		{
-			PrintUserCmdText(client, L"Command still on cooldown, %us remaining.", cooldown->second);
+			PrintUserCmdText(client, L"Command still on cooldown, %us remaining.", cooldown->second - currTime);
 			return;
 		}
 		else
@@ -2625,14 +2628,15 @@ namespace PlayerCommands
 		if (enableDistanceCheck)
 		{
 			auto& cooldown = deploymentCooldownMap.find(client);
-			if (cooldown != deploymentCooldownMap.end() && (uint)time(0) < cooldown->second)
+			uint currTime = static_cast<uint>(time(0));
+			if (cooldown != deploymentCooldownMap.end() && currTime < cooldown->second)
 			{
-				PrintUserCmdText(client, L"Command still on cooldown, %us remaining.", cooldown->second);
+				PrintUserCmdText(client, L"Command still on cooldown, %us remaining.", cooldown->second - currTime);
 				return;
 			}
 			else
 			{
-				deploymentCooldownMap[client] = (uint)time(0) + deploymentCooldownDuration;
+				deploymentCooldownMap[client] = currTime + deploymentCooldownDuration;
 			}
 
 			if (!CheckSolarDistances(client, systemId, position))

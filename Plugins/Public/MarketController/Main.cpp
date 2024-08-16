@@ -528,11 +528,23 @@ float __fastcall CShipGetCargoRemainingDetour(CShip* ship)
 	return max(0.0f, finalCapacity);
 }
 
+uint GetSpaceForCargoTypeRetAddr = 0x62B32E8;
+__declspec(naked) int __fastcall CallOriginalGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment*)
+{
+	__asm
+	{
+		sub esp, 0x1C
+		push ebx
+		mov ebx, [esp+0x24]
+		jmp GetSpaceForCargoTypeRetAddr
+	}
+}
+
 int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment* equipArch)
 {
 	if (equipArch->fVolume <= 0.0f || equipArch->get_class_type() != Archetype::COMMODITY)
 	{
-		return ship->get_space_for_cargo_type(equipArch);
+		return CallOriginalGetSpaceForCargoType(ship, edx, equipArch);
 	}
 
 	float volume = equipArch->fVolume;
@@ -629,8 +641,7 @@ void LoadSettings()
 	HANDLE serverHandle = GetModuleHandleA("Server");
 
 	Detour((char*)commonHandle + 0x53040, CShipGetCargoRemainingDetour);
-	void* funcAddr = (void*)CShipGetSpaceForCargoType;
-	WriteProcMem((char*)serverHandle + 0x84654, &funcAddr, 4);
+	Detour((char*)commonHandle + 0x532E0, CShipGetSpaceForCargoType);
 
 	Detour((char*)commonHandle + 0xAA8E0, (char*)ShipCargoSpaceExceededAntiCheatNaked);
 

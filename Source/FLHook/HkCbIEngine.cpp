@@ -359,7 +359,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		CAsteroidMap[param.id] = csimple;
 	}
 
-	uint CSimpleInitRetAddr = 0x62B5B66;
+	uint CAsteroidInitRetAddr = 0x62A28F6;
 	__declspec(naked) void CAsteroidInitNaked()
 	{
 		__asm {
@@ -367,10 +367,10 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			push [esp+0x8]
 			call CAsteroidInit
 			pop ecx
-			push ebx
-			push ebp
-			mov ebp, [esp+0xC]
-			jmp CSimpleInitRetAddr
+			push esi
+			push edi
+			mov edi, [esp+0xC]
+			jmp CAsteroidInitRetAddr
 		}
 	}
 
@@ -379,7 +379,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		CAsteroidMap.erase(csimple->id);
 	}
 
-	uint CAsteroidDestrRetAddr = 0x62B5987;
+	uint CAsteroidDestrRetAddr = 0x62A2887;
 	__declspec(naked) void CSimpleDestrOrgNaked()
 	{
 		__asm {
@@ -387,7 +387,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			call CAsteroidDestr
 			pop ecx
 			push 0xFFFFFFFF
-			push 0x0639473F
+			push 0x06393CB8
 			jmp CAsteroidDestrRetAddr
 		}
 	}

@@ -63,11 +63,11 @@ struct SSPUseItem
 
 struct SSPMunitionCollisionInfo
 {
-	uint iProjectileArchID;
-	DWORD dw2;
-	DWORD dwTargetShip;
-	ushort s1;
-
+	uint projectileArchID;  //0
+	uint projectileOwner; //4
+	uint targetObjId; //8
+	ushort subObjId; //12
+	Vector impactPosition; // 16
 };
 
 enum DestroyType

@@ -362,7 +362,7 @@ namespace HkIServerImpl
 	ci:  only figured out where dwTargetShip is ...
 	**************************************************************************************************************/
 
-	void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID)
+	void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const & ci, unsigned int iClientID)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);
@@ -371,13 +371,13 @@ namespace HkIServerImpl
 
 		iDmgMunitionID = ci.iProjectileArchID;
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision, __stdcall, (struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
 
 		LOG_CORE_TIMER_START
 		EXECUTE_SERVER_CALL_DEBUG(Server.SPMunitionCollision(ci, iClientID), iClientID, ci.iProjectileArchID);
 		LOG_CORE_TIMER_END
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, __stdcall, (struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
 	}
 
 	/**************************************************************************************************************

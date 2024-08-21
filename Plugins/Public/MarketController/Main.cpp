@@ -568,9 +568,16 @@ int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equi
 	return static_cast<int>(freeSpace / volume);
 }
 
-float GetEquipDescListVolume(uint shipClass, EquipDescList& eqList)
+float __fastcall EquipDescListVolume(EquipDescList& eq)
 {
-	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(shipClass);
+	PlayerData* pd = reinterpret_cast<PlayerData*>(DWORD(&eq) - 0x278);
+	Archetype::Ship* ship = Archetype::GetShip(pd->iShipArchetype);
+	if (!ship)
+	{
+		return 0.0f;
+	}
+
+	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(ship->iShipClass);
 	unordered_map<uint, float>* cargoOverrideMap = nullptr;
 	if (cargoVolumeOverrideIter != cargoVolumeOverrideMap.end())
 	{
@@ -578,7 +585,7 @@ float GetEquipDescListVolume(uint shipClass, EquipDescList& eqList)
 	}
 
 	float cargoUsed = 0.0f;
-	for (auto& eq : eqList.equip)
+	for (auto& eq : eq.equip)
 	{
 		if (cargoOverrideMap)
 		{
@@ -595,27 +602,6 @@ float GetEquipDescListVolume(uint shipClass, EquipDescList& eqList)
 	}
 
 	return cargoUsed;
-}
-
-bool __fastcall ShipCargoSpaceExceededAntiCheat(PlayerData* pd)
-{
-	Archetype::Ship* ship = Archetype::GetShip(pd->iShipArchetype);
-	if (!ship)
-	{
-		return false;
-	}
-
-	return GetEquipDescListVolume(ship->iShipClass, pd->equipDescList) > ship->fHoldSize;
-}
-
-__declspec(naked) void ShipCargoSpaceExceededAntiCheatNaked()
-{
-	__asm {
-		sub ecx, 0x278
-		call ShipCargoSpaceExceededAntiCheat
-		add ecx, 0x278
-		ret
-	}
 }
 
 void Detour(void* pOFunc, void* pHkFunc)
@@ -643,7 +629,7 @@ void LoadSettings()
 	Detour((char*)commonHandle + 0x53040, CShipGetCargoRemainingDetour);
 	Detour((char*)commonHandle + 0x532E0, CShipGetSpaceForCargoType);
 
-	Detour((char*)commonHandle + 0xAA8E0, (char*)ShipCargoSpaceExceededAntiCheatNaked);
+	Detour((char*)commonHandle + 0xAA8E0, (char*)EquipDescListVolume);
 
 	LoadMarketOverrides(nullptr);
 }

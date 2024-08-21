@@ -680,7 +680,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
 {
     returncode = DEFAULT_RETURNCODE;
     // If this is not a lootable rock, do no other processing.
-    if (ci.iProjectileArchID != set_miningMunition || ci.dwTargetShip != 0)
+    if (ci.projectileArchID != set_miningMunition || ci.targetObjId != 0)
     {
         return;
     }

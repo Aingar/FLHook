@@ -369,12 +369,12 @@ namespace HkIServerImpl
 
 		CHECK_FOR_DISCONNECT
 
-		iDmgMunitionID = ci.iProjectileArchID;
+		iDmgMunitionID = ci.projectileArchID;
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
 
 		LOG_CORE_TIMER_START
-		EXECUTE_SERVER_CALL_DEBUG(Server.SPMunitionCollision(ci, iClientID), iClientID, ci.iProjectileArchID);
+		Server.SPMunitionCollision(ci, iClientID);
 		LOG_CORE_TIMER_END
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));

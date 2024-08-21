@@ -2545,7 +2545,18 @@ public:
 	void SetMaxCorrectiveConvergeTime(double);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	Vector positionSamples[3];
+	uint dunno;
+	double sampleTimes[3];
+	Vector samplesDunno[2];
+	Vector projectedPositionVector;
+	Vector trackedPositionVector;
+	Vector positionDiffs_questionMark[4];
+	uint dunno2[3];
+	uint totalSampleCounter;
+	float dunno3[2];
+	double convergeTime;
+	double correctiveConvergeTime;
 };
 
 struct IMPORT CDynamicAsteroid : public CObject
@@ -3381,7 +3392,20 @@ public:
 	void  tracef(char const *, ...);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	CDeadReckonedVector vec1;
+	CDeadReckonedVector vec2;
+	CDeadReckonedVector vec3;
+	Vector projectedVelocity;
+	uint dunno2[6];
+	Quaternion rotation;
+	Vector position;
+	uint sampleCount;
+	uint dunno3;
+	double simulationTime;
+	uint dunno4;
+	float dunnoFloat;
+	float* dunnoFloatPtr;
+	uint unk;
 };
 
 

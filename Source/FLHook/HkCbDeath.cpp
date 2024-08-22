@@ -444,7 +444,22 @@ __declspec(naked) void SolarColGrpDestroyedHookNaked()
 	}
 }
 
-bool __fastcall ShipDropLootDummy(IObjRW*, void* edx, char*, DamageList*)
+bool __fastcall ShipDropLootDummy(IObjRW* iobj, void* edx, char*, DamageList*)
 {
+	CEqObj* cobj = reinterpret_cast<CEqObj*>(iobj->cobj);
+
+	if (!cobj->ownerPlayer)
+	{
+		return true;
+	}
+
+	auto& pdEq = Players[cobj->ownerPlayer].equipDescList;
+	for (auto& eq : pdEq.equip)
+	{
+		if (!eq.bMounted)
+		{
+			pdEq.remove_equipment_item(eq.sID, eq.iCount);
+		}
+	}
 	return true;
 }

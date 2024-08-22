@@ -110,6 +110,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Voice_mgr", "Plugins\Public
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MarketController", "Plugins\Public\MarketController\MarketController.vcxproj", "{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "warehouse", "Plugins\Public\warehouse\warehouse.vcxproj", "{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -412,6 +414,18 @@ Global
 		{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22}.Release|Win32.Build.0 = Release|Win32
 		{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22}.Release|x64.ActiveCfg = Release|Win32
 		{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22}.Release|x64.Build.0 = Release|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Debug|Win32.Build.0 = Debug|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Debug|x64.ActiveCfg = Debug|x64
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Debug|x64.Build.0 = Debug|x64
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.DebugDONOTUSE|x64.ActiveCfg = Debug|x64
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.DebugDONOTUSE|x64.Build.0 = Debug|x64
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Release|Win32.ActiveCfg = Release|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Release|Win32.Build.0 = Release|Win32
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Release|x64.ActiveCfg = Release|x64
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -445,6 +459,7 @@ Global
 		{985915AF-E158-45E7-BBDD-BCD4642E5574} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{55FDEA3D-7F65-4A84-A0C6-1FFD3B4F6744} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{7BA66B1C-47C0-40A6-A9E4-1B26664B536B} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}
@@ -457,6 +472,7 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{45d41acc-2c3c-43d2-bc10-02aa73ffc7c7}*SharedItemsImports = 9
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{4b9ab78f-085b-4f29-8e03-99fcf081f273}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{55fdea3d-7f65-4a84-a0c6-1ffd3b4f6744}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7ba66b1c-47c0-40a6-a9e4-1b26664b536b}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7c84f18c-fe8c-4731-882d-05c237753a54}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7de3df47-662f-4e34-9899-140f103d2d01}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{81a35b95-1cdd-4f58-a24c-e2dc47d43dd0}*SharedItemsImports = 4

@@ -122,7 +122,7 @@ void ShipExplosionHandlingExtEqAndColGrp(IObjRW* iobj, ExplosionDamageEvent* exp
 	}
 }
 
-void ShipHullExplosionHandling(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float minDistance)
+void ShipHullExplosionHandling(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float distance)
 {
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
@@ -132,26 +132,18 @@ void ShipHullExplosionHandling(IObjRW* iobj, ExplosionDamageEvent* explosion, Da
 	static float boundingSphereRadius;
 	static Vector boundingSpherePos;
 
-	cship->get_explosion_dmg_bounding_sphere(boundingSphereRadius, boundingSpherePos);
-	float distance = boundingSpherePos.x * boundingSpherePos.x +
-		boundingSpherePos.y * boundingSpherePos.y +
-		boundingSpherePos.z * boundingSpherePos.z -
-		boundingSphereRadius * boundingSphereRadius;
-
-	distance = min(distance, minDistance);
-
 	float dmgMult = 0.0f;
 	if (distance < oneThird)
 	{
-		dmgMult = 3.0f;
+		dmgMult = 1.0f;
 	}
 	else if (distance < twoThirds)
 	{
-		dmgMult = 2.0f;
+		dmgMult = 0.6666f;
 	}
 	else if (distance < squaredExplosionRadius)
 	{
-		dmgMult = 1.0f;
+		dmgMult = 0.3333f;
 	}
 
 	if (!dmgMult)
@@ -159,7 +151,7 @@ void ShipHullExplosionHandling(IObjRW* iobj, ExplosionDamageEvent* explosion, Da
 		return;
 	}
 
-	float damageToDeal = dmgMult * 0.3333333f * explosion->explosionArchetype->fHullDamage * cship->archetype->fExplosionResistance;
+	float damageToDeal = dmgMult * explosion->explosionArchetype->fHullDamage * cship->archetype->fExplosionResistance;
 	iobj->damage_hull(damageToDeal, dmg);
 }
 
@@ -233,23 +225,16 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		dmgMult = 0.6666f;
 	}
 
-	if (dmgMult != 1.0f)
+	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
+	if (!shield || !shield->IsFunctioning())
 	{
-		float originalHullDmg = explosion->explosionArchetype->fHullDamage;
-		float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
-
-		explosion->explosionArchetype->fHullDamage *= dmgMult;
-		explosion->explosionArchetype->fEnergyDamage *= dmgMult;
-
-		bool retVal = iobj->process_explosion_damage_shield_bubble(explosion, dmg);
-
-		explosion->explosionArchetype->fHullDamage = originalHullDmg;
-		explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
-
-		return retVal;
+		return false;
 	}
 
-	return iobj->process_explosion_damage_shield_bubble(explosion, dmg);
+	float damage = dmgMult * (explosion->explosionArchetype->fEnergyDamage + explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR);
+	iobj->damage_shield_direct(shield, damage, dmg);
+
+	return true;
 }
 
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)

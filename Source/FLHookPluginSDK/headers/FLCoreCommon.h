@@ -5587,7 +5587,7 @@ struct CShipAbstract
 	virtual int set_follow_offset(const Vector&);              // 40
 	virtual FORMATION_RTYPE add_follow_follower(IObjRW*);      // 44
 	virtual FORMATION_RTYPE remove_follow_follower(IObjRW*);   // 48
-	virtual int fire_weapons(ushort startIndex, ushort endIndex, void* unk, void* unk2); // 52
+	virtual int fire_weapons(ushort startIndex, ushort endIndex, Vector* pos, void* unk2); // 52
 	virtual int jettison_cargo(ushort sID, ushort amount, uint clientId); // 56
 	virtual int tractor_all(ushort tractorSId, st6::vector<IObjRW*> tractorArray, int clientId); // 60
 	virtual int tractor_single(ushort sId, IObjRW* loot, int clientId); // 64

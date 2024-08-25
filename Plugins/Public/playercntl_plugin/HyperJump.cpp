@@ -731,21 +731,25 @@ namespace HyperJump
 			return false;
 		}
 
-		if (!jumpObj.remainingCapacity)
+		if (jumpObj.remainingCapacity == 0)
 		{
-			PrintUserCmdText(client, L"ERR Jump Hole is too unstable to proceed!");
+			PrintUserCmdText(client, L"ERR Jump Hole capacity reached, too unstable to proceed.");
 			return false;
 		}
 
 		time_t now = time(0);
-		if (now - 1 > jumpObj.timeout)
+		if (now - 1 > jumpObj.timeout && jumpObj.dockingQueue.empty())
 		{
+			PrintUserCmdText(client, L"ERR Jump Hole timing out, too unstable to proceed.");
 			return false;
 		}
 
-		jumpObj.remainingCapacity--;
+		if (jumpObj.remainingCapacity != UINT_MAX)
+		{
+			jumpObj.remainingCapacity--;
+		}
 
-		if (!jumpObj.remainingCapacity)
+		if (jumpObj.remainingCapacity == 0)
 		{
 			jumpObj.timeout = 0; // set the JH to collapse immediately upon the last person's arrival at the end system
 		}
@@ -757,26 +761,36 @@ namespace HyperJump
 
 	void HyperJump::JumpInComplete(uint ship)
 	{
-		if (!shipToJumpObjMap.count(ship))
+		auto iter = shipToJumpObjMap.find(ship);
+		if (iter == shipToJumpObjMap.end())
 		{
 			return;
 		}
-		uint dockObj = shipToJumpObjMap[ship];
-		if (!jumpObjMap.count(dockObj))
+		auto jumpObjIter = jumpObjMap.find(iter->second);
+		if (jumpObjIter == jumpObjMap.end())
 		{
 			return;
 		}
-		jumpObjMap.at(dockObj).dockingQueue.erase(ship);
+		jumpObjIter->second.dockingQueue.erase(ship);
 		shipToJumpObjMap.erase(ship);
 	}
 
 	void HyperJump::RequestCancel(int iType, uint iShip, uint dockObjId)
 	{
-		if (iType == 0 && jumpObjMap.count(dockObjId)) // dock type request
+		if (iType != 0)
 		{
-			jumpObjMap.at(dockObjId).dockingQueue.erase(iShip);
-			jumpObjMap.at(dockObjId).remainingCapacity++;
-			shipToJumpObjMap.erase(iShip);
+			return;
+		}
+
+		auto iter = jumpObjMap.find(dockObjId);
+		if (iter != jumpObjMap.end())
+		{
+			if (iter->second.dockingQueue.count(iShip))
+			{
+				jumpObjMap.at(dockObjId).dockingQueue.erase(iShip);
+				jumpObjMap.at(dockObjId).remainingCapacity++;
+				shipToJumpObjMap.erase(iShip);
+			}
 		}
 	}
 
@@ -1310,7 +1324,8 @@ namespace HyperJump
 				{
 					continue;
 				}
-				else if (jh.dockingQueue.empty())
+				
+				if (jh.dockingQueue.empty())
 				{
 					JumpHoleExitsToClose.emplace_back(jh.pairedJH);
 					JumpHoleExitsToClose.emplace_back(jh.objId);

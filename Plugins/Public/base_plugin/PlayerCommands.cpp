@@ -1522,8 +1522,17 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"IFF bonuses:");
 				for (const auto& rep : recipe->affiliationBonus)
 				{
-					PrintUserCmdText(client, L"|   %ls - +%u%% efficiency bonus",
-						HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+					if (rep.second <= 1.0f)
+					{
+						PrintUserCmdText(client, L"|   %ls - %u%% efficiency bonus",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+					}
+					else
+					{
+						PrintUserCmdText(client, L"|   %ls - %u%% penalty",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>((rep.second - 1.0f) * 100));
+
+					}
 				}
 			}
 			return;

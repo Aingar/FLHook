@@ -1373,7 +1373,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			{
 				static time_t lastAnnouncement = 0;
 				time_t currTime = time(0);
-				if (currTime < lastAnnouncement + 300)
+				if (currTime > lastAnnouncement + 300)
 				{
 					wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(cship->ownerPlayer);
 					HkMsgU(L"Suhl Anomaly has claimed " + playerName);

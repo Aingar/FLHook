@@ -1249,7 +1249,6 @@ USERCMD UserCmds[] =
 	{ L"/shields*",		MiscCmds::UserCmd_Shields, L"Usage: /shields [drop]"},
 	//{ L"/ss",		    MiscCmds::UserCmd_Screenshot, L"Usage: /ss"},
 	{ L"/setsector",	HyperJump::UserCmd_SetSector, L"Usage: /setsector <number>"},
-	{ L"/listsector",	HyperJump::UserCmd_ListSector, L"Usage: /listsector <systemName>" },
 	{ L"/jump",			HyperJump::UserCmd_Jump, L"Usage: /jump <systemName/blind/stop/list>"},
 	{ L"/jumpbeacon",	HyperJump::UserCmd_JumpBeacon, L"Usage: /jumpbeacon <playername/playerID>" },
 	{ L"/acceptbeacon",	HyperJump::UserCmd_AcceptBeaconRequest, L"Usage: /acceptbeacon <playername/playerID>" },

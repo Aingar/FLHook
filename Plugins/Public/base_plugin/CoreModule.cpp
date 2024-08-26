@@ -440,6 +440,8 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 
 bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcastDeath)
 {
+	POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+	base->baseCSolar = nullptr;
 	if (this->space_obj == space_obj && !undergoingDestruction)
 	{
 		undergoingDestruction = true;

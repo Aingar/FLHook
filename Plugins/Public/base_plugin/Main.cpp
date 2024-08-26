@@ -833,6 +833,29 @@ void LoadSettingsActual()
 						ValidateItem(ini.get_value_string(0));
 						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
+					else if (ini.is_value("produced_affiliation"))
+					{
+						unordered_map<uint, pair<uint, uint>> itemMap;
+						ValidateItem(ini.get_value_string(0));
+						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
+						int counter = 0;
+
+						string factionName;
+						do
+						{
+							factionName = ini.get_value_string(counter * 3 + 2);
+							string commodityName = ini.get_value_string(counter * 3 + 3);
+							int amount = ini.get_value_int(counter * 3 + 4);
+							if (!factionName.empty())
+							{
+								ValidateItem(commodityName.c_str());
+								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
+							}
+							counter++;
+						} while (!factionName.empty());
+
+						recipe.affiliation_produced_items.push_back(itemMap);
+					}
 					else if (ini.is_value("loop_production"))
 					{
 						recipe.loop_production = ini.get_value_int(0);
@@ -861,6 +884,47 @@ void LoadSettingsActual()
 					{
 						ValidateItem(ini.get_value_string(0));
 						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+					}
+					else if (ini.is_value("consumed_dynamic"))
+					{
+						int counter = 0;
+						vector<pair<uint, uint>> vector;
+						string itemName;
+						do
+						{
+							itemName = ini.get_value_string(counter * 2);
+							int amount = ini.get_value_int(counter * 2 + 1);
+							if (!itemName.empty())
+							{
+								ValidateItem(itemName.c_str());
+								vector.push_back({ CreateID(itemName.c_str()), amount });
+							}
+							counter++;
+						} while (!itemName.empty());
+						recipe.dynamic_consumed_items.push_back(vector);
+					}
+					else if (ini.is_value("consumed_affiliation"))
+					{
+						unordered_map<uint, pair<uint, uint>> itemMap;
+						ValidateItem(ini.get_value_string(0));
+						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1)};
+						int counter = 0;
+
+						string factionName;
+						do
+						{
+							factionName = ini.get_value_string(counter * 3 + 2);
+							string commodityName = ini.get_value_string(counter * 3 + 3);
+							int amount = ini.get_value_int(counter * 3 + 4);
+							if (!factionName.empty())
+							{
+								ValidateItem(commodityName.c_str());
+								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
+							}
+							counter++;
+						} while (!factionName.empty());
+
+						recipe.affiliation_consumed_items.push_back(itemMap);
 					}
 					else if (ini.is_value("catalyst"))
 					{

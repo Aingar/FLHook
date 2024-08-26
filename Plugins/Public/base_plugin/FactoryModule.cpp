@@ -61,7 +61,7 @@ wstring FactoryModule::GetInfo(bool xml)
 		info += end;
 		return info;
 	}
-	if (pendingSpace)
+	if (active_recipe.consumed_items.empty() && active_recipe.dynamic_consumed_items.empty())
 	{
 		info += openLine + active_recipe.infotext + L": Waiting for free cargo storage" + openLine + L"or available max stock limit to drop off:";
 		for (auto& item : active_recipe.produced_items)
@@ -75,6 +75,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		}
+
 		info += end;
 		return info;
 	}
@@ -82,6 +83,42 @@ wstring FactoryModule::GetInfo(bool xml)
 	info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
 
 	uint minutesToCompletion = 0;
+
+	for (auto& i : active_recipe.dynamic_consumed_items)
+	{
+		bool isFirst = true;
+		info += openLine + L"- ";
+		uint dynamicSum = 0;
+		for (auto& j : i)
+		{
+			if (isFirst)
+			{
+				isFirst = false;
+			}
+			else
+			{
+				info += L" or ";
+			}
+
+
+			uint good = j.first;
+			uint quantity = j.second;
+			dynamicSum += quantity;
+			if (!quantity)
+			{
+				continue;
+			}
+
+			const GoodInfo* gi = GoodList::find_by_id(good);
+			if (!gi)
+			{
+				continue;
+			}
+			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		}
+		dynamicSum /= i.size();
+		minutesToCompletion += dynamicSum / active_recipe.cooking_rate;
+	}
 
 	for (auto& i : active_recipe.consumed_items)
 	{
@@ -112,6 +149,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			}
 		}
 	}
+
 	if (active_recipe.credit_cost)
 	{
 		info += openLine + L" - Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
@@ -184,9 +222,6 @@ bool FactoryModule::Timer(uint time)
 	}
 
 	// Consume goods at the cooking rate.
-	bool cooked = true;
-	pendingSpace = false;
-
 	for (const auto& catalyst : active_recipe.catalyst_items)
 	{
 		uint good = catalyst.first;
@@ -224,10 +259,6 @@ bool FactoryModule::Timer(uint time)
 			active_recipe.credit_cost -= moneyToRemove;
 			consumedAnything = true;
 		}
-		if (active_recipe.credit_cost)
-		{
-			cooked = false;
-		}
 	}
 
 	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
@@ -238,7 +269,6 @@ bool FactoryModule::Timer(uint time)
 		if (market_item == base->market_items.end()
 			|| market_item->second.quantity < quantity)
 		{
-			cooked = false;
 			continue;
 		}
 		i->second -= quantity;
@@ -253,16 +283,42 @@ bool FactoryModule::Timer(uint time)
 		if (!i->second)
 		{
 			active_recipe.consumed_items.erase(i);
-			if (!active_recipe.consumed_items.empty())
+		}
+		break;
+	}
+
+	for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
+		itemGroup != active_recipe.dynamic_consumed_items.end();)
+	{
+		bool foundItem = false;
+		for (auto& item : *itemGroup)
+		{
+			auto& goodIter = base->market_items.find(item.first);
+			if (goodIter == base->market_items.end())
 			{
-				cooked = false;
+				continue;
 			}
+
+			uint cookingRate = min(active_recipe.cooking_rate, item.second);
+			if (cookingRate > goodIter->second.quantity)
+			{
+				continue;
+			}
+			base->RemoveMarketGood(goodIter->first, cookingRate);
+
+			active_recipe.consumed_items.push_back({ goodIter->first, item.second - cookingRate });
+			consumedAnything = true;
+			foundItem = true;
+			break;
+		}
+		if (foundItem)
+		{
+			itemGroup = active_recipe.dynamic_consumed_items.erase(itemGroup);
 		}
 		else
 		{
-			cooked = false;
+			itemGroup++;
 		}
-		break;
 	}
 
 	if (consumedAnything)
@@ -278,7 +334,9 @@ bool FactoryModule::Timer(uint time)
 	}
 
 	// Do nothing if cooking is not finished
-	if (!cooked)
+	if (!active_recipe.consumed_items.empty()
+		|| !active_recipe.dynamic_consumed_items.empty()
+		|| !active_recipe.credit_cost)
 	{
 		return false;
 	}
@@ -289,7 +347,6 @@ bool FactoryModule::Timer(uint time)
 	{
 		if (!base->AddMarketGood(item.first, item.second))
 		{
-			pendingSpace = true;
 			return false;
 		}
 		else
@@ -321,6 +378,9 @@ void FactoryModule::LoadState(INI_Reader& ini)
 {
 	active_recipe.nickname = 0;
 	RECIPE foundRecipe;
+
+	vector<pair<uint, uint>> producedCopy;
+
 	while (ini.read_value())
 	{
 		if (ini.is_value("type"))
@@ -341,6 +401,9 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			{
 				SetActiveRecipe(activeRecipeNickname);
 				active_recipe.consumed_items.clear();
+				active_recipe.dynamic_consumed_items.clear();
+				producedCopy = active_recipe.produced_items;
+				active_recipe.produced_items.clear();
 			}
 		}
 		else if (ini.is_value("paused"))
@@ -354,6 +417,26 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			if (active_recipe.nickname && amount)
 			{
 				active_recipe.consumed_items.emplace_back(make_pair(goodID, amount));
+			}
+		}
+		else if (ini.is_value("consumed_dynamic"))
+		{
+			vector<pair<uint, uint>> vector;
+			int counter = 0;
+			int itemId = 0;
+			do
+			{
+				itemId = ini.get_value_int(counter * 2);
+				int itemAmount = ini.get_value_int(counter * 2 + 1);
+				counter++;
+				if (itemId)
+				{
+					vector.push_back({ itemId, itemAmount });
+				}
+			} while (itemId);
+			if (!vector.empty())
+			{
+				active_recipe.dynamic_consumed_items.emplace_back(vector);
 			}
 		}
 		else if (ini.is_value("credit_cost"))
@@ -370,6 +453,17 @@ void FactoryModule::LoadState(INI_Reader& ini)
 				build_queue.emplace_back(ini.get_value_int(0));
 			}
 		}
+		else if (ini.is_value("produced"))
+		{
+			if (active_recipe.nickname)
+			{
+				active_recipe.produced_items.push_back({ ini.get_value_int(0), ini.get_value_int(1) });
+			}
+		}
+	}
+	if (active_recipe.produced_items.empty())
+	{
+		active_recipe.produced_items = producedCopy;
 	}
 }
 
@@ -390,6 +484,28 @@ void FactoryModule::SaveState(FILE* file)
 				fprintf(file, "consumed = %u, %u\n", i.first, i.second);
 			}
 		}
+		for (auto& i : active_recipe.dynamic_consumed_items)
+		{
+			bool isFirst = true;
+			fprintf(file, "consumed_dynamic = ");
+			for (auto& j : i)
+			{
+				if (isFirst)
+				{
+					isFirst = false;
+				}
+				else
+				{
+					fprintf(file, ",");
+				}
+				fprintf(file, "%u, %u", j.first, j.second);
+			}
+			fprintf(file, "\n");
+		}
+		for (auto& i : active_recipe.produced_items)
+		{
+			fprintf(file, "produced = %u, %u\n", i.first, i.second);
+		}
 	}
 	for (uint i : build_queue)
 	{
@@ -408,6 +524,31 @@ void FactoryModule::SetActiveRecipe(uint product)
 		for (auto& item : active_recipe.consumed_items)
 		{
 			item.second = static_cast<uint>(ceil(static_cast<float>(item.second) * productionModifier));
+		}
+	}
+	for (auto& variable : active_recipe.affiliation_consumed_items)
+	{
+		auto material = variable.find(base->affiliation);
+		if (material != variable.end())
+		{
+			active_recipe.consumed_items.push_back(material->second);
+		}
+		else if (variable.count(0))
+		{
+			active_recipe.consumed_items.push_back(variable.at(0));
+		}
+	}
+
+	for (auto& variable : active_recipe.affiliation_produced_items)
+	{
+		auto material = variable.find(base->affiliation);
+		if (material != variable.end())
+		{
+			active_recipe.produced_items.push_back(material->second);
+		}
+		else if (variable.count(0))
+		{
+			active_recipe.produced_items.push_back(variable.at(0));
 		}
 	}
 }

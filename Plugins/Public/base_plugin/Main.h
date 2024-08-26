@@ -42,11 +42,14 @@ struct RECIPE
 	uint nickname = 0;
 	string nicknameString = "";
 	vector<pair<uint, uint>> produced_items;
+	vector<unordered_map<uint, pair<uint, uint>>> affiliation_produced_items;
 	uint shortcut_number = 0;
 	bool loop_production = false;
 	wstring infotext = L"";
 	wstring craft_type = L"";
 	uint cooking_rate = 0;
+	vector<unordered_map<uint, pair<uint, uint>>> affiliation_consumed_items;
+	vector<vector<pair<uint, uint>>> dynamic_consumed_items;
 	vector<pair<uint, uint>> consumed_items;
 	vector<pair<uint, uint>> catalyst_items;
 	vector<pair<uint, uint>> catalyst_workforce;
@@ -273,7 +276,6 @@ public:
 	static bool FactoryModule::IsFactoryModule(Module* module);
 
 	bool Paused = false;
-	bool pendingSpace = false;
 	bool ToggleQueuePaused(bool NewState);
 	bool AddToQueue(uint product);
 	bool ClearQueue();

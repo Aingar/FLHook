@@ -132,6 +132,8 @@ map<string, EVENT_TRACKER> mapEventTracking;
 //at some point this should be moved to HookExt so all plugins can benefit from this and reduce data redudancy.
 unordered_map <uint, string> mapIDs;
 
+uint SuhlDeathCounter = 0;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Loading Settings
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -217,6 +219,7 @@ void LoadSettings()
 	string File_FLHook = "..\\exe\\flhook_plugins\\events.cfg";
 	string File_FLHookStatus = "..\\exe\\flhook_plugins\\events_status.cfg";
 	string File_FLHookTracker = "..\\exe\\flhook_plugins\\events_tracker.cfg";
+	string File_FLHookSuhl = "..\\exe\\flhook_plugins\\suhl_tracker.cfg";
 	int iLoaded = 0;
 	int iLoaded2 = 0;
 	int iLoaded3 = 0;
@@ -606,6 +609,24 @@ void LoadSettings()
 				{
 					mapEventTracking[id].eventname = name;
 					++iLoaded3;
+				}
+			}
+		}
+		ini.close();
+	}
+
+	if (ini.open(File_FLHookSuhl.c_str(), false))
+	{
+		while (ini.read_header())
+		{
+			if (ini.is_header("SuhlData"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("SuhlKills"))
+					{
+						SuhlDeathCounter = ini.get_value_int(0);
+					}
 				}
 			}
 		}
@@ -1161,6 +1182,13 @@ void ProcessEventPlayerInfo()
 		fclose(fileini);
 	}
 
+	fileini = fopen("..\\exe\\flhook_plugins\\suhl_tracker.cfg", "w");
+	if(fileini)
+	{
+		fprintf(fileini, "[SuhlData]\nSuhlKills = %u", SuhlDeathCounter);
+		fclose(fileini);
+	}
+
 	///////////////////////////////////////////////////////////////////////////////////////
 	// END INI DUMPING
 	///////////////////////////////////////////////////////////////////////////////////////
@@ -1334,14 +1362,30 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (mapCombatEvents.empty())
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+
+
+	if (cship->ownerPlayer)
 	{
+		if (iobj->cobj->currentDamageZone)
+		{
+			if (iobj->cobj->currentDamageZone->iZoneID == 0xac4c6708)
+			{
+				static time_t lastAnnouncement = 0;
+				time_t currTime = time(0);
+				if (currTime < lastAnnouncement + 300)
+				{
+					wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(cship->ownerPlayer);
+					HkMsgU(L"Suhl Anomaly has claimed " + playerName);
+					lastAnnouncement = currTime;
+				}
+				SuhlDeathCounter++;
+			}
+		}
 		return;
 	}
 
-	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
-
-	if (cship->ownerPlayer)
+	if (mapCombatEvents.empty())
 	{
 		return;
 	}

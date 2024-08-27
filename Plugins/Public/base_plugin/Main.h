@@ -379,6 +379,8 @@ public:
 	// Total storage space capacity
 	uint storage_space;
 
+	uint preferred_food;
+
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 
@@ -625,7 +627,7 @@ namespace PlayerCommands
 	void GetNecessitiesStatus(uint client, const wstring& args);
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
-	void BaseCheckVulnerabilityWindow(uint client);
+	void SetPrefFood(uint client, const wstring& cmd);
 
 	void BaseDeploy(uint client, const wstring& args);
 	void BaseTestDeploy(uint client, const wstring& args);

@@ -2,7 +2,7 @@
 
 PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
 	: basename(the_basename),
-	base(0), money(0), base_health(0), baseCSolar(nullptr),
+	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0),
 	base_level(1), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
@@ -36,7 +36,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 }
 
 PlayerBase::PlayerBase(const string &the_path)
-	: path(the_path), base(0), money(0), baseCSolar(nullptr),
+	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0),
 	base_health(0), base_level(0), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
@@ -498,6 +498,10 @@ void PlayerBase::Load()
 					{
 						sscanf(ini.get_value_string(), "%I64d", &money);
 					}
+					else if (ini.is_value("preferred_food"))
+					{
+						preferred_food = ini.get_value_int(0);
+					}
 					else if (ini.is_value("commodity"))
 					{
 						MARKET_ITEM mi;
@@ -679,6 +683,10 @@ void PlayerBase::Save()
 		fprintf(file, "logic = %u\n", logic);
 		fprintf(file, "invulnerable = %u\n", invulnerable);
 		fprintf(file, "crew_supplied = %u\n", isCrewSupplied ? 1 : 0);
+		if (preferred_food)
+		{
+			fprintf(file, "preferred_food = %u\n", preferred_food);
+		}
 		fprintf(file, "shieldstrength = %f\n", shield_strength_multiplier);
 		fprintf(file, "shielddmgtaken = %f\n", damage_taken_since_last_threshold);
 		fprintf(file, "last_vulnerability_change = %u\n", lastVulnerabilityWindowChange);

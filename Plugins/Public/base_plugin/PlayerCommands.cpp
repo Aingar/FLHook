@@ -2696,6 +2696,53 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"Default administration password is %s", password.c_str());
 	}
 
+	void SetPrefFood(uint client, const wstring& cmd)
+	{
+		PlayerBase* base = GetPlayerBaseForClient(client);
+		if (!base)
+		{
+			PrintUserCmdText(client, L"ERR Not in player base");
+			return;
+		}
+
+		if (!checkBaseAdminAccess(base, client))
+		{
+			return;
+		}
+
+		uint input = ToUInt(GetParam(cmd, ' ', 2));
+
+		if (!input || set_base_crew_food_items.size() < input)
+		{
+			PrintUserCmdText(client, L"ERR invalid input. Command usage: /base setfood <nr>");
+			if (base->preferred_food)
+			{
+				const GoodInfo* gi = GoodList::find_by_id(base->preferred_food);
+				PrintUserCmdText(client, L"Current selection: %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+			}
+			else
+			{
+				PrintUserCmdText(client, L"Current selection: none");
+			}
+			PrintUserCmdText(client, L"Available food types:");
+			int counter = 1;
+			for (auto foodID : set_base_crew_food_items)
+			{
+				const GoodInfo* gi = GoodList::find_by_id(foodID);
+				PrintUserCmdText(client, L"%d - %ls", counter, HkGetWStringFromIDS(gi->iIDSName).c_str());
+				counter++;
+			}
+		}
+		else
+		{
+			base->preferred_food = set_base_crew_food_items.at(input-1);
+
+			const GoodInfo* gi = GoodList::find_by_id(base->preferred_food);
+			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
+			base->Save();
+		}
+	}
+
 	void BaseSetVulnerabilityWindow(uint client, const wstring& cmd)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
@@ -2787,46 +2834,5 @@ namespace PlayerCommands
 
 		base->UpdateBaseInfoText();
 		PrintUserCmdText(client, L"OK Vulnerability window set.");
-	}
-
-	void BaseCheckVulnerabilityWindow(uint client)
-	{
-		uint ship;
-		pub::Player::GetShip(client, ship);
-
-		if (!ship)
-		{
-			PrintUserCmdText(client, L"ERR not in space!");
-			return;
-		}
-
-		uint target;
-		pub::SpaceObj::GetTarget(ship, target);
-
-		if (!target)
-		{
-			PrintUserCmdText(client, L"ERR no base targeted");
-			return;
-		}
-
-		PlayerBase* pb = GetPlayerBase(target);
-
-		if (!pb)
-		{
-			PrintUserCmdText(client, L"ERR no base targeted");
-			return;
-		}
-
-		if (single_vulnerability_window)
-		{
-			PrintUserCmdText(client, L"This base has its vulnerability window between %u:00-%u:%02u", 
-				pb->vulnerabilityWindow1.start / 60, pb->vulnerabilityWindow1.end / 60, pb->vulnerabilityWindow1.end % 60);
-		}
-		else
-		{
-			PrintUserCmdText(client, L"This base has its vulnerability windows between %u:00-%u:%02u and %u:00-%u:%02u", 
-				pb->vulnerabilityWindow1.start / 60, pb->vulnerabilityWindow1.end / 60, pb->vulnerabilityWindow1.end % 60,
-				pb->vulnerabilityWindow2.start / 60, pb->vulnerabilityWindow2.end / 60, pb->vulnerabilityWindow2.end % 60);
-		}
 	}
 }

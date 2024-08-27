@@ -1664,10 +1664,10 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseSetVulnerabilityWindow(client, args);
 		return true;
 	}
-	else if (args.find(L"/vuln") == 0)
+	else if (args.find(L"/base setfood") == 0)
 	{
+		PlayerCommands::SetPrefFood(client, args);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseCheckVulnerabilityWindow(client);
 		return true;
 	}
 	else if (args.find(L"/base") == 0)

@@ -343,11 +343,24 @@ bool CoreModule::Timer(uint time)
 
 		// Humans use food but may eat one of a number of types.
 
+		if (base->preferred_food)
+		{
+			uint foodCount = base->HasMarketItem(base->preferred_food);
+			uint food_to_use = min(foodCount, peopleToFeed);
+			base->RemoveMarketGood(base->preferred_food, food_to_use);
+			peopleToFeed -= food_to_use;
+		}
+
 		for (uint item : set_base_crew_food_items)
 		{
 			if (!peopleToFeed)
 			{
 				break;
+			}
+
+			if (item == base->preferred_food)
+			{
+				continue;
 			}
 
 			uint food_available = base->HasMarketItem(item);

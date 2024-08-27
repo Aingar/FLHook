@@ -336,7 +336,7 @@ bool FactoryModule::Timer(uint time)
 	// Do nothing if cooking is not finished
 	if (!active_recipe.consumed_items.empty()
 		|| !active_recipe.dynamic_consumed_items.empty()
-		|| !active_recipe.credit_cost)
+		|| active_recipe.credit_cost)
 	{
 		return false;
 	}

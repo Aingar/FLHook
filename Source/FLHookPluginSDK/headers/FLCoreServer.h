@@ -410,6 +410,69 @@ struct CollisionGroupDescList
 	st6::list<CollisionGroupDesc> data;
 };
 
+struct Rumor
+{
+	uint IDS;
+	uint rumorLevel;
+};
+
+struct VNpc
+{
+	enum class NpcMissionStatus
+	{
+		NotOnAMissionForThisNpc,
+		OnAMissionForThisNpc,
+		CompletedMissionForThisNpc
+	};
+
+	uint baseHash;
+	uint npcHash;
+	int interactionCount;
+	NpcMissionStatus missionStatus = NpcMissionStatus::NotOnAMissionForThisNpc;
+};
+
+struct TLException
+{
+	uint startRing;
+	uint nextRing;
+};
+struct MPlayerDataSaveStruct
+{
+	uint unkPtr1;                        // 0
+	uint clientId1;                      // 4
+	uint unkInt1;                        // 8
+	uint clientId2;                      // 12
+	uint padding4;                       // 16
+	uint padding5;                       // 20
+	uint unkPtr2;                        // 24
+	uint unkPtr3;                        // 28
+	bool padding9;                       // 32
+	bool canDock;                        // 33
+	uint canDock2;                       // 36
+	st6::list<uint> dockExceptions;      // 40
+	bool canTL;                          // 52
+	uint padding51;                      // 56
+	st6::list<TLException> tlExceptions; // 60
+	FlMap<uint, uint> killedShips;       // 72
+	FlMap<uint, uint> rmCompleted;       // 92
+	FlMap<uint, uint> rmAborted;         // 112
+	FlMap<uint, uint> rmFailed;          // 132
+	float totalCashEarned;               // 156
+	float totalTimePlayed;               // 160
+	st6::vector<uint> visitedSystems;    // 164
+	st6::vector<uint> visitedBases;      // 180
+	st6::vector<uint> visitedHoles;      // 196
+	uint padding52;                      // 208
+	uint padding53;                      // 212
+	uint padding54;                      // 216
+	uint padding55;                      // 220 // recalculates rank when equal 42?
+	uint padding56;                      // 224
+	uint padding57;                      // 228
+	uint padding58;                      // 232
+	st6::vector<VNpc> visitedNPCs;       // 236
+	st6::vector<Rumor> receivedRumors;   // 252
+};
+
 struct CHARACTER_ID
 {
 	CHARACTER_ID(void);

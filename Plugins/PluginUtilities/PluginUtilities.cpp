@@ -328,31 +328,10 @@ HK_ERROR HkFMsgEncodeMsg(const wstring &wscMessage, char *szBuf, uint iSize, uin
 	return HKE_OK;
 }
 
-HK_ERROR HkGetOnLineTime(const wstring &wscCharname, int &iSecs)
+float HkGetOnLineTime(uint client)
 {
-	wstring wscDir;
-	if (!HKHKSUCCESS(HkGetAccountDirName(wscCharname, wscDir)))
-		return HKE_CHAR_DOES_NOT_EXIST;
-
-	wstring wscFile;
-	HkGetCharFileName(wscCharname, wscFile);
-
-	string scCharFile = scAcctPath + wstos(wscDir) + R"(\)" + wstos(wscFile) + ".fl";
-	if (HkIsEncoded(scCharFile))
-	{
-		string scCharFileNew = scCharFile + ".ini";
-		if (!flc_decode(scCharFile.c_str(), scCharFileNew.c_str()))
-			return HKE_COULD_NOT_DECODE_CHARFILE;
-
-		iSecs = (int)IniGetF(scCharFileNew, "mPlayer", "total_time_played", 0.0f);
-		DeleteFile(scCharFileNew.c_str());
-	}
-	else
-	{
-		iSecs = (int)IniGetF(scCharFile, "mPlayer", "total_time_played", 0.0f);
-	}
-
-	return HKE_OK;
+	auto& data = mdataPlayerMap->find(client);
+	return (*data.value())->totalTimePlayed;
 }
 
 HK_ERROR HkGetRank(const wstring &wscCharname, int &iRank)

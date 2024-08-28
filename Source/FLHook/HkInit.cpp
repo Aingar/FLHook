@@ -157,6 +157,8 @@ char *g_FLServerDataPtr;
 
 _GetShipInspect GetShipInspect;
 
+FlMap<uint, MPlayerDataSaveStruct*>* mdataPlayerMap;
+
 unordered_map<uint, BASE_INFO> lstBases;
 
 char szRepFreeFixOld[5];
@@ -315,6 +317,8 @@ bool InitHookExports()
 	char	*pAddress;
 
 	GetShipInspect = (_GetShipInspect)SRV_ADDR(ADDR_SRV_GETINSPECT);
+
+	mdataPlayerMap = (FlMap<uint, MPlayerDataSaveStruct*>*)((char*)hModContent + 0x130BBC);
 
 	// install IServerImpl callbacks in remoteclient.dll
 	char *pServer = (char*)&Server;

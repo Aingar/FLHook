@@ -388,6 +388,7 @@ typedef int(__cdecl *_GetFLName)(char *szBuf, const wchar_t *wszStr);
 typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjInspectImpl* &inspect, uint &iDunno);
 
 EXPORT extern _GetShipInspect GetShipInspect;
+EXPORT extern FlMap<uint, MPlayerDataSaveStruct*>* mdataPlayerMap;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // enums

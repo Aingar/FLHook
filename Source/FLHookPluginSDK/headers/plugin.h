@@ -280,6 +280,7 @@ enum PLUGIN_MESSAGE
 	CUSTOM_POB_EVENT_NOTIFICATION_INIT = 64,
 	CUSTOM_POB_EVENT_NOTIFICATION_BUY = 65,
 	CUSTOM_POB_EVENT_NOTIFICATION_SELL = 66,
+	CUSTOM_POPUP_INIT = 67,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

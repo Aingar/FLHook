@@ -83,7 +83,10 @@ L"<TRA bold=\"true\"/><TEXT>/craft</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control factory modules to produce various goods and equipment.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base supplies</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT>",
+L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT><PARA/><PARA/>"
+
+L"<TRA bold=\"true\"/><TEXT>/base setfood [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT>",
 
 L"<TRA bold=\"true\"/><TEXT>/base defmod</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control defense modules.</TEXT><PARA/><PARA/>"

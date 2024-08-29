@@ -569,13 +569,6 @@ namespace GiveCash
 			return true;
 		}
 
-		float secs = HkGetOnLineTime(iClientID);
-		if (secs < set_iMinTime)
-		{
-			PrintUserCmdText(iClientID, L"ERR insufficient time online");
-			return true;
-		}
-
 		if (InBlockedSystem(wscCharname) || InBlockedSystem(wscTargetCharname) || IsBannedAccount(iTargetAcc))
 		{
 			PrintUserCmdText(iClientID, L"ERR cash transfer blocked");

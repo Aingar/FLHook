@@ -1801,6 +1801,8 @@ namespace PlayerCommands
 		message.begin_mad_lib(500001);
 		message.end_mad_lib();
 
+		Plugin_Communication(CUSTOM_POPUP_INIT, &client);
+
 		cd.lastPopupWindowType = POPUPWINDOWTYPE::SHOP_HELP;
 
 		HkChangeIDSString(client, 1244, L"BACK");

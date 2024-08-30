@@ -3338,6 +3338,11 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT* info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT*>(data);
 		eventCommodities = info->data;
 	}
+	else if (msg == CUSTOM_POPUP_INIT)
+	{
+		uint* clientId = reinterpret_cast<uint*>(data);
+		clients[*clientId].lastPopupWindowType = POPUPWINDOWTYPE::NONE;
+	}
 	return;
 }
 

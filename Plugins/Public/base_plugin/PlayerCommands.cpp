@@ -222,6 +222,7 @@ namespace PlayerCommands
 			buttonsRendered |= POPUPDIALOG_BUTTONS_RIGHT_LATER;
 		}
 
+		Plugin_Communication(CUSTOM_POPUP_INIT, &client);
 		pub::Player::PopUpDialog(client, caption, message, buttonsRendered);
 		auto& clientData = clients[client];
 		clientData.lastPopupPage = page + 1;
@@ -1898,6 +1899,7 @@ namespace PlayerCommands
 			renderedButtons |= POPUPDIALOG_BUTTONS_RIGHT_LATER;
 		}
 
+		Plugin_Communication(CUSTOM_POPUP_INIT, &client);
 		pub::Player::PopUpDialog(client, caption, message, renderedButtons);
 		auto& clientData = clients[client];
 		clientData.lastPopupPage = page;

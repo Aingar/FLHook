@@ -731,21 +731,25 @@ namespace HyperJump
 			return false;
 		}
 
-		if (!jumpObj.remainingCapacity)
+		if (jumpObj.remainingCapacity == 0)
 		{
-			PrintUserCmdText(client, L"ERR Jump Hole is too unstable to proceed!");
+			PrintUserCmdText(client, L"ERR Jump Hole capacity reached, too unstable to proceed.");
 			return false;
 		}
 
 		time_t now = time(0);
-		if (now - 1 > jumpObj.timeout)
+		if (now - 1 > jumpObj.timeout && jumpObj.dockingQueue.empty())
 		{
+			PrintUserCmdText(client, L"ERR Jump Hole timing out, too unstable to proceed.");
 			return false;
 		}
 
-		jumpObj.remainingCapacity--;
+		if (jumpObj.remainingCapacity != UINT_MAX)
+		{
+			jumpObj.remainingCapacity--;
+		}
 
-		if (!jumpObj.remainingCapacity)
+		if (jumpObj.remainingCapacity == 0)
 		{
 			jumpObj.timeout = 0; // set the JH to collapse immediately upon the last person's arrival at the end system
 		}
@@ -757,26 +761,36 @@ namespace HyperJump
 
 	void HyperJump::JumpInComplete(uint ship)
 	{
-		if (!shipToJumpObjMap.count(ship))
+		auto iter = shipToJumpObjMap.find(ship);
+		if (iter == shipToJumpObjMap.end())
 		{
 			return;
 		}
-		uint dockObj = shipToJumpObjMap[ship];
-		if (!jumpObjMap.count(dockObj))
+		auto jumpObjIter = jumpObjMap.find(iter->second);
+		if (jumpObjIter == jumpObjMap.end())
 		{
 			return;
 		}
-		jumpObjMap.at(dockObj).dockingQueue.erase(ship);
+		jumpObjIter->second.dockingQueue.erase(ship);
 		shipToJumpObjMap.erase(ship);
 	}
 
 	void HyperJump::RequestCancel(int iType, uint iShip, uint dockObjId)
 	{
-		if (iType == 0 && jumpObjMap.count(dockObjId)) // dock type request
+		if (iType != 0)
 		{
-			jumpObjMap.at(dockObjId).dockingQueue.erase(iShip);
-			jumpObjMap.at(dockObjId).remainingCapacity++;
-			shipToJumpObjMap.erase(iShip);
+			return;
+		}
+
+		auto iter = jumpObjMap.find(dockObjId);
+		if (iter != jumpObjMap.end())
+		{
+			if (iter->second.dockingQueue.count(iShip))
+			{
+				jumpObjMap.at(dockObjId).dockingQueue.erase(iShip);
+				jumpObjMap.at(dockObjId).remainingCapacity++;
+				shipToJumpObjMap.erase(iShip);
+			}
 		}
 	}
 
@@ -901,12 +915,10 @@ namespace HyperJump
 		return true;
 	}
 	
-	bool SetJumpSystem(const uint iClientID, JUMPDRIVE& jd, wstring& targetSystem, const wchar_t* usage)
+	bool SetJumpSystem(const uint iClientID, JUMPDRIVE& jd, wstring& targetSystem)
 	{
 		if (!InitJumpDriveInfo(iClientID))
 		{
-			PrintUserCmdText(iClientID, L"ERR Jump drive not equipped");
-			pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_failed"));
 			return false;
 		}
 
@@ -1022,8 +1034,6 @@ namespace HyperJump
 			}
 			return true;
 		}
-		PrintUserCmdText(iClientID, usage);
-		PrintUserCmdText(iClientID, L"ERR Command or system name unrecognized");
 		return false;
 	}
 
@@ -1054,36 +1064,6 @@ namespace HyperJump
 		jd.matTargetOrient = coords.ornt;
 
 		PrintUserCmdText(iClientID, L"Sector %s selected", coords.sector.c_str());
-		return true;
-	}
-
-	bool UserCmd_ListSector(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
-	{
-		wstring targetSystem = ToLower(GetParamToEnd(wscParam, ' ', 0));
-		for (struct Universe::ISystem* sysinfo = Universe::GetFirstSystem(); sysinfo; sysinfo = Universe::GetNextSystem())
-		{
-			const auto& fullSystemName = HkGetWStringFromIDS(sysinfo->strid_name);
-			const auto& fullSystemNameLowerCased = ToLower(fullSystemName);
-			if (fullSystemNameLowerCased != targetSystem)
-			{
-				continue;
-			}
-			if (!mapSystemJumps.count(sysinfo->id))
-			{
-				PrintUserCmdText(iClientID, L"ERR System not jumpable");
-				return true;
-			}
-
-			PrintUserCmdText(iClientID, L"Available jump coordinates for %ls:", fullSystemName.c_str());
-			uint count = 1;
-			for (auto coord : mapSystemJumps.at(sysinfo->id))
-			{
-				PrintUserCmdText(iClientID, L"%u. %ls", count, coord.sector.c_str());
-				++count;
-			}
-			return true;
-		}
-		PrintUserCmdText(iClientID, L"ERR Incorrect system name");
 		return true;
 	}
 
@@ -1310,7 +1290,8 @@ namespace HyperJump
 				{
 					continue;
 				}
-				else if (jh.dockingQueue.empty())
+				
+				if (jh.dockingQueue.empty())
 				{
 					JumpHoleExitsToClose.emplace_back(jh.pairedJH);
 					JumpHoleExitsToClose.emplace_back(jh.objId);
@@ -1593,26 +1574,22 @@ namespace HyperJump
 	bool HyperJump::UserCmd_Jump(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
 		// If no ship, report a warning
-		uint ship;
-		pub::Player::GetShip(iClientID, ship);
+		uint ship = Players[iClientID].iShipID;
 		if (!ship)
 		{
 			PrintUserCmdText(iClientID, L"ERR You need to be in space!");
-			pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_failed"));
 			return true;
 		}
 
 		if (!InitJumpDriveInfo(iClientID))
 		{
 			PrintUserCmdText(iClientID, L"ERR Jump drive not equipped");
-			pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("nnv_jumpdrive_charging_failed"));
 			return true;
 		}
 
 		JUMPDRIVE &jd = mapJumpDrives[iClientID];
 
-		uint type;
-		pub::SpaceObj::GetType(ship, type);
+		uint type = ClientInfo[iClientID].cship->type;
 
 		if (!(jd.arch->available_ship_classes & type))
 		{
@@ -1621,17 +1598,48 @@ namespace HyperJump
 			return true;
 		}
 
-		wstring& input = ToLower(GetParamToEnd(wscParam, ' ', 0));
+		wstring& shortInput = ToLower(GetParam(wscParam, ' ', 0));
 
-		if (input == L"list")
+
+		if (shortInput == L"list")
 		{
 			ListJumpableSystems(iClientID);
+			return true;
+		}
+		
+		if (shortInput == L"sectors")
+		{
+			wstring& systemName = ToLower(GetParamToEnd(wscParam, ' ', 1));
+			for (struct Universe::ISystem* sysinfo = Universe::GetFirstSystem(); sysinfo; sysinfo = Universe::GetNextSystem())
+			{
+				const auto& fullSystemName = HkGetWStringFromIDS(sysinfo->strid_name);
+				const auto& fullSystemNameLowerCased = ToLower(fullSystemName);
+				if (fullSystemNameLowerCased != systemName)
+				{
+					continue;
+				}
+				if (!mapSystemJumps.count(sysinfo->id))
+				{
+					PrintUserCmdText(iClientID, L"ERR System not jumpable");
+					return true;
+				}
+
+				PrintUserCmdText(iClientID, L"Available jump coordinates for %ls:", fullSystemName.c_str());
+				uint count = 1;
+				for (auto& coord : mapSystemJumps.at(sysinfo->id))
+				{
+					PrintUserCmdText(iClientID, L"%u. %ls", count, coord.sector.c_str());
+					++count;
+				}
+				return true;
+			}
+			PrintUserCmdText(iClientID, L"ERR Incorrect system name");
 			return true;
 		}
 
 		if (jd.charging_on)
 		{
-			if (input == L"stop")
+			if (shortInput == L"stop")
 			{
 				ShutdownJumpDrive(iClientID);
 				PrintUserCmdText(iClientID, L"Jump Drive disabled");
@@ -1644,8 +1652,16 @@ namespace HyperJump
 			return true;
 		}
 
-		if (!SetJumpSystem(iClientID, jd, input, usage))
+		wstring& input = ToLower(GetParamToEnd(wscParam, ' ', 0));
+
+		if (!SetJumpSystem(iClientID, jd, input))
 		{
+			PrintUserCmdText(iClientID, L"ERR Incorrect input. Command usage:");
+			PrintUserCmdText(iClientID, L"/jump stop - terminates charging of the Jump Drive");
+			PrintUserCmdText(iClientID, L"/jump list - print systems currently in range of your Jump Drive.");
+			PrintUserCmdText(iClientID, L"/jump sectors <systemName> - print possible arrival points within selected system");
+			PrintUserCmdText(iClientID, L"/jump <systemName> - initiate jump to target system");
+
 			return true;
 		}
 

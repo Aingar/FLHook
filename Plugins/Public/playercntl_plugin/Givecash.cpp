@@ -37,7 +37,7 @@ namespace GiveCash
 	static bool set_bCheatDetection = false;
 
 	// Prohibit transfers if the character has not been online for at least this time
-	static int set_iMinTime = 0;
+	static float set_iMinTime = 0;
 
 	/**
 	It checks character's givecash history and prints out any received cash messages.
@@ -163,7 +163,7 @@ namespace GiveCash
 	void GiveCash::LoadSettings(const string &scPluginCfgFile)
 	{
 		set_iMinTransfer = IniGetI(scPluginCfgFile, "GiveCash", "MinTransfer", 1);
-		set_iMinTime = IniGetI(scPluginCfgFile, "GiveCash", "MinTime", 0);
+		set_iMinTime = IniGetF(scPluginCfgFile, "GiveCash", "MinTime", 0);
 		set_bCheatDetection = IniGetB(scPluginCfgFile, "GiveCash", "CheatDetection", true);
 
 		INI_Reader ini;
@@ -289,11 +289,7 @@ namespace GiveCash
 			return true;
 		}
 
-		int secs = 0;
-		if ((err = HkGetOnLineTime(wscCharname, secs)) != HKE_OK) {
-			PrintUserCmdText(iClientID, L"ERR: " + HkErrGetText(err));
-			return true;
-		}
+		float secs = HkGetOnLineTime(iClientID);
 		if (secs < set_iMinTime)
 		{
 			PrintUserCmdText(iClientID, L"ERR: insufficient time online");
@@ -570,17 +566,6 @@ namespace GiveCash
 		if (iTargetAcc == 0)
 		{
 			PrintUserCmdText(iClientID, L"ERR char does not exist");
-			return true;
-		}
-
-		int secs = 0;
-		if ((err = HkGetOnLineTime(wscTargetCharname, secs)) != HKE_OK) {
-			PrintUserCmdText(iClientID, L"ERR: " + HkErrGetText(err));
-			return true;
-		}
-		if (secs < set_iMinTime)
-		{
-			PrintUserCmdText(iClientID, L"ERR insufficient time online");
 			return true;
 		}
 

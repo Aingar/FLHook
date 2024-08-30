@@ -979,7 +979,7 @@ namespace Message
 			return true;
 		}
 
-		if (iter->second.ulastPmClientID == -1 || !HkIsValidClientID(iter->second.ulastPmClientID))
+		if (iter->second.ulastPmClientID == -1 || !HkIsValidClientID(iter->second.ulastPmClientID) || HkIsInCharSelectMenu(iter->second.ulastPmClientID))
 		{
 			PrintUserCmdText(iClientID, L"ERR PM sender not available");
 			return true;

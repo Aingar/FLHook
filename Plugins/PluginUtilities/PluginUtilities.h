@@ -24,7 +24,7 @@ HK_ERROR HkAddEquip(const wstring &wscCharname, uint iGoodID, const string &scHa
 HK_ERROR HkAntiCheat(uint iClientID);
 HK_ERROR HkDeleteCharacter(CAccount *acc, wstring &wscCharname);
 HK_ERROR HkFMsgEncodeMsg(const wstring &wscMessage, char *szBuf, uint iSize, uint &iRet);
-HK_ERROR HkGetOnLineTime(const wstring &wscCharname, int &iSecs);
+float HkGetOnLineTime(uint clientId);
 HK_ERROR HkGetRank(const wstring &wscCharname, int &iRank);
 HK_ERROR HKGetShipValue(const wstring &wscCharname, float &fValue);
 HK_ERROR HkInstantDock(uint iClientID, uint iDockObj);

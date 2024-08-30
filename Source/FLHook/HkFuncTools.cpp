@@ -99,11 +99,7 @@ bool HkIsInCharSelectMenu(const wstring &wscCharname)
 	if (iClientID == -1)
 		return false;
 
-	uint iBase = 0;
-	uint iSystem = 0;
-	pub::Player::GetBase(iClientID, iBase);
-	pub::Player::GetSystem(iClientID, iSystem);
-	if (!iBase && !iSystem)
+	if (!Players[iClientID].iBaseID && !Players[iClientID].iSystemID)
 		return true;
 	else
 		return false;
@@ -113,12 +109,7 @@ bool HkIsInCharSelectMenu(const wstring &wscCharname)
 
 bool HkIsInCharSelectMenu(uint iClientID)
 {
-
-	uint iBase = 0;
-	uint iSystem = 0;
-	pub::Player::GetBase(iClientID, iBase);
-	pub::Player::GetSystem(iClientID, iSystem);
-	if (!iBase && !iSystem)
+	if (!Players[iClientID].iBaseID && !Players[iClientID].iSystemID)
 		return true;
 	else
 		return false;
@@ -129,11 +120,7 @@ bool HkIsInCharSelectMenu(uint iClientID)
 
 bool HkIsOnDeathMenu(uint iClientID)
 {
-	uint iShip = 0;
-	uint iBase = 0;
-	pub::Player::GetShip(iClientID, iShip); // Are they in space?
-	pub::Player::GetBase(iClientID, iBase); // Are they docked?
-	if (!iShip && !iBase) // If they are not in space and not docked, then they must be dead.
+	if (!Players[iClientID].iBaseID && !Players[iClientID].iShipID)
 	{
 		return true;
 	}
@@ -146,14 +133,10 @@ bool HkIsOnDeathMenu(uint iClientID)
 
 bool HkIsValidClientID(uint iClientID)
 {
-
-	struct PlayerData *pPD = 0;
-	while (pPD = Players.traverse_active(pPD))
+	if (Players[iClientID].iOnlineID == iClientID)
 	{
-		if (pPD->iOnlineID == iClientID)
-			return true;
+		return true;
 	}
-
 	return false;
 }
 

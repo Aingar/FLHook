@@ -833,6 +833,29 @@ void LoadSettingsActual()
 						ValidateItem(ini.get_value_string(0));
 						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
+					else if (ini.is_value("produced_affiliation"))
+					{
+						unordered_map<uint, pair<uint, uint>> itemMap;
+						ValidateItem(ini.get_value_string(0));
+						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
+						int counter = 0;
+
+						string factionName;
+						do
+						{
+							factionName = ini.get_value_string(counter * 3 + 2);
+							string commodityName = ini.get_value_string(counter * 3 + 3);
+							int amount = ini.get_value_int(counter * 3 + 4);
+							if (!factionName.empty())
+							{
+								ValidateItem(commodityName.c_str());
+								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
+							}
+							counter++;
+						} while (!factionName.empty());
+
+						recipe.affiliation_produced_items.push_back(itemMap);
+					}
 					else if (ini.is_value("loop_production"))
 					{
 						recipe.loop_production = ini.get_value_int(0);
@@ -861,6 +884,47 @@ void LoadSettingsActual()
 					{
 						ValidateItem(ini.get_value_string(0));
 						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+					}
+					else if (ini.is_value("consumed_dynamic"))
+					{
+						int counter = 0;
+						vector<pair<uint, uint>> vector;
+						string itemName;
+						do
+						{
+							itemName = ini.get_value_string(counter * 2);
+							int amount = ini.get_value_int(counter * 2 + 1);
+							if (!itemName.empty())
+							{
+								ValidateItem(itemName.c_str());
+								vector.push_back({ CreateID(itemName.c_str()), amount });
+							}
+							counter++;
+						} while (!itemName.empty());
+						recipe.dynamic_consumed_items.push_back(vector);
+					}
+					else if (ini.is_value("consumed_affiliation"))
+					{
+						unordered_map<uint, pair<uint, uint>> itemMap;
+						ValidateItem(ini.get_value_string(0));
+						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1)};
+						int counter = 0;
+
+						string factionName;
+						do
+						{
+							factionName = ini.get_value_string(counter * 3 + 2);
+							string commodityName = ini.get_value_string(counter * 3 + 3);
+							int amount = ini.get_value_int(counter * 3 + 4);
+							if (!factionName.empty())
+							{
+								ValidateItem(commodityName.c_str());
+								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
+							}
+							counter++;
+						} while (!factionName.empty());
+
+						recipe.affiliation_consumed_items.push_back(itemMap);
 					}
 					else if (ini.is_value("catalyst"))
 					{
@@ -1604,10 +1668,10 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseSetVulnerabilityWindow(client, args);
 		return true;
 	}
-	else if (args.find(L"/vuln") == 0)
+	else if (args.find(L"/base setfood") == 0)
 	{
+		PlayerCommands::SetPrefFood(client, args);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseCheckVulnerabilityWindow(client);
 		return true;
 	}
 	else if (args.find(L"/base") == 0)
@@ -2512,34 +2576,6 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	customSolarList.erase(space_obj);
 }
 
-void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
-{
-	returncode = DEFAULT_RETURNCODE;
-	if (!dmg->iInflictorPlayerID)
-	{
-		incDmg = 0;
-		return;
-	}
-
-	CSolar* base = reinterpret_cast<CSolar*>(iobj->cobj);
-	if (base->hitPoints > 1'000'000'000)
-	{
-		incDmg = 0;
-		return;
-	}
-
-	if (!spaceobj_modules.count(base->id))
-	{
-		return;
-	}
-
-
-	Module* damagedModule = spaceobj_modules.at(base->id);
-
-	// This call is for us, skip all plugins.
-	incDmg = damagedModule->SpaceObjDamaged(base->id, dmg->get_inflictor_id(), incDmg);
-}
-
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
@@ -3322,6 +3358,11 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT* info = reinterpret_cast<CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT*>(data);
 		eventCommodities = info->data;
 	}
+	else if (msg == CUSTOM_POPUP_INIT)
+	{
+		uint* clientId = reinterpret_cast<uint*>(data);
+		clients[*clientId].lastPopupWindowType = POPUPWINDOWTYPE::NONE;
+	}
 	return;
 }
 
@@ -3450,7 +3491,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	return p_PI;

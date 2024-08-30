@@ -42,12 +42,15 @@ struct RECIPE
 	uint nickname = 0;
 	string nicknameString = "";
 	vector<pair<uint, uint>> produced_items;
+	vector<unordered_map<uint, pair<uint, uint>>> affiliation_produced_items;
 	uint shortcut_number = 0;
 	bool loop_production = false;
 	bool restricted = false;
 	wstring infotext = L"";
 	wstring craft_type = L"";
 	uint cooking_rate = 0;
+	vector<unordered_map<uint, pair<uint, uint>>> affiliation_consumed_items;
+	vector<vector<pair<uint, uint>>> dynamic_consumed_items;
 	vector<pair<uint, uint>> consumed_items;
 	vector<pair<uint, uint>> catalyst_items;
 	vector<pair<uint, uint>> catalyst_workforce;
@@ -276,7 +279,6 @@ public:
 	static bool FactoryModule::IsFactoryModule(Module* module);
 
 	bool Paused = false;
-	bool pendingSpace = false;
 	bool ToggleQueuePaused(bool NewState);
 	bool AddToQueue(uint product);
 	bool ClearQueue();
@@ -379,6 +381,8 @@ public:
 
 	// Total storage space capacity
 	uint storage_space;
+
+	uint preferred_food;
 
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
@@ -626,7 +630,7 @@ namespace PlayerCommands
 	void GetNecessitiesStatus(uint client, const wstring& args);
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
-	void BaseCheckVulnerabilityWindow(uint client);
+	void SetPrefFood(uint client, const wstring& cmd);
 
 	void BaseDeploy(uint client, const wstring& args);
 	void BaseTestDeploy(uint client, const wstring& args);

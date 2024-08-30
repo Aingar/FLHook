@@ -343,11 +343,24 @@ bool CoreModule::Timer(uint time)
 
 		// Humans use food but may eat one of a number of types.
 
+		if (base->preferred_food)
+		{
+			uint foodCount = base->HasMarketItem(base->preferred_food);
+			uint food_to_use = min(foodCount, peopleToFeed);
+			base->RemoveMarketGood(base->preferred_food, food_to_use);
+			peopleToFeed -= food_to_use;
+		}
+
 		for (uint item : set_base_crew_food_items)
 		{
 			if (!peopleToFeed)
 			{
 				break;
+			}
+
+			if (item == base->preferred_food)
+			{
+				continue;
 			}
 
 			uint food_available = base->HasMarketItem(item);
@@ -440,6 +453,8 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 
 bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcastDeath)
 {
+	POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+	base->baseCSolar = nullptr;
 	if (this->space_obj == space_obj && !undergoingDestruction)
 	{
 		undergoingDestruction = true;

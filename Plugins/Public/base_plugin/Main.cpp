@@ -158,9 +158,6 @@ bool load_settings_required = true;
 /// holiday mode
 bool set_holiday_mode = false;
 
-//pob sounds struct
-POBSOUNDS pbsounds;
-
 //archtype structure
 unordered_map<string, ARCHTYPE_STRUCT> mapArchs;
 
@@ -1046,17 +1043,6 @@ void LoadSettingsActual()
 		}
 		ini.close();
 	}
-
-	//Create the POB sound hashes
-	pbsounds.destruction1 = CreateID("pob_evacuate2");
-	pbsounds.destruction2 = CreateID("pob_firecontrol");
-	pbsounds.heavydamage1 = CreateID("pob_breach");
-	pbsounds.heavydamage2 = CreateID("pob_reactor");
-	pbsounds.heavydamage3 = CreateID("pob_heavydamage");
-	pbsounds.mediumdamage1 = CreateID("pob_hullbreach");
-	pbsounds.mediumdamage2 = CreateID("pob_critical");
-	pbsounds.lowdamage1 = CreateID("pob_fire");
-	pbsounds.lowdamage2 = CreateID("pob_engineering");
 
 	char datapath[MAX_PATH];
 	GetUserDataPath(datapath);

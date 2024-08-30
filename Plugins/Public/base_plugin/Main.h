@@ -664,21 +664,6 @@ extern unordered_map<uint, uint> core_upgrade_storage;
 extern unordered_map<uint, class PlayerBase*> player_bases;
 extern unordered_map<uint, PlayerBase*>::iterator baseSaveIterator;
 
-struct POBSOUNDS
-{
-	uint destruction1;
-	uint destruction2;
-	uint heavydamage1;
-	uint heavydamage2;
-	uint heavydamage3;
-	uint mediumdamage1;
-	uint mediumdamage2;
-	uint lowdamage1;
-	uint lowdamage2;
-};
-
-extern POBSOUNDS pbsounds;
-
 extern int set_plugin_debug;
 extern int set_plugin_debug_special;
 

@@ -94,7 +94,7 @@ void DisplayWelcomeWindow(uint client, uint page, WindowID windowIDParam)
 	}
 	else
 	{
-		_snwprintf(buf, sizeof(buf), L"%ls!", windowInfo.caption.c_str());
+		_snwprintf(buf, sizeof(buf), L"%ls", windowInfo.caption.c_str());
 	}
 	wstring title = buf;
 
@@ -149,6 +149,13 @@ bool UserCmd_FirstSteps(uint client, const wstring& wscCmd, const wstring& wscPa
 	return true;
 }
 
+bool UserCmd_Welcome(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POPUP_INIT, &client);
+	DisplayWelcomeWindow(client, 1, WindowID::NewPlayerWelcome);
+	return true;
+}
+
 typedef bool(*_UserCmdProc)(uint, const wstring&, const wstring&, const wchar_t*);
 
 struct USERCMD
@@ -161,7 +168,8 @@ struct USERCMD
 USERCMD UserCmds[] =
 {
 	{ L"/server-rules", UserCmd_ServerRules, L"Usage: /rules [page]" },
-	{ L"/firststeps", UserCmd_FirstSteps, L"Usage: /firststeps [page]" }
+	{ L"/firststeps", UserCmd_FirstSteps, L"Usage: /firststeps [page]" },
+	{ L"/welcome", UserCmd_Welcome, L"Usage: /welcome" }
 };
 
 bool UserCmd_Process(uint client, const wstring& wscCmd)

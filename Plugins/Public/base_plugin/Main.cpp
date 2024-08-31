@@ -2542,6 +2542,34 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	customSolarList.erase(space_obj);
 }
 
+void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (!dmg->iInflictorPlayerID)
+	{
+		incDmg = 0;
+		return;
+	}
+
+	CSolar* base = reinterpret_cast<CSolar*>(iobj->cobj);
+	if (base->hitPoints > 1'000'000'000)
+	{
+		incDmg = 0;
+		return;
+	}
+
+	if (!spaceobj_modules.count(base->id))
+	{
+		return;
+	}
+
+
+	Module* damagedModule = spaceobj_modules.at(base->id);
+
+	// This call is for us, skip all plugins.
+	incDmg = damagedModule->SpaceObjDamaged(base->id, dmg->get_inflictor_id(), incDmg);
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
@@ -3456,6 +3484,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	return p_PI;

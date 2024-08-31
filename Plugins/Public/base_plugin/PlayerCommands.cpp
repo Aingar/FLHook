@@ -1153,6 +1153,11 @@ namespace PlayerCommands
 			return;
 		}
 
+		if (buildRecipe->shortcut_number == Module::TYPE_CORE)
+		{
+			buildRecipe = &recipeMap[core_upgrade_recipes[base->base_level]];
+		}
+
 		if (cmd == L"start")
 		{
 			if (buildRecipe->shortcut_number == Module::TYPE_CORE)
@@ -1172,8 +1177,6 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR Upgrade not available");
 					return;
 				}
-
-				buildRecipe = &recipeMap[core_upgrade_recipes[base->base_level]];
 			}
 			for (const auto& module : base->modules)
 			{

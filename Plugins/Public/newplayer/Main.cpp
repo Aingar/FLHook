@@ -12,11 +12,25 @@
 
 PLUGIN_RETURNCODE returncode;
 
-vector<wstring> welcomeInfo;
+enum class WindowID
+{
+	None = 0,
+	NewPlayerWelcome = 1,
+	FirstSteps = 2,
+	ServerRules = 3,
+};
+
+struct WindowData
+{
+	wstring caption;
+	vector<wstring> messages;
+};
+unordered_map<uint, WindowData> windowData;
 
 struct PlayerInfo
 {
 	uint lastPopupPage = 0;
+	WindowID currPlayerWindow = WindowID::None;
 };
 
 PlayerInfo clientData[MAX_CLIENT_ID + 1];
@@ -48,8 +62,17 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 	return returncode;
 }
 
-void DisplayWelcomeWindow(uint client, uint page)
+void DisplayWelcomeWindow(uint client, uint page, WindowID windowIDParam)
 {
+	uint windowID = (uint)windowIDParam;
+	auto windowIter = windowData.find(windowID);
+	if (windowIter == windowData.end())
+	{
+		PrintUserCmdText(client, L"You were supposed to get a popup window with ID of %u/%u, notify staff", windowID, page);
+		return;
+	}
+
+	auto& windowInfo = windowIter->second;
 	uint renderedButtons = buttons::BUTTONS_CENTER_NO;
 	
 	HkChangeIDSString(client, 1245, L"CLOSE");
@@ -58,18 +81,25 @@ void DisplayWelcomeWindow(uint client, uint page)
 		HkChangeIDSString(client, 1244, L"PREV PAGE");
 		renderedButtons |= buttons::BUTTONS_LEFT_YES;
 	}
-	if (page < welcomeInfo.size())
+	if (page < windowInfo.messages.size())
 	{
 		HkChangeIDSString(client, 1570, L"NEXT PAGE");
 		renderedButtons |= buttons::BUTTONS_RIGHT_LATER;
 	}
 
 	wchar_t buf[100];
-	_snwprintf(buf, sizeof(buf), L"Welcome! : Page %d/%d", page, welcomeInfo.size());
+	if (windowInfo.messages.size() > 1)
+	{
+		_snwprintf(buf, sizeof(buf), L"%ls : Page %d/%d", windowInfo.caption.c_str(), page, windowInfo.messages.size());
+	}
+	else
+	{
+		_snwprintf(buf, sizeof(buf), L"%ls!", windowInfo.caption.c_str());
+	}
 	wstring title = buf;
 
 	HkChangeIDSString(client, 500000, title);
-	HkChangeIDSString(client, 500001, welcomeInfo[page-1]);
+	HkChangeIDSString(client, 500001, windowInfo.messages[page-1]);
 
 	FmtStr caption(0, 0);
 	caption.begin_mad_lib(500000);
@@ -80,13 +110,42 @@ void DisplayWelcomeWindow(uint client, uint page)
 	message.end_mad_lib();
 
 	clientData[client].lastPopupPage = page;
+	clientData[client].currPlayerWindow = windowIDParam;
 
 	pub::Player::PopUpDialog(client, caption, message, renderedButtons);
 }
 
-bool UserCmd_Rules(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+bool UserCmd_ServerRules(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
+	uint pageNr = 1;
+	if (!wscParam.empty())
+	{
+		uint paramNr = ToUInt(wscParam);
+		if (paramNr)
+		{
+			pageNr = paramNr;
+		}
+	}
 
+	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POPUP_INIT, &client);
+	DisplayWelcomeWindow(client, pageNr, WindowID::ServerRules);
+	return true;
+}
+
+bool UserCmd_FirstSteps(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	uint pageNr = 1;
+	if (!wscParam.empty())
+	{
+		uint paramNr = ToUInt(wscParam);
+		if (paramNr)
+		{
+			pageNr = paramNr;
+		}
+	}
+
+	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POPUP_INIT, &client);
+	DisplayWelcomeWindow(client, pageNr, WindowID::FirstSteps);
 	return true;
 }
 
@@ -101,7 +160,8 @@ struct USERCMD
 
 USERCMD UserCmds[] =
 {
-	{ L"/rules", UserCmd_Rules, L"Usage: /rules [page]" }
+	{ L"/server-rules", UserCmd_ServerRules, L"Usage: /rules [page]" },
+	{ L"/firststeps", UserCmd_FirstSteps, L"Usage: /firststeps [page]" }
 };
 
 bool UserCmd_Process(uint client, const wstring& wscCmd)
@@ -139,18 +199,47 @@ void LoadSettings()
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 	string currDir = szCurDir;
 	string newPlayerConfig = currDir + R"(\flhook_plugins\newplayer.cfg)";
+	windowData.clear();
+
+	// don't skip semicolons when parsing config files
+	//BYTE patch[] = { 0x90,0x90,0x90,0x90,0x90,0x90 };
+	//WriteProcMem((char*)0x630F5E0, patch, sizeof(patch));
+	BYTE patch[] = { 0x00 };
+	WriteProcMem((char*)0x630F5E3, patch, sizeof(patch));
 
 	INI_Reader ini;
 	if (ini.open(newPlayerConfig.c_str(), false))
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("NewPlayer")) {
+			if (ini.is_header("WindowInfo"))
+			{
+				WindowData* windowEntry;
+				wstring infoLine;
 				while (ini.read_value())
 				{
-					if (ini.is_value("WindowInfo"))
+					if (ini.is_value("id"))
 					{
-						welcomeInfo.emplace_back(stows(ini.get_value_string()));
+						windowEntry = &windowData[ini.get_value_int(0)];
+					}
+					if (ini.is_value("Caption"))
+					{
+						windowEntry->caption = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("TextLine"))
+					{
+						wstring tempString = stows(ini.get_value_string());
+						bool isNextLine = tempString.at(tempString.size() - 1) == L'X';
+						if (isNextLine)
+						{
+							tempString = tempString.substr(0, tempString.size() - 1);
+						}
+						infoLine += tempString;
+						if(!isNextLine)
+						{
+							windowEntry->messages.emplace_back(infoLine);
+							infoLine.clear();
+						}
 					}
 				}
 			}
@@ -158,6 +247,8 @@ void LoadSettings()
 
 		ini.close();
 	}
+	BYTE patch2[] = { 0x3B };
+	WriteProcMem((char*)0x630F5E3, patch2, sizeof(patch2));
 }
 
 void PluginComm(PLUGIN_MESSAGE msg, void* data)
@@ -173,7 +264,6 @@ void PluginComm(PLUGIN_MESSAGE msg, void* data)
 void PopUpDialogue(uint client, uint buttonPressed)
 {
 	returncode = DEFAULT_RETURNCODE;
-	ConPrint(L"%u\n", buttonPressed);
 	if (!clientData[client].lastPopupPage)
 	{
 		return;
@@ -181,18 +271,20 @@ void PopUpDialogue(uint client, uint buttonPressed)
 
 	if (buttonPressed == buttons::BUTTONS_CENTER_NO)
 	{
+		clientData[client].lastPopupPage = 0;
+		clientData[client].currPlayerWindow = WindowID::None;
 		HkChangeIDSString(client, 1244, L"YES");
 		HkChangeIDSString(client, 1245, L"NO");
 	}
 	else if (buttonPressed == buttons::BUTTONS_LEFT_YES)
 	{
 		clientData[client].lastPopupPage--;
-		DisplayWelcomeWindow(client, clientData[client].lastPopupPage);
+		DisplayWelcomeWindow(client, clientData[client].lastPopupPage, clientData[client].currPlayerWindow);
 	}
 	else if (buttonPressed == buttons::BUTTONS_RIGHT_LATER)
 	{
 		clientData[client].lastPopupPage++;
-		DisplayWelcomeWindow(client, clientData[client].lastPopupPage);
+		DisplayWelcomeWindow(client, clientData[client].lastPopupPage, clientData[client].currPlayerWindow);
 	}
 }
 
@@ -212,7 +304,21 @@ void __stdcall CharacterSelect(struct CHARACTER_ID const& cId, unsigned int clie
 	}
 
 	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POPUP_INIT, &client);
-	DisplayWelcomeWindow(client, 1);
+	DisplayWelcomeWindow(client, 1, WindowID::NewPlayerWelcome);
+}
+
+#define IS_CMD(a) !args.compare(L##a)
+#define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
+bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
+{
+	returncode = DEFAULT_RETURNCODE;
+	RIGHT_CHECK(RIGHT_SUPERADMIN)
+	if (args.find(L"reloadnewplayer") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		LoadSettings();
+		return true;
+	}
 }
 
 EXPORT PLUGIN_INFO* Get_PluginInfo()
@@ -229,6 +335,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PluginComm, PLUGIN_Plugin_Communication, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+
 
 
 	return p_PI;

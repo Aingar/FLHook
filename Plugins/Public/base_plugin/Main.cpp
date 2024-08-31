@@ -158,9 +158,6 @@ bool load_settings_required = true;
 /// holiday mode
 bool set_holiday_mode = false;
 
-//pob sounds struct
-POBSOUNDS pbsounds;
-
 //archtype structure
 unordered_map<string, ARCHTYPE_STRUCT> mapArchs;
 
@@ -1050,17 +1047,6 @@ void LoadSettingsActual()
 		}
 		ini.close();
 	}
-
-	//Create the POB sound hashes
-	pbsounds.destruction1 = CreateID("pob_evacuate2");
-	pbsounds.destruction2 = CreateID("pob_firecontrol");
-	pbsounds.heavydamage1 = CreateID("pob_breach");
-	pbsounds.heavydamage2 = CreateID("pob_reactor");
-	pbsounds.heavydamage3 = CreateID("pob_heavydamage");
-	pbsounds.mediumdamage1 = CreateID("pob_hullbreach");
-	pbsounds.mediumdamage2 = CreateID("pob_critical");
-	pbsounds.lowdamage1 = CreateID("pob_fire");
-	pbsounds.lowdamage2 = CreateID("pob_engineering");
 
 	char datapath[MAX_PATH];
 	GetUserDataPath(datapath);
@@ -2576,6 +2562,34 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	customSolarList.erase(space_obj);
 }
 
+void __stdcall SolarDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (!dmg->iInflictorPlayerID)
+	{
+		incDmg = 0;
+		return;
+	}
+
+	CSolar* base = reinterpret_cast<CSolar*>(iobj->cobj);
+	if (base->hitPoints > 1'000'000'000)
+	{
+		incDmg = 0;
+		return;
+	}
+
+	if (!spaceobj_modules.count(base->id))
+	{
+		return;
+	}
+
+
+	Module* damagedModule = spaceobj_modules.at(base->id);
+
+	// This call is for us, skip all plugins.
+	incDmg = damagedModule->SpaceObjDamaged(base->id, dmg->get_inflictor_id(), incDmg);
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
@@ -3491,6 +3505,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SolarDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	return p_PI;

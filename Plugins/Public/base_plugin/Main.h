@@ -572,14 +572,6 @@ namespace ExportData
 	void ToJSON();
 }
 
-namespace Siege
-{
-	void SiegeGunDeploy(uint client, const wstring& args);
-	int CalculateHealthPercentage(uint basehash, int health, int maxhealth);
-	void SiegeAudioNotification(uint iClientID, int level);
-	int GetRandomSound(int min, int max);
-}
-
 namespace HyperJump
 {
 	void InitJumpHole(uint baseId, uint destSystem, uint destObject);

@@ -2542,7 +2542,7 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	customSolarList.erase(space_obj);
 }
 
-void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
+void __stdcall SolarDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (!dmg->iInflictorPlayerID)
@@ -3484,7 +3484,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseDestroyed, PLUGIN_BaseDestroyed, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDamageHull, PLUGIN_SolarHullDmg, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SolarDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
 	return p_PI;

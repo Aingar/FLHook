@@ -464,10 +464,6 @@ bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcast
 		spaceobj_modules.erase(space_obj);
 		this->space_obj = 0;
 
-		//chunk of code begins here
-		//No need to calculate health in this scenario, go straight to drama
-		Siege::SiegeAudioCalc(base->base, base->system, base->position, 0);
-
 		//List all players in the system at the time
 		list<string> CharsInSystem;
 		struct PlayerData* pd = 0;

@@ -577,7 +577,6 @@ namespace Siege
 	void SiegeGunDeploy(uint client, const wstring& args);
 	int CalculateHealthPercentage(uint basehash, int health, int maxhealth);
 	void SiegeAudioNotification(uint iClientID, int level);
-	void SiegeAudioCalc(uint basehash, uint iSystemID, Vector pos, int level);
 	int GetRandomSound(int min, int max);
 }
 

@@ -2082,6 +2082,11 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
 	if (player_launch_base)
 	{
+		if (Players[client].iSystemID != player_launch_base->system)
+		{
+			ForcePlayerBaseDock(client, player_launch_base);
+		}
+
 		for (auto& solar : POBSolarsBySystemMap[player_launch_base->system])
 		{
 			if (solar == player_launch_base->baseCSolar)

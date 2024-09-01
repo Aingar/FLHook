@@ -1863,9 +1863,17 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 		// base then dump the ship into space.
 		else if (Players[client].iBaseID != base->proxy_base)
 		{
-			DeleteDockState(client);
-			SendResetMarketOverride(client);
-			ForceLaunch(client);
+			char system_nick[1024];
+			pub::GetSystemNickname(system_nick, sizeof(system_nick), Players[client].iSystemID);
+
+			char proxy_base_nick[1024];
+			sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
+			if (CreateID(proxy_base_nick) != Players[client].iBaseID)
+			{
+				DeleteDockState(client);
+				SendResetMarketOverride(client);
+				ForceLaunch(client);
+			}
 		}
 	}
 }

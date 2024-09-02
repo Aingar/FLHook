@@ -18,9 +18,6 @@ wstring StorageModule::GetInfo(bool xml)
 
 void StorageModule::LoadState(INI_Reader& ini)
 {
-	while (ini.read_value())
-	{
-	}
 }
 
 void StorageModule::SaveState(FILE* file)

@@ -37,6 +37,12 @@ struct AICONFIG
 	pub::AI::Personality::JobStruct job;
 };
 
+struct DYNAMIC_ITEM
+{
+	uint sharedAmount = 0;
+	vector<uint> items;
+};
+
 struct RECIPE
 {
 	uint nickname = 0;
@@ -50,6 +56,7 @@ struct RECIPE
 	uint cooking_rate = 0;
 	vector<unordered_map<uint, pair<uint, uint>>> affiliation_consumed_items;
 	vector<vector<pair<uint, uint>>> dynamic_consumed_items;
+	vector<DYNAMIC_ITEM> dynamic_consumed_items_alt;
 	vector<pair<uint, uint>> consumed_items;
 	vector<pair<uint, uint>> catalyst_items;
 	vector<pair<uint, uint>> catalyst_workforce;

@@ -120,6 +120,31 @@ wstring FactoryModule::GetInfo(bool xml)
 		minutesToCompletion += dynamicSum / active_recipe.cooking_rate;
 	}
 
+	for (auto& i : active_recipe.dynamic_consumed_items_alt)
+	{
+		bool isFirst = true;
+		info += openLine + L"- " + itows(i.sharedAmount) + L"x of ";
+		for (uint itemId : i.items)
+		{
+			if (isFirst)
+			{
+				isFirst = false;
+			}
+			else
+			{
+				info += L", ";
+			}
+
+			const GoodInfo* gi = GoodList::find_by_id(itemId);
+			if (!gi)
+			{
+				continue;
+			}
+			info += HkGetWStringFromIDS(gi->iIDSName);
+		}
+		minutesToCompletion += i.sharedAmount / active_recipe.cooking_rate;
+	}
+
 	for (auto& i : active_recipe.consumed_items)
 	{
 		uint good = i.first;
@@ -249,15 +274,17 @@ bool FactoryModule::Timer(uint time)
 
 	sufficientCatalysts = true;
 	bool consumedAnything = false;
+	bool consumedCredits = false;
 	
 	if (active_recipe.credit_cost)
 	{
 		uint moneyToRemove = min(active_recipe.cooking_rate * 100, active_recipe.credit_cost);
-		if (base->money >= moneyToRemove)
+		moneyToRemove = min(moneyToRemove, static_cast<uint>(base->money));
+		if (moneyToRemove)
 		{
 			base->money -= moneyToRemove;
 			active_recipe.credit_cost -= moneyToRemove;
-			consumedAnything = true;
+			consumedCredits = true;
 		}
 	}
 
@@ -266,11 +293,12 @@ bool FactoryModule::Timer(uint time)
 		uint good = i->first;
 		uint quantity = min(active_recipe.cooking_rate, i->second);
 		auto market_item = base->market_items.find(good);
-		if (market_item == base->market_items.end()
-			|| market_item->second.quantity < quantity)
+		if (market_item == base->market_items.end() || !market_item->second.quantity)
 		{
 			continue;
 		}
+
+		quantity = min(quantity, market_item->second.quantity);
 		i->second -= quantity;
 		base->RemoveMarketGood(good, quantity);
 
@@ -287,41 +315,73 @@ bool FactoryModule::Timer(uint time)
 		break;
 	}
 
-	for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
-		itemGroup != active_recipe.dynamic_consumed_items.end();)
+	if (!consumedAnything)
 	{
-		bool foundItem = false;
-		for (auto& item : *itemGroup)
+		for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
+			itemGroup != active_recipe.dynamic_consumed_items.end();)
 		{
-			auto& goodIter = base->market_items.find(item.first);
-			if (goodIter == base->market_items.end())
+			bool foundItem = false;
+			for (auto& item : *itemGroup)
 			{
-				continue;
-			}
+				auto& goodIter = base->market_items.find(item.first);
+				if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+				{
+					continue;
+				}
 
-			uint cookingRate = min(active_recipe.cooking_rate, item.second);
-			if (cookingRate > goodIter->second.quantity)
+				uint cookingRate = min(active_recipe.cooking_rate, item.second);
+				cookingRate = min(cookingRate, goodIter->second.quantity);
+
+				base->RemoveMarketGood(goodIter->first, cookingRate);
+
+				active_recipe.consumed_items.push_back({ goodIter->first, item.second - cookingRate });
+				consumedAnything = true;
+				foundItem = true;
+				break;
+			}
+			if (foundItem)
 			{
-				continue;
+				itemGroup = active_recipe.dynamic_consumed_items.erase(itemGroup);
 			}
-			base->RemoveMarketGood(goodIter->first, cookingRate);
-
-			active_recipe.consumed_items.push_back({ goodIter->first, item.second - cookingRate });
-			consumedAnything = true;
-			foundItem = true;
-			break;
-		}
-		if (foundItem)
-		{
-			itemGroup = active_recipe.dynamic_consumed_items.erase(itemGroup);
-		}
-		else
-		{
-			itemGroup++;
+			else
+			{
+				itemGroup++;
+			}
 		}
 	}
 
-	if (consumedAnything)
+	if (!consumedAnything)
+	{
+		for (auto& items = active_recipe.dynamic_consumed_items_alt.begin();
+			items != active_recipe.dynamic_consumed_items_alt.end();)
+		{
+			for (uint itemId : items->items)
+			{
+				auto& goodIter = base->market_items.find(itemId);
+				if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+				{
+					continue;
+				}
+				uint cookingRate = min(active_recipe.cooking_rate, items->sharedAmount);
+				cookingRate = min(cookingRate, goodIter->second.quantity);
+				base->RemoveMarketGood(goodIter->first, cookingRate);
+				consumedAnything = true;
+
+				items->sharedAmount -= cookingRate;
+				break;
+			}
+			if (!items->sharedAmount)
+			{
+				items = active_recipe.dynamic_consumed_items_alt.erase(items);
+			}
+			else
+			{
+				items++;
+			}
+		}
+	}
+
+	if (consumedAnything || consumedCredits)
 	{
 		for (const auto& catalyst : active_recipe.catalyst_items)
 		{
@@ -336,6 +396,7 @@ bool FactoryModule::Timer(uint time)
 	// Do nothing if cooking is not finished
 	if (!active_recipe.consumed_items.empty()
 		|| !active_recipe.dynamic_consumed_items.empty()
+		|| !active_recipe.dynamic_consumed_items_alt.empty()
 		|| active_recipe.credit_cost)
 	{
 		return false;
@@ -402,6 +463,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 				SetActiveRecipe(activeRecipeNickname);
 				active_recipe.consumed_items.clear();
 				active_recipe.dynamic_consumed_items.clear();
+				active_recipe.dynamic_consumed_items_alt.clear();
 				producedCopy = active_recipe.produced_items;
 				active_recipe.produced_items.clear();
 			}
@@ -437,6 +499,26 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			if (!vector.empty())
 			{
 				active_recipe.dynamic_consumed_items.emplace_back(vector);
+			}
+		}
+		else if (ini.is_value("consumed_dynamic_alt"))
+		{
+			DYNAMIC_ITEM item;
+			int counter = 1;
+			int itemId = 0;
+			item.sharedAmount = ini.get_value_int(0);
+			do
+			{
+				itemId = ini.get_value_int(counter);
+				counter++;
+				if (itemId)
+				{
+					item.items.push_back(itemId);
+				}
+			} while (itemId);
+			if (!item.items.empty())
+			{
+				active_recipe.dynamic_consumed_items_alt.emplace_back(item);
 			}
 		}
 		else if (ini.is_value("credit_cost"))
@@ -499,6 +581,15 @@ void FactoryModule::SaveState(FILE* file)
 					fprintf(file, ",");
 				}
 				fprintf(file, "%u, %u", j.first, j.second);
+			}
+			fprintf(file, "\n");
+		}
+		for (auto& i : active_recipe.dynamic_consumed_items_alt)
+		{
+			fprintf(file, "consumed_dynamic_alt = %u", i.sharedAmount);
+			for (uint j : i.items)
+			{
+				fprintf(file, ", %u", j);
 			}
 			fprintf(file, "\n");
 		}

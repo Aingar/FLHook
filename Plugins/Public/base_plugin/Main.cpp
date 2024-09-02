@@ -914,6 +914,24 @@ void LoadSettingsActual()
 						} while (!itemName.empty());
 						recipe.dynamic_consumed_items.push_back(vector);
 					}
+					else if (ini.is_value("consumed_dynamic_alt"))
+					{
+						DYNAMIC_ITEM items;
+						items.sharedAmount = ini.get_value_int(0);
+						string itemName;
+						int counter = 1;
+						do
+						{
+							itemName = ini.get_value_string(counter);
+							if (!itemName.empty())
+							{
+								ValidateItem(itemName.c_str());
+								items.items.push_back(CreateID(itemName.c_str()));
+							}
+							counter++;
+						} while (!itemName.empty());
+						recipe.dynamic_consumed_items_alt.push_back(items);
+					}
 					else if (ini.is_value("consumed_affiliation"))
 					{
 						unordered_map<uint, pair<uint, uint>> itemMap;

@@ -35,7 +35,7 @@ void RearmamentModule::Rearm(uint clientId)
         return;
     }
 
-    if (!base->isRearmamentAvailable)
+    if (!base->isRearmamentAvailable || !base->isCrewSupplied)
     {
         PrintUserCmdText(clientId, L"ERR Rearmament not available");
         return;
@@ -146,7 +146,7 @@ void RearmamentModule::Rearm(uint clientId)
 
 void RearmamentModule::CheckPlayerInventory(uint clientId, PlayerBase* base)
 {
-    if (!base->isRearmamentAvailable)
+    if (!base->isRearmamentAvailable || !base->isCrewSupplied)
     {
         return;
     }

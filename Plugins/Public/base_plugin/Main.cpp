@@ -2557,12 +2557,19 @@ void __stdcall ReqAddItem_AFTER(unsigned int good, char const *hardpoint, int co
 	}
 }
 
+int cashChange = 0;
+int lastCashChangeClient = 0;
+
 /// Ignore cash commands from the client when we're in a player base.
 void __stdcall ReqChangeCash(int cash, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
+	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		cashChange = cash;
+		lastCashChangeClient = client;
+	}
 }
 
 /// Ignore cash commands from the client when we're in a player base.
@@ -2570,9 +2577,48 @@ void __stdcall ReqSetCash(int cash, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
+	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+	cashChange = 0;
+	lastCashChangeClient = 0;
 }
 
+void SetEquipPacket(uint client, st6::vector<EquipDesc>&)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
+	}
+}
+
+void SetHullPacket(uint client, float)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
+	}
+}
+
+void SetColGrp(uint client, st6::list<CollisionGroupDesc>&)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
+	}
+}
 
 void __stdcall ReqEquipment(class EquipDescList const &edl, unsigned int client)
 {
@@ -3520,6 +3566,10 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
+
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetEquipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetHullPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETHULLSTATUS, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetColGrp, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETCOLLISIONGROUPS, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));

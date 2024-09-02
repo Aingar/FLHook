@@ -126,6 +126,7 @@ void LoadSettings()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #define IS_CMD(a) !wscCmd.compare(L##a)
+#define RIGHT_CHECK(a) if(!(cmds->rights & a)) { cmds->Print(L"ERR No permission\n"); return true; }
 
 // Admin commands
 bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
@@ -154,6 +155,30 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 				saturation, txqueue);
 		}
 		cmds->Print(L"OK\n");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("pingtarget"))
+	{
+		RIGHT_CHECK(RIGHT_SPECIAL1);
+
+		uint client = HkGetClientIdFromCharname(cmds->GetAdminName());
+		HKPLAYERINFO pinfo;
+		if (HkGetPlayerInfo(cmds->ArgCharname(1), pinfo, false) != HKE_OK)
+		{
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+		if (pinfo.iClientID)
+		{
+			cmds->Print(L"charname=%s clientid=%u ip=%s ping=%u loss=%u lag=%u pingfluct=%u\n",
+				pinfo.wscCharname.c_str(), pinfo.iClientID, pinfo.wscIP.c_str(), ConData[pinfo.iClientID].iAveragePing,
+				ConData[pinfo.iClientID].iAverageLoss, ConData[pinfo.iClientID].iLags, ConData[pinfo.iClientID].iPingFluctuation);
+		}
+		else
+		{
+			cmds->Print(L"ERR target not found");
+		}
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

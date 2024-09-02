@@ -178,6 +178,8 @@ unordered_set<uint> customSolarList;
 //siege weaponry definitions
 unordered_map<uint, float> siegeWeaponryMap;
 
+vector<pair<uint, float>> rearmamentCreditRatio;
+
 uint GetAffliationFromClient(uint client)
 {
 	int rep;
@@ -739,6 +741,18 @@ void LoadSettingsActual()
 					else if (ini.is_value("core_storage"))
 					{
 						core_upgrade_storage[ini.get_value_int(0)] = ini.get_value_int(1);
+					}
+					else if (ini.is_value("rearmament_good"))
+					{
+						uint goodId = CreateID(ini.get_value_string(0));
+						auto gi = GoodList::find_by_id(goodId);
+						float creditValue = ini.get_value_float(1);
+						if (creditValue > gi->fPrice)
+						{
+							ConPrint(L"BASE ERROR: rearmament good %s set too high, setting to %0.0f!\n", stows(ini.get_value_string(0)).c_str(), gi->fPrice);
+							creditValue = gi->fPrice;
+						}
+						rearmamentCreditRatio.push_back({ goodId, creditValue });
 					}
 				}
 			}
@@ -1662,6 +1676,12 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseHelp(client, args);
 		return true;
 	}
+	else if (args.find(L"/rearm") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		RearmamentModule::Rearm(client);
+		return true;
+	}
 	return false;
 }
 
@@ -1931,6 +1951,8 @@ void __stdcall BaseEnter(uint base, uint client)
 					return;
 				}
 			}
+
+			RearmamentModule::CheckPlayerInventory(client, base);
 			// Reset the commodity list	and send a dummy entry if there are no
 			// commodities in the market
 			SaveDockState(client);

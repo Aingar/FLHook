@@ -281,6 +281,7 @@ enum PLUGIN_MESSAGE
 	CUSTOM_POB_EVENT_NOTIFICATION_BUY = 65,
 	CUSTOM_POB_EVENT_NOTIFICATION_SELL = 66,
 	CUSTOM_POPUP_INIT = 67,
+	CUSTOM_AUTOBUY_CART = 68,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -501,6 +502,21 @@ struct CUSTOM_POB_EVENT_NOTIFICATION_SELL_STRUCT
 	uint clientId;
 	SGFGoodSellInfo info;
 };
+
+struct AUTOBUY_CARTITEM
+{
+	uint iArchID;
+	int iCount;
+	wstring wscDescription;
+};
+
+struct CUSTOM_AUTOBUY_CARTITEMS
+{
+	list<AUTOBUY_CARTITEM> cartItems;
+	uint clientId;
+	int remHoldSize;
+};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #endif

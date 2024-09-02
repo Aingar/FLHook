@@ -134,6 +134,7 @@ public:
 	static const int TYPE_DEFENSE_1 = 4;
 	static const int TYPE_DEFENSE_2 = 9;
 	static const int TYPE_DEFENSE_3 = 10;
+	static const int TYPE_REARMAMENT = 11;
 
 
 	Module(uint the_type) : type(the_type){}
@@ -280,6 +281,19 @@ public:
 	bool AddToQueue(uint product);
 	bool ClearQueue();
 	void ClearRecipe();
+};
+
+class RearmamentModule : public Module
+{
+	PlayerBase* base;
+public:
+	RearmamentModule(PlayerBase* the_base);
+	RearmamentModule::~RearmamentModule();
+	wstring GetInfo(bool xml);
+	void LoadState(INI_Reader& ini);
+	void SaveState(FILE* file);
+	static void RearmamentModule::CheckPlayerInventory(uint clientId, PlayerBase* base);
+	static void RearmamentModule::Rearm(uint clientId);
 };
 
 class BasePassword
@@ -498,6 +512,10 @@ public:
 	Matrix destOri;
 
 	/////////////////////////////////////////
+
+	bool isRearmamentAvailable = false;
+
+	float rearmamentCostPerCredit = 1.0f;
 };
 
 PlayerBase* GetPlayerBase(uint base);
@@ -773,6 +791,9 @@ extern unordered_set<uint> humanCargoList;
 extern unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 
 extern bool set_SkipUnchartedKill;
+
+extern float rearmamentCostRatio;
+extern vector<pair<uint, float>> rearmamentCreditRatio;
 
 struct ScheduledRespawn
 {

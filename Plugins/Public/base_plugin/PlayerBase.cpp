@@ -659,6 +659,18 @@ void PlayerBase::Load()
 				modules.at(moduleCounter) = mod;
 				moduleCounter++;
 			}
+			else if (ini.is_header("RearmamentModule"))
+			{
+				if (moduleCounter >= modules.size())
+				{
+					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
+					return;
+				}
+				RearmamentModule* mod = new RearmamentModule(this);
+				mod->LoadState(ini);
+				modules.at(moduleCounter) = mod;
+				moduleCounter++;
+			}
 		}
 		if (coreConstruction)
 		{

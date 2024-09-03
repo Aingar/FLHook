@@ -352,59 +352,200 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		return 0;
 	}
 
-	unordered_map<uint, CObject*> CAsteroidMap;
 
-	void __fastcall CAsteroidInit(CSimple* csimple, void* edx, CSimple::CreateParms& param)
+	unordered_map<CObject*, CObjNode*> CMineMap;
+	unordered_map<CObject*, CObjNode*> CCmMap;
+	unordered_map<CObject*, CObjNode*> CBeamMap;
+	unordered_map<CObject*, CObjNode*> CGuidedMap;
+	unordered_map<CObject*, CObjNode*> CSolarMap;
+	unordered_map<CObject*, CObjNode*> CShipMap;
+	unordered_map<CObject*, CObjNode*> CAsteroidMap;
+	unordered_map<CObject*, CObjNode*> CLootMap;
+	unordered_map<CObject*, CObjNode*> CEquipmentMap;
+	unordered_map<CObject*, CObjNode*> CObjectMap;
+
+	unordered_map<uint, CSimple*> CAsteroidMap2;
+
+	struct CObjNode
 	{
-		CAsteroidMap[param.id] = csimple;
+		CObjNode* next;
+		CObjNode* prev;
+		CObject* cobj;
+	};
+
+	struct CObjEntryNode
+	{
+		CObjNode* first;
+		CObjNode* last;
+	};
+
+	struct CObjList
+	{
+		uint dunno;
+		CObjEntryNode* entry;
+		uint size;
+	};
+
+	typedef CObjList* (__cdecl* CObjListFunc)(CObject::Class);
+	CObjListFunc CObjListFind = CObjListFunc(0x62AE690);
+
+	typedef void(__thiscall* RemoveCobjFromVector)(CObjList*, void*, CObjNode*);
+	RemoveCobjFromVector removeCObjNode = RemoveCobjFromVector(0x62AF830);
+
+	uint CObjAllocJmp = 0x62AEE55;
+	__declspec(naked) CSimple* __cdecl CObjAllocCallOrig(CObject::Class objClass)
+	{
+		__asm {
+			push ecx
+			mov eax, [esp + 8]
+			jmp CObjAllocJmp
+		}
 	}
 
-	uint CAsteroidInitRetAddr = 0x62A28F6;
-	__declspec(naked) void CAsteroidInitNaked()
+	CObject* __cdecl CObjAllocDetour(CObject::Class objClass)
+	{
+		CSimple* retVal = CObjAllocCallOrig(objClass);
+		CObjList* cobjList = CObjListFind(objClass);
+
+		switch (objClass)
+		{
+		case CObject::CASTEROID_OBJECT:
+			CAsteroidMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CEQUIPMENT_OBJECT:
+			CEquipmentMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::COBJECT_MASK:
+			CObjectMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CSOLAR_OBJECT:
+			CSolarMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CSHIP_OBJECT:
+			CShipMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CLOOT_OBJECT:
+			CLootMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CBEAM_OBJECT:
+			CBeamMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CGUIDED_OBJECT:
+			CGuidedMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CCOUNTERMEASURE_OBJECT:
+			CCmMap[retVal] = cobjList->entry->last;
+			break;
+		case CObject::CMINE_OBJECT:
+			CMineMap[retVal] = cobjList->entry->last;
+			break;
+		}
+
+		return retVal;
+	}
+
+	void __fastcall CSimpleInit(CSimple* csimple, void* edx, CSimple::CreateParms& param)
+	{
+		if (csimple->objectClass == CObject::CASTEROID_OBJECT)
+		{
+			CAsteroidMap2[param.id] = csimple;
+		}
+	}
+
+	uint CSimpleInitRetAddr = 0x62B5B66;
+	__declspec(naked) void CSimpleInitNaked()
 	{
 		__asm {
 			push ecx
 			push [esp+0x8]
-			call CAsteroidInit
+			call CSimpleInit
 			pop ecx
-			push esi
-			push edi
-			mov edi, [esp+0xC]
-			jmp CAsteroidInitRetAddr
+			push ebx
+			push ebp
+			mov ebp, [esp+0xC]
+			jmp CSimpleInitRetAddr
 		}
 	}
 
-	void __fastcall CAsteroidDestr(CSimple* csimple)
+	void __fastcall CObjDestr(CObject* csimple)
 	{
-		CAsteroidMap.erase(csimple->id);
+		unordered_map<CObject*, CObjNode*>* cobjMap;
+		switch (csimple->objectClass) {
+		case CObject::CASTEROID_OBJECT:
+			cobjMap = &CAsteroidMap;
+			break;
+		case CObject::CEQUIPMENT_OBJECT:
+			cobjMap = &CEquipmentMap;
+			break;
+		case CObject::COBJECT_MASK:
+			cobjMap = &CObjectMap;
+			break;
+		case CObject::CSOLAR_OBJECT:
+			cobjMap = &CSolarMap;
+			break;
+		case CObject::CSHIP_OBJECT:
+			cobjMap = &CShipMap;
+			break;
+		case CObject::CLOOT_OBJECT:
+			cobjMap = &CLootMap;
+			break;
+		case CObject::CBEAM_OBJECT:
+			cobjMap = &CBeamMap;
+			break;
+		case CObject::CGUIDED_OBJECT:
+			cobjMap = &CGuidedMap;
+			break;
+		case CObject::CCOUNTERMEASURE_OBJECT:
+			cobjMap = &CCmMap;
+			break;
+		case CObject::CMINE_OBJECT:
+			cobjMap = &CMineMap;
+			break;
+		}
+
+		if (!cobjMap)
+		{
+			ConPrint(L"Unknown type! %u\n", csimple->objectClass);
+			return;
+		}
+
+		auto item = cobjMap->find(csimple);
+		if (item != cobjMap->end())
+		{
+			CObjList* cobjList = CObjListFind(csimple->objectClass);
+			cobjMap->erase(csimple);
+			static uint dummy;
+			removeCObjNode(cobjList, &dummy, item->second);
+		}
 	}
 
-	uint CAsteroidDestrRetAddr = 0x62A2887;
-	__declspec(naked) void CSimpleDestrOrgNaked()
+	uint CObjDestrRetAddr = 0x62AF447;
+	__declspec(naked) void CObjDestrOrgNaked()
 	{
 		__asm {
 			push ecx
-			call CAsteroidDestr
+			call CObjDestr
 			pop ecx
 			push 0xFFFFFFFF
-			push 0x06393CB8
-			jmp CAsteroidDestrRetAddr
+			push 0x06394364
+			jmp CObjDestrRetAddr
 		}
 	}
 
 	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass)
 	{
-		if (objClass == CObject::CASTEROID_OBJECT)
+		if(objClass != CObject::CASTEROID_OBJECT)
 		{
-			auto result = CAsteroidMap.find(spaceObjId);
-			if (result != CAsteroidMap.end())
-			{
-				++result->second->referenceCounter;
-				return result->second;
-			}
+			return CObject::Find(spaceObjId, objClass);
 		}
-	
-		return CObject::Find(spaceObjId, objClass);
+		
+		auto result = CAsteroidMap2.find(spaceObjId);
+		if (result != CAsteroidMap2.end())
+		{
+			++result->second->referenceCounter;
+			return result->second;
+		}
+		return nullptr;
 	}
 
 	/**************************************************************************************************************

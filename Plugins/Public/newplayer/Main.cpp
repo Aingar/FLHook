@@ -327,6 +327,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		LoadSettings();
 		return true;
 	}
+	return false;
 }
 
 EXPORT PLUGIN_INFO* Get_PluginInfo()

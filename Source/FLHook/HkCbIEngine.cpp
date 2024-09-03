@@ -352,20 +352,6 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		return 0;
 	}
 
-
-	unordered_map<CObject*, CObjNode*> CMineMap;
-	unordered_map<CObject*, CObjNode*> CCmMap;
-	unordered_map<CObject*, CObjNode*> CBeamMap;
-	unordered_map<CObject*, CObjNode*> CGuidedMap;
-	unordered_map<CObject*, CObjNode*> CSolarMap;
-	unordered_map<CObject*, CObjNode*> CShipMap;
-	unordered_map<CObject*, CObjNode*> CAsteroidMap;
-	unordered_map<CObject*, CObjNode*> CLootMap;
-	unordered_map<CObject*, CObjNode*> CEquipmentMap;
-	unordered_map<CObject*, CObjNode*> CObjectMap;
-
-	unordered_map<uint, CSimple*> CAsteroidMap2;
-
 	struct CObjNode
 	{
 		CObjNode* next;
@@ -385,6 +371,19 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		CObjEntryNode* entry;
 		uint size;
 	};
+
+	unordered_map<CObject*, CObjNode*> CMineMap;
+	unordered_map<CObject*, CObjNode*> CCmMap;
+	unordered_map<CObject*, CObjNode*> CBeamMap;
+	unordered_map<CObject*, CObjNode*> CGuidedMap;
+	unordered_map<CObject*, CObjNode*> CSolarMap;
+	unordered_map<CObject*, CObjNode*> CShipMap;
+	unordered_map<CObject*, CObjNode*> CAsteroidMap;
+	unordered_map<CObject*, CObjNode*> CLootMap;
+	unordered_map<CObject*, CObjNode*> CEquipmentMap;
+	unordered_map<CObject*, CObjNode*> CObjectMap;
+
+	unordered_map<uint, CSimple*> CAsteroidMap2;
 
 	typedef CObjList* (__cdecl* CObjListFunc)(CObject::Class);
 	CObjListFunc CObjListFind = CObjListFunc(0x62AE690);
@@ -444,34 +443,32 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		return retVal;
 	}
 
-	void __fastcall CSimpleInit(CSimple* csimple, void* edx, CSimple::CreateParms& param)
+	void __fastcall CAsteroidInit(CSimple* csimple, void* edx, CSimple::CreateParms& param)
 	{
-		if (csimple->objectClass == CObject::CASTEROID_OBJECT)
-		{
-			CAsteroidMap2[param.id] = csimple;
-		}
+		CAsteroidMap2[param.id] = csimple;
 	}
 
-	uint CSimpleInitRetAddr = 0x62B5B66;
-	__declspec(naked) void CSimpleInitNaked()
+	uint CAsteroidInitRetAddr = 0x62A28F6;
+	__declspec(naked) void CAsteroidInitNaked()
 	{
 		__asm {
 			push ecx
 			push [esp+0x8]
-			call CSimpleInit
+			call CAsteroidInit
 			pop ecx
-			push ebx
-			push ebp
-			mov ebp, [esp+0xC]
-			jmp CSimpleInitRetAddr
+			push esi
+			push edi
+			mov edi, [esp+0xC]
+			jmp CAsteroidInitRetAddr
 		}
 	}
 
-	void __fastcall CObjDestr(CObject* csimple)
+	void __fastcall CObjDestr(CObject* cobj)
 	{
 		unordered_map<CObject*, CObjNode*>* cobjMap;
-		switch (csimple->objectClass) {
+		switch (cobj->objectClass) {
 		case CObject::CASTEROID_OBJECT:
+			CAsteroidMap2.erase(reinterpret_cast<CSimple*>(cobj)->id);
 			cobjMap = &CAsteroidMap;
 			break;
 		case CObject::CEQUIPMENT_OBJECT:
@@ -503,17 +500,11 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			break;
 		}
 
-		if (!cobjMap)
-		{
-			ConPrint(L"Unknown type! %u\n", csimple->objectClass);
-			return;
-		}
-
-		auto item = cobjMap->find(csimple);
+		auto item = cobjMap->find(cobj);
 		if (item != cobjMap->end())
 		{
-			CObjList* cobjList = CObjListFind(csimple->objectClass);
-			cobjMap->erase(csimple);
+			CObjList* cobjList = CObjListFind(cobj->objectClass);
+			cobjMap->erase(cobj);
 			static uint dummy;
 			removeCObjNode(cobjList, &dummy, item->second);
 		}

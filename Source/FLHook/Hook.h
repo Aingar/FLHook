@@ -869,7 +869,7 @@ namespace HkIEngine
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
-	void CSimpleInitNaked();
+	void CAsteroidInitNaked();
 	void CObjDestrOrgNaked();
 	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass);
 	CObject* __cdecl CObjAllocDetour(CObject::Class objClass);

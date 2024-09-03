@@ -1034,9 +1034,9 @@ void FormatSendChat(uint iToClientID, const wstring &wscSender, const wstring &w
 	{
 		foreach(ClientInfo[iToClientID].lstIgnore, IGNORE_INFO, it)
 		{
-			if (!HAS_FLAG(*it, L"i") && !(ToLower(wscSender).compare(ToLower((*it).wscCharname))))
+			if (!HAS_FLAG(*it, L"i") && !(ToLower(wscSender).compare(ToLower(it->wscCharname))))
 				return; // ignored
-			else if (HAS_FLAG(*it, L"i") && (ToLower(wscSender).find(ToLower((*it).wscCharname)) != -1))
+			else if (HAS_FLAG(*it, L"i") && (ToLower(wscSender).find(ToLower(it->wscCharname)) != -1))
 				return; // ignored
 		}
 	}

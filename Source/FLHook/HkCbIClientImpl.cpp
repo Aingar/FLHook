@@ -914,6 +914,8 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SETCOLLISIONGROUPS(uint iClientID, st6:
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
+	CALL_PLUGINS_NORET(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETCOLLISIONGROUPS, , (uint, st6::list<CollisionGroupDesc>&), (iClientID, collisionGrpList));
+
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETCOLLISIONGROUPS(iClientID, collisionGrpList));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -926,6 +928,8 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SETEQUIPMENT(uint iClientID, st6::vecto
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
+	CALL_PLUGINS_NORET(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, , (uint, st6::vector<EquipDesc>&), (iClientID, equipVec));
+
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETEQUIPMENT(iClientID, equipVec));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -937,6 +941,8 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SETHULLSTATUS(uint iClientID, float fSt
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
+	
+	CALL_PLUGINS_NORET(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, , (uint, float), (iClientID, fStatus));
 
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETHULLSTATUS(iClientID, fStatus));
 	return reinterpret_cast<bool>(vRet);
@@ -949,7 +955,7 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SETMISSIONOBJECTIVES(uint iClientID, ui
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
-
+	
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETMISSIONOBJECTIVES(iClientID, iDunno));
 	return reinterpret_cast<bool>(vRet);
 }

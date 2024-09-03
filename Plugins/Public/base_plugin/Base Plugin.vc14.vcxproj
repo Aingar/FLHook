@@ -153,6 +153,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="PlayerBase.cpp" />
     <ClCompile Include="PlayerCommands.cpp" />
+    <ClCompile Include="RearmamentModule.cpp" />
     <ClCompile Include="SaveFiles.cpp" />
     <ClCompile Include="StorageModule.cpp" />
   </ItemGroup>

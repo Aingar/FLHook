@@ -178,6 +178,8 @@ unordered_set<uint> customSolarList;
 //siege weaponry definitions
 unordered_map<uint, float> siegeWeaponryMap;
 
+vector<pair<uint, float>> rearmamentCreditRatio;
+
 uint GetAffliationFromClient(uint client)
 {
 	int rep;
@@ -740,6 +742,18 @@ void LoadSettingsActual()
 					{
 						core_upgrade_storage[ini.get_value_int(0)] = ini.get_value_int(1);
 					}
+					else if (ini.is_value("rearmament_good"))
+					{
+						uint goodId = CreateID(ini.get_value_string(0));
+						auto gi = GoodList::find_by_id(goodId);
+						float creditValue = ini.get_value_float(1);
+						if (creditValue > gi->fPrice)
+						{
+							ConPrint(L"BASE ERROR: rearmament good %s set too high, setting to %0.0f!\n", stows(ini.get_value_string(0)).c_str(), gi->fPrice);
+							creditValue = gi->fPrice;
+						}
+						rearmamentCreditRatio.push_back({ goodId, creditValue });
+					}
 				}
 			}
 		}
@@ -899,6 +913,24 @@ void LoadSettingsActual()
 							counter++;
 						} while (!itemName.empty());
 						recipe.dynamic_consumed_items.push_back(vector);
+					}
+					else if (ini.is_value("consumed_dynamic_alt"))
+					{
+						DYNAMIC_ITEM items;
+						items.sharedAmount = ini.get_value_int(0);
+						string itemName;
+						int counter = 1;
+						do
+						{
+							itemName = ini.get_value_string(counter);
+							if (!itemName.empty())
+							{
+								ValidateItem(itemName.c_str());
+								items.items.push_back(CreateID(itemName.c_str()));
+							}
+							counter++;
+						} while (!itemName.empty());
+						recipe.dynamic_consumed_items_alt.push_back(items);
 					}
 					else if (ini.is_value("consumed_affiliation"))
 					{
@@ -1666,6 +1698,12 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseHelp(client, args);
 		return true;
 	}
+	else if (args.find(L"/rearm") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		RearmamentModule::Rearm(client);
+		return true;
+	}
 	return false;
 }
 
@@ -1867,9 +1905,17 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 		// base then dump the ship into space.
 		else if (Players[client].iBaseID != base->proxy_base)
 		{
-			DeleteDockState(client);
-			SendResetMarketOverride(client);
-			ForceLaunch(client);
+			char system_nick[1024];
+			pub::GetSystemNickname(system_nick, sizeof(system_nick), Players[client].iSystemID);
+
+			char proxy_base_nick[1024];
+			sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
+			if (CreateID(proxy_base_nick) != Players[client].iBaseID)
+			{
+				DeleteDockState(client);
+				SendResetMarketOverride(client);
+				ForceLaunch(client);
+			}
 		}
 	}
 }
@@ -1927,6 +1973,8 @@ void __stdcall BaseEnter(uint base, uint client)
 					return;
 				}
 			}
+
+			RearmamentModule::CheckPlayerInventory(client, base);
 			// Reset the commodity list	and send a dummy entry if there are no
 			// commodities in the market
 			SaveDockState(client);
@@ -2086,6 +2134,11 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
 	if (player_launch_base)
 	{
+		if (Players[client].iSystemID != player_launch_base->system)
+		{
+			ForcePlayerBaseDock(client, player_launch_base);
+		}
+
 		for (auto& solar : POBSolarsBySystemMap[player_launch_base->system])
 		{
 			if (solar == player_launch_base->baseCSolar)
@@ -2511,12 +2564,19 @@ void __stdcall ReqAddItem_AFTER(unsigned int good, char const *hardpoint, int co
 	}
 }
 
+int cashChange = 0;
+int lastCashChangeClient = 0;
+
 /// Ignore cash commands from the client when we're in a player base.
 void __stdcall ReqChangeCash(int cash, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
+	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		cashChange = cash;
+		lastCashChangeClient = client;
+	}
 }
 
 /// Ignore cash commands from the client when we're in a player base.
@@ -2528,7 +2588,11 @@ void __stdcall ReqSetCash(int cash, unsigned int client)
 		return;
 	}
 	if (clients[client].player_base)
+	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+	cashChange = 0;
+	lastCashChangeClient = 0;
 }
 
 void __stdcall ReqSetCash_AFTER(int cash, unsigned int client)
@@ -2538,6 +2602,41 @@ void __stdcall ReqSetCash_AFTER(int cash, unsigned int client)
 		int moneyDiff = shipPurchasePrice - Players[client].iInspectCash;
 		pub::Player::AdjustCash(client, moneyDiff);
 		shipPurchasePrice = 0;
+	}
+}
+void SetEquipPacket(uint client, st6::vector<EquipDesc>&)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
+	}
+}
+
+void SetHullPacket(uint client, float)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
+	}
+}
+
+void SetColGrp(uint client, st6::list<CollisionGroupDesc>&)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (cashChange && client == lastCashChangeClient)
+	{
+		pub::Player::AdjustCash(client, cashChange);
+
+		cashChange = 0;
+		lastCashChangeClient = 0;
 	}
 }
 
@@ -3487,6 +3586,10 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
+
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetEquipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetHullPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETHULLSTATUS, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetColGrp, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETCOLLISIONGROUPS, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));

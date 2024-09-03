@@ -358,11 +358,17 @@ bool InitHookExports()
 	FARPROC CAsteroidInit = FARPROC(0x62A28F0);
 	Detour(CAsteroidInit, HkIEngine::CAsteroidInitNaked);
 
-	FARPROC CAsteroidDestr = FARPROC(0x62A2880);
-	Detour(CAsteroidDestr, HkIEngine::CSimpleDestrOrgNaked);
+	FARPROC CObjectDestr = FARPROC(0x62AF440);
+	Detour(CObjectDestr, HkIEngine::CObjDestrOrgNaked);
+
+	BYTE patchCobjDestr[] = { 0xEB, 0x5F };
+	WriteProcMem((char*)hModCommon + 0x4F45D, patchCobjDestr, sizeof(patchCobjDestr));
 
 	FARPROC CObjectFindDetourFunc = FARPROC(&HkIEngine::CObjectFindDetour);
 	WriteProcMem((char*)hModServer + 0x84464, &CObjectFindDetourFunc, 4);
+
+	FARPROC CObjAlloc = FARPROC(0x62AEE50);
+	Detour(CObjAlloc, HkIEngine::CObjAllocDetour);
 
 	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
 	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);

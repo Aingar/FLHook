@@ -883,19 +883,16 @@ namespace HkIEngine
 	int __cdecl Dock_Call(unsigned int const &, unsigned int const &, int, enum DOCK_HOST_RESPONSE);
 	void _LaunchPos();
 	void CEGun_Update_naked();
-	void cshipInitNaked();
-	void csolarInitNaked();
 	void Radar_Range_naked();
-	void CShipInitializedNaked();
-	void CSolarInitializedNaked();
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
 	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
 	void CAsteroidInitNaked();
-	void CSimpleDestrOrgNaked();
+	void CObjDestrOrgNaked();
 	CObject* __cdecl CObjectFindDetour(const uint& spaceObjId, CObject::Class objClass);
+	CObject* __cdecl CObjAllocDetour(CObject::Class objClass);
 
 	extern FARPROC fpOldLaunchPos;
 	extern FARPROC fpOldUpdateCEGun;

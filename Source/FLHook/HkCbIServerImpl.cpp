@@ -2000,9 +2000,11 @@ namespace HkIServerImpl
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 
-	void __stdcall Shutdown(void)
+	void __stdcall Shutdown()
 	{
 		ISERVER_LOG();
+
+		WriteMiniDump(nullptr);
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_Shutdown, __stdcall, (), ());
 

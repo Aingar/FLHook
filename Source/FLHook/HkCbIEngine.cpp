@@ -198,7 +198,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				break;
 			}
 			
-			cacheSolarIObjs.erase(searchedId);
+			cacheSolarIObjs.erase(iter);
 		}
 		else
 		{
@@ -257,7 +257,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 					break;
 				}
 
-				cacheNonsolarIObjs.erase(searchedId);
+				cacheNonsolarIObjs.erase(iter);
 			}
 			else
 			{
@@ -504,7 +504,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		if (item != cobjMap->end())
 		{
 			CObjList* cobjList = CObjListFind(cobj->objectClass);
-			cobjMap->erase(cobj);
+			cobjMap->erase(item);
 			static uint dummy;
 			removeCObjNode(cobjList, &dummy, item->second);
 		}

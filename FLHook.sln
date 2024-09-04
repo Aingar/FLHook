@@ -112,8 +112,14 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "MarketController", "Plugins\Public\MarketController\MarketController.vcxproj", "{01AC67E5-0A10-42FA-9D7D-03A3EDD97C22}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "warehouse", "Plugins\Public\warehouse\warehouse.vcxproj", "{7BA66B1C-47C0-40A6-A9E4-1B26664B536B}"
+	ProjectSection(ProjectDependencies) = postProject
+		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
+	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "newplayer", "Plugins\Public\newplayer\newplayer.vcxproj", "{48A9CADD-245D-4AE5-B1CE-56F72E3E7042}"
+	ProjectSection(ProjectDependencies) = postProject
+		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

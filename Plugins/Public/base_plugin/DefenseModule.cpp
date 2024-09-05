@@ -665,6 +665,10 @@ bool DefenseModule::SpaceObjDestroyed(uint space_obj)
 
 void DefenseModule::SetReputation(int player_rep, float attitude)
 {
+	if (!base->siege_mode && attitude <= 0.6f)
+	{
+		attitude = 0.0f;
+	}
 	if (space_obj1)
 	{
 		int obj_rep;

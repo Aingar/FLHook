@@ -3,7 +3,7 @@
 PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
 	: basename(the_basename),
 	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0),
-	base_level(1), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
+	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
@@ -15,7 +15,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 	bp.pass = password;
 	bp.admin = true;
 	passwords.emplace_back(bp);
-	ally_tags.emplace_back((const wchar_t*)Players.GetActiveCharacterName(client));
+	ally_names.insert((const wchar_t*)Players.GetActiveCharacterName(client));
 
 	// Setup the base in the current system and at the location 
 	// of the player. Rotate the base so that the docking ports
@@ -37,7 +37,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 
 PlayerBase::PlayerBase(const string &the_path)
 	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0),
-	base_health(0), base_level(0), defense_mode(0), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
+	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
 {
@@ -529,12 +529,23 @@ void PlayerBase::Load()
 					}
 					else if (ini.is_value("defensemode"))
 					{
-						defense_mode = ini.get_value_int(0);
-
-						if (defense_mode == 0)
-						{
-							defense_mode = 1;
-						}
+						defense_mode = (DEFENSE_MODE)ini.get_value_int(0);
+					}
+					else if (ini.is_value("srp_tag"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						srp_tags.emplace_back(tag);
+					}
+					else if (ini.is_value("srp_name"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						srp_names.insert(tag);
+					}
+					else if (ini.is_value("faction_srp_tag"))
+					{
+						srp_factions.insert(ini.get_value_int(0));
 					}
 					else if (ini.is_value("ally_tag"))
 					{
@@ -542,22 +553,27 @@ void PlayerBase::Load()
 						ini_get_wstring(ini, tag);
 						ally_tags.emplace_back(tag);
 					}
-					else if (ini.is_value("hostile_tag"))
+					else if (ini.is_value("ally_name"))
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						// TODO: enable this to load hostile tags hostile_tags[tag] = tag;
-						//Useless as perma hostile tags have been implemented
-					}
-					else if (ini.is_value("perma_hostile_tag"))
-					{
-						wstring tag;
-						ini_get_wstring(ini, tag);
-						perma_hostile_tags.insert(tag);
+						ally_names.insert(tag);
 					}
 					else if (ini.is_value("faction_ally_tag"))
 					{
 						ally_factions.insert(ini.get_value_int(0));
+					}
+					else if (ini.is_value("hostile_tags"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						hostile_names.insert(tag);
+					}
+					else if (ini.is_value("hostile_name"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						hostile_names.insert(tag);
 					}
 					else if (ini.is_value("faction_hostile_tag"))
 					{
@@ -745,9 +761,25 @@ void PlayerBase::Save()
 		}
 
 		fprintf(file, "defensemode = %u\n", defense_mode);
+		for (auto& i : srp_tags)
+		{
+			ini_write_wstring(file, "srp_tag", i);
+		}
+		for (auto i : srp_names)
+		{
+			ini_write_wstring(file, "srp_name", i);
+		}
+		for (auto i : srp_factions)
+		{
+			fprintf(file, "faction_srp_tag = %d\n", i);
+		}
 		for(auto& i : ally_tags)
 		{
 			ini_write_wstring(file, "ally_tag", i);
+		}
+		for (auto i : ally_names)
+		{
+			ini_write_wstring(file, "ally_name", i);
 		}
 		for (auto i : ally_factions)
 		{
@@ -757,9 +789,13 @@ void PlayerBase::Save()
 		{
 			fprintf(file, "faction_hostile_tag = %d\n", i);
 		}
-		for(auto i : perma_hostile_tags)
+		for(auto i : hostile_names)
 		{
 			ini_write_wstring(file, "perma_hostile_tag", i);
+		}
+		for (auto i : hostile_names)
+		{
+			ini_write_wstring(file, "hostile_name", i);
 		}
 		foreach(passwords, BasePassword, i)
 		{
@@ -872,81 +908,138 @@ uint PlayerBase::HasMarketItem(uint good)
 	return 0;
 }
 
-
-float PlayerBase::GetAttitudeTowardsClient(uint client, bool emulated_siege_mode)
+bool PlayerBase::IsOnSRPList(const wstring& charname, uint affiliation)
 {
-	// By default all bases are hostile to everybody.
-	float attitude = -1.0;
-	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-
-	// Make base hostile if player is on the perma hostile list. First check so it overrides everything.
-	if (siege_mode || emulated_siege_mode)
-		for (auto& i : perma_hostile_tags)
+	if (srp_factions.count(affiliation))
+	{
+		return true;
+	}
+	if (srp_names.count(charname))
+	{
+		return true;
+	}
+	for (auto& i : srp_tags)
+	{
+		if (i.find(charname) == 0)
 		{
-			if (charname.find(i) == 0)
-			{
-				return -1.0;
-			}
+			return true;
 		}
+	}
 
-	// Make base friendly if player is on the friendly list.
+	return false;
+}
+
+bool PlayerBase::IsOnAllyList(const wstring& charname, uint affiliation)
+{
+	if (ally_factions.count(affiliation))
+	{
+		return true;
+	}
+	if (ally_names.count(charname))
+	{
+		return true;
+	}
 	for (auto& i : ally_tags)
 	{
-		if (charname.find(i) == 0)
+		if (i.find(charname) == 0)
 		{
-			return 1.0;
+			return true;
 		}
 	}
 
-	// Make base hostile if player is on the hostile list.
-	if (!emulated_siege_mode && hostile_tags.find(charname) != hostile_tags.end())
+	return false;
+}
+
+bool PlayerBase::IsOnHostileList(const wstring& charname, uint affiliation)
+{
+	if (hostile_factions.count(affiliation))
 	{
-		return -1.0;
+		return true;
+	}
+	if (hostile_names.count(charname))
+	{
+		return true;
+	}
+	for (auto& i : hostile_names)
+	{
+		if (i.find(charname) == 0)
+		{
+			return true;
+		}
 	}
 
+	return false;
+}
+
+float PlayerBase::GetAttitudeTowardsClient(uint client)
+{
+	// By default all bases are hostile to everybody.
+	float attitude = 1.0f;
+
+	// If an affiliation is defined then use the player's attitude.
+	if (affiliation)
+	{
+		int rep = Players[client].iReputation;
+		pub::Reputation::GetGroupFeelingsTowards(rep, affiliation, attitude);
+	}
+
+	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 	uint playeraff = GetAffliationFromClient(client);
-	// Make base hostile if player is on the hostile faction list.
-	if ((siege_mode || emulated_siege_mode) && hostile_factions.find(playeraff) != hostile_factions.end())
-	{
-		return -1.0;
-	}
 
-	// Make base friendly if player is on the friendly faction list.
-	if (ally_factions.find(playeraff) != ally_factions.end())
+	if (attitude <= -0.6f)
 	{
-		return 1.0;
-	}
-
-	// if defense mode 3, at this point if player doesn't match any criteria, give him fireworks
-	if ((siege_mode || emulated_siege_mode) && defense_mode == 3)
-	{
-		return -1.0;
-	}
-
-	// at this point, we've ran all the checks, so we can do the IFF stuff.
-	if (defense_mode == 1 || defense_mode == 2)
-	{
-		// If an affiliation is defined then use the player's attitude.
-		if (affiliation)
+		if (defense_mode == DEFENSE_MODE::IFF && IsOnSRPList(charname, playeraff))
 		{
-			int rep;
-			pub::Player::GetRep(client, rep);
-			pub::Reputation::GetGroupFeelingsTowards(rep, affiliation, attitude);
-
-			// if in siege mode, return true affiliation, otherwise clamp to minimum neutralNoDock rep
-			if (siege_mode || emulated_siege_mode)
-			{
-				return attitude;
-			}
-			else
-			{
-				return max(-0.59f, attitude);
-			}
+			return 1.0f;
 		}
+		return -1.0f;
+	}
+
+	if (siege_mode && temp_hostile_names.count(charname))
+	{
+		return -1.0f;
+	}
+
+	if (defense_mode == DEFENSE_MODE::IFF)
+	{
+		if (attitude <= -0.55f)
+		{
+			return -0.59f;
+		}
+		if (IsOnHostileList(charname, playeraff))
+		{
+			if (siege_mode)
+			{
+				return -1.0f;
+			}
+			return -0.59f;
+		}
+
+		return 1.0f;
+	}
+
+	float no_access_rep = -1.0f;
+	if (defense_mode == DEFENSE_MODE::NODOCK_NEUTRAL)
+	{
+		no_access_rep = -0.59f;
+	}
+
+	if (IsOnHostileList(charname, playeraff))
+	{
+		if (siege_mode)
+		{
+			return -1.0f;
+		}
+		return no_access_rep;
+	}
+
+	if (IsOnAllyList(charname, playeraff))
+	{
+		return 1.0f;
 	}
 
 	// if a player has no standing at all, be neutral otherwise newbies all get shot
-	return 0.0;
+	return no_access_rep;
 }
 
 // For all players in the base's system, resync their reps towards all objects
@@ -1029,9 +1122,9 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	}
 	const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 
-	if (!hostile_tags.count(charname))
+	if (!temp_hostile_names.count(charname))
 	{
-		hostile_tags.insert(charname);
+		temp_hostile_names.insert(charname);
 		ReportAttack(this->basename, charname, this->system);
 	}
 

@@ -127,6 +127,8 @@ uint set_tick_time = 16;
 // How much damage do we heal per repair cycle?
 uint repair_per_repair_cycle = 60000;
 
+uint base_access_entry_limit = 20;
+
 
 // set of configurable variables defining the diminishing returns on damage during POB siege
 // POB starts at base_shield_strength, then every 'threshold' of damage taken, 
@@ -1504,98 +1506,16 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseSetMasterPwd(client, args);
 		return true;
 	}
-	else if (args.find(L"/base addtag") == 0)
+	else if (args.find(L"/access") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseRmHostileTag(client, args, false);
-		PlayerCommands::BaseAddAllyTag(client, args);
-		return true;
-	}
-	else if (args.find(L"/base rmtag") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseRmAllyTag(client, args);
-		return true;
-	}
-	else if (args.find(L"/base lsttag") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseLstAllyTag(client, args);
-		return true;
-	}
-	else if (args.find(L"/base addfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseAddAllyFac(client, args);
-		return true;
-	}
-	else if (args.find(L"/base rmfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseRmAllyFac(client, args);
-		return true;
-	}
-	else if (args.find(L"/base clearfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseClearAllyFac(client, args);
-		return true;
-	}
-	else if (args.find(L"/base lstfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseLstAllyFac(client, args);
-		return true;
-	}
-	else if (args.find(L"/base addhfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseAddAllyFac(client, args, true);
-		return true;
-	}
-	else if (args.find(L"/base rmhfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseRmAllyFac(client, args, true);
-		return true;
-	}
-	else if (args.find(L"/base clearhfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseClearAllyFac(client, args, true);
-		return true;
-	}
-	else if (args.find(L"/base lsthfac") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseLstAllyFac(client, args, true);
+		PlayerCommands::BaseAccess(client, args);
 		return true;
 	}
 	else if (args.find(L"/base myfac") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseViewMyFac(client, args);
-		return true;
-	}
-	else if (args.find(L"/base addhostile") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PrintUserCmdText(client, L"Checking if ship/tag exist in whitelist...");
-		PlayerCommands::BaseRmAllyTag(client, args);
-		PrintUserCmdText(client, L"Proceeding...");
-		PlayerCommands::BaseAddHostileTag(client, args);
-		return true;
-	}
-	else if (args.find(L"/base rmhostile") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseRmHostileTag(client, args);
-		return true;
-	}
-	else if (args.find(L"/base lsthostile") == 0)
-	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		PlayerCommands::BaseLstHostileTag(client, args);
 		return true;
 	}
 	else if (args.find(L"/base rep") == 0)
@@ -1719,46 +1639,8 @@ static void ForcePlayerBaseDock(uint client, PlayerBase *base)
 
 static bool IsDockingAllowed(PlayerBase *base, uint client)
 {
-	// Allies can always dock.
-	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-	for (list<wstring>::iterator i = base->ally_tags.begin(); i != base->ally_tags.end(); ++i)
-	{
-		if (charname.find(*i) == 0)
-		{
-			return true;
-		}
-	}
-
-	//Hostile listed can't dock even if they are friendly faction listed
-	for (auto& i : base->perma_hostile_tags)
-	{
-		if (charname.find(i) == 0)
-		{
-			return false;
-		}
-	}
-
-	uint playeraff = GetAffliationFromClient(client);
-	//Do not allow dock if player is on the hostile faction list.
-	if (base->hostile_factions.find(playeraff) != base->hostile_factions.end())
-	{
-		return false;
-	}
-
-	//Allow dock if player is on the friendly faction list.
-	if (base->ally_factions.find(playeraff) != base->ally_factions.end())
-	{
-		return true;
-	}
-
 	// Base allows neutral ships to dock
-	if (base->defense_mode == 2 && base->GetAttitudeTowardsClient(client) > -0.55f)
-	{
-		return true;
-	}
-
-	// Base allows neutral ships to dock
-	if (base->defense_mode == 4)
+	if (base->GetAttitudeTowardsClient(client) > -0.55f)
 	{
 		return true;
 	}
@@ -3021,7 +2903,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->basetype = "legacy";
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
-		newbase->defense_mode = 1;
+		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		newbase->isCrewSupplied = true;
 
 		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
@@ -3132,7 +3014,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->basetype = wstos(type);
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
-		newbase->defense_mode = 4;
+		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;;
 		newbase->base_health = 10000000000;
 
 		newbase->destObject = CreateID(wstos(destobject).c_str());
@@ -3235,7 +3117,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->basetype = wstos(type);
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
-		newbase->defense_mode = 2;
+		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->base_health = 10000000000;
 		newbase->isCrewSupplied = true;
 

@@ -77,7 +77,7 @@ void ExportData::ToHTML()
 
 			// the new fields begin here
 			fprintf(file, "<td class=\"column0\">%d</td>", base->base_level);
-			fprintf(file, "<td class=\"column0\">%d</td>", base->defense_mode);
+			fprintf(file, "<td class=\"column0\">%d</td>", (int)base->defense_mode);
 
 			const Universe::ISystem* iSys = Universe::get_system(base->system);
 			wstring wscSysName = HkGetWStringFromIDS(iSys->strid_name);
@@ -94,7 +94,7 @@ void ExportData::ToHTML()
 			fprintf(file, "<td class=\"column0\">%s</td>", thewhitelist.c_str());
 
 			string theblacklist;
-			for (auto& i : base->perma_hostile_tags)
+			for (auto& i : base->hostile_names)
 			{
 				theblacklist.append(wstos(i).c_str());
 				theblacklist.append("\n");
@@ -207,7 +207,7 @@ void ExportData::ToJSON()
 		pw.write("level", base->base_level);
 		pw.write("money", base->money);
 		pw.write("health", 100 * (base->base_health / base->max_base_health));
-		pw.write("defensemode", base->defense_mode);
+		pw.write("defensemode", (int)base->defense_mode);
 		pw.write("shieldstate", base->isShieldOn);
 		pw.close();
 

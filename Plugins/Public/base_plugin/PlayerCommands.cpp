@@ -27,11 +27,8 @@ L"<TEXT>Login as base administrator. The following commands are only available i
 L"<TRA bold=\"true\"/><TEXT>/base addpwd [password] [viewshop], /base rmpwd [password], /base lstpwd</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Add, remove and list administrator passwords for the base. Add 'viewshop' to addpwd to only allow the password to view the shop.</TEXT><PARA/><PARA/>"
 
-L"<TRA bold=\"true\"/><TEXT>/base addtag [tag], /base rmtag [tag], /base lsttag</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Add, remove and list ally tags for the base.</TEXT><PARA/><PARA/>"
-
-L"<TRA bold=\"true\"/><TEXT>/base addhostile [tag], /base rmhostile [tag], /base lsthostile</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Add, remove and list blacklisted tags for the base. They will be shot on sight so use complete tags like =LSF= or IMG| or a shipname like Crunchy_Salad.</TEXT><PARA/><PARA/>"
+L"<TRA bold=\"true\"/><TEXT>/access</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Add, remove and list whitelisted/blacklisted tags, ships and factions for the base.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base setmasterpwd [old password] [new password]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Set the master password for the base.</TEXT><PARA/><PARA/>"
@@ -65,15 +62,11 @@ L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items sho
 
 L"<TRA bold=\"true\"/><TEXT>/base defensemode</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control the defense mode for the base.</TEXT><PARA/>"
-L"<TEXT>Defense Mode 1 - Logic: Blacklist > Whitelist > Faction Whitelist > IFF Standing.</TEXT><PARA/>"
-L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
-L"<TEXT>Defense Mode 2 - Logic: Blacklist > Whitelist > Faction Whitelist > IFF Standing.</TEXT><PARA/>"
+L"<TEXT>Defense Mode 1 - Logic: SRP Whitelist > Blacklist > IFF Standing.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Anyone with good standing.</TEXT><PARA/><PARA/>"
-L"<TEXT>Defense Mode 3 - Logic: Blacklist > Whitelist > Faction Whitelist > Hostile</TEXT><PARA/>"
+L"<TEXT>Defense Mode 2 - Logic: Whitelist > No Dock.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
-L"<TEXT>Defense Mode 4 - Logic: Blacklist > Whitelist > Faction Whitelist > Neutral</TEXT><PARA/>"
-L"<TEXT>Docking Rights: Anyone with good standing.</TEXT><PARA/><PARA/>"
-L"<TEXT>Defense Mode 5 - Logic: Blacklist > Whitelist > Faction Whitelist > Neutral</TEXT><PARA/>"
+L"<TEXT>Defense Mode 3 - Logic: Whitelist > Hostile.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base info</TEXT><TRA bold=\"false\"/><PARA/>"
@@ -476,191 +469,6 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"OK");
 	}
 
-	void BaseAddAllyTag(uint client, const wstring& args)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		wstring tag = GetParam(args, ' ', 2);
-		if (!tag.length())
-		{
-			PrintUserCmdText(client, L"ERR No tag");
-			return;
-		}
-
-		if (find(base->ally_tags.begin(), base->ally_tags.end(), tag) != base->ally_tags.end())
-		{
-			PrintUserCmdText(client, L"ERR Tag already exists");
-			return;
-		}
-
-		base->ally_tags.emplace_back(tag);
-
-		// Logging
-		wstring thecharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		wstring wscMsg = L": \"%sender\" added \"%victim\" to whitelist of base \"%base\"";
-		wscMsg = ReplaceStr(wscMsg, L"%sender", thecharname.c_str());
-		wscMsg = ReplaceStr(wscMsg, L"%victim", tag);
-		wscMsg = ReplaceStr(wscMsg, L"%base", base->basename);
-		string scText = wstos(wscMsg);
-		BaseLogging("%s", scText.c_str());
-
-		base->Save();
-		PrintUserCmdText(client, L"OK");
-	}
-
-
-	void BaseRmAllyTag(uint client, const wstring& args)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		wstring tag = GetParam(args, ' ', 2);
-		if (!tag.length())
-		{
-			PrintUserCmdText(client, L"ERR No tag");
-		}
-
-		if (find(base->ally_tags.begin(), base->ally_tags.end(), tag) == base->ally_tags.end())
-		{
-			PrintUserCmdText(client, L"ERR Tag does not exist");
-			return;
-		}
-
-		base->ally_tags.remove(tag);
-
-		// Logging
-		wstring thecharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		wstring wscMsg = L": \"%sender\" removed \"%victim\" from whitelist of base \"%base\"";
-		wscMsg = ReplaceStr(wscMsg, L"%sender", thecharname.c_str());
-		wscMsg = ReplaceStr(wscMsg, L"%victim", tag);
-		wscMsg = ReplaceStr(wscMsg, L"%base", base->basename);
-		string scText = wstos(wscMsg);
-		BaseLogging("%s", scText.c_str());
-
-		base->Save();
-		PrintUserCmdText(client, L"OK");
-	}
-
-	void BaseLstAllyTag(uint client, const wstring& cmd)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		for(auto& i : base->ally_tags)
-		{
-			PrintUserCmdText(client, L"%s", i.c_str());
-		}
-		PrintUserCmdText(client, L"OK");
-	}
-
-	void BaseAddAllyFac(uint client, const wstring& args, bool HostileFactionMod)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		unordered_set<uint>* list;
-		if (!HostileFactionMod) list = &(base->ally_factions);
-		else list = &(base->hostile_factions);
-
-		int tag = 0;
-		try
-		{
-			tag = std::stoi(GetParam(args, ' ', 2));
-		}
-		catch (exception)
-		{
-			PrintUserCmdText(client, L"ERR No tag");
-			return;
-		}
-
-		if ((*list).find(tag) != (*list).end())
-		{
-			PrintUserCmdText(client, L"ERR Tag already exists");
-			return;
-		}
-
-		wstring theaffiliation = HkGetWStringFromIDS(Reputation::get_name(tag)).c_str();
-		if (theaffiliation == L"Object Unknown")
-		{
-			PrintUserCmdText(client, L"ERR Undefined faction");
-			return;
-		}
-		(*list).insert(tag);
-
-		base->Save();
-		PrintUserCmdText(client, L"OK");
-	}
-
-	void BaseClearAllyFac(uint client, const wstring& args, bool HostileFactionMod)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		unordered_set<uint>* list;
-		if (!HostileFactionMod) list = &(base->ally_factions);
-		else list = &(base->hostile_factions);
-
-		(*list).clear();
-		base->Save();
-		PrintUserCmdText(client, L"OK");
-	}
-
-	void BaseRmAllyFac(uint client, const wstring& args, bool HostileFactionMod)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		unordered_set<uint>* list;
-		if (!HostileFactionMod) list = &(base->ally_factions);
-		else list = &(base->hostile_factions);
-
-		uint tag = 0;
-		try
-		{
-			tag = std::stoi(GetParam(args, ' ', 2));
-		}
-		catch (exception)
-		{
-			PrintUserCmdText(client, L"ERR No tag");
-			return;
-		}
-
-		if ((*list).find(tag) == (*list).end())
-		{
-			PrintUserCmdText(client, L"ERR Tag does not exist");
-			return;
-		}
-
-		(*list).erase(tag);
-		base->Save();
-		PrintUserCmdText(client, L"OK");
-	}
-
 	class Affiliations
 	{
 		class AffCell
@@ -763,12 +571,22 @@ namespace PlayerCommands
 			LoadAffList();
 		}
 
+		AffCell* GetAffiliation(uint affId)
+		{
+			auto found = std::find_if(AffList.begin(), AffList.end(), std::bind(IDComparision, std::placeholders::_1, affId));
+			if (found != AffList.end())
+			{
+				return &*found;
+			}
+			return nullptr;
+		}
+
 		void FindAndPrintOneAffiliation(uint client, uint AffiliationID)
 		{
 			std::list<Affiliations::AffCell>::iterator found;
 			found = std::find_if(AffList.begin(), AffList.end(), std::bind(IDComparision, std::placeholders::_1, AffiliationID));
 			if (found != AffList.end())
-				PrintUserCmdText(client, L"IFF ID: %u, %s, %s", found->id, (found->nickname).c_str(), (found->factionname).c_str());
+				PrintUserCmdText(client, L"IFF ID: %s, %s", (found->nickname).c_str(), (found->factionname).c_str());
 			else
 				PrintUserCmdText(client, L"IFF ID: %u, Unknown, Unknown", AffiliationID);
 		}
@@ -776,43 +594,28 @@ namespace PlayerCommands
 		{
 			for (list<Affiliations::AffCell>::iterator iter = AffList.begin(); iter != AffList.end(); iter++)
 			{
-				PrintUserCmdText(client, L"IFF ID: %d, %s, %s", iter->id, (iter->nickname).c_str(), (iter->factionname).c_str());
+				PrintUserCmdText(client, L"IFF ID: %s, %s", (iter->nickname).c_str(), (iter->factionname).c_str());
 			}
 		}
 	};
 	Affiliations A;
 	void Aff_initer() { A.Init(); };
 
-	void BaseLstAllyFac(uint client, const wstring& cmd, bool HostileFactionMod)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		unordered_set<uint>* list;
-		if (!HostileFactionMod) list = &(base->ally_factions);
-		else list = &(base->hostile_factions);
-
-		for (auto it : *list)
-		{
-			A.FindAndPrintOneAffiliation(client, it);
-		}
-		PrintUserCmdText(client, L"OK");
-	}
 	void BaseViewMyFac(uint client, const wstring& cmd)
 	{
 		const wstring& secondword = GetParam(cmd, ' ', 1);
 
 		A.PrintAll(client);
 
-		int aff = GetAffliationFromClient(client);
-		wstring theaffiliation = HkGetWStringFromIDS(Reputation::get_name(aff)).c_str();
-		if (theaffiliation == L"Object Unknown")
-			theaffiliation = L"Unknown Reputation";
-		PrintUserCmdText(client, L"Ship IFF ID: %d, %s", aff, theaffiliation.c_str());
+		uint aff = GetAffliationFromClient(client);
+		auto playerAff = A.GetAffiliation(aff);
+		if (!playerAff)
+		{
+			PrintUserCmdText(client, L"Ship IFF ID: None");
+			return;
+		}
+
+		PrintUserCmdText(client, L"Ship IFF ID: %s, %s", playerAff->factionname.c_str(), playerAff->nickname.c_str());
 	}
 
 	void BaseRep(uint client, const wstring& args)
@@ -879,88 +682,368 @@ namespace PlayerCommands
 		}
 	}
 
-	void BaseAddHostileTag(uint client, const wstring& args)
+	void PrintAccesses(PlayerBase* base, uint client, const wstring& type)
 	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
+		unordered_set<wstring>* nameSet = nullptr;
+		unordered_set<uint>* factionSet = nullptr;
+		list<wstring>* tagList = nullptr;
+		
+		if (type == L"srp")
 		{
+			nameSet = &base->srp_names;
+			factionSet = &base->srp_factions;
+			tagList = &base->srp_tags;
+		}
+		else if (type == L"blacklist")
+		{
+			nameSet = &base->hostile_names;
+			factionSet = &base->hostile_factions;
+			tagList = &base->hostile_tags;
+		}
+		else if (type == L"whitelist")
+		{
+			nameSet = &base->ally_names;
+			factionSet = &base->ally_factions;
+			tagList = &base->ally_tags;
+		}
+		else
+		{
+			PrintUserCmdText(client, L"ERR incorrect parameter!");
+			PrintUserCmdText(client, L"usage: /access list <srp|whitelist|blacklist>");
 			return;
 		}
 
-		wstring tag = GetParam(args, ' ', 2);
-		if (!tag.length())
+		PrintUserCmdText(client, L"%ls entries:", type.c_str());
+		PrintUserCmdText(client, L"Names:");
+		if (nameSet->empty())
 		{
-			PrintUserCmdText(client, L"ERR No tag");
-			return;
+			PrintUserCmdText(client, L"None!");
 		}
-
-		if (find(base->perma_hostile_tags.begin(), base->perma_hostile_tags.end(), tag) != base->perma_hostile_tags.end())
+		else
 		{
-			PrintUserCmdText(client, L"ERR Tag already exists");
-			return;
-		}
-
-
-		base->perma_hostile_tags.insert(tag);
-
-		// Logging
-		wstring thecharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		wstring wscMsg = L": \"%sender\" added \"%victim\" to blacklist of base \"%base\"";
-		wscMsg = ReplaceStr(wscMsg, L"%sender", thecharname.c_str());
-		wscMsg = ReplaceStr(wscMsg, L"%victim", tag);
-		wscMsg = ReplaceStr(wscMsg, L"%base", base->basename);
-		string scText = wstos(wscMsg);
-		BaseLogging("%s", scText.c_str());
-
-		base->Save();
-
-		PrintUserCmdText(client, L"OK");
-	}
-
-
-	void BaseRmHostileTag(uint client, const wstring& args, bool printError)
-	{
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
-
-		wstring tag = GetParam(args, ' ', 2);
-		if (!tag.length())
-		{
-			PrintUserCmdText(client, L"ERR No tag");
-		}
-
-		if (!base->perma_hostile_tags.count(tag))
-		{
-			if (printError)
+			for (auto& name : *nameSet)
 			{
-				PrintUserCmdText(client, L"ERR Tag does not exist");
+				PrintUserCmdText(client, L"- %ls", name.c_str());
 			}
-			return;
 		}
 
-		base->perma_hostile_tags.erase(tag);
+		PrintUserCmdText(client, L"Tags:");
+		if (tagList->empty())
+		{
+			PrintUserCmdText(client, L"None!");
+		}
+		else
+		{
+			for (auto& tag : *tagList)
+			{
+				PrintUserCmdText(client, L"- %ls", tag.c_str());
+			}
+		}
 
-		// Logging
-		wstring thecharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		wstring wscMsg = L": \"%sender\" removed \"%victim\" from blacklist of base \"%base\"";
-		wscMsg = ReplaceStr(wscMsg, L"%sender", thecharname.c_str());
-		wscMsg = ReplaceStr(wscMsg, L"%victim", tag);
-		wscMsg = ReplaceStr(wscMsg, L"%base", base->basename);
-		string scText = wstos(wscMsg);
-		BaseLogging("%s", scText.c_str());
-
-
-		base->Save();
-
-		PrintUserCmdText(client, L"Tag removed from blacklist");
+		PrintUserCmdText(client, L"Factions:");
+		if (factionSet->empty())
+		{
+			PrintUserCmdText(client, L"None!");
+		}
+		else
+		{
+			for (auto& faction : *factionSet)
+			{
+				auto factionData = A.GetAffiliation(faction);
+				if (factionData)
+				{
+					PrintUserCmdText(client, L"- %ls (%ls)", factionData->factionname.c_str(), factionData->nickname.c_str());
+				}
+			}
+		}
 	}
 
-	void BaseLstHostileTag(uint client, const wstring& cmd)
+	void AddTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
+	{
+		if (find(tagList.begin(), tagList.end(), newEntry) != tagList.end())
+		{
+			PrintUserCmdText(client, L"Tag already exists");
+			return;
+		}
+		PrintUserCmdText(client, L"OK!");
+		tagList.push_back(newEntry);
+	}
+
+	void RemoveTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
+	{
+		if (find(tagList.begin(), tagList.end(), newEntry) == tagList.end())
+		{
+			PrintUserCmdText(client, L"ERR No such tag!");
+			return;
+		}
+		PrintUserCmdText(client, L"OK!");
+		tagList.remove(newEntry);
+	}
+
+	void AddAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
+	{
+		if (entryType == L"tag")
+		{
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+
+				base->hostile_tags.remove(entry);
+				AddTagEntry(client, base->srp_tags, entry);
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				if (base->hostile_tags.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->hostile_tags.size());
+					return;
+				}
+				base->ally_tags.remove(entry);
+				AddTagEntry(client, base->hostile_tags, entry);
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				if (base->ally_tags.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->ally_tags.size());
+					return;
+				}
+				base->hostile_tags.remove(entry);
+				AddTagEntry(client, base->ally_tags, entry);
+				return;
+			}
+		}
+		else if (entryType == L"name")
+		{
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+				base->hostile_names.erase(entry);
+				base->srp_names.insert(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				if (base->hostile_names.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->hostile_names.size());
+					return;
+				}
+				base->ally_names.erase(entry);
+				base->hostile_names.insert(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				if (base->ally_names.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->ally_names.size());
+					return;
+				}
+				base->hostile_names.erase(entry);
+				base->ally_names.insert(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+		}
+		else if (entryType == L"faction")
+		{
+			uint entryId = MakeId(wstos(entry).c_str());
+			if (!A.GetAffiliation(entryId))
+			{
+				PrintUserCmdText(client, L"ERR invalid faction nickname!");
+				return;
+			}
+
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+				base->hostile_factions.erase(entryId);
+				base->srp_factions.insert(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				if (base->hostile_factions.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->hostile_factions.size());
+					return;
+				}
+				base->ally_factions.erase(entryId);
+				base->hostile_factions.insert(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				if (base->ally_factions.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->ally_factions.size());
+					return;
+				}
+				base->hostile_factions.erase(entryId);
+				base->ally_factions.insert(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+		}
+
+		PrintUserCmdText(client, L"ERR incorrect parameters!");
+		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+
+	}
+
+	void RemoveAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
+	{
+		if (entryType == L"tag")
+		{
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+
+				RemoveTagEntry(client, base->srp_tags, entry);
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				RemoveTagEntry(client, base->hostile_tags, entry);
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				RemoveTagEntry(client, base->ally_tags, entry);
+				return;
+			}
+		}
+		else if (entryType == L"name")
+		{
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+				if (!base->srp_names.count(entry))
+				{
+					PrintUserCmdText(client, L"ERR No such name!");
+					return;
+				}
+				base->srp_names.erase(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				if (!base->hostile_names.count(entry))
+				{
+					PrintUserCmdText(client, L"ERR No such name!");
+					return;
+				}
+				base->hostile_names.erase(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				if (!base->ally_names.count(entry))
+				{
+					PrintUserCmdText(client, L"ERR No such name!");
+					return;
+				}
+				base->ally_names.erase(entry);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+		}
+		else if (entryType == L"faction")
+		{
+			uint entryId = MakeId(wstos(entry).c_str());
+			if (!A.GetAffiliation(entryId))
+			{
+				PrintUserCmdText(client, L"ERR invalid faction nickname!");
+				return;
+			}
+
+			if (type == L"srp")
+			{
+				wstring rights;
+				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
+				{
+					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
+					return;
+				}
+				if (!base->srp_factions.count(entryId))
+				{
+					PrintUserCmdText(client, L"ERR No such faction!");
+					return;
+				}
+				base->srp_factions.erase(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"blacklist")
+			{
+				if (!base->hostile_factions.count(entryId))
+				{
+					PrintUserCmdText(client, L"ERR No such faction!");
+					return;
+				}
+				base->hostile_factions.erase(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+			else if (type == L"whitelist")
+			{
+				if (!base->ally_factions.count(entryId))
+				{
+					PrintUserCmdText(client, L"ERR No such faction!");
+					return;
+				}
+				base->ally_factions.erase(entryId);
+				PrintUserCmdText(client, L"OK!");
+				return;
+			}
+		}
+
+		PrintUserCmdText(client, L"ERR incorrect parameters!");
+		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+
+	}
+
+	void BaseAccess(uint client, const wstring& params)
 	{
 		PlayerBase* base = GetPlayerBaseForClient(client);
 
@@ -969,9 +1052,32 @@ namespace PlayerCommands
 			return;
 		}
 
-		for(auto& hostileTag : base->perma_hostile_tags)
-			PrintUserCmdText(client, L"%s", hostileTag.c_str());
-		PrintUserCmdText(client, L"OK");
+		wstring cmd = ToLower(GetParam(params, ' ', 1));
+		wstring param1 = ToLower(GetParam(params, ' ', 2));
+		wstring param2 = ToLower(GetParam(params, ' ', 3));
+		wstring param3 = ToLower(GetParam(params, ' ', 4));
+
+		if (cmd == L"list")
+		{
+			PrintAccesses(base, client, param1);
+			return;
+		}
+		
+		if (cmd == L"add")
+		{
+			AddAccess(base, client, param1, param2, param3);
+			return;
+		}
+		
+		if (cmd == L"remove")
+		{
+			RemoveAccess(base, client, param1, param2, param3);
+			return;
+		}
+
+		PrintUserCmdText(client, L"ERR Invalid parameters");
+		PrintUserCmdText(client, L"usage: /access <list|add|remove>");
+		return;
 	}
 
 	void BaseInfo(uint client, const wstring& args)
@@ -1049,32 +1155,22 @@ namespace PlayerCommands
 		wstring wscMode = GetParam(args, ' ', 2);
 		if (wscMode == L"1")
 		{
-			base->defense_mode = 1;
+			base->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		}
 		else if (wscMode == L"2")
 		{
-			base->defense_mode = 2;
+			base->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		}
 		else if (wscMode == L"3")
 		{
-			base->defense_mode = 3;
-		}
-		else if (wscMode == L"4")
-		{
-			base->defense_mode = 4;
-		}
-		else if (wscMode == L"5")
-		{
-			base->defense_mode = 5;
+			base->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE;
 		}
 		else
 		{
 			PrintUserCmdText(client, L"/base defensemode <mode>");
-			PrintUserCmdText(client, L"|  <mode> = 1 - Logic: Blacklist > Whitelist > Faction Whitelist > IFF Standing. | Docking Rights: Whitelisted ships only.");
-			PrintUserCmdText(client, L"|  <mode> = 2 - Logic: Blacklist > Whitelist > Faction Whitelist > IFF Standing. | Docking Rights: Anyone with good standing.");
-			PrintUserCmdText(client, L"|  <mode> = 3 - Logic: Blacklist > Whitelist > Faction Whitelist > Hostile       | Docking Rights: Whitelisted ships only.");
-			PrintUserCmdText(client, L"|  <mode> = 4 - Logic: Blacklist > Whitelist > Faction Whitelist > Neutral       | Docking Rights: Anyone with good standing.");
-			PrintUserCmdText(client, L"|  <mode> = 5 - Logic: Blacklist > Whitelist > Faction Whitelist > Neutral       | Docking Rights: Whitelisted ships only.");
+			PrintUserCmdText(client, L"|  <mode> = 1 - Logic: SRP Whitelist > Blacklist > IFF Standing. | Docking Rights: Anyone with good standing.");
+			PrintUserCmdText(client, L"|  <mode> = 2 - Logic: Whitelist > No Dock. | Docking Rights: Whitelisted ships only.");
+			PrintUserCmdText(client, L"|  <mode> = 3 - Logic: Whitelist > Hostile. | Docking Rights: Whitelisted ships only.");
 			PrintUserCmdText(client, L"defensemode = %u", base->defense_mode);
 			return;
 		}
@@ -2693,7 +2789,7 @@ namespace PlayerCommands
 		newbase->basetype = "legacy";
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
-		newbase->defense_mode = 1;
+		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->isCrewSupplied = true;
 
 		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;

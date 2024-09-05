@@ -355,16 +355,16 @@ void ClearLists(const wstring& dockedShipName)
 	uint carrierId = HkGetClientIdFromCharname(carrierName);
 	uint dockedClientID = HkGetClientIdFromCharname(dockedShipName);
 
-	if (carrierId != -1)
-	{
-		mobiledockClients[carrierId].iDockingModulesAvailable++;
-	}
 	//clear the carrier list info
 	auto& carrierDockList = nameToCarrierInfoMap[carrierName].dockedShipList;
 	for (auto& dockIter = carrierDockList.begin(); dockIter != carrierDockList.end(); dockIter++)
 	{
 		if (*dockIter == dockedShipName)
 		{
+			if (carrierId != -1)
+			{
+				mobiledockClients[carrierId].iDockingModulesAvailable++;
+			}
 			carrierDockList.erase(dockIter);
 			break;
 		}
@@ -382,7 +382,8 @@ void ClearLists(const wstring& dockedShipName)
 
 JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLaunch)
 {
-	if (!nameToDockedInfoMap.count(dockedShipName))
+	auto dockedInfo = nameToDockedInfoMap.find(dockedShipName);
+	if (dockedInfo == nameToDockedInfoMap.end())
 	{
 		return InvalidName;
 	}
@@ -392,21 +393,13 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	{
 		//player offline, edit their character file to put them on last docked solar
 		MoveOfflineShipToLastDockedSolar(dockedShipName);
-		nameToDockedInfoMap.erase(dockedShipName);
+		nameToDockedInfoMap.erase(dockedInfo);
 		return OfflineSuccess;
 	}
-	wstring& carrierName = nameToDockedInfoMap[dockedShipName].carrierName;
-	uint ship;
-	pub::Player::GetShip(dockedClientID, ship);
-	if (ship)
+	wstring& carrierName = dockedInfo->second.carrierName;
+	if (Players[dockedClientID].iShipID)
 	{
-		if (!idToDockedInfoMap.count(dockedClientID))
-		{
-			AddLog("MobileDockError#1, %u %s\n", dockedClientID, dockedShipName.c_str());
-			PrintUserCmdText(dockedClientID, L"MobileDockError#1, contact Aingar and/or Staff\n");
-			return InvalidName;
-		}
-		Players[dockedClientID].iLastBaseID = idToDockedInfoMap.at(dockedClientID)->lastDockedSolar;
+		Players[dockedClientID].iLastBaseID = dockedInfo->second.lastDockedSolar;
 		wstring newBaseInfo = GetLastBaseName(dockedClientID);
 		uint carrierId = HkGetClientIdFromCharname(carrierName);
 		PrintUserCmdText(dockedClientID, L"Your carrier docking slot has been released. Next respawn on %ls", newBaseInfo.c_str());
@@ -416,7 +409,7 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	//Force launch the ship into space if it's on the carrier.
 	else if (forcedLaunch)
 	{
-		idToDockedInfoMap[dockedClientID]->jettisoned = true;
+		dockedInfo->second.jettisoned = true;
 
 		wstring newBaseInfo = GetLastBaseName(dockedClientID);
 		PrintUserCmdText(dockedClientID, L"You've been forcefully jettisoned by the carrier.");

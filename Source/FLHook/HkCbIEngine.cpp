@@ -600,7 +600,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 
-	int __cdecl Dock_Call(unsigned int const &uShipID, unsigned int const &uSpaceID, int iDockPort, enum DOCK_HOST_RESPONSE dockResponse)
+	int __cdecl Dock_Call(unsigned int const &uShipID, unsigned int const &uSpaceID, int iDockPort, DOCK_HOST_RESPONSE dockResponse)
 	{
 
 		//	iDockPort == -1, dockResponse -> 2 --> Dock Denied!
@@ -613,7 +613,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 
 		int returnValue;
 
-		CALL_PLUGINS(PLUGIN_HkCb_Dock_Call, int, , (unsigned int const &, unsigned int const &, int&, DOCK_HOST_RESPONSE&), (uShipID, uSpaceID, iDockPort, dockResponse));
+		CALL_PLUGINS(PLUGIN_HkCb_Dock_Call, int, __cdecl, (unsigned int const &, unsigned int const &, int&, DOCK_HOST_RESPONSE&), (uShipID, uSpaceID, iDockPort, dockResponse));
 
 		LOG_CORE_TIMER_START
 		TRY_HOOK {
@@ -621,7 +621,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		} CATCH_HOOK({})
 		LOG_CORE_TIMER_END
 
-		CALL_PLUGINS(PLUGIN_HkCb_Dock_Call_AFTER, int, , (unsigned int const &, unsigned int const &, int&, DOCK_HOST_RESPONSE&), (uShipID, uSpaceID, iDockPort, dockResponse));
+		CALL_PLUGINS(PLUGIN_HkCb_Dock_Call_AFTER, int, __cdecl, (unsigned int const &, unsigned int const &, int&, DOCK_HOST_RESPONSE&), (uShipID, uSpaceID, iDockPort, dockResponse));
 
 		//if original response was positive and new response is negative, set the dock event for immediate cancellation
 		//also ACCESS_DENIED response doesn't automatically trigger the appropriate voice line

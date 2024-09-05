@@ -400,6 +400,12 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	pub::Player::GetShip(dockedClientID, ship);
 	if (ship)
 	{
+		if (!idToDockedInfoMap.count(dockedClientID))
+		{
+			AddLog("MobileDockError#1, %u %s\n", dockedClientID, dockedShipName.c_str());
+			PrintUserCmdText(dockedClientID, L"MobileDockError#1, contact Aingar and/or Staff\n");
+			return InvalidName;
+		}
 		Players[dockedClientID].iLastBaseID = idToDockedInfoMap.at(dockedClientID)->lastDockedSolar;
 		wstring newBaseInfo = GetLastBaseName(dockedClientID);
 		uint carrierId = HkGetClientIdFromCharname(carrierName);
@@ -1185,6 +1191,26 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 	return false;
 }
 
+void DelayedDisconnect(uint clientId, uint shipId)
+{
+	if (idToCarrierInfoMap.count(clientId))
+	{
+		for (const wstring& dockedPlayer : idToCarrierInfoMap[clientId]->dockedShipList)
+		{
+			uint dockedClientID = HkGetClientIdFromCharname(dockedPlayer.c_str());
+			if (dockedClientID != -1)
+			{
+				wstring& lastBaseName = GetLastBaseName(dockedClientID);
+				PrintUserCmdText(dockedClientID, L"Carrier logged off, redirecting undock to %ls", lastBaseName.c_str());
+			}
+		}
+	}
+	mobiledockClients.erase(clientId);
+	mapPendingDockingRequests.erase(clientId);
+	idToCarrierInfoMap.erase(clientId);
+	idToDockedInfoMap.erase(clientId);
+}
+
 void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1377,6 +1403,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_DelayedDisconnect, 3));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 3));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));

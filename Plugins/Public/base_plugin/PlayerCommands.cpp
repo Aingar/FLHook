@@ -682,6 +682,39 @@ namespace PlayerCommands
 		}
 	}
 
+	void ClearAccesses(PlayerBase* base, uint client, const wstring& type)
+	{
+		unordered_set<wstring>* nameSet = nullptr;
+		unordered_set<uint>* factionSet = nullptr;
+		list<wstring>* tagList = nullptr;
+
+		if (type == L"srp")
+		{
+			base->srp_names.clear();
+			base->srp_factions.clear();
+			base->srp_tags.clear();
+		}
+		else if (type == L"blacklist")
+		{
+			base->hostile_names.clear();
+			base->hostile_factions.clear();
+			base->hostile_tags.clear();
+		}
+		else if (type == L"whitelist")
+		{
+			base->ally_names.clear();
+			base->ally_factions.clear();
+			base->ally_tags.clear();
+		}
+		else
+		{
+			PrintUserCmdText(client, L"ERR incorrect parameter!");
+			PrintUserCmdText(client, L"usage: /access clear <srp|whitelist|blacklist>");
+			return;
+		}
+
+		PrintUserCmdText(client, L"OK!");
+	}
 	void PrintAccesses(PlayerBase* base, uint client, const wstring& type)
 	{
 		unordered_set<wstring>* nameSet = nullptr;
@@ -1073,6 +1106,11 @@ namespace PlayerCommands
 		{
 			RemoveAccess(base, client, param1, param2, param3);
 			return;
+		}
+
+		if (cmd == L"clear")
+		{
+			ClearAccesses(base, client, param1);
 		}
 
 		PrintUserCmdText(client, L"ERR Invalid parameters");

@@ -563,11 +563,11 @@ void PlayerBase::Load()
 					{
 						ally_factions.insert(ini.get_value_int(0));
 					}
-					else if (ini.is_value("hostile_tags"))
+					else if (ini.is_value("hostile_tag"))
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						hostile_names.insert(tag);
+						hostile_tags.push_back(tag);
 					}
 					else if (ini.is_value("hostile_name"))
 					{
@@ -789,9 +789,9 @@ void PlayerBase::Save()
 		{
 			fprintf(file, "faction_hostile_tag = %d\n", i);
 		}
-		for(auto i : hostile_names)
+		for(auto i : hostile_tags)
 		{
-			ini_write_wstring(file, "perma_hostile_tag", i);
+			ini_write_wstring(file, "hostile_tag", i);
 		}
 		for (auto i : hostile_names)
 		{
@@ -920,7 +920,7 @@ bool PlayerBase::IsOnSRPList(const wstring& charname, uint affiliation)
 	}
 	for (auto& i : srp_tags)
 	{
-		if (i.find(charname) == 0)
+		if (charname.find(i) == 0)
 		{
 			return true;
 		}
@@ -941,7 +941,7 @@ bool PlayerBase::IsOnAllyList(const wstring& charname, uint affiliation)
 	}
 	for (auto& i : ally_tags)
 	{
-		if (i.find(charname) == 0)
+		if (charname.find(i) == 0)
 		{
 			return true;
 		}
@@ -962,7 +962,7 @@ bool PlayerBase::IsOnHostileList(const wstring& charname, uint affiliation)
 	}
 	for (auto& i : hostile_names)
 	{
-		if (i.find(charname) == 0)
+		if (charname.find(i) == 0)
 		{
 			return true;
 		}
@@ -986,12 +986,13 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 	uint playeraff = GetAffliationFromClient(client);
 
+	if (IsOnSRPList(charname, playeraff))
+	{
+		return 1.0f;
+	}
+
 	if (attitude <= -0.6f)
 	{
-		if (defense_mode == DEFENSE_MODE::IFF && IsOnSRPList(charname, playeraff))
-		{
-			return 1.0f;
-		}
 		return -1.0f;
 	}
 

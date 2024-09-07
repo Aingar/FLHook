@@ -3338,6 +3338,21 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		uint* clientId = reinterpret_cast<uint*>(data);
 		clients[*clientId].lastPopupWindowType = POPUPWINDOWTYPE::NONE;
 	}
+	else if (msg == CUSTOM_BEAM_LAST_BASE)
+	{
+		uint* clientId = reinterpret_cast<uint*>(data);
+		uint playerBaseId = clients[*clientId].last_player_base;
+		if (playerBaseId)
+		{
+			ForcePlayerBaseDock(*clientId, GetPlayerBase(playerBaseId));
+		}
+		else
+		{
+			HkBeamById(*clientId, Players[*clientId].iLastBaseID);
+		}
+		returncode = SKIPPLUGINS;
+		return;
+	}
 	return;
 }
 

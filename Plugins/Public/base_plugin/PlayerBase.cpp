@@ -70,11 +70,11 @@ void PlayerBase::Spawn()
 		}
 	}
 
-	if (mapArchs.count(basetype))
+	if (archetype)
 	{
-		has_shield = mapArchs.at(basetype).hasShield;
-		siege_gun_only = mapArchs.at(basetype).siegeGunOnly;
-		use_vulnerability_window = mapArchs.at(basetype).vulnerabilityWindowUse;
+		has_shield = archetype->hasShield;
+		siege_gun_only = archetype->siegeGunOnly;
+		use_vulnerability_window = archetype->vulnerabilityWindowUse;
 	}
 
 	SyncReputationForBase();
@@ -379,6 +379,16 @@ void PlayerBase::Load()
 					else if (ini.is_value("basetype"))
 					{
 						basetype = ini.get_value_string();
+						auto arch = mapArchs.find(basetype);
+						if (arch == mapArchs.end())
+						{
+							ConPrint(L"ERROR: UNABLE TO FIND BASE ARCHETYPE \"%s\"!\n", stows(basetype).c_str());
+							archetype = &mapArchs[basetype];
+						}
+						else
+						{
+							archetype = &arch->second;
+						}
 					}
 					else if (ini.is_value("basesolar"))
 					{
@@ -727,7 +737,7 @@ void PlayerBase::Save()
 
 		Vector vRot = MatrixToEuler(rotation);
 		fprintf(file, "rot = %0.0f, %0.0f, %0.0f\n", vRot.x, vRot.y, vRot.z);
-		if (mapArchs[basetype].ishubreturn)
+		if (archetype && archetype->ishubreturn)
 		{
 			const auto& destSystemInfo = Universe::get_system(destSystem);
 			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname);
@@ -737,7 +747,7 @@ void PlayerBase::Save()
 			Vector destRot = MatrixToEuler(destOri);
 			fprintf(file, "destori = %0.0f, %0.0f, %0.0f\n", destRot.x, destRot.y, destRot.z);
 		}
-		else if (mapArchs[basetype].isjump && destObject && pub::SpaceObj::ExistsAndAlive(destObject) == 0) //0 means alive, -2 dead
+		else if (archetype && archetype->isjump && destObject && pub::SpaceObj::ExistsAndAlive(destObject) == 0) //0 means alive, -2 dead
 		{
 			uint destSystemId;
 			pub::SpaceObj::GetSystem(destObject, destSystemId);
@@ -973,6 +983,11 @@ bool PlayerBase::IsOnHostileList(const wstring& charname, uint affiliation)
 
 float PlayerBase::GetAttitudeTowardsClient(uint client)
 {
+	if (archetype && archetype->isjump)
+	{
+		return 0.0f;
+	}
+
 	// By default all bases are hostile to everybody.
 	float attitude = 1.0f;
 

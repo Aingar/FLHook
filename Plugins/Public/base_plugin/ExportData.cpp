@@ -51,7 +51,7 @@ void ExportData::ToHTML()
 			PlayerBase* base = iter.second;
 
 			//do nothing if it's something we don't care about
-			if (mapArchs[base->basetype].display == false)
+			if (!base->archetype || base->archetype->display == false)
 			{
 				continue;
 			}

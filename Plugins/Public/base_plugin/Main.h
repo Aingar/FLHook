@@ -356,6 +356,8 @@ public:
 	wstring BuildBaseDescription();
 	void UpdateBaseInfoText();
 
+	ARCHTYPE_STRUCT* archetype;
+
 	bool isFreshlyBuilt;
 
 	// The base nickname

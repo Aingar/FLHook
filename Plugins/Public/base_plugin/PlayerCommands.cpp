@@ -2830,8 +2830,11 @@ namespace PlayerCommands
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->isCrewSupplied = true;
 
-		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
-		newbase->logic = mapArchs[newbase->basetype].logic;
+		if (newbase->archetype)
+		{
+			newbase->invulnerable = newbase->archetype->invulnerable;
+			newbase->logic = newbase->archetype->logic;
+		}
 
 		newbase->Spawn();
 		newbase->Save();

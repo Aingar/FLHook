@@ -1671,15 +1671,15 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 		return 0;
 	}
 
-	if (mapArchs[pbase->basetype].isjump == 1)
+	if (pbase->archetype && pbase->archetype->isjump == 1)
 	{
 		//check if we have an ID restriction
-		if (mapArchs[pbase->basetype].idrestriction == 1)
+		if (pbase->archetype->idrestriction == 1)
 		{
 			bool foundid = false;
 			for (list<EquipDesc>::iterator item = Players[client].equipDescList.equip.begin(); item != Players[client].equipDescList.equip.end(); item++)
 			{
-				if (item->bMounted && mapArchs[pbase->basetype].allowedids.count(item->iArchID))
+				if (item->bMounted && pbase->archetype->allowedids.count(item->iArchID))
 				{
 					foundid = true;
 					break;
@@ -1695,14 +1695,14 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 		}
 
 		//check if we have a shipclass restriction
-		if (mapArchs[pbase->basetype].shipclassrestriction == 1)
+		if (pbase->archetype->shipclassrestriction == 1)
 		{
 			bool foundclass = false;
 			// get the player ship class
 			Archetype::Ship* TheShipArch = Archetype::GetShip(Players[client].iShipArchetype);
 			uint shipclass = TheShipArch->iShipClass;
 
-			if(!mapArchs[pbase->basetype].allowedshipclasses.count(shipclass))
+			if(!pbase->archetype->allowedshipclasses.count(shipclass))
 			{
 				PrintUserCmdText(client, L"ERR Unable to dock with a vessel of this type.");
 				iCancel = -1;
@@ -2906,8 +2906,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		newbase->isCrewSupplied = true;
 
-		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
-		newbase->logic = mapArchs[newbase->basetype].logic;
+		if (newbase->archetype)
+		{
+			newbase->invulnerable = newbase->archetype->invulnerable;
+			newbase->logic = newbase->archetype->logic;
+		}
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3019,8 +3022,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		newbase->destObject = CreateID(wstos(destobject).c_str());
 
-		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
-		newbase->logic = mapArchs[newbase->basetype].logic;
+		if (newbase->archetype)
+		{
+			newbase->invulnerable = newbase->archetype->invulnerable;
+			newbase->logic = newbase->archetype->logic;
+		}
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3121,8 +3127,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->base_health = 10000000000;
 		newbase->isCrewSupplied = true;
 
-		newbase->invulnerable = mapArchs[newbase->basetype].invulnerable;
-		newbase->logic = mapArchs[newbase->basetype].logic;
+		if (newbase->archetype)
+		{
+			newbase->invulnerable = newbase->archetype->invulnerable;
+			newbase->logic = newbase->archetype->logic;
+		}
 
 		newbase->Spawn();
 		newbase->Save();

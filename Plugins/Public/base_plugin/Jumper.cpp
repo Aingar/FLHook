@@ -132,12 +132,12 @@ void HyperJump::InitJumpHoleConfig()
 	{
 		bool completedLoad = false;
 		PlayerBase* pbase = base.second;
-		if (!mapArchs[pbase->basetype].isjump)
+		if (!pbase->archetype->isjump)
 		{
 			continue;
 		}
 
-		if (mapArchs[pbase->basetype].ishubreturn)
+		if (pbase->archetype->ishubreturn)
 		{
 			SYSTEMJUMPCOORDS coords = { pbase->destSystem, pbase->destPos, pbase->destOri };
 			completedLoad = SetupCustomExitHole(pbase, coords, exitJumpHoleLoadout, exitJumpHoleArchetype);

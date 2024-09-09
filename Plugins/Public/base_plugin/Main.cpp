@@ -164,7 +164,7 @@ bool set_holiday_mode = false;
 unordered_map<string, ARCHTYPE_STRUCT> mapArchs;
 
 //commodities to watch for logging
-map<uint, wstring> listCommodities;
+unordered_map<uint, wstring> listCommodities;
 
 //the hostility and weapon platform activation from damage caused by one player
 float damage_threshold = 400000;

@@ -2004,8 +2004,6 @@ namespace HkIServerImpl
 	{
 		ISERVER_LOG();
 
-		WriteMiniDump(nullptr);
-
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_Shutdown, __stdcall, (), ());
 
 		Server.Shutdown();

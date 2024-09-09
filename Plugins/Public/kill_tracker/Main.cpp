@@ -41,9 +41,6 @@ struct DamageDoneStruct
 
 static array<array<DamageDoneStruct, MAX_CLIENT_ID + 1>, MAX_CLIENT_ID + 1> damageArray;
 
-IMPORT uint iDmgTo;
-IMPORT float g_LastHitPts;
-
 //! Message broadcasted systemwide upon ship's death
 //! {0} is replaced with victim's name, {1} with player who dealt the most damage to them,
 //! {2} with percentage of hull damage taken byt that player.
@@ -278,7 +275,7 @@ MessageType inline getMessageType(const uint victimId, const PlayerData* pd, con
 	return MSGNONE;
 }
 
-void ProcessDeath(uint victimId, const wstring* message1, const wstring* message2, const uint system, bool isPvP, set<CPlayerGroup*> involvedGroups, set<uint> involvedPlayers)
+void ProcessDeath(uint victimId, const wstring* message1, const wstring* message2, const uint system, bool isPvP, set<CPlayerGroup*>& involvedGroups, set<uint>& involvedPlayers)
 {
 	wstring deathMessageBlue1 = L"<TRA data=\"0xFF000001" // Blue, Bold
 		L"\" mask=\"-1\"/><TEXT>" + XMLText(*message1) + L"</TEXT>";
@@ -296,9 +293,7 @@ void ProcessDeath(uint victimId, const wstring* message1, const wstring* message
 		
 		deathMessageBlue2 = L"<TRA data=\"0xFF000001" // Blue, Bold
 			L"\" mask=\"-1\"/><TEXT>" + XMLText(*message2) + L"</TEXT>";
-	} 
-
-	const CPlayerGroup* victimGroup = Players[victimId].PlayerGroup;
+	}
 	
 	PlayerData* pd = nullptr;
 	while (pd = Players.traverse_active(pd))
@@ -405,7 +400,7 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		totalDamageTaken += damageToAdd;
 	}
 
-	if (clientKiller && totalDamageTaken == 0.0f)
+	if (clientKiller != clientVictim && totalDamageTaken == 0.0f)
 	{
 		AddLog("Supressing kill message: %s", wstos(message).c_str());
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;

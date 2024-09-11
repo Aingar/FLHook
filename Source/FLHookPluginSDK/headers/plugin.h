@@ -285,6 +285,7 @@ enum PLUGIN_MESSAGE
 	CUSTOM_POB_EVENT_NOTIFICATION_SELL = 66,
 	CUSTOM_POPUP_INIT = 67,
 	CUSTOM_AUTOBUY_CART = 68,
+	CUSTOM_BEAM_LAST_BASE = 69,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

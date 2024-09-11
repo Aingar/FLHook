@@ -63,6 +63,8 @@ HK_ERROR HkAddCash(const wstring &wscCharname, int iAmount)
 	if ((iClientID != -1) && bIdString && HkIsInCharSelectMenu(iClientID))
 		return HKE_NO_CHAR_SELECTED;
 	else if ((iClientID != -1) && !HkIsInCharSelectMenu(iClientID)) { // player logged in
+		int currCash = Players[iClientID].iInspectCash;
+		iAmount = max(2'000'000'000 - currCash, iAmount);
 		pub::Player::AdjustCash(iClientID, iAmount);
 		return HKE_OK;
 	}

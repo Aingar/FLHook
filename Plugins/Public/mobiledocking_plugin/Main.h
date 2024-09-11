@@ -24,7 +24,6 @@ enum ALLOWDOCKMODE
 struct CLIENT_DATA
 {
 	uint iDockingModulesInstalled = 0;
-	int iDockingModulesAvailable = 0;
 	ALLOWDOCKMODE dockMode = ALLOW_GROUP;
 };
 

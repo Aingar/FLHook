@@ -294,9 +294,11 @@ void LoadSettings()
 		ini.close();
 	}
 	
-	LoadDockingModules(scCarrierDataFileBackup, carrierCount, dockedCount);
 	LoadDockingModules(scCarrierDataFile, carrierCount, dockedCount);
-
+	if (nameToCarrierInfoMap.empty())
+	{
+		LoadDockingModules(scCarrierDataFileBackup, carrierCount, dockedCount);
+	}
 	SaveDataToFile(scCarrierDataFileBackup);
 
 	ConPrint(L"DockingModules: Loaded %u equipment\n", dockingModAmount);
@@ -307,12 +309,11 @@ void LoadSettings()
 bool CheckDockingCargoUsage(uint client)
 {
 	// Check that the requesting ship is of the appropriate size to dock.
-	const auto& shipInfo = Archetype::GetShip(Players[client].iShipArchetype);
-	float fRemHold;
-	pub::Player::GetRemainingHoldSize(client, fRemHold);
-	if (shipInfo->fHoldSize - fRemHold > cargoCapacityLimit)
+	float holdSize = ClientInfo[client].cship->shiparch()->fHoldSize;
+	float fRemHold = ClientInfo[client].cship->get_cargo_hold_remaining();
+	if (holdSize - fRemHold > cargoCapacityLimit)
 	{
-		PrintUserCmdText(client, L"You are carrying too much cargo to dock, %u/%u allowed.", static_cast<uint>(shipInfo->fHoldSize - fRemHold), static_cast<uint>(cargoCapacityLimit));
+		PrintUserCmdText(client, L"You are carrying too much cargo to dock, %0.f/%0.f allowed.", holdSize - fRemHold, cargoCapacityLimit);
 		return false;
 	}
 	return true;
@@ -355,10 +356,6 @@ void ClearLists(const wstring& dockedShipName)
 	uint carrierId = HkGetClientIdFromCharname(carrierName);
 	uint dockedClientID = HkGetClientIdFromCharname(dockedShipName);
 
-	if (carrierId != -1)
-	{
-		mobiledockClients[carrierId].iDockingModulesAvailable++;
-	}
 	//clear the carrier list info
 	auto& carrierDockList = nameToCarrierInfoMap[carrierName].dockedShipList;
 	for (auto& dockIter = carrierDockList.begin(); dockIter != carrierDockList.end(); dockIter++)
@@ -380,9 +377,26 @@ void ClearLists(const wstring& dockedShipName)
 	nameToDockedInfoMap.erase(dockedShipName);
 }
 
+int GetFreeCapacity(uint clientId)
+{
+	auto carrierData = mobiledockClients.find(clientId);
+	if (carrierData == mobiledockClients.end())
+	{
+		return 0;
+	}
+	uint currentUsage = 0;
+	auto carrierData2 = idToCarrierInfoMap.find(clientId);
+	if (carrierData2 != idToCarrierInfoMap.end())
+	{
+		currentUsage = carrierData2->second->dockedShipList.size();
+	}
+	return carrierData->second.iDockingModulesInstalled - currentUsage;
+}
+
 JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLaunch)
 {
-	if (!nameToDockedInfoMap.count(dockedShipName))
+	auto dockedInfo = nameToDockedInfoMap.find(dockedShipName);
+	if (dockedInfo == nameToDockedInfoMap.end())
 	{
 		return InvalidName;
 	}
@@ -392,15 +406,13 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	{
 		//player offline, edit their character file to put them on last docked solar
 		MoveOfflineShipToLastDockedSolar(dockedShipName);
-		nameToDockedInfoMap.erase(dockedShipName);
+		nameToDockedInfoMap.erase(dockedInfo);
 		return OfflineSuccess;
 	}
-	wstring& carrierName = nameToDockedInfoMap[dockedShipName].carrierName;
-	uint ship;
-	pub::Player::GetShip(dockedClientID, ship);
-	if (ship)
+	wstring& carrierName = dockedInfo->second.carrierName;
+	if (Players[dockedClientID].iShipID)
 	{
-		Players[dockedClientID].iLastBaseID = idToDockedInfoMap.at(dockedClientID)->lastDockedSolar;
+		Players[dockedClientID].iLastBaseID = dockedInfo->second.lastDockedSolar;
 		wstring newBaseInfo = GetLastBaseName(dockedClientID);
 		uint carrierId = HkGetClientIdFromCharname(carrierName);
 		PrintUserCmdText(dockedClientID, L"Your carrier docking slot has been released. Next respawn on %ls", newBaseInfo.c_str());
@@ -410,7 +422,7 @@ JettisonResult RemoveShipFromLists(const wstring& dockedShipName, bool forcedLau
 	//Force launch the ship into space if it's on the carrier.
 	else if (forcedLaunch)
 	{
-		idToDockedInfoMap[dockedClientID]->jettisoned = true;
+		dockedInfo->second.jettisoned = true;
 
 		wstring newBaseInfo = GetLastBaseName(dockedClientID);
 		PrintUserCmdText(dockedClientID, L"You've been forcefully jettisoned by the carrier.");
@@ -438,7 +450,7 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 		shipAlreadyDocked = true;
 	}
 
-	if (!shipAlreadyDocked && mobiledockClients[carrierID].iDockingModulesAvailable == 0)
+	if (!shipAlreadyDocked && GetFreeCapacity(carrierID) <= 0)
 	{
 		PrintUserCmdText(dockingID, L"Carrier has no free docking capacity");
 		pub::Player::SendNNMessage(dockingID, pub::GetNicknameId("nnv_no_docking_modules"));
@@ -456,7 +468,6 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 		idToCarrierInfoMap[carrierID] = &nameToCarrierInfoMap[carrierName];
 		idToDockedInfoMap[dockingID] = &nameToDockedInfoMap[dockingName];
 		idToCarrierInfoMap[carrierID]->lastCarrierLogin = time(nullptr);
-		mobiledockClients[carrierID].iDockingModulesAvailable--;
 	}
 
 	// Land the ship on the designated base
@@ -581,12 +592,6 @@ void MoveOfflineShipToLastDockedSolar(const wstring& charName)
 			if (*iter == charName)
 			{
 				dockedList.erase(iter);
-
-				uint carrierID = HkGetClientIdFromCharname(dockedInfo.carrierName);
-				if (carrierID != -1)
-				{
-					mobiledockClients[carrierID].iDockingModulesAvailable++;
-				}
 				break;
 			}
 		}
@@ -713,18 +718,19 @@ void BeamToCarrier(uint dockedID, uint carrierShipID)
 	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_JUMP_CALLOUT, &jumpData);
 }
 
-bool CanDockOnCarrier(uint dockingID, uint carrierShipID)
+bool CanDockOnCarrier(uint dockingID, uint carrierID)
 {
-	if (mobiledockClients[carrierShipID].iDockingModulesAvailable > 0)
+	if (GetFreeCapacity(carrierID))
 	{
 		return true;
 	}
-	if (!idToCarrierInfoMap.count(carrierShipID))
+	auto carrierData = idToCarrierInfoMap.find(carrierID);
+	if (carrierData == idToCarrierInfoMap.end())
 	{
 		return false;
 	}
 	wstring dockingName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(dockingID));
-	for (wstring& dockedName : idToCarrierInfoMap.at(carrierShipID)->dockedShipList)
+	for (wstring& dockedName : carrierData->second->dockedShipList)
 	{
 		if (dockedName == dockingName)
 		{
@@ -759,20 +765,9 @@ void ReturnCraftToLastDockedBase(uint dockingID)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void CountAvailableModuleSlots(uint iClientID)
+void SetAvailableModuleSlots(uint iClientID)
 {
 	mobiledockClients[iClientID].iDockingModulesInstalled = GetInstalledModules(iClientID);
-	
-	if (idToCarrierInfoMap.count(iClientID))
-	{
-		// Normalize the docking modules available, with the number of people currently docked
-		mobiledockClients[iClientID].iDockingModulesAvailable = (mobiledockClients[iClientID].iDockingModulesInstalled - idToCarrierInfoMap[iClientID]->dockedShipList.size());
-	}
-	else
-	{
-		mobiledockClients[iClientID].iDockingModulesAvailable = mobiledockClients[iClientID].iDockingModulesInstalled;
-	}
-
 }
 
 void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
@@ -786,7 +781,14 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
 	if (ClientInfo[client].cship->type & (Cruiser | Capital))
 	{
-		CountAvailableModuleSlots(client);
+		SetAvailableModuleSlots(client);
+
+		if (GetFreeCapacity(client) < 0)
+		{
+			Plugin_Communication(CUSTOM_BEAM_LAST_BASE, &client);
+			PrintUserCmdText(client, L"ERR: Cannot launch, insufficient docking modules installed. Jettison docked ships or install more.");
+		}
+
 		return;
 	}
 
@@ -1032,7 +1034,7 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 	{
 		if (!idToCarrierInfoMap.count(client) || idToCarrierInfoMap[client]->dockedShipList.empty())
 		{
-			PrintUserCmdText(client, L"No ships currently docked, free capacity: %u", mobiledockClients[client].iDockingModulesAvailable);
+			PrintUserCmdText(client, L"No ships currently docked, free capacity: %u", mobiledockClients[client].iDockingModulesInstalled);
 			return true;
 		}
 
@@ -1062,9 +1064,14 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 				PrintUserCmdText(client, L"%u. %ls - OFFLINE", counter, dockedShip.c_str());
 			}
 		}
-		if (mobiledockClients[client].iDockingModulesAvailable)
+		int capacityRemaining = GetFreeCapacity(client);
+		if (capacityRemaining > 0)
 		{
-			PrintUserCmdText(client, L"Remaining free capacity: %d", mobiledockClients[client].iDockingModulesAvailable);
+			PrintUserCmdText(client, L"Remaining free capacity: %d", capacityRemaining);
+		}
+		else if (capacityRemaining < 0)
+		{
+			PrintUserCmdText(client, L"Over capacity by %d! Jettison ships or mount more modules!", -capacityRemaining);
 		}
 		return true;
 	}
@@ -1185,6 +1192,26 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 	return false;
 }
 
+void DelayedDisconnect(uint clientId, uint shipId)
+{
+	if (idToCarrierInfoMap.count(clientId))
+	{
+		for (const wstring& dockedPlayer : idToCarrierInfoMap[clientId]->dockedShipList)
+		{
+			uint dockedClientID = HkGetClientIdFromCharname(dockedPlayer.c_str());
+			if (dockedClientID != -1)
+			{
+				wstring& lastBaseName = GetLastBaseName(dockedClientID);
+				PrintUserCmdText(dockedClientID, L"Carrier logged off, redirecting undock to %ls", lastBaseName.c_str());
+			}
+		}
+	}
+	mobiledockClients.erase(clientId);
+	mapPendingDockingRequests.erase(clientId);
+	idToCarrierInfoMap.erase(clientId);
+	idToDockedInfoMap.erase(clientId);
+}
+
 void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1217,7 +1244,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 	idToDockedInfoMap.erase(iClientID);
 
 	// Update count of installed modules in case if client left his ship in open space before.
-	mobiledockClients[iClientID].iDockingModulesAvailable = mobiledockClients[iClientID].iDockingModulesInstalled = GetInstalledModules(iClientID);
+	SetAvailableModuleSlots(iClientID);
 	
 	wstring charname = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID));
 	if (nameToCarrierInfoMap.count(charname))
@@ -1377,6 +1404,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_HkIServerImpl_DisConnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisConnect, PLUGIN_DelayedDisconnect, 3));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 3));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));

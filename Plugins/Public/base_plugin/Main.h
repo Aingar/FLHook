@@ -344,9 +344,12 @@ public:
 
 	static string CreateBaseNickname(const string& basename);
 
-	float GetAttitudeTowardsClient(uint client, bool emulated_siege_mode = false);
+	float GetAttitudeTowardsClient(uint client);
 	void SyncReputationForBase();
 	void SyncReputationForBaseObject(uint space_obj);
+	bool IsOnHostileList(const wstring& charname, uint affiliation);
+	bool IsOnAllyList(const wstring& charname, uint affiliation);
+	bool IsOnSRPList(const wstring& charname, uint affiliation);
 
 	void SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage);
 	void CheckVulnerabilityWindow(uint currTime);
@@ -355,6 +358,8 @@ public:
 	wstring GetBaseHeaderText();
 	wstring BuildBaseDescription();
 	void UpdateBaseInfoText();
+
+	ARCHTYPE_STRUCT* archetype;
 
 	bool isFreshlyBuilt;
 
@@ -439,7 +444,15 @@ public:
 	// If 0 then base is neutral to all ships. Only ships on the ally tag list may dock.
 	// If 1 then base is hostile to all ships unless they are on the ally tag list.
 	// If 2 then base is neutral to all ships and any ship may dock.
-	int defense_mode;
+
+	enum class DEFENSE_MODE
+	{
+		IFF = 1,
+		NODOCK_NEUTRAL,
+		NODOCK_HOSTILE
+	};
+
+	DEFENSE_MODE defense_mode;
 
 	//changes how defense mod act depending on the amount of damage made to base in the last hours
 	bool siege_mode;
@@ -462,6 +475,9 @@ public:
 	// List of allied ship tags.
 	list<wstring> ally_tags;
 
+	//List of allied ships
+	unordered_set<wstring> ally_names;
+
 	//List of allied factions
 	unordered_set<uint> ally_factions;
 
@@ -469,10 +485,22 @@ public:
 	unordered_set<uint> hostile_factions;
 
 	// List of ships that are hostile to this base
-	unordered_set<wstring> hostile_tags;
+	unordered_set<wstring> temp_hostile_names;
 
 	// List of ships that are permanently hostile to this base
-	unordered_set<wstring> perma_hostile_tags;
+	list<wstring> hostile_tags;
+
+	// List of ships that are permanently hostile to this base
+	unordered_set<wstring> hostile_names;
+
+	// List of SRP allied ship tags.
+	list<wstring> srp_tags;
+
+	//List of SRP allied ships
+	unordered_set<wstring> srp_names;
+
+	//List of SRP allied factions
+	unordered_set<uint> srp_factions;
 
 	// Modules for base
 	vector<Module*> modules;
@@ -620,17 +648,8 @@ namespace PlayerCommands
 	void BaseLstPwd(uint client, const wstring& args);
 	void BaseSetMasterPwd(uint client, const wstring& args);
 
-	void BaseAddAllyTag(uint client, const wstring& args);
-	void BaseRmAllyTag(uint client, const wstring& args);
-	void BaseLstAllyTag(uint client, const wstring& args);
-	void BaseAddAllyFac(uint client, const wstring& args, bool HostileFactionMod = false);
-	void BaseRmAllyFac(uint client, const wstring& args, bool HostileFactionMod = false);
-	void BaseClearAllyFac(uint client, const wstring& args, bool HostileFactionMod = false);
-	void BaseLstAllyFac(uint client, const wstring& args, bool HostileFactionMod = false);
+	void BaseAccess(uint client, const wstring& args);
 	void BaseViewMyFac(uint client, const wstring& args);
-	void BaseAddHostileTag(uint client, const wstring& args);
-	void BaseRmHostileTag(uint client, const wstring& args, bool printError = true);
-	void BaseLstHostileTag(uint client, const wstring& args);
 	void BaseRep(uint client, const wstring& args);
 
 	void BaseInfo(uint client, const wstring& args);
@@ -812,6 +831,8 @@ struct ScheduledRespawn
 };
 
 extern vector<ScheduledRespawn> basesToRespawn;
+
+extern uint base_access_entry_limit;
 
 // From EquipmentUtilities.cpp
 namespace EquipmentUtilities

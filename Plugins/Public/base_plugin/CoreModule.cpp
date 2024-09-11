@@ -64,8 +64,7 @@ void CoreModule::Spawn()
 		{
 			si.iLoadoutID = CreateID(base->baseloadout.c_str());
 		}
-		auto& baseArch = mapArchs[base->basetype];
-		if (!baseArch.isjump)
+		if (!base->archetype->isjump)
 		{
 			si.baseId = base->proxy_base;
 		}
@@ -113,7 +112,7 @@ void CoreModule::Spawn()
 		pub::Reputation::Alloc(si.iRep, infoname, infocard);
 
 
-		if (!baseArch.isjump)
+		if (!base->archetype->isjump)
 		{
 			pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
 		}
@@ -144,7 +143,7 @@ void CoreModule::Spawn()
 		
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 
-		if (!baseArch.isjump)
+		if (!base->archetype->isjump)
 		{
 			base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 			if (base->baseCSolar)

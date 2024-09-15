@@ -241,12 +241,10 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		explosion->explosionArchetype->fHullDamage *= dmgMult;
 		explosion->explosionArchetype->fEnergyDamage *= dmgMult;
 
-		bool retVal = iobj->process_explosion_damage_shield_bubble(explosion, dmg);
+		return iobj->process_explosion_damage_shield_bubble(explosion, dmg);
 
 		explosion->explosionArchetype->fHullDamage = originalHullDmg;
 		explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
-
-		return retVal;
 	}
 
 	return iobj->process_explosion_damage_shield_bubble(explosion, dmg);

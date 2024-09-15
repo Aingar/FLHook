@@ -68,7 +68,7 @@ string ToLower(const string &scStr)
 
 int ToInt(const wstring &wscStr)
 {
-	return wcstoul(wscStr.c_str(), 0, 10);
+	return wcstol(wscStr.c_str(), 0, 10);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

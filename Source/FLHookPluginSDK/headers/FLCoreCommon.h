@@ -541,11 +541,12 @@ namespace Archetype
 		bool destroyParent;
 		bool rootHealthProxy;
 		float parentImpulse;
-		float mass;
+		float childImpulse;
 		bool hasRotationInertia;
 		Vector rotationInertia;
 		uint separationExplosionArch;
 		uint debrisTypeArch;
+		uint debrisTypeArch2;
 		float explosionResistance;
 		uint dunno1[6]; // 64 something about dmg_hp, dmg_obj, group_dmg_hp and group_dmg_obj
 		uint dunno[4]; //88 something about fuses
@@ -1822,6 +1823,14 @@ namespace PhySys
 		unsigned char data[OBJECT_DATA_SIZE];
 	};
 
+	struct RayHit
+	{
+		struct CSimple* cobj;
+		Vector position;
+		Vector normalizedVelocity;
+		uint unknown;
+	};
+
 	IMPORT  float  ANOM_LIMITS_MAX_ANGULAR_VELOCITY_PER_PSI;
 	IMPORT  float  ANOM_LIMITS_MAX_VELOCITY;
 	IMPORT  void  AddImpulseAtPoint(struct CObject *, class Vector const &, class Vector const &);
@@ -2242,7 +2251,7 @@ public:
 	uint dunnoTargetable;    // 40
 	Universe::IZone* currentDamageZone;// 41
 	float zoneDmgMultiplier; // 42
-	void* starSystem;  // 43
+	struct StarSystem* starSystem;  // 43
 	uint id;                 // 44
 	uint ownerPlayer;        // 45
 	float hitPoints;         // 46
@@ -2440,12 +2449,12 @@ public:
 
 public:
 	uint physicsVfTable;
-	uint dunnoAttEquip;
+	uint debrisObject;
 	float hitPts;
-	uint dunnoAttEquip2;
-	bool dunnoAttEquip4;
-	uint dunnoAttEquip3[4];
-	//18
+	DamageEntry::SubObjFate fate;
+	bool isBoundingSphereInitialized;
+	float boundingSphereRadius;
+	Vector boundingSphere;
 };
 
 struct Barrel
@@ -5551,7 +5560,7 @@ struct IObjRWAbstract
 	virtual void process_explosion_damage_hull(ExplosionDamageEvent* explosion, DamageList* dmgList);                                     // 508 sub_6CE9550
 	virtual const CArchGroup* process_explosion_damage_external_equip_and_col_grps(ExplosionDamageEvent* explosion, DamageList* dmgList); // 512 sub_6CE9690
 	virtual bool process_explosion_damage_shield_bubble(ExplosionDamageEvent* explosion, DamageList* dmgList); //516 g
-	virtual bool process_explosion_damage_energy(ExplosionDamageEvent* explosion, DamageList* dmgList);        // 520 sub_6CE9940
+	virtual void process_explosion_damage_energy(ExplosionDamageEvent* explosion, DamageList* dmgList);        // 520 sub_6CE9940
 	virtual void damage_shield(CEShield* shield, Archetype::Munition* munition, DamageList* dmgList);          // 524 sub_6CE94B0
 	virtual bool damage_ext_eq(CEquip* eq, float dmgDealt, DamageList* dmgList);                               // 528 sub_6CEA4A0
 	virtual bool damage_shield_direct(CEShield* shield, float dmg, DamageList* dmgList);                       //532 sub_6CEA740

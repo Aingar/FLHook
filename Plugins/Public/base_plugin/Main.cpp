@@ -1960,7 +1960,7 @@ bool __stdcall LaunchPosHook(uint space_obj, struct CEqObj &p1, Vector &pos, Mat
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		pos = player_launch_base->position;
 		rot = player_launch_base->rotation;
-		TranslateX(pos, rot, -750);
+		TranslateZ(pos, rot, 750);
 		if (set_plugin_debug)
 			ConPrint(L"LaunchPosHook[1] space_obj=%u pos=%0.0f %0.0f %0.0f dock_mode=%u\n",
 				space_obj, pos.x, pos.y, pos.z, dock_mode);
@@ -2901,16 +2901,14 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		PlayerBase *newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->basetype = "legacy";
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		newbase->isCrewSupplied = true;
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3015,6 +3013,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = CreateID(wstos(theaffiliation).c_str());
 		newbase->basetype = wstos(type);
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;;
@@ -3022,11 +3021,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		newbase->destObject = CreateID(wstos(destobject).c_str());
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3121,17 +3117,15 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = theaffiliation;
 		newbase->basetype = wstos(type);
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->base_health = 10000000000;
 		newbase->isCrewSupplied = true;
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();

@@ -374,6 +374,20 @@ bool InitHookExports()
 	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);
 	PatchCallAddr((char*)hModServer, 0x207BF, (char*)HkIEngine::FindInStarListNaked);
 
+	PatchCallAddr((char*)hModServer, 0x33B2, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x638E, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2094F, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x296E8, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2B290, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2B4DC, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2C8E9, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2D526, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2D533, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2D6EA, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2D753, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2DB57, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2DBF4, (char*)HkIEngine::FindInStarListNaked);
+	PatchCallAddr((char*)hModServer, 0x2DD4A, (char*)HkIEngine::FindInStarListNaked);
 	// Simplified reimplementation of ShipRange.dll by Adoxa
 	pAddress = SRV_ADDR(0x17272);
 	FARPROC radarDetour2 = FARPROC(&radarDetour);

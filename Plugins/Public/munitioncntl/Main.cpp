@@ -667,15 +667,16 @@ int Update()
 			continue;
 		}
 
+		keysToRemove.emplace_back(shieldFuse.first);
 		IObjInspectImpl* iobj1;
 		uint dummy;
 		GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
 		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
-		if (iobj)
+		if (!iobj)
 		{
-			HkUnLightFuse(iobj, shieldFuse.second.boostData->fuseId, 0.0f);
+			continue;
 		}
-		keysToRemove.emplace_back(shieldFuse.first);
+		HkUnLightFuse(iobj, shieldFuse.second.boostData->fuseId, 0.0f);
 
 		ShieldBoostData* boostData = shieldFuse.second.boostData;
 

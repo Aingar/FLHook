@@ -1000,6 +1000,11 @@ Vector VectorMatrixMultiply(Vector& v1, Matrix& m1)
 	return ret;
 }
 
+float VectorMagnitude(Vector& v)
+{
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
 Vector NormalizeVector(Vector& v)
 {
 	float inverseMagnitude = 1 / sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);

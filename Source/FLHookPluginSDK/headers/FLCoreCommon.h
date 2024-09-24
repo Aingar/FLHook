@@ -865,6 +865,15 @@ namespace Archetype
 		/* 43 */ bool bCruiseDisruptor;
 	};
 
+	struct IMPORT MotorData
+	{
+		virtual bool Load(INI_Reader*);
+		uint motorId;
+		float motorDelay;
+		float motorAcceleration;
+		float motorLifetime;
+	};
+
 	struct IMPORT Mine : Projectile
 	{
 		Mine(struct Mine const &);
@@ -1870,20 +1879,20 @@ namespace PhySys
 	IMPORT  class Vector  GOLEM_MAX_TRANSLATION_FORCE;
 	IMPORT  float  GOLEM_TORQUE_FACTOR;
 	IMPORT  void  GenerateCollisions(struct CBeam *);
-	IMPORT  class Vector   GetAngularVelocityOS(struct CObject const *);
-	IMPORT  class Vector   GetCenterOfMass(struct CObject const *);
+	IMPORT  class Vector   GetAngularVelocityOS(::CObject const *);
+	IMPORT  class Vector   GetCenterOfMass(::CObject const *);
 	IMPORT  bool  GetClosestPhantomIntruderPos(void *, unsigned int, unsigned int, struct CSimple * &, class Vector &);
-	IMPORT  char const *  GetCollisionGroup(struct CObject const *);
-	IMPORT  bool  GetCollisionState(struct CObject const *);
+	IMPORT  char const *  GetCollisionGroup(::CObject const *);
+	IMPORT  bool  GetCollisionState(::CObject const *);
 	IMPORT  bool  GetCollisionStatePhantom(void * const);
 	IMPORT  void  GetCollisions(unsigned int, struct CollisionEvent const * &, struct CollisionEvent const * &);
 	IMPORT  class IVP_Time   GetCurrentTime(unsigned int);
-	IMPORT  void  GetDamping(struct CObject const *, float &, class Vector &);
-	IMPORT  float  GetMass(struct CObject const *);
-	IMPORT  class Vector   GetMomentOfInertia(struct CObject const *);
-	IMPORT  float  GetRadiusR(struct CObject const *, bool, class Vector &);
-	IMPORT  class Vector   GetVelocity(struct CObject const *);
-	IMPORT  void  LinearImpulse(struct CObject *, class Vector const &, float);
+	IMPORT  void  GetDamping(::CObject const *, float &, class Vector &);
+	IMPORT  float  GetMass(::CObject const *);
+	IMPORT  class Vector   GetMomentOfInertia(::CObject const *);
+	IMPORT  float  GetRadiusR(::CObject const *, bool, class Vector &);
+	IMPORT  class Vector   GetVelocity(::CObject const *);
+	IMPORT  void  LinearImpulse(::CObject *, class Vector const &, float);
 	IMPORT  double  MATERIAL_ELASTICITY;
 	IMPORT  double  MATERIAL_FRICTION;
 	IMPORT  int  MAX_SPAWNED_MINDIST_COUNT;
@@ -1905,18 +1914,18 @@ namespace PhySys
 	IMPORT  float  RMGR_LOOK_AHEAD_MIN_SECONDS_WORLD;
 	IMPORT  float  RMGR_LOOK_AHEAD_TIME_INTRA;
 	IMPORT  float  RMGR_LOOK_AHEAD_TIME_WORLD;
-	IMPORT  void  ReMakePhysicalR(struct CObject *, struct CreateParms const &, float);
-	IMPORT  void  SetCollisionGroup(struct CObject *, char const * const);
-	IMPORT  void  SetCollisionState(struct CObject *, bool);
+	IMPORT  void  ReMakePhysicalR(::CObject *, struct CreateParms const &, float);
+	IMPORT  void  SetCollisionGroup(::CObject *, char const * const);
+	IMPORT  void  SetCollisionState(::CObject *, bool);
 	IMPORT  void  SetCollisionStatePhantom(void *, bool);
-	IMPORT  void  SetDamping(struct CObject *, float, class Vector const &);
-	IMPORT  void  SetMass(struct CObject *, float);
-	IMPORT  void  SetMomentOfInertia(struct CObject *, class Vector const &);
+	IMPORT  void  SetDamping(::CObject *, float, class Vector const &);
+	IMPORT  void  SetMass(::CObject *, float);
+	IMPORT  void  SetMomentOfInertia(::CObject *, class Vector const &);
 	IMPORT  void  Shutdown(unsigned int);
 	IMPORT  void  Startup(unsigned int);
-	IMPORT  void  UnMakePhysicalR(struct CObject *);
+	IMPORT  void  UnMakePhysicalR(::CObject *);
 	IMPORT  void  Update(unsigned int, float);
-	IMPORT  void  Wakeup(struct CObject *);
+	IMPORT  void  Wakeup(::CObject *);
 	IMPORT  enum IVP_BOOL(*m_pCollisionFilter)(class IVP_Real_Object *, class IVP_Real_Object *);
 };
 

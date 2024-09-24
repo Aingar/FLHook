@@ -69,6 +69,7 @@ void MatrixCofactorsTable(Matrix& m);
 void MultiplyMatrix(Matrix& m, float num);
 Matrix InverseMatrix(Matrix& m1);
 Vector VectorMatrixMultiply(Vector& v1, Matrix& m1);
+float VectorMagnitude(Vector& v);
 Vector NormalizeVector(Vector& v);
 Vector VectorMultiply(Vector& a, float b);
 Vector VectorCross(Vector& v1, Vector& v2);

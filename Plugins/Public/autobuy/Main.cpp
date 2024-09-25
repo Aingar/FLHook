@@ -14,6 +14,8 @@
 #include <set>
 #include <FLHook.h>
 #include <hookext_exports.h>
+#include <PluginUtilities.h>
+
 using st6_malloc_t = void* (*)(size_t);
 using st6_free_t = void(*)(void*);
 IMPORT st6_malloc_t st6_malloc;
@@ -1047,6 +1049,11 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 				PrintUserCmdText(iClientID, L"Auto-Buy(%s): Bought %d unit(s), cost: %s$", it4->wscDescription.c_str(), it4->iCount, ToMoneyStr(iCost).c_str());
 			}
 		}
+	}
+
+	if (!lstCart.empty())
+	{
+		ResetPlayerWorth(iClientID);
 	}
 }
 

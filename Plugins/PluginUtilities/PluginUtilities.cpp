@@ -301,6 +301,20 @@ HK_ERROR HkAntiCheat(uint iClientID)
 	return HKE_OK;
 }
 
+typedef int(__fastcall* CalculatePlayerWorth)(PlayerData* clientId);
+
+int GetPlayerWorth(uint clientId)
+{
+	// Update the player CRC so that the player is not kicked for 'ship related' kick
+	static CalculatePlayerWorth playerWorthFunc = CalculatePlayerWorth((char*)hModServer + 0x6FAF0);
+	return playerWorthFunc(&Players[clientId]);
+}
+
+void ResetPlayerWorth(uint clientId)
+{
+	Players[clientId].worth = GetPlayerWorth(clientId);
+}
+
 HK_ERROR HkDeleteCharacter(CAccount *acc, wstring &wscCharname)
 {
 	HkLockAccountAccess(acc, true);

@@ -2813,7 +2813,7 @@ namespace PlayerCommands
 		Matrix rotation;
 		pub::SpaceObj::GetLocation(ship, position, rotation);
 		Rotate180(rotation);
-		TranslateX(position, rotation, 1000);
+		TranslateZ(position, rotation, 1000);
 		if (enableDistanceCheck)
 		{
 			auto& cooldown = deploymentCooldownMap.find(client);
@@ -2861,16 +2861,14 @@ namespace PlayerCommands
 		PlayerBase* newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->basetype = "legacy";
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->isCrewSupplied = true;
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();

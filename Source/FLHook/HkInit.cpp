@@ -370,10 +370,8 @@ bool InitHookExports()
 	FARPROC CObjAlloc = FARPROC(0x62AEE50);
 	Detour(CObjAlloc, HkIEngine::CObjAllocDetour);
 
-	FARPROC FindStarListNaked2 = FARPROC(&HkIEngine::FindInStarListNaked2);
-	WriteProcMem((char*)hModServer + 0x87CD4, &FindStarListNaked2, 4);
-	PatchCallAddr((char*)hModServer, 0x2074A, (char*)HkIEngine::FindInStarListNaked);
-	PatchCallAddr((char*)hModServer, 0x207BF, (char*)HkIEngine::FindInStarListNaked);
+	FARPROC FindIObjInStarList = FARPROC(0x6D0C840);
+	Detour(FindIObjInStarList, HkIEngine::FindInStarListNaked);
 
 	{
 		// Radiation patch, stop the division math

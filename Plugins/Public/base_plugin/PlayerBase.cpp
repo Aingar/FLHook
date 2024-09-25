@@ -25,7 +25,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 	pub::SpaceObj::GetSystem(ship, system);
 	pub::SpaceObj::GetLocation(ship, position, rotation);
 	Rotate180(rotation);
-	TranslateX(position, rotation, 1000);
+	TranslateZ(position, rotation, 1000);
 
 	// Create the default module and spawn space obj.
 	modules.emplace_back((Module*)new CoreModule(this));
@@ -625,6 +625,7 @@ void PlayerBase::Load()
 				if (basetype.empty())
 				{
 					basetype = "legacy";
+					archetype = &mapArchs[basetype];
 				}
 				if (basesolar.empty())
 				{

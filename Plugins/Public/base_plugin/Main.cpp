@@ -1964,7 +1964,7 @@ bool __stdcall LaunchPosHook(uint space_obj, struct CEqObj &p1, Vector &pos, Mat
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		pos = player_launch_base->position;
 		rot = player_launch_base->rotation;
-		TranslateX(pos, rot, -750);
+		TranslateZ(pos, rot, 750);
 		if (set_plugin_debug)
 			ConPrint(L"LaunchPosHook[1] space_obj=%u pos=%0.0f %0.0f %0.0f dock_mode=%u\n",
 				space_obj, pos.x, pos.y, pos.z, dock_mode);
@@ -2269,17 +2269,7 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 		else
 		{
 			// Update the player CRC so that the player is not kicked for 'ship related' kick
-			PlayerData *pd = &Players[client];
-			char *ACCalcCRC = (char*)hModServer + 0x6FAF0;
-			__asm
-			{
-				pushad
-				mov ecx, [pd]
-				call[ACCalcCRC]
-				mov ecx, [pd]
-				mov[ecx + 320h], eax
-				popad
-			}
+			ResetPlayerWorth(client);
 		}
 	}
 }
@@ -2378,17 +2368,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	{
 		returncode = SKIPPLUGINS;
 		// Update the player CRC so that the player is not kicked for 'ship related' kick
-		PlayerData *pd = &Players[iClientID];
-		char *ACCalcCRC = (char*)hModServer + 0x6FAF0;
-		__asm
-		{
-			pushad
-			mov ecx, [pd]
-			call[ACCalcCRC]
-			mov ecx, [pd]
-			mov[ecx + 320h], eax
-			popad
-		}
+		ResetPlayerWorth(iClientID);
 
 		//PrintUserCmdText(iClientID, L"You will be kicked to update your ship.");
 		//HkSaveChar((const wchar_t*)Players.GetActiveCharacterName(iClientID));
@@ -2433,21 +2413,22 @@ void __stdcall ReqAddItem_AFTER(unsigned int good, char const *hardpoint, int co
 		pd->lShadowEquipDescList.add_equipment_item(ed, false);
 
 		// Update the player CRC so that the player is not kicked for 'ship related' kick
-		char *ACCalcCRC = (char*)hModServer + 0x6FAF0;
-		__asm
-		{
-			pushad
-			mov ecx, [pd]
-			call[ACCalcCRC]
-			mov ecx, [pd]
-			mov[ecx + 320h], eax
-			popad
-		}
+
+		ResetPlayerWorth(client);
 	}
 }
 
 int cashChange = 0;
 int lastCashChangeClient = 0;
+
+int __stdcall Update(void)
+{
+	returncode = DEFAULT_RETURNCODE;
+	cashChange = 0;
+	lastCashChangeClient = 0;
+
+	return 0;
+}
 
 /// Ignore cash commands from the client when we're in a player base.
 void __stdcall ReqChangeCash(int cash, unsigned int client)
@@ -2921,16 +2902,14 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		PlayerBase *newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->basetype = "legacy";
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = "legacy";
 		newbase->baseloadout = "legacy";
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		newbase->isCrewSupplied = true;
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3035,6 +3014,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = CreateID(wstos(theaffiliation).c_str());
 		newbase->basetype = wstos(type);
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;;
@@ -3042,11 +3022,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		newbase->destObject = CreateID(wstos(destobject).c_str());
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3141,17 +3118,15 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = theaffiliation;
 		newbase->basetype = wstos(type);
+		newbase->archetype = &mapArchs[newbase->basetype];
 		newbase->basesolar = wstos(archtype);
 		newbase->baseloadout = wstos(loadout);
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		newbase->base_health = 10000000000;
 		newbase->isCrewSupplied = true;
 
-		if (newbase->archetype)
-		{
-			newbase->invulnerable = newbase->archetype->invulnerable;
-			newbase->logic = newbase->archetype->logic;
-		}
+		newbase->invulnerable = newbase->archetype->invulnerable;
+		newbase->logic = newbase->archetype->logic;
 
 		newbase->Spawn();
 		newbase->Save();
@@ -3496,6 +3471,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetEquipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetHullPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETHULLSTATUS, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetColGrp, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETCOLLISIONGROUPS, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqRemoveItem, PLUGIN_HkIServerImpl_ReqRemoveItem, 15));

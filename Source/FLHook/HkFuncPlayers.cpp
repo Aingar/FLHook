@@ -63,8 +63,13 @@ HK_ERROR HkAddCash(const wstring &wscCharname, int iAmount)
 	if ((iClientID != -1) && bIdString && HkIsInCharSelectMenu(iClientID))
 		return HKE_NO_CHAR_SELECTED;
 	else if ((iClientID != -1) && !HkIsInCharSelectMenu(iClientID)) { // player logged in
-		int currCash = Players[iClientID].iInspectCash;
-		iAmount = max(2'000'000'000 - currCash, iAmount);
+		float value;
+		pub::Player::GetAssetValue(iClientID, value);
+		if (2'000'000'000 - static_cast<int>(value) < iAmount)
+		{
+			iAmount = 2'000'000'000 - static_cast<int>(value);
+			PrintUserCmdText(iClientID, L"Warning: Would exceed 2bln ship worth, trimming cash received");
+		}
 		pub::Player::AdjustCash(iClientID, iAmount);
 		return HKE_OK;
 	}

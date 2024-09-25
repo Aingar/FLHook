@@ -541,11 +541,12 @@ namespace Archetype
 		bool destroyParent;
 		bool rootHealthProxy;
 		float parentImpulse;
-		float mass;
+		float childImpulse;
 		bool hasRotationInertia;
 		Vector rotationInertia;
 		uint separationExplosionArch;
 		uint debrisTypeArch;
+		uint debrisTypeArch2;
 		float explosionResistance;
 		uint dunno1[6]; // 64 something about dmg_hp, dmg_obj, group_dmg_hp and group_dmg_obj
 		uint dunno[4]; //88 something about fuses
@@ -1810,6 +1811,14 @@ namespace PhySys
 		unsigned char data[OBJECT_DATA_SIZE];
 	};
 
+	struct RayHit
+	{
+		struct CSimple* cobj;
+		Vector position;
+		Vector normalizedVelocity;
+		uint unknown;
+	};
+
 	IMPORT  float  ANOM_LIMITS_MAX_ANGULAR_VELOCITY_PER_PSI;
 	IMPORT  float  ANOM_LIMITS_MAX_VELOCITY;
 	IMPORT  void  AddImpulseAtPoint(struct CObject *, class Vector const &, class Vector const &);
@@ -2230,7 +2239,7 @@ public:
 	uint dunnoTargetable;    // 40
 	Universe::IZone* currentDamageZone;// 41
 	float zoneDmgMultiplier; // 42
-	void* starSystem;  // 43
+	struct StarSystem* starSystem;  // 43
 	uint id;                 // 44
 	uint ownerPlayer;        // 45
 	float hitPoints;         // 46
@@ -2428,12 +2437,12 @@ public:
 
 public:
 	uint physicsVfTable;
-	uint dunnoAttEquip;
+	uint debrisObject;
 	float hitPts;
-	uint dunnoAttEquip2;
-	bool dunnoAttEquip4;
-	uint dunnoAttEquip3[4];
-	//18
+	DamageEntry::SubObjFate fate;
+	bool isBoundingSphereInitialized;
+	float boundingSphereRadius;
+	Vector boundingSphere;
 };
 
 struct Barrel

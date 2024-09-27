@@ -664,6 +664,11 @@ int Update()
 
 	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
 	{
+		if (!iter->second.first->motorData)
+		{
+			continue;
+		}
+
 		Vector velocityVec = iter->second.first->get_velocity();
 		float velocity = VectorMagnitude(velocityVec);
 		if (velocity >= iter->second.second)

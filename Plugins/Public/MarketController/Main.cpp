@@ -784,6 +784,15 @@ void Timer()
 		}
 
 		float totalCargoToJettison = item.second;
+		float remainingHold = cship->get_cargo_hold_remaining();
+
+		totalCargoToJettison -= remainingHold;
+
+		if (totalCargoToJettison <= 0.0f)
+		{
+			continue;
+		}
+
 		CEquipTraverser tr(Cargo);
 		CEquipManager& eqManager = cship->equip_manager;
 

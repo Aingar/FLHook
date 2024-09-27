@@ -833,7 +833,15 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 	}
 
 	uint id = iobj->get_id();
-	dropMap[id] += dropMap[id] + colGrpInfo->second;
+	auto dropIter = dropMap.find(id);
+	if (dropIter == dropMap.end())
+	{
+		dropMap[id] = colGrpInfo->second;
+	}
+	else
+	{
+		dropIter->second += colGrpInfo->second;
+	}
 }
 
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)

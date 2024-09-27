@@ -13,10 +13,7 @@
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
-
-unordered_set<uint> setNoTrackingAlertProjectiles;
-unordered_map<uint, uint> mapTrackingByObjTypeBlacklistBitmap;
-unordered_map<uint, float> guidedArmingTimesMap;
+unordered_map<uint, GuidedData> guidedDataMap;
 unordered_map<uint, MineInfo> mineInfoMap;
 ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 vector<ShieldSyncData> shieldStateUpdateMap;
@@ -25,6 +22,8 @@ unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageType> explosionTypeMap;
 Archetype::Explosion* shieldExplosion;
+
+unordered_map<uint, pair<CGuided*, float>> topSpeedWatch;
 
 uint lastProcessedProjectile = 0;
 
@@ -142,15 +141,11 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("arming_time"))
 					{
-						float armingTime = ini.get_value_float(0);
-						if (armingTime > 0.0f)
-						{
-							guidedArmingTimesMap[currNickname] = armingTime;
-						}
+						guidedDataMap[currNickname].armingTime = ini.get_value_float(0);
 					}
 					else if (ini.is_value("no_tracking_alert") && ini.get_value_bool(0))
 					{
-						setNoTrackingAlertProjectiles.insert(CreateID(ini.get_value_string(0)));
+						guidedDataMap[currNickname].noTrackingAlert = true;
 					}
 					else if (ini.is_value("tracking_blacklist"))
 					{
@@ -173,7 +168,11 @@ void ReadMunitionDataFromInis()
 						if (typeStr.find("mine") != string::npos)
 								blacklistedTrackingTypesBitmap |= Mine;
 
-						mapTrackingByObjTypeBlacklistBitmap[currNickname] = blacklistedTrackingTypesBitmap;
+						guidedDataMap[currNickname].trackingBlacklist = blacklistedTrackingTypesBitmap;
+					}
+					else if (ini.is_value("top_speed"))
+					{
+						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0);
 					}
 				}
 			}
@@ -393,47 +392,49 @@ void LoadSettings()
 
 void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 {
+	CGuided* guided = reinterpret_cast<CGuided*>(CObject::Find(createGuidedPacket.iProjectileId, CObject::CGUIDED_OBJECT));
+	if (!guided)
+	{
+		return;
+	}
+
 	uint ownerType;
 	pub::SpaceObj::GetType(createGuidedPacket.iOwner, ownerType);
 	if (!(ownerType & shipObjType)) //GetTarget throws an exception for non-ship entities.
 	{
 		return;
 	}
+
 	uint targetId;
 	pub::SpaceObj::GetTarget(createGuidedPacket.iOwner, targetId);
 
-	TRACKING_STATE tracking = TRACK_ALERT;
+	if (!targetId)
+	{
+		guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
+	}
 
-	if (!targetId) // prevent missiles from tracking cloaked ships, and missiles sticking targeting to last selected target
+	auto guidedInfo = guidedDataMap.find(createGuidedPacket.iMunitionId);
+	if (guidedInfo == guidedDataMap.end())
 	{
-		tracking = NOTRACK_NOALERT;
+		return;
 	}
-	else if (setNoTrackingAlertProjectiles.count(createGuidedPacket.iMunitionId)) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
+
+	if (guidedInfo->second.topSpeed)
 	{
-		tracking = TRACK_NOALERT;
+		topSpeedWatch[createGuidedPacket.iProjectileId] = { guided, guidedInfo->second.topSpeed };
 	}
-	else if (mapTrackingByObjTypeBlacklistBitmap.count(createGuidedPacket.iMunitionId)) // disable tracking for selected ship types
+
+	if (guidedInfo->second.noTrackingAlert) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
+	{
+		createGuidedPacket.iTargetId = 0; // prevents the 'incoming missile' warning client-side
+	}
+	else if (guidedInfo->second.trackingBlacklist) // disable tracking for selected ship types
 	{
 		uint targetType;
 		pub::SpaceObj::GetType(createGuidedPacket.iTargetId, targetType);
-		const auto& blacklistedShipTypeTargets = mapTrackingByObjTypeBlacklistBitmap.at(createGuidedPacket.iMunitionId);
-		if (blacklistedShipTypeTargets & targetType)
+		if (guidedInfo->second.trackingBlacklist & targetType)
 		{
-			tracking = NOTRACK_NOALERT;
-		}
-	}
-
-	switch (tracking)
-	{
-		case NOTRACK_NOALERT:
-		{
-			CGuided* projectile = reinterpret_cast<CGuided*>(CObject::Find(createGuidedPacket.iProjectileId, CObject::CGUIDED_OBJECT));
-			projectile->Release();
-			projectile->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
-		}
-		case TRACK_NOALERT:
-		{
-			createGuidedPacket.iTargetId = 0; // prevents the 'incoming missile' warning client-side
+			guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
 		}
 	}
 
@@ -481,9 +482,17 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (guidedArmingTimesMap.count(iobj->cobj->archetype->iArchID))
+	topSpeedWatch.erase(iobj->get_id());
+
+	auto guidedInfo = guidedDataMap.find(iobj->get_id());
+	if (guidedInfo == guidedDataMap.end())
 	{
-		float armingTime = guidedArmingTimesMap.at(iobj->cobj->archetype->iArchID);
+		return true;
+	}
+
+	if (guidedInfo->second.armingTime)
+	{
+		float armingTime = guidedInfo->second.armingTime;
 		CGuided* guided = reinterpret_cast<CGuided*>(iobj->cobj);
 		if (guided->lifetime < armingTime)
 		{
@@ -652,6 +661,27 @@ void Timer()
 int Update()
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
+	{
+		Vector velocityVec = iter->second.first->get_velocity();
+		float velocity = VectorMagnitude(velocityVec);
+		if (velocity >= iter->second.second)
+		{
+			ResizeVector(velocityVec, iter->second.second);
+			iter->second.first->motorData = nullptr;
+
+			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(iter->second.first) + 84)) + 152);
+			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
+			*linearVelocity = velocityVec;
+
+			iter = topSpeedWatch.erase(iter);
+		}
+		else
+		{
+			iter++;
+		}
+	}
 
 	if (shieldFuseMap.empty())
 	{

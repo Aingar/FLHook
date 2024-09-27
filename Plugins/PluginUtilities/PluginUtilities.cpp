@@ -1019,6 +1019,16 @@ float VectorMagnitude(Vector& v)
 	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
 }
 
+void ResizeVector(Vector& v, float targetLength)
+{
+	float currLength = VectorMagnitude(v);
+	float ratio = targetLength / currLength;
+
+	v.x *= ratio;
+	v.y *= ratio;
+	v.z *= ratio;
+}
+
 Vector NormalizeVector(Vector& v)
 {
 	float inverseMagnitude = 1 / sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);

@@ -25,6 +25,14 @@ struct MineInfo
 	bool stopSpin = false;
 };
 
+struct GuidedData
+{
+	bool noTrackingAlert = false;
+	uint trackingBlacklist = 0;
+	float armingTime = 0.0f;
+	float topSpeed = 0.0f;
+};
+
 struct ShieldState
 {
 	bool shieldState = true;

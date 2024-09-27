@@ -99,7 +99,7 @@ void CreateSolar::SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo con
 
 	pub::SpaceObj::CreateSolar(spaceID, solarInfo);
 
-	uint dunno;
+	StarSystem* dunno;
 	IObjInspectImpl* inspect;
 	if (GetShipInspect(spaceID, inspect, dunno))
 	{

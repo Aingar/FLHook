@@ -766,7 +766,7 @@ void Timer()
 	{
 		uint shipId = item.first;
 		IObjInspectImpl* iobj1;
-		uint dummy;
+		StarSystem* dummy;
 		GetShipInspect(shipId, iobj1, dummy);
 
 		if (!iobj1)

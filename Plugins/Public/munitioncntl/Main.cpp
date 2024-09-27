@@ -669,7 +669,7 @@ int Update()
 
 		keysToRemove.emplace_back(shieldFuse.first);
 		IObjInspectImpl* iobj1;
-		uint dummy;
+		StarSystem* dummy;
 		GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
 		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
 		if (!iobj)
@@ -862,7 +862,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	}
 
 	IObjInspectImpl* iobj2;
-	uint dummy;
+	StarSystem* dummy;
 	GetShipInspect(Players[iClientID].iShipID, iobj2, dummy);
 
 	if (!iobj2)

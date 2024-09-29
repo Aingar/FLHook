@@ -865,6 +865,12 @@ bool PlayerBase::AddMarketGood(uint good, uint quantity)
 	}
 
 	market_items[good].quantity += quantity;
+	const GoodInfo* gi = GoodList::find_by_id(good);
+
+	if (gi->iType == GOODINFO_TYPE_SHIP)
+	{
+		market_items[good].shipHullId = gi->iHullGoodID;
+	}
 	SendMarketGoodUpdated(this, good, market_items[good]);
 	return true;
 }

@@ -87,9 +87,8 @@ void SendMarketGoodSync(PlayerBase* base, uint client)
 
 		if (item.shipHullId)
 		{
-			good = item.shipHullId;
 			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
-				base->proxy_base, item.shipHullId, item.price, 1, 0, item.sellPrice);
+				base->proxy_base, item.shipHullId, item.price, 1, item.quantity, item.sellPrice);
 			SendCommand(client, buf);
 		}
 

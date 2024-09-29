@@ -186,7 +186,7 @@ wstring FactoryModule::GetInfo(bool xml)
 	}
 	if (!active_recipe.catalyst_items.empty() && !sufficientCatalysts)
 	{
-		info += openLine + L"Needed catalysts ";
+		info += openLine + L"Needed catalysts:";
 
 		for (const auto& catalyst : active_recipe.catalyst_items)
 		{

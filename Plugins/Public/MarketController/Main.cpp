@@ -7,15 +7,7 @@
 #include "Main.h"
 #include "headers/zlib.h"
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-IMPORT st6_malloc_t st6_malloc;
-IMPORT st6_free_t st6_free;
-
 PLUGIN_RETURNCODE returncode;
-
-DWORD* dsac_update_infocard_cmd = 0;
-DWORD dsac_update_infocard_cmd_len = 0;
 
 DWORD* dsac_update_econ_cmd = 0;
 DWORD dsac_update_econ_cmd_len = 0;

@@ -912,7 +912,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
     if (!equip)
     {
         PrintUserCmdText(iClientID, L"ERR Issue when handling jettison event, contact developers. Error code %u", jc.iSlot);
-        AddLog("Error: jettisoned item not found! %u", jc.iSlot);
+        AddLog("Error: jettisoned item not found! %u %u %u %u %u", jc.iSlot, jc.iShip, ClientInfo[iClientID].cship->id, jc.iCount, jc.dunno);
         return;
     }
 

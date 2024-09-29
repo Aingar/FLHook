@@ -96,6 +96,9 @@ L"<TEXT>Add, remove and list hostile factions for the base.</TEXT><PARA/><PARA/>
 L"<TRA bold=\"true\"/><TEXT>/build</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control the construction and destruction of base modules and upgrades.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/destroy [moduleIndex]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Destroy the module at the selected index.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/base setshield</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the vulnerability window starting hour (server time). To set the vulnerability window start to 15:00 server time input `/base setshield 15`.</TEXT><PARA/>"
 L"<TEXT>Can be changed once every 30 days.</TEXT>"

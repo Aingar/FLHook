@@ -776,10 +776,6 @@ void Timer()
 		}
 
 		float totalCargoToJettison = item.second;
-		float remainingHold = cship->get_cargo_hold_remaining();
-
-		totalCargoToJettison -= remainingHold;
-
 		if (totalCargoToJettison <= 0.0f)
 		{
 			continue;
@@ -833,15 +829,22 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 		return;
 	}
 
+	float cargoRemaining = cship->get_cargo_hold_remaining();
+
+	if (cargoRemaining > colGrpInfo->second)
+	{
+		return;
+	}
+
 	uint id = iobj->get_id();
 	auto dropIter = dropMap.find(id);
 	if (dropIter == dropMap.end())
 	{
-		dropMap[id] = colGrpInfo->second;
+		dropMap[id] = colGrpInfo->second - cargoRemaining;
 	}
 	else
 	{
-		dropIter->second += colGrpInfo->second;
+		dropIter->second += colGrpInfo->second - cargoRemaining;
 	}
 }
 

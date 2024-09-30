@@ -54,7 +54,7 @@ struct RECIPE
 	bool restricted = false;
 	wstring infotext = L"";
 	wstring craft_type = L"";
-	uint cooking_rate = 0;
+	float cooking_rate = 0;
 	vector<unordered_map<uint, pair<uint, uint>>> affiliation_consumed_items;
 	vector<vector<pair<uint, uint>>> dynamic_consumed_items;
 	vector<DYNAMIC_ITEM> dynamic_consumed_items_alt;
@@ -268,6 +268,8 @@ public:
 	// The currently active recipe
 	RECIPE active_recipe;
 
+	float amassedCookingRate;
+
 	// List of queued recipes;
 	list<uint> build_queue;
 
@@ -278,7 +280,7 @@ public:
 	wstring GetInfo(bool xml);
 	void LoadState(INI_Reader& ini);
 	void SaveState(FILE* file);
-	void SetActiveRecipe(uint product);
+	void SetActiveRecipe(uint product, bool resetAmassedCookingRate);
 	bool Timer(uint time);
 	static FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct);
 	static const RECIPE* FactoryModule::GetFactoryProductRecipe(wstring& craftType, wstring& product);

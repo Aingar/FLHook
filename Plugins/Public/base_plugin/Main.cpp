@@ -887,7 +887,7 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("cooking_rate"))
 					{
-						recipe.cooking_rate = ini.get_value_int(0);
+						recipe.cooking_rate = ini.get_value_float(0);
 					}
 					else if (ini.is_value("credit_cost"))
 					{

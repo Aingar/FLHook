@@ -3,6 +3,7 @@
 FactoryModule::FactoryModule(PlayerBase* the_base)
 	: Module(Module::TYPE_FACTORY), base(the_base)
 {
+	amassedCookingRate = 0;
 	active_recipe.nickname = 0;
 }
 
@@ -10,6 +11,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base)
 FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 	: Module(Module::TYPE_FACTORY), factoryNickname(nickname), base(the_base)
 {
+	amassedCookingRate = 0;
 	active_recipe.nickname = 0;
 	cargoSpace = recipeMap[nickname].moduleCargoStorage;
 	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
@@ -82,13 +84,13 @@ wstring FactoryModule::GetInfo(bool xml)
 
 	info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
 
-	uint minutesToCompletion = 0;
+	float volumeSum = 0;
 
 	for (auto& i : active_recipe.dynamic_consumed_items)
 	{
 		bool isFirst = true;
 		info += openLine + L"- ";
-		uint dynamicSum = 0;
+		float dynamicSum = 0;
 		for (auto& j : i)
 		{
 			if (isFirst)
@@ -103,12 +105,18 @@ wstring FactoryModule::GetInfo(bool xml)
 
 			uint good = j.first;
 			uint quantity = j.second;
-			dynamicSum += quantity;
+
 			if (!quantity)
 			{
 				continue;
 			}
 
+			auto eq = Archetype::GetEquipment(good);
+
+			if (eq)
+			{
+				dynamicSum += eq->fVolume * quantity;
+			}
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (!gi)
 			{
@@ -117,13 +125,13 @@ wstring FactoryModule::GetInfo(bool xml)
 			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		}
 		dynamicSum /= i.size();
-		minutesToCompletion += dynamicSum / active_recipe.cooking_rate;
-	}
-
+		volumeSum += dynamicSum;
+	}  
 	for (auto& i : active_recipe.dynamic_consumed_items_alt)
 	{
 		bool isFirst = true;
 		info += openLine + L"- " + itows(i.sharedAmount) + L"x of ";
+		float dynVolumeSum = 0;
 		for (uint itemId : i.items)
 		{
 			if (isFirst)
@@ -135,6 +143,13 @@ wstring FactoryModule::GetInfo(bool xml)
 				info += L", ";
 			}
 
+			auto eq = Archetype::GetEquipment(itemId);
+
+			if (eq)
+			{
+				dynVolumeSum += eq->fVolume;
+			}
+
 			const GoodInfo* gi = GoodList::find_by_id(itemId);
 			if (!gi)
 			{
@@ -142,7 +157,8 @@ wstring FactoryModule::GetInfo(bool xml)
 			}
 			info += HkGetWStringFromIDS(gi->iIDSName);
 		}
-		minutesToCompletion += i.sharedAmount / active_recipe.cooking_rate;
+		dynVolumeSum /= i.items.size();
+		volumeSum += i.sharedAmount * dynVolumeSum;
 	}
 
 	for (auto& i : active_recipe.consumed_items)
@@ -163,7 +179,14 @@ wstring FactoryModule::GetInfo(bool xml)
 		if (quantity > 0)
 		{
 			uint currStock = base->HasMarketItem(good);
-			minutesToCompletion += quantity / active_recipe.cooking_rate;
+
+			auto eq = Archetype::GetEquipment(good);
+
+			if (eq)
+			{
+				volumeSum += eq->fVolume * quantity;
+			}
+
 			if (!currStock)
 			{
 				info += L" [Out of stock]";
@@ -178,7 +201,7 @@ wstring FactoryModule::GetInfo(bool xml)
 	if (active_recipe.credit_cost)
 	{
 		info += openLine + L" - Credits $" + UIntToPrettyStr(active_recipe.credit_cost);
-		minutesToCompletion = max(minutesToCompletion, active_recipe.credit_cost / (active_recipe.cooking_rate * 100));
+		volumeSum = max(volumeSum, active_recipe.credit_cost / (active_recipe.cooking_rate * 100));
 		if (base->money < active_recipe.credit_cost)
 		{
 			info += L" [Insufficient cash]";
@@ -216,7 +239,7 @@ wstring FactoryModule::GetInfo(bool xml)
 		}
 	}
 
-	info += openLine + L"Time until completion: " + TimeString(minutesToCompletion*60);
+	info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate)*60);
 	info += end;
 
 	return info;
@@ -236,7 +259,7 @@ bool FactoryModule::Timer(uint time)
 	// Get the next item to make from the build queue.
 	if (!active_recipe.nickname && !build_queue.empty())
 	{
-		SetActiveRecipe(build_queue.front());
+		SetActiveRecipe(build_queue.front(), true);
 		build_queue.pop_front();
 	}
 
@@ -278,7 +301,7 @@ bool FactoryModule::Timer(uint time)
 	
 	if (active_recipe.credit_cost)
 	{
-		uint moneyToRemove = min(active_recipe.cooking_rate * 100, active_recipe.credit_cost);
+		uint moneyToRemove = min(static_cast<uint>(active_recipe.cooking_rate) * 100, active_recipe.credit_cost);
 		moneyToRemove = min(moneyToRemove, static_cast<uint>(base->money));
 		if (moneyToRemove)
 		{
@@ -288,19 +311,38 @@ bool FactoryModule::Timer(uint time)
 		}
 	}
 
+	float volumeToProcess = amassedCookingRate + active_recipe.cooking_rate;
+
 	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
 	{
 		uint good = i->first;
-		uint quantity = min(active_recipe.cooking_rate, i->second);
 		auto market_item = base->market_items.find(good);
 		if (market_item == base->market_items.end() || !market_item->second.quantity)
 		{
 			continue;
 		}
 
-		quantity = min(quantity, market_item->second.quantity);
-		i->second -= quantity;
-		base->RemoveMarketGood(good, quantity);
+		auto eq = Archetype::GetEquipment(market_item->first);
+
+		if (!eq)
+		{
+			continue;
+		}
+
+		if (volumeToProcess < eq->fVolume)
+		{
+			break;
+		}
+
+		float origVolumeToProcess = volumeToProcess;
+
+		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
+		float countToRemove = floorf(volumeToProcess / eq->fVolume);
+		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
+		i->second -= quantityToConsumeUint;
+		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
+		
+		base->RemoveMarketGood(good, quantityToConsumeUint);
 
 		if (base->pinned_market_items.count(i->first))
 		{
@@ -318,9 +360,8 @@ bool FactoryModule::Timer(uint time)
 	if (!consumedAnything)
 	{
 		for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
-			itemGroup != active_recipe.dynamic_consumed_items.end();)
+			itemGroup != active_recipe.dynamic_consumed_items.end(); itemGroup++)
 		{
-			bool foundItem = false;
 			for (auto& item : *itemGroup)
 			{
 				auto& goodIter = base->market_items.find(item.first);
@@ -329,23 +370,32 @@ bool FactoryModule::Timer(uint time)
 					continue;
 				}
 
-				uint cookingRate = min(active_recipe.cooking_rate, item.second);
-				cookingRate = min(cookingRate, goodIter->second.quantity);
+				auto eq = Archetype::GetEquipment(item.first);
 
-				base->RemoveMarketGood(goodIter->first, cookingRate);
+				if (!eq)
+				{
+					continue;
+				}
 
-				active_recipe.consumed_items.push_back({ goodIter->first, item.second - cookingRate });
+				if (volumeToProcess < eq->fVolume)
+				{
+					break;
+				}
+
+				float origVolumeToProcess = volumeToProcess;
+
+				volumeToProcess = min(volumeToProcess, item.second * eq->fVolume);
+				float countToRemove = floorf(volumeToProcess / eq->fVolume);
+				uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+				item.second -= quantityToConsumeUint;
+				amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+				base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+
+				active_recipe.consumed_items.push_back({ goodIter->first, item.second });
 				consumedAnything = true;
-				foundItem = true;
+				active_recipe.dynamic_consumed_items.erase(itemGroup);
 				break;
-			}
-			if (foundItem)
-			{
-				itemGroup = active_recipe.dynamic_consumed_items.erase(itemGroup);
-			}
-			else
-			{
-				itemGroup++;
 			}
 		}
 	}
@@ -362,12 +412,29 @@ bool FactoryModule::Timer(uint time)
 				{
 					continue;
 				}
-				uint cookingRate = min(active_recipe.cooking_rate, items->sharedAmount);
-				cookingRate = min(cookingRate, goodIter->second.quantity);
-				base->RemoveMarketGood(goodIter->first, cookingRate);
-				consumedAnything = true;
 
-				items->sharedAmount -= cookingRate;
+				auto eq = Archetype::GetEquipment(itemId);
+
+				if (!eq)
+				{
+					continue;
+				}
+
+				if (volumeToProcess < eq->fVolume)
+				{
+					break;
+				}
+
+				float origVolumeToProcess = volumeToProcess;
+
+				volumeToProcess = min(volumeToProcess, items->sharedAmount * eq->fVolume);
+				float countToRemove = floorf(volumeToProcess / eq->fVolume);
+				uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+				amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+				base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+				consumedAnything = true;
+				items->sharedAmount -= quantityToConsumeUint;
 				break;
 			}
 			if (!items->sharedAmount)
@@ -378,7 +445,16 @@ bool FactoryModule::Timer(uint time)
 			{
 				items++;
 			}
+			if (consumedAnything)
+			{
+				break;
+			}
 		}
+	}
+
+	if (!consumedAnything)
+	{
+		amassedCookingRate = volumeToProcess;
 	}
 
 	if (consumedAnything || consumedCredits)
@@ -419,13 +495,13 @@ bool FactoryModule::Timer(uint time)
 	if (!build_queue.empty())
 	{
 		// Load next item in the queue
-		SetActiveRecipe(build_queue.front());
+		SetActiveRecipe(build_queue.front(), true);
 		build_queue.pop_front();
 	}
 	else if (active_recipe.loop_production)
 	{
 		// If recipe is set to automatically loop, refresh the recipe data
-		SetActiveRecipe(active_recipe.nickname);
+		SetActiveRecipe(active_recipe.nickname, false);
 	}
 	else
 	{
@@ -460,7 +536,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			uint activeRecipeNickname = ini.get_value_int(0);
 			if (activeRecipeNickname)
 			{
-				SetActiveRecipe(activeRecipeNickname);
+				SetActiveRecipe(activeRecipeNickname, true);
 				active_recipe.consumed_items.clear();
 				active_recipe.dynamic_consumed_items.clear();
 				active_recipe.dynamic_consumed_items_alt.clear();
@@ -604,14 +680,19 @@ void FactoryModule::SaveState(FILE* file)
 	}
 }
 
-void FactoryModule::SetActiveRecipe(uint product)
+void FactoryModule::SetActiveRecipe(uint product, bool resetAmassedCookingRate)
 {
+	if (resetAmassedCookingRate)
+	{
+		amassedCookingRate = 0;
+	}
+
 	active_recipe = RECIPE(recipeMap[product]);
 	if (active_recipe.affiliationBonus.count(base->affiliation))
 	{
 		float productionModifier = active_recipe.affiliationBonus.at(base->affiliation);
-		active_recipe.credit_cost = static_cast<uint>(ceil(static_cast<float>(active_recipe.credit_cost) * productionModifier));
-		active_recipe.cooking_rate = static_cast<uint>(ceil(static_cast<float>(active_recipe.cooking_rate) * productionModifier));
+		active_recipe.credit_cost = static_cast<uint>(ceilf(static_cast<float>(active_recipe.credit_cost) * productionModifier));
+		active_recipe.cooking_rate = active_recipe.cooking_rate * productionModifier;
 		for (auto& item : active_recipe.consumed_items)
 		{
 			item.second = static_cast<uint>(ceil(static_cast<float>(item.second) * productionModifier));
@@ -648,7 +729,7 @@ bool FactoryModule::AddToQueue(uint product)
 {
 	if (!active_recipe.nickname)
 	{
-		SetActiveRecipe(product);
+		SetActiveRecipe(product, true);
 		return true;
 	}
 	else if(active_recipe.loop_production && active_recipe.nickname == product)

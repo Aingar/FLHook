@@ -36,7 +36,7 @@ wstring BuildModule::GetInfo(bool xml)
 
 	info = start + L"Constructing " + Status + active_recipe.infotext + L". Waiting for:";
 
-	uint minutesToCompletion = 0;
+	float minutesToCompletion = 0;
 
 	for (auto& i = active_recipe.consumed_items.begin();
 		i != active_recipe.consumed_items.end(); ++i)
@@ -71,7 +71,7 @@ wstring BuildModule::GetInfo(bool xml)
 			info += L" [Insufficient cash]";
 		}
 	}
-	info += openLine + L"Time until completion: " + TimeString(minutesToCompletion * 60);
+	info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(minutesToCompletion) * 60);
 	info += end;
 	return info;
 }
@@ -92,7 +92,7 @@ bool BuildModule::Timer(uint time)
 
 	if (active_recipe.credit_cost)
 	{
-		uint moneyToRemove = min(active_recipe.cooking_rate * 100, active_recipe.credit_cost);
+		uint moneyToRemove = static_cast<uint>(min(active_recipe.cooking_rate * 100, active_recipe.credit_cost));
 		if (base->money >= moneyToRemove)
 		{
 			base->money -= moneyToRemove;
@@ -108,7 +108,7 @@ bool BuildModule::Timer(uint time)
 	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
 	{
 		uint good = i->first;
-		uint quantity = min(active_recipe.cooking_rate, i->second);
+		uint quantity = static_cast<uint>(min(active_recipe.cooking_rate, i->second));
 		auto market_item = base->market_items.find(good);
 		if (market_item == base->market_items.end()
 			|| market_item->second.quantity < quantity)

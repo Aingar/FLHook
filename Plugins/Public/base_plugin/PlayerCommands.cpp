@@ -1297,6 +1297,11 @@ namespace PlayerCommands
 
 		if (cmd == L"start")
 		{
+			if (buildRecipe->reqlevel > base->base_level)
+			{
+				PrintUserCmdText(client, L"ERR Module only available on bases of level %u and above.", buildRecipe->reqlevel);
+				return;
+			}
 			if (buildRecipe->shortcut_number == Module::TYPE_CORE)
 			{
 				if (set_holiday_mode)

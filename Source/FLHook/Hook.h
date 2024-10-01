@@ -887,7 +887,6 @@ namespace HkIEngine
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
-	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
 	void CAsteroidInitNaked();
 	void CObjDestrOrgNaked();

@@ -197,8 +197,6 @@ static float* pGroup_range = ((float*)0x6d66af4);
 				}
 				break;
 			}
-			
-			cacheSolarIObjs.erase(iter);
 		}
 		else
 		{
@@ -256,8 +254,6 @@ static float* pGroup_range = ((float*)0x6d66af4);
 					}
 					break;
 				}
-
-				cacheNonsolarIObjs.erase(iter);
 			}
 			else
 			{
@@ -276,23 +272,6 @@ static float* pGroup_range = ((float*)0x6d66af4);
 	{
 		__asm
 		{
-			push ecx
-			push[esp + 0x8]
-			sub ecx, 4
-			push ecx
-			call FindInStarList
-			pop ecx
-			ret 0x4
-		}
-	}
-
-	__declspec(naked) void FindInStarListNaked2()
-	{
-		__asm
-		{
-			mov eax, [esp+0x4]
-			mov edx, [eax]
- 			mov [esp+0x4], edx
 			push ecx
 			push[esp + 0x8]
 			sub ecx, 4

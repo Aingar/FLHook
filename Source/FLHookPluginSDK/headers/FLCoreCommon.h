@@ -2915,7 +2915,7 @@ public:
 	float currShieldHitPoints;
 	uint dunnoShield2[3];
 	st6::vector<CEShieldGenerator*> linkedShieldGen;
-	Archetype::ShieldGenerator* mainShieldGenArch;
+	Archetype::ShieldGenerator* highestToughnessShieldGenArch;
 	float offlineThreshold;
 	float rebuildTime;
 	float maxShieldHitPoints;

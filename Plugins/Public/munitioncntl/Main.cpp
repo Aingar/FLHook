@@ -344,7 +344,7 @@ static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uin
 
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
 {
-	if (!weaponType)
+	if (!weaponType || !shield || !shield->highestToughnessShieldGenArch)
 	{
 		return 1.0f;
 	}
@@ -355,7 +355,7 @@ float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType
 	}
 
 	auto shieldResistMap2 = shieldResistIter.value();
-	auto shieldResistIter2 = shieldResistMap2->find(shield->mainShieldGenArch->iShieldTypeID);
+	auto shieldResistIter2 = shieldResistMap2->find(shield->highestToughnessShieldGenArch->iShieldTypeID);
 	if (shieldResistIter2 == shieldResistMap2->end() || !shieldResistIter2.key())
 	{
 		return 1.0f;

@@ -1162,6 +1162,7 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	{
 		temp_hostile_names.insert(charname);
 		ReportAttack(this->basename, charname, this->system);
+		SyncReputationForBase();
 	}
 
 	damageTakenMap[charname] += incoming_damage;

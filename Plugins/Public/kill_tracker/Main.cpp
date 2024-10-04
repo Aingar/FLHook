@@ -362,7 +362,7 @@ inline float GetDamageDone(const DamageDoneStruct& damageDone)
 	return 0.0f;
 }
 
-void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clientVictim, uint& clientKiller)
+void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clientVictim, uint& clientKiller, DamageCause& dmgCause)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (!clientVictim)
@@ -400,7 +400,7 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		totalDamageTaken += damageToAdd;
 	}
 
-	if (clientKiller != clientVictim && totalDamageTaken == 0.0f)
+	if (clientKiller && clientKiller != clientVictim && totalDamageTaken == 0.0f)
 	{
 		AddLog("Supressing kill message: %s", wstos(message).c_str());
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -409,8 +409,7 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 
 	const Archetype::Ship* shipArch = Archetype::GetShip(Players[clientVictim].iShipArchetype);
 
-	if ((totalDamageTaken < (shipArch->fHitPoints * 0.02))
-		&& (!clientKiller || clientKiller == clientVictim))
+	if (totalDamageTaken < (shipArch->fHitPoints * 0.02))
 	{
 		ClearDamageTaken(clientVictim);
 		ProcessDeath(clientVictim, &message, nullptr, system, false, involvedGroups, involvedPlayers);

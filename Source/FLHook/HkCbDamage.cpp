@@ -79,9 +79,9 @@ typedef float(__thiscall* GetZoneDistanceFunc)(Universe::IZone* zone, Vector& po
 GetZoneDistanceFunc GetZoneDistance = GetZoneDistanceFunc(0x6339B00);
 
 unordered_map<uint, ZoneSpecialData> zoneSpecialData;
-void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg)
+void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageList* dmg)
 {
-	if (!ship->cobj->ownerPlayer || ship->cobj->hitPoints <= 0.0f || !ship->cobj->currentDamageZone)
+	if (ship->cobj->hitPoints <= 0.0f || !ship->cobj->currentDamageZone)
 	{
 		return;
 	}
@@ -138,6 +138,8 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 			}
 		}
 	}
+
+	dmgMultiplier *=ship->pendingEnvironmentalDamage; // assembly hacked to instead store time spent in the zone.
 
 	if (zoneType & ZONEDMG_SHIELD)
 	{
@@ -203,14 +205,14 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, Da
 		{
 			fate = DamageEntry::SubObjFate(0);
 		}
-		dmg->add_damage_entry(carch->colGrp->id, carch->hitPts - colGrpDamage, fate);
+		ship->damage_col_grp(carch, colGrpDamage, dmg);
 	}
 
 	float hulldamage = min(cship->hitPoints, dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints)));
 
 	if (hulldamage > 0.0f)
 	{
-		dmg->add_damage_entry(1, cship->hitPoints - hulldamage, DamageEntry::SubObjFate(0));
+		ship->damage_hull(hulldamage, dmg);
 	}
 }
 
@@ -219,14 +221,18 @@ FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	CSimple* simple = reinterpret_cast<CSimple*>(iobj->cobj);
-	if (simple->ownerPlayer && dmg->iInflictorPlayerID)
+	if (simple->ownerPlayer)
 	{
 		CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
-
-		if (incDmg > 0)
+		ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
+		if (dmg->iInflictorPlayerID)
 		{
-			ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
-			ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
+			CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
+
+			if (incDmg > 0)
+			{
+				ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
+			}
 		}
 	}
 }

@@ -16,7 +16,7 @@ wstring SetSizeToSmall(const wstring &wscDataFormat)
 Send "Death: ..." chat-message
 **************************************************************************************************************/
 
-void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller)
+void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller, DamageCause deathCause)
 {
 	// skip processing if no cship, some ships can trigger this hook multiple times
 	if (!ClientInfo[iClientIDVictim].cship)
@@ -28,7 +28,7 @@ void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, u
 	ClientInfo[iClientIDVictim].cship = nullptr;
 	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 
-	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller));
+	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&, DamageCause&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller, deathCause));
 
 	// encode xml string(default and small)
 	// non-sys
@@ -185,7 +185,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, iClientIDKiller);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, iClientIDKiller, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 
 			}
@@ -193,14 +193,14 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextAdminKill, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 			}
 			else if (!killerId) {
 				wscEvent += L" type=suicide";
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextSuicide, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
 			else 
@@ -222,7 +222,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
 		}

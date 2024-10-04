@@ -282,6 +282,7 @@ public:
 	void SaveState(FILE* file);
 	void SetActiveRecipe(uint product, bool resetAmassedCookingRate);
 	bool Timer(uint time);
+	bool TryConsume(float volumeToProcess);
 	static FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct);
 	static const RECIPE* FactoryModule::GetFactoryProductRecipe(wstring& craftType, wstring& product);
 	static void FactoryModule::StopAllProduction(PlayerBase* pb);

@@ -75,6 +75,10 @@ wstring FactoryModule::GetInfo(bool xml)
 			uint good = item.first;
 			uint quantity = item.second;
 			const GoodInfo* gi = GoodList::find_by_id(good);
+			if (gi->iType == GOODINFO_TYPE_SHIP)
+			{
+				gi = GoodList::find_by_id(gi->iHullGoodID);
+			}
 			info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
 		}
 
@@ -245,6 +249,156 @@ wstring FactoryModule::GetInfo(bool xml)
 	return info;
 }
 
+bool FactoryModule::TryConsume(float volumeToProcess)
+{
+	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
+	{
+		uint good = i->first;
+		auto market_item = base->market_items.find(good);
+		if (market_item == base->market_items.end() || !market_item->second.quantity)
+		{
+			continue;
+		}
+
+		auto eq = Archetype::GetEquipment(market_item->first);
+
+		if (!eq)
+		{
+			continue;
+		}
+
+		if (volumeToProcess < eq->fVolume)
+		{
+			break;
+		}
+
+		float origVolumeToProcess = volumeToProcess;
+
+		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
+		float countToRemove = floorf(volumeToProcess / eq->fVolume);
+		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
+		i->second -= quantityToConsumeUint;
+		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
+		base->RemoveMarketGood(good, quantityToConsumeUint);
+
+		if (base->pinned_market_items.count(i->first))
+		{
+			base->pinned_item_updated = true;
+		}
+
+		if (!i->second)
+		{
+			active_recipe.consumed_items.erase(i);
+		}
+		if (amassedCookingRate > 0.0f)
+		{
+			TryConsume(amassedCookingRate);
+		}
+		return true;
+	}
+
+	for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
+		itemGroup != active_recipe.dynamic_consumed_items.end(); itemGroup++)
+	{
+		for (auto& item : *itemGroup)
+		{
+			auto& goodIter = base->market_items.find(item.first);
+			if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+			{
+				continue;
+			}
+
+			auto eq = Archetype::GetEquipment(item.first);
+
+			if (!eq)
+			{
+				continue;
+			}
+
+			if (volumeToProcess < eq->fVolume)
+			{
+				break;
+			}
+
+			float origVolumeToProcess = volumeToProcess;
+
+			volumeToProcess = min(volumeToProcess, item.second * eq->fVolume);
+			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+			item.second -= quantityToConsumeUint;
+			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+			base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+
+			if (item.second)
+			{
+				active_recipe.consumed_items.push_back({ goodIter->first, item.second });
+			}
+			active_recipe.dynamic_consumed_items.erase(itemGroup);
+
+			if (amassedCookingRate > 0.0f)
+			{
+				TryConsume(amassedCookingRate);
+			}
+			return true;
+		}
+	}
+
+	bool consumedAnything = false;
+	for (auto& items = active_recipe.dynamic_consumed_items_alt.begin();
+		items != active_recipe.dynamic_consumed_items_alt.end();)
+	{
+		for (uint itemId : items->items)
+		{
+			auto& goodIter = base->market_items.find(itemId);
+			if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+			{
+				continue;
+			}
+
+			auto eq = Archetype::GetEquipment(itemId);
+
+			if (!eq)
+			{
+				continue;
+			}
+
+			if (volumeToProcess < eq->fVolume)
+			{
+				break;
+			}
+
+			float origVolumeToProcess = volumeToProcess;
+
+			volumeToProcess = min(volumeToProcess, items->sharedAmount * eq->fVolume);
+			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+			base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+			items->sharedAmount -= quantityToConsumeUint;
+			break;
+		}
+		if (!items->sharedAmount)
+		{
+			items = active_recipe.dynamic_consumed_items_alt.erase(items);
+		}
+		else
+		{
+			items++;
+		}
+		if (consumedAnything)
+		{
+			if (amassedCookingRate > 0.0f)
+			{
+				TryConsume(amassedCookingRate);
+			}
+			return true;
+		}
+	}
+	return false;
+}
+
 // Every 10 seconds we consume goods for the active recipe at the cooking rate
 // and if every consumed item has been used then declare the the cooking complete
 // and convert this module into the specified type.	
@@ -296,7 +450,6 @@ bool FactoryModule::Timer(uint time)
 	}
 
 	sufficientCatalysts = true;
-	bool consumedAnything = false;
 	bool consumedCredits = false;
 	
 	if (active_recipe.credit_cost)
@@ -311,150 +464,13 @@ bool FactoryModule::Timer(uint time)
 		}
 	}
 
-	float volumeToProcess = amassedCookingRate + active_recipe.cooking_rate;
+	amassedCookingRate += active_recipe.cooking_rate;
 
-	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
-	{
-		uint good = i->first;
-		auto market_item = base->market_items.find(good);
-		if (market_item == base->market_items.end() || !market_item->second.quantity)
-		{
-			continue;
-		}
-
-		auto eq = Archetype::GetEquipment(market_item->first);
-
-		if (!eq)
-		{
-			continue;
-		}
-
-		if (volumeToProcess < eq->fVolume)
-		{
-			break;
-		}
-
-		float origVolumeToProcess = volumeToProcess;
-
-		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
-		float countToRemove = floorf(volumeToProcess / eq->fVolume);
-		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
-		i->second -= quantityToConsumeUint;
-		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
-		
-		base->RemoveMarketGood(good, quantityToConsumeUint);
-
-		if (base->pinned_market_items.count(i->first))
-		{
-			base->pinned_item_updated = true;
-		}
-
-		consumedAnything = true;
-		if (!i->second)
-		{
-			active_recipe.consumed_items.erase(i);
-		}
-		break;
-	}
+	bool consumedAnything = TryConsume(amassedCookingRate);
 
 	if (!consumedAnything)
 	{
-		for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
-			itemGroup != active_recipe.dynamic_consumed_items.end(); itemGroup++)
-		{
-			for (auto& item : *itemGroup)
-			{
-				auto& goodIter = base->market_items.find(item.first);
-				if (goodIter == base->market_items.end() || !goodIter->second.quantity)
-				{
-					continue;
-				}
-
-				auto eq = Archetype::GetEquipment(item.first);
-
-				if (!eq)
-				{
-					continue;
-				}
-
-				if (volumeToProcess < eq->fVolume)
-				{
-					break;
-				}
-
-				float origVolumeToProcess = volumeToProcess;
-
-				volumeToProcess = min(volumeToProcess, item.second * eq->fVolume);
-				float countToRemove = floorf(volumeToProcess / eq->fVolume);
-				uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
-				item.second -= quantityToConsumeUint;
-				amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
-
-				base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
-
-				active_recipe.consumed_items.push_back({ goodIter->first, item.second });
-				consumedAnything = true;
-				active_recipe.dynamic_consumed_items.erase(itemGroup);
-				break;
-			}
-		}
-	}
-
-	if (!consumedAnything)
-	{
-		for (auto& items = active_recipe.dynamic_consumed_items_alt.begin();
-			items != active_recipe.dynamic_consumed_items_alt.end();)
-		{
-			for (uint itemId : items->items)
-			{
-				auto& goodIter = base->market_items.find(itemId);
-				if (goodIter == base->market_items.end() || !goodIter->second.quantity)
-				{
-					continue;
-				}
-
-				auto eq = Archetype::GetEquipment(itemId);
-
-				if (!eq)
-				{
-					continue;
-				}
-
-				if (volumeToProcess < eq->fVolume)
-				{
-					break;
-				}
-
-				float origVolumeToProcess = volumeToProcess;
-
-				volumeToProcess = min(volumeToProcess, items->sharedAmount * eq->fVolume);
-				float countToRemove = floorf(volumeToProcess / eq->fVolume);
-				uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
-				amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
-
-				base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
-				consumedAnything = true;
-				items->sharedAmount -= quantityToConsumeUint;
-				break;
-			}
-			if (!items->sharedAmount)
-			{
-				items = active_recipe.dynamic_consumed_items_alt.erase(items);
-			}
-			else
-			{
-				items++;
-			}
-			if (consumedAnything)
-			{
-				break;
-			}
-		}
-	}
-
-	if (!consumedAnything)
-	{
-		amassedCookingRate = volumeToProcess;
+		amassedCookingRate -= active_recipe.cooking_rate;
 	}
 
 	if (consumedAnything || consumedCredits)

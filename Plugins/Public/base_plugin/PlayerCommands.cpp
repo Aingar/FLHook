@@ -848,7 +848,7 @@ namespace PlayerCommands
 				}
 				base->ally_tags.remove(entry);
 				AddTagEntry(client, base->hostile_tags, entry);
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
@@ -856,7 +856,7 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->ally_tags.size());
-					return;
+					return false;
 				}
 				base->hostile_tags.remove(entry);
 				return AddTagEntry(client, base->ally_tags, entry);
@@ -1648,6 +1648,32 @@ namespace PlayerCommands
 				const GoodInfo* gi = GoodList::find_by_id(item.first);
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), item.second);
 			}
+			for (const auto& materialList : recipe->dynamic_consumed_items)
+			{
+				bool isFirst = true;
+				for (const auto& material : materialList)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material.first);
+					if (isFirst)
+					{
+						isFirst = false;
+						PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+					else
+					{
+						PrintUserCmdText(client, L"|   or %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+				}
+			}
+			for (const auto& materialList : recipe->dynamic_consumed_items_alt)
+			{
+				PrintUserCmdText(client, L"|   %u of either:");
+				for (const auto material : materialList.items)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material);
+					PrintUserCmdText(client, L"|   %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+				}
+			}
 			if (recipe->credit_cost)
 			{
 				PrintUserCmdText(client, L"|   $%u credits", recipe->credit_cost);
@@ -1661,6 +1687,17 @@ namespace PlayerCommands
 					gi = GoodList::find_by_id(gi->iHullGoodID);
 				}
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), product.second);
+			}
+			for (const auto& affiliation_product : recipe->affiliation_produced_items)
+			{
+				auto& affilIter = affiliation_product.find(base->affiliation);
+				if (affilIter == affiliation_product.end())
+				{
+					continue;
+				}
+
+				const GoodInfo* gi = GoodList::find_by_id(affilIter->first);
+				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), affilIter->second.second);
 			}
 			if (!recipe->catalyst_items.empty())
 			{
@@ -1689,13 +1726,13 @@ namespace PlayerCommands
 					{
 					    if (rep.second <= 1.0f)
 					    {
-					    	PrintUserCmdText(client, L"|   %ls - %u%% efficiency bonus",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+					    	PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
 					    }
 					    else
 					    {
-                            PrintUserCmdText(client, L"|   %ls - %u%% penalty",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>((rep.second - 1.0f) * 100));
+                            PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials penalty",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (rep.second - 1.0f) * 100);
 
                         }
 					}
@@ -1707,8 +1744,8 @@ namespace PlayerCommands
 					{
 						if (rep.second != 1.0f)
 						{
-							PrintUserCmdText(client, L"|   %ls - +%u%% efficiency bonus",
-								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
+							PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
+								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
 						}
 						else
 						{

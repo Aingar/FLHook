@@ -538,10 +538,15 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		eq.bActivate = info->newState;
 
 		CEquipTraverser tr(ShieldGenerator);
-		CEquip* shield;
+		CEShieldGenerator* shield;
 
-		while (shield = cship->equip_manager.Traverse(tr))
+		while (shield = reinterpret_cast<CEShieldGenerator*>(cship->equip_manager.Traverse(tr)))
 		{
+			auto shieldGenArch = shield->ShieldGenArch();
+			if (shieldGenArch->fRebuildPowerDraw <= 0.0f && shieldGenArch->fConstantPowerDraw <= 0.0f)
+			{
+				continue;
+			}
 			eq.sID = shield->iSubObjId;
 			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(info->client, eq);
 			Server.ActivateEquip(info->client, eq);
@@ -666,6 +671,7 @@ int Update()
 	{
 		if (!iter->second.first->motorData)
 		{
+			iter++;
 			continue;
 		}
 
@@ -850,6 +856,7 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		}
 
 		primaryBoost = &shieldData->second;
+		break;
 	}
 
 	if (!primaryBoost)

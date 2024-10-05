@@ -1667,11 +1667,11 @@ namespace PlayerCommands
 			}
 			for (const auto& materialList : recipe->dynamic_consumed_items_alt)
 			{
-				PrintUserCmdText(client, L"|   %u of either:");
+				PrintUserCmdText(client, L"|   x%u of either:", materialList.sharedAmount);
 				for (const auto material : materialList.items)
 				{
 					const GoodInfo* gi = GoodList::find_by_id(material);
-					PrintUserCmdText(client, L"|   %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+					PrintUserCmdText(client, L"||   %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
 				}
 			}
 			if (recipe->credit_cost)

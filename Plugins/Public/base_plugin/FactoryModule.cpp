@@ -63,7 +63,10 @@ wstring FactoryModule::GetInfo(bool xml)
 		info += end;
 		return info;
 	}
-	if (active_recipe.consumed_items.empty() && active_recipe.dynamic_consumed_items.empty())
+	if (active_recipe.consumed_items.empty() 
+		&& active_recipe.dynamic_consumed_items.empty() 
+		&& active_recipe.dynamic_consumed_items_alt.empty() 
+		&& !active_recipe.credit_cost)
 	{
 		info += openLine + active_recipe.infotext + L": Waiting for free cargo storage" + openLine + L"or available max stock limit to drop off:";
 		for (auto& item : active_recipe.produced_items)
@@ -126,7 +129,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(good)) + L" in stock]";
 		}
 		dynamicSum /= i.size();
 		volumeSum += dynamicSum;
@@ -159,7 +162,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += HkGetWStringFromIDS(gi->iIDSName);
+			info += HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(itemId)) + L" in stock]";
 		}
 		dynVolumeSum /= i.items.size();
 		volumeSum += i.sharedAmount * dynVolumeSum;

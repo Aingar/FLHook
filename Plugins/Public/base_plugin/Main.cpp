@@ -2464,7 +2464,7 @@ void __stdcall ReqSetCash_AFTER(int cash, unsigned int client)
 	{
 		int moneyDiff = shipPurchasePrice - Players[client].iInspectCash;
 		pub::Player::AdjustCash(client, moneyDiff);
-		shipPurchasePrice = 0;
+		ResetPlayerWorth(client);
 	}
 }
 void SetEquipPacket(uint client, st6::vector<EquipDesc>&)
@@ -2508,6 +2508,15 @@ void __stdcall ReqEquipment(class EquipDescList const &edl, unsigned int client)
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
 		returncode = SKIPPLUGINS;
+}
+
+void __stdcall ReqShipArch_AFTER(uint shipArchId, uint clientId)
+{
+	if (shipPurchasePrice && clients[clientId].player_base)
+	{
+		shipPurchasePrice = 0;
+		ResetPlayerWorth(clientId);
+	}
 }
 
 void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
@@ -3484,6 +3493,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash_AFTER, PLUGIN_HkIServerImpl_ReqSetCash_AFTER, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqShipArch_AFTER, PLUGIN_HkIServerImpl_ReqShipArch_AFTER, 11));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

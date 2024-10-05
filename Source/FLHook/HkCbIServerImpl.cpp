@@ -787,7 +787,7 @@ namespace HkIServerImpl
 				}
 			}
 
-		} CATCH_HOOK({})
+		} CATCH_HOOK({ ConPrint(L"ActivateEquipException: %u, %u\n", iClientID, Players[iClientID].iShipID); })
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ActivateEquip, __stdcall, (unsigned int iClientID, struct XActivateEquip const &aq), (iClientID, aq));
 

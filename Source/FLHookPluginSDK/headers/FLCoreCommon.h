@@ -2095,7 +2095,7 @@ private:
 	static void  Clear(class std::list<class CEquip*, class std::allocator<class CEquip*> >&);
 
 public:
-        /* 0 */ uint iDunno0;
+        /* 0 */ CEqObj* parent;
         /* 1 */ bool bDunno4;
         /* 2 */ uint unkPtr1;
         /* 3 */ int size1;

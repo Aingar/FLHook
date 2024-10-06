@@ -380,6 +380,7 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 
 			base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
 			items->sharedAmount -= quantityToConsumeUint;
+			consumedAnything = true;
 			break;
 		}
 		if (!items->sharedAmount)

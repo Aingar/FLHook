@@ -2742,11 +2742,12 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		RIGHT_CHECK(RIGHT_BASES)
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		wstring baseName = cmd->ArgStrToEnd(1);
 
 		PlayerBase* base = nullptr;
 		for (auto& i : player_bases)
 		{
-			if (i.second->basename == cmd->ArgStrToEnd(1))
+			if (i.second->basename == baseName)
 			{
 				base = i.second;
 				break;
@@ -2760,11 +2761,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			return true;
 		}
 
-		base->failed_update_counter = 5;
-
-		//lastDespawnedFilename = base->path;
-		//base->base_health = 0;
-		//bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		lastDespawnedFilename = base->path;
+		base->base_health = 0;
+		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 
@@ -2816,7 +2815,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		{
 			player_bases[base->base] = base;
 			base->Spawn();
-			cmd->Print(L"Base respawned!\n");
+			cmd->Print(L"Base %ls respawned!\n", base->basename.c_str());
 		}
 		else
 		{

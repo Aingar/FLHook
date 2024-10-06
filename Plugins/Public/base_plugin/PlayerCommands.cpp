@@ -1759,6 +1759,11 @@ namespace PlayerCommands
 
 		if (cmd == L"start")
 		{
+			if (recipe->reqlevel > base->base_level)
+			{
+				PrintUserCmdText(client, L"ERR core level %u required for this recipe", recipe->reqlevel);
+				return;
+			}
 			if (!base->availableCraftList.count(recipe->craft_type))
 			{
 				PrintUserCmdText(client, L"ERR incorrect craftlist, for more information use /craft help");

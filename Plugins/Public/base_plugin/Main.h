@@ -244,9 +244,11 @@ public:
 	PlayerBase* base;
 
 	RECIPE active_recipe;
+	float amassedCookingRate;
 
 	BuildModule(PlayerBase* the_base);
 	BuildModule(PlayerBase* the_base, const RECIPE* moduleRecipe);
+	bool TryConsume(float volumeToProcess);
 
 	wstring GetInfo(bool xml);
 

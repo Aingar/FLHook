@@ -232,7 +232,7 @@ void CoreModule::EnableShieldFuse(bool shieldEnabled)
 {
 	if (space_obj)
 	{
-		uint dummy;
+		StarSystem* dummy;
 		IObjInspectImpl* inspect;
 		if (GetShipInspect(space_obj, inspect, dummy))
 		{

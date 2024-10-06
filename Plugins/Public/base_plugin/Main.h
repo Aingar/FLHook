@@ -51,9 +51,10 @@ struct RECIPE
 	vector<unordered_map<uint, pair<uint, uint>>> affiliation_produced_items;
 	uint shortcut_number = 0;
 	bool loop_production = false;
+	bool restricted = false;
 	wstring infotext = L"";
 	wstring craft_type = L"";
-	uint cooking_rate = 0;
+	float cooking_rate = 0;
 	vector<unordered_map<uint, pair<uint, uint>>> affiliation_consumed_items;
 	vector<vector<pair<uint, uint>>> dynamic_consumed_items;
 	vector<DYNAMIC_ITEM> dynamic_consumed_items_alt;
@@ -97,7 +98,7 @@ struct ARCHTYPE_STRUCT
 
 struct MARKET_ITEM
 {
-	MARKET_ITEM() : quantity(0), price(1), sellPrice(1), min_stock(100000), max_stock(100000), is_pinned(false), is_public(false) {}
+	MARKET_ITEM() : quantity(0), price(1), sellPrice(1), min_stock(100000), max_stock(100000), is_pinned(false), is_public(false), shipHullId(0) {}
 
 	// Number of units of commodity stored in this base
 	uint quantity;
@@ -119,6 +120,8 @@ struct MARKET_ITEM
 
 	// Making public to all players without restrictions
 	bool is_public;
+
+	uint shipHullId;
 };
 
 struct NEWS_ITEM
@@ -241,9 +244,11 @@ public:
 	PlayerBase* base;
 
 	RECIPE active_recipe;
+	float amassedCookingRate;
 
 	BuildModule(PlayerBase* the_base);
 	BuildModule(PlayerBase* the_base, const RECIPE* moduleRecipe);
+	bool TryConsume(float volumeToProcess);
 
 	wstring GetInfo(bool xml);
 
@@ -265,6 +270,8 @@ public:
 	// The currently active recipe
 	RECIPE active_recipe;
 
+	float amassedCookingRate;
+
 	// List of queued recipes;
 	list<uint> build_queue;
 
@@ -275,8 +282,9 @@ public:
 	wstring GetInfo(bool xml);
 	void LoadState(INI_Reader& ini);
 	void SaveState(FILE* file);
-	void SetActiveRecipe(uint product);
+	void SetActiveRecipe(uint product, bool resetAmassedCookingRate);
 	bool Timer(uint time);
+	bool TryConsume(float volumeToProcess);
 	static FactoryModule* FactoryModule::FindModuleByProductInProduction(PlayerBase* pb, uint searchedProduct);
 	static const RECIPE* FactoryModule::GetFactoryProductRecipe(wstring& craftType, wstring& product);
 	static void FactoryModule::StopAllProduction(PlayerBase* pb);

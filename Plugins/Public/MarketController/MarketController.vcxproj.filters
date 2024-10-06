@@ -7,10 +7,5 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Main.h" />
-    <ClInclude Include="headers\zlib.h" />
-    <ClInclude Include="headers\zconf.h" />
-  </ItemGroup>
-  <ItemGroup>
-    <Library Include="libs\zlib.lib" />
   </ItemGroup>
 </Project>

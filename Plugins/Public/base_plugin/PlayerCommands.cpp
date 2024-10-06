@@ -133,6 +133,10 @@ namespace PlayerCommands
 			currentString += itows(recipe.second.shortcut_number);
 			currentString += L" = ";
 			currentString += recipe.second.infotext.c_str();
+			if (recipe.second.restricted)
+			{
+				currentString += L" (restricted)";
+			}
 			generatedHelpStringList.emplace_back(currentString.c_str());
 		}
 		return generatedHelpStringList;
@@ -794,29 +798,31 @@ namespace PlayerCommands
 		}
 	}
 
-	void AddTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
+	bool AddTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
 	{
 		if (find(tagList.begin(), tagList.end(), newEntry) != tagList.end())
 		{
 			PrintUserCmdText(client, L"Tag already exists");
-			return;
+			return true;
 		}
 		PrintUserCmdText(client, L"OK!");
 		tagList.push_back(newEntry);
+		return false;
 	}
 
-	void RemoveTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
+	bool RemoveTagEntry(uint client, list<wstring>& tagList, const wstring& newEntry)
 	{
 		if (find(tagList.begin(), tagList.end(), newEntry) == tagList.end())
 		{
 			PrintUserCmdText(client, L"ERR No such tag!");
-			return;
+			return false;
 		}
 		PrintUserCmdText(client, L"OK!");
 		tagList.remove(newEntry);
+		return true;
 	}
 
-	void AddAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
+	bool AddAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
 	{
 		if (entryType == L"tag")
 		{
@@ -826,12 +832,11 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 
 				base->hostile_tags.remove(entry);
-				AddTagEntry(client, base->srp_tags, entry);
-				return;
+				return AddTagEntry(client, base->srp_tags, entry);
 			}
 			else if (type == L"blacklist")
 			{
@@ -839,11 +844,11 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->hostile_tags.size());
-					return;
+					return false;
 				}
 				base->ally_tags.remove(entry);
 				AddTagEntry(client, base->hostile_tags, entry);
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
@@ -851,11 +856,10 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->ally_tags.size());
-					return;
+					return false;
 				}
 				base->hostile_tags.remove(entry);
-				AddTagEntry(client, base->ally_tags, entry);
-				return;
+				return AddTagEntry(client, base->ally_tags, entry);
 			}
 		}
 		else if (entryType == L"name")
@@ -866,12 +870,12 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 				base->hostile_names.erase(entry);
 				base->srp_names.insert(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"blacklist")
 			{
@@ -879,12 +883,12 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->hostile_names.size());
-					return;
+					return false;
 				}
 				base->ally_names.erase(entry);
 				base->hostile_names.insert(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
@@ -892,12 +896,12 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->ally_names.size());
-					return;
+					return false;
 				}
 				base->hostile_names.erase(entry);
 				base->ally_names.insert(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 		}
 		else if (entryType == L"faction")
@@ -906,7 +910,7 @@ namespace PlayerCommands
 			if (!A.GetAffiliation(entryId))
 			{
 				PrintUserCmdText(client, L"ERR invalid faction nickname!");
-				return;
+				return false;
 			}
 
 			if (type == L"srp")
@@ -915,12 +919,12 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 				base->hostile_factions.erase(entryId);
 				base->srp_factions.insert(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"blacklist")
 			{
@@ -928,12 +932,12 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->hostile_factions.size());
-					return;
+					return false;
 				}
 				base->ally_factions.erase(entryId);
 				base->hostile_factions.insert(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
@@ -941,21 +945,22 @@ namespace PlayerCommands
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
 						base_access_entry_limit, base->ally_factions.size());
-					return;
+					return false;
 				}
 				base->hostile_factions.erase(entryId);
 				base->ally_factions.insert(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 		}
 
 		PrintUserCmdText(client, L"ERR incorrect parameters!");
 		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
 
+		return false;
 	}
 
-	void RemoveAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
+	bool RemoveAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
 	{
 		if (entryType == L"tag")
 		{
@@ -965,21 +970,18 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 
-				RemoveTagEntry(client, base->srp_tags, entry);
-				return;
+				return RemoveTagEntry(client, base->srp_tags, entry);
 			}
 			else if (type == L"blacklist")
 			{
-				RemoveTagEntry(client, base->hostile_tags, entry);
-				return;
+				return RemoveTagEntry(client, base->hostile_tags, entry);
 			}
 			else if (type == L"whitelist")
 			{
-				RemoveTagEntry(client, base->ally_tags, entry);
-				return;
+				return RemoveTagEntry(client, base->ally_tags, entry);
 			}
 		}
 		else if (entryType == L"name")
@@ -990,38 +992,38 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 				if (!base->srp_names.count(entry))
 				{
 					PrintUserCmdText(client, L"ERR No such name!");
-					return;
+					return false;
 				}
 				base->srp_names.erase(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"blacklist")
 			{
 				if (!base->hostile_names.count(entry))
 				{
 					PrintUserCmdText(client, L"ERR No such name!");
-					return;
+					return false;
 				}
 				base->hostile_names.erase(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
 				if (!base->ally_names.count(entry))
 				{
 					PrintUserCmdText(client, L"ERR No such name!");
-					return;
+					return false;
 				}
 				base->ally_names.erase(entry);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 		}
 		else if (entryType == L"faction")
@@ -1030,7 +1032,7 @@ namespace PlayerCommands
 			if (!A.GetAffiliation(entryId))
 			{
 				PrintUserCmdText(client, L"ERR invalid faction nickname!");
-				return;
+				return false;
 			}
 
 			if (type == L"srp")
@@ -1039,44 +1041,45 @@ namespace PlayerCommands
 				if (!(HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(client), rights) == HKE_OK && rights.find(L"superadmin") != -1))
 				{
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
-					return;
+					return false;
 				}
 				if (!base->srp_factions.count(entryId))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
-					return;
+					return false;
 				}
 				base->srp_factions.erase(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"blacklist")
 			{
 				if (!base->hostile_factions.count(entryId))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
-					return;
+					return false;
 				}
 				base->hostile_factions.erase(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 			else if (type == L"whitelist")
 			{
 				if (!base->ally_factions.count(entryId))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
-					return;
+					return false;
 				}
 				base->ally_factions.erase(entryId);
 				PrintUserCmdText(client, L"OK!");
-				return;
+				return true;
 			}
 		}
 
 		PrintUserCmdText(client, L"ERR incorrect parameters!");
 		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
 
+		return false;
 	}
 
 	void BaseAccess(uint client, const wstring& params)
@@ -1101,19 +1104,26 @@ namespace PlayerCommands
 		
 		if (cmd == L"add")
 		{
-			AddAccess(base, client, param1, param2, param3);
+			if (AddAccess(base, client, param1, param2, param3))
+			{
+				base->SyncReputationForBase();
+			}
 			return;
 		}
 		
 		if (cmd == L"remove")
 		{
-			RemoveAccess(base, client, param1, param2, param3);
+			if (RemoveAccess(base, client, param1, param2, param3))
+			{
+				base->SyncReputationForBase();
+			}
 			return;
 		}
 
 		if (cmd == L"clear")
 		{
 			ClearAccesses(base, client, param1);
+			base->SyncReputationForBase();
 		}
 
 		PrintUserCmdText(client, L"ERR Invalid parameters");
@@ -1293,6 +1303,11 @@ namespace PlayerCommands
 
 		if (cmd == L"start")
 		{
+			if (buildRecipe->reqlevel > base->base_level)
+			{
+				PrintUserCmdText(client, L"ERR Module only available on bases of level %u and above.", buildRecipe->reqlevel);
+				return;
+			}
 			if (buildRecipe->shortcut_number == Module::TYPE_CORE)
 			{
 				if (set_holiday_mode)
@@ -1633,6 +1648,32 @@ namespace PlayerCommands
 				const GoodInfo* gi = GoodList::find_by_id(item.first);
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), item.second);
 			}
+			for (const auto& materialList : recipe->dynamic_consumed_items)
+			{
+				bool isFirst = true;
+				for (const auto& material : materialList)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material.first);
+					if (isFirst)
+					{
+						isFirst = false;
+						PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+					else
+					{
+						PrintUserCmdText(client, L"|   or %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+				}
+			}
+			for (const auto& materialList : recipe->dynamic_consumed_items_alt)
+			{
+				PrintUserCmdText(client, L"|   x%u of either:", materialList.sharedAmount);
+				for (const auto material : materialList.items)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material);
+					PrintUserCmdText(client, L"||   %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+				}
+			}
 			if (recipe->credit_cost)
 			{
 				PrintUserCmdText(client, L"|   $%u credits", recipe->credit_cost);
@@ -1641,7 +1682,22 @@ namespace PlayerCommands
 			for (const auto& product : recipe->produced_items)
 			{
 				const GoodInfo* gi = GoodList::find_by_id(product.first);
+				if (gi->iType == GOODINFO_TYPE_SHIP)
+				{
+					gi = GoodList::find_by_id(gi->iHullGoodID);
+				}
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), product.second);
+			}
+			for (const auto& affiliation_product : recipe->affiliation_produced_items)
+			{
+				auto& affilIter = affiliation_product.find(base->affiliation);
+				if (affilIter == affiliation_product.end())
+				{
+					continue;
+				}
+
+				const GoodInfo* gi = GoodList::find_by_id(affilIter->first);
+				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), affilIter->second.second);
 			}
 			if (!recipe->catalyst_items.empty())
 			{
@@ -1663,19 +1719,38 @@ namespace PlayerCommands
 			}
 			if (!recipe->affiliationBonus.empty())
 			{
-				PrintUserCmdText(client, L"IFF bonuses:");
-				for (const auto& rep : recipe->affiliationBonus)
+				if (!recipe->restricted)
 				{
-					if (rep.second <= 1.0f)
+					PrintUserCmdText(client, L"IFF bonuses:");
+					for (const auto& rep : recipe->affiliationBonus)
 					{
-						PrintUserCmdText(client, L"|   %ls - %u%% efficiency bonus",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>(((1.0f / rep.second) - 1.0f) * 100));
-					}
-					else
-					{
-						PrintUserCmdText(client, L"|   %ls - %u%% penalty",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), static_cast<uint>((rep.second - 1.0f) * 100));
+					    if (rep.second <= 1.0f)
+					    {
+					    	PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
+					    }
+					    else
+					    {
+                            PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials penalty",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (rep.second - 1.0f) * 100);
 
+                        }
+					}
+				}
+				else
+				{
+					PrintUserCmdText(client, L"Available to:");
+					for (const auto& rep : recipe->affiliationBonus)
+					{
+						if (rep.second != 1.0f)
+						{
+							PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
+								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
+						}
+						else
+						{
+							PrintUserCmdText(client, L"|   %ls", HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str());
+						}
 					}
 				}
 			}
@@ -1684,9 +1759,19 @@ namespace PlayerCommands
 
 		if (cmd == L"start")
 		{
+			if (recipe->reqlevel > base->base_level)
+			{
+				PrintUserCmdText(client, L"ERR core level %u required for this recipe", recipe->reqlevel);
+				return;
+			}
 			if (!base->availableCraftList.count(recipe->craft_type))
 			{
 				PrintUserCmdText(client, L"ERR incorrect craftlist, for more information use /craft help");
+				return;
+			}
+			if (recipe->restricted && !recipe->affiliationBonus.count(base->affiliation))
+			{
+				PrintUserCmdText(client, L"ERR This recipe is not available for this base's affiliation");
 				return;
 			}
 			FactoryModule* factory = base->craftTypeTofactoryModuleMap[recipe->craft_type];
@@ -1997,6 +2082,10 @@ namespace PlayerCommands
 			{
 				item++;
 				continue;
+			}
+			if (gi->iType == GOODINFO_TYPE_SHIP)
+			{
+				gi = GoodList::find_by_id(gi->iHullGoodID);
 			}
 
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);

@@ -478,6 +478,7 @@ struct CUSTOM_POB_DOCK_ALERT_STRUCT
 
 enum class ShieldSource
 {
+	UNSET,
 	CLOAK,
 	MISC
 };

@@ -105,7 +105,7 @@ enum EquipmentClass : uint
 	InternalFX = 1 << 22,
 	TradeLaneEquip = 1 << 23,
 	Armor = 1 << 24,
-	ExternalEquipment = Mine | CM | Gun | ShieldGenerator | Thruster | CargoPod | CloakingDevice,
+	ExternalEquipment = MineLauncher | CM | Gun | ShieldGenerator | Thruster | CargoPod | CloakingDevice,
 	InternalEquipment = Engine | Power | Scanner | TractorBeam | RepairDroid | InternalFX | TradeLaneEquip | Armor,
 };
 
@@ -650,7 +650,19 @@ namespace Archetype
 		/*  2 */ float fImpulse;
 		/*  3 */ float fHullDamage;
 		/*  4 */ float fEnergyDamage;
-		// and some other stuff
+		/*  5 */ uint processType;
+		/*  6 */ float lifeTime1;
+		/*  7 */ float lifeTime2;
+		/*  8 */ st6::list<void*> effectList;
+		/*  11 */ int numChildPieces;
+		/*  12 */ float debrisImpulse;
+		/*  13 */ float innardsDebrisStartTime;
+		/*  14 */ float innardsDebrisNum;
+		/*  15 */ float innardsDebrisRadius;
+		/*  16 */ st6::vector<struct IObjInspect*> innardsDebrisObject;
+		/*  20 */ uint dunno;
+		/*  21 */ uint debrisType1;
+		/*  22 */ uint debrisType2;
 	};
 
 	struct IMPORT Launcher : public AttachedEquipment
@@ -851,6 +863,15 @@ namespace Archetype
 		/* 41 */ float fDetonationDist;
 		/* 42 */ uint iHpType;
 		/* 43 */ bool bCruiseDisruptor;
+	};
+
+	struct IMPORT MotorData
+	{
+		virtual bool Load(INI_Reader*);
+		uint motorId;
+		float motorDelay;
+		float motorAcceleration;
+		float motorLifetime;
 	};
 
 	struct IMPORT Mine : Projectile
@@ -1822,8 +1843,8 @@ namespace PhySys
 	IMPORT  float  ANOM_LIMITS_MAX_ANGULAR_VELOCITY_PER_PSI;
 	IMPORT  float  ANOM_LIMITS_MAX_VELOCITY;
 	IMPORT  void  AddImpulseAtPoint(struct CObject *, class Vector const &, class Vector const &);
-	IMPORT  void  AddToAngularVelocityOS(struct CObject *, class Vector const &);
-	IMPORT  void  AddToVelocity(struct CObject *, class Vector const &);
+	IMPORT  void  AddToAngularVelocityOS(::CObject *, class Vector const &);
+	IMPORT  void  AddToVelocity(::CObject *, class Vector const &);
 	IMPORT  void  AngularImpulse(struct CObject *, class Vector const &, float);
 	IMPORT  void  AngularImpulseOS(struct CObject *, class Vector const &, float);
 	IMPORT  bool  AnyActive(void);
@@ -1858,20 +1879,20 @@ namespace PhySys
 	IMPORT  class Vector  GOLEM_MAX_TRANSLATION_FORCE;
 	IMPORT  float  GOLEM_TORQUE_FACTOR;
 	IMPORT  void  GenerateCollisions(struct CBeam *);
-	IMPORT  class Vector   GetAngularVelocityOS(struct CObject const *);
-	IMPORT  class Vector   GetCenterOfMass(struct CObject const *);
+	IMPORT  class Vector   GetAngularVelocityOS(::CObject const *);
+	IMPORT  class Vector   GetCenterOfMass(::CObject const *);
 	IMPORT  bool  GetClosestPhantomIntruderPos(void *, unsigned int, unsigned int, struct CSimple * &, class Vector &);
-	IMPORT  char const *  GetCollisionGroup(struct CObject const *);
-	IMPORT  bool  GetCollisionState(struct CObject const *);
+	IMPORT  char const *  GetCollisionGroup(::CObject const *);
+	IMPORT  bool  GetCollisionState(::CObject const *);
 	IMPORT  bool  GetCollisionStatePhantom(void * const);
 	IMPORT  void  GetCollisions(unsigned int, struct CollisionEvent const * &, struct CollisionEvent const * &);
 	IMPORT  class IVP_Time   GetCurrentTime(unsigned int);
-	IMPORT  void  GetDamping(struct CObject const *, float &, class Vector &);
-	IMPORT  float  GetMass(struct CObject const *);
-	IMPORT  class Vector   GetMomentOfInertia(struct CObject const *);
-	IMPORT  float  GetRadiusR(struct CObject const *, bool, class Vector &);
-	IMPORT  class Vector   GetVelocity(struct CObject const *);
-	IMPORT  void  LinearImpulse(struct CObject *, class Vector const &, float);
+	IMPORT  void  GetDamping(::CObject const *, float &, class Vector &);
+	IMPORT  float  GetMass(::CObject const *);
+	IMPORT  class Vector   GetMomentOfInertia(::CObject const *);
+	IMPORT  float  GetRadiusR(::CObject const *, bool, class Vector &);
+	IMPORT  class Vector   GetVelocity(::CObject const *);
+	IMPORT  void  LinearImpulse(::CObject *, class Vector const &, float);
 	IMPORT  double  MATERIAL_ELASTICITY;
 	IMPORT  double  MATERIAL_FRICTION;
 	IMPORT  int  MAX_SPAWNED_MINDIST_COUNT;
@@ -1893,18 +1914,18 @@ namespace PhySys
 	IMPORT  float  RMGR_LOOK_AHEAD_MIN_SECONDS_WORLD;
 	IMPORT  float  RMGR_LOOK_AHEAD_TIME_INTRA;
 	IMPORT  float  RMGR_LOOK_AHEAD_TIME_WORLD;
-	IMPORT  void  ReMakePhysicalR(struct CObject *, struct CreateParms const &, float);
-	IMPORT  void  SetCollisionGroup(struct CObject *, char const * const);
-	IMPORT  void  SetCollisionState(struct CObject *, bool);
+	IMPORT  void  ReMakePhysicalR(::CObject *, struct CreateParms const &, float);
+	IMPORT  void  SetCollisionGroup(::CObject *, char const * const);
+	IMPORT  void  SetCollisionState(::CObject *, bool);
 	IMPORT  void  SetCollisionStatePhantom(void *, bool);
-	IMPORT  void  SetDamping(struct CObject *, float, class Vector const &);
-	IMPORT  void  SetMass(struct CObject *, float);
-	IMPORT  void  SetMomentOfInertia(struct CObject *, class Vector const &);
+	IMPORT  void  SetDamping(::CObject *, float, class Vector const &);
+	IMPORT  void  SetMass(::CObject *, float);
+	IMPORT  void  SetMomentOfInertia(::CObject *, class Vector const &);
 	IMPORT  void  Shutdown(unsigned int);
 	IMPORT  void  Startup(unsigned int);
-	IMPORT  void  UnMakePhysicalR(struct CObject *);
+	IMPORT  void  UnMakePhysicalR(::CObject *);
 	IMPORT  void  Update(unsigned int, float);
-	IMPORT  void  Wakeup(struct CObject *);
+	IMPORT  void  Wakeup(::CObject *);
 	IMPORT  enum IVP_BOOL(*m_pCollisionFilter)(class IVP_Real_Object *, class IVP_Real_Object *);
 };
 
@@ -2074,7 +2095,7 @@ private:
 	static void  Clear(class std::list<class CEquip*, class std::allocator<class CEquip*> >&);
 
 public:
-        /* 0 */ uint iDunno0;
+        /* 0 */ CEqObj* parent;
         /* 1 */ bool bDunno4;
         /* 2 */ uint unkPtr1;
         /* 3 */ int size1;
@@ -2542,7 +2563,18 @@ public:
 	void SetMaxCorrectiveConvergeTime(double);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	Vector positionSamples[3];
+	uint dunno;
+	double sampleTimes[3];
+	Vector samplesDunno[2];
+	Vector projectedPositionVector;
+	Vector trackedPositionVector;
+	Vector positionDiffs_questionMark[4];
+	uint dunno2[3];
+	uint totalSampleCounter;
+	float dunno3[2];
+	double convergeTime;
+	double correctiveConvergeTime;
 };
 
 struct IMPORT CDynamicAsteroid : public CObject
@@ -2883,7 +2915,7 @@ public:
 	float currShieldHitPoints;
 	uint dunnoShield2[3];
 	st6::vector<CEShieldGenerator*> linkedShieldGen;
-	Archetype::ShieldGenerator* mainShieldGenArch;
+	Archetype::ShieldGenerator* highestToughnessShieldGenArch;
 	float offlineThreshold;
 	float rebuildTime;
 	float maxShieldHitPoints;
@@ -2908,6 +2940,8 @@ public:
 	bool IsLinked(void)const;
 	void LinkShield(class CEShield *);
 	void UnLinkShield(void);
+
+	CEShield* mainShield;
 };
 
 class IMPORT CEThruster : public CAttachedEquip, public CPhysControllerEquip
@@ -3376,7 +3410,20 @@ public:
 	void  tracef(char const *, ...);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	CDeadReckonedVector vec1;
+	CDeadReckonedVector vec2;
+	CDeadReckonedVector vec3;
+	Vector projectedVelocity;
+	uint dunno2[6];
+	Quaternion rotation;
+	Vector position;
+	uint sampleCount;
+	uint dunno3;
+	double simulationTime;
+	uint dunno4;
+	float dunnoFloat;
+	float* dunnoFloatPtr;
+	uint unk;
 };
 
 
@@ -5381,11 +5428,12 @@ public:
 
 struct ExplosionDamageEvent
 {
-	uint victimId;
+	uint projectileId;
 	uint attackerId;
 	DamageCause dmgCause;
 	Vector explosionPosition;
 	Archetype::Explosion* explosionArchetype;
+	uint dunno;
 };
 
 struct IObjRWAbstract
@@ -5512,8 +5560,8 @@ struct IObjRWAbstract
 	virtual bool hit_shield_bubble(DamageList*);        // 472
 	virtual void sub_6CE88D0();                         // iterate over all equipped equipment and run an update?                           //476
 	virtual void sub_6CE8930();                         // processes values under 0x74 and 0x78 pointers                                    //480
-	virtual bool light_fuse(uint dunno, uint fuseId, ushort sId, float radius, float fuseLifetime);                                    // 484 sub_6D01A90
-	virtual bool unlight_fuse_unk(uint fuseId, ushort sid, float lifeTime);                                                               // 488 sub_6CEC7F0
+	virtual bool light_fuse(uint shipId, uint* fuseId, ushort sId, float radius, float fuseLifetime);                                    // 484 sub_6D01A90
+	virtual bool unlight_fuse_unk(uint* fuseId, ushort sid, float lifeTime);                                                               // 488 sub_6CEC7F0
 	virtual bool fuse_expiration_check();                                                                                                 // 492 sub_6CEC8D0
 	virtual void death_explosion();                                                                                                       // 496 sub_6CE8400
 	virtual void sub_6D01C90();                                                                                                           // 500

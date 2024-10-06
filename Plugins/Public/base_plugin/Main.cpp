@@ -887,7 +887,7 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("cooking_rate"))
 					{
-						recipe.cooking_rate = ini.get_value_int(0);
+						recipe.cooking_rate = ini.get_value_float(0);
 					}
 					else if (ini.is_value("credit_cost"))
 					{
@@ -977,6 +977,10 @@ void LoadSettingsActual()
 					else if (ini.is_value("affiliation_bonus"))
 					{
 						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
+					}
+					else if (ini.is_value("restricted"))
+					{
+						recipe.restricted = ini.get_value_bool(0);
 					}
 				}
 				AddFactoryRecipeToMaps(recipe);
@@ -2270,6 +2274,7 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 	}
 }
 
+int shipPurchasePrice = 0;
 void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -2333,6 +2338,10 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		{
 			returncode = SKIPPLUGINS;
 			PrintUserCmdText(client, L"Purchased ship");
+
+			const auto gi2 = GoodList::find_by_id(gi->iHullGoodID);
+
+			shipPurchasePrice = curr_money - price + (gi2->fPrice * 0.5f);
 		}
 		else if (gi && gi->iType == GOODINFO_TYPE_HULL)
 		{
@@ -2439,6 +2448,10 @@ void __stdcall ReqChangeCash(int cash, unsigned int client)
 void __stdcall ReqSetCash(int cash, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (shipPurchasePrice)
+	{
+		return;
+	}
 	if (clients[client].player_base)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -2447,6 +2460,15 @@ void __stdcall ReqSetCash(int cash, unsigned int client)
 	lastCashChangeClient = 0;
 }
 
+void __stdcall ReqSetCash_AFTER(int cash, unsigned int client)
+{
+	if (shipPurchasePrice)
+	{
+		int moneyDiff = shipPurchasePrice - Players[client].iInspectCash;
+		pub::Player::AdjustCash(client, moneyDiff);
+		ResetPlayerWorth(client);
+	}
+}
 void SetEquipPacket(uint client, st6::vector<EquipDesc>&)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -2488,6 +2510,15 @@ void __stdcall ReqEquipment(class EquipDescList const &edl, unsigned int client)
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
 		returncode = SKIPPLUGINS;
+}
+
+void __stdcall ReqShipArch_AFTER(uint shipArchId, uint clientId)
+{
+	if (shipPurchasePrice && clients[clientId].player_base)
+	{
+		shipPurchasePrice = 0;
+		ResetPlayerWorth(clientId);
+	}
 }
 
 void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
@@ -3462,7 +3493,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem_AFTER, PLUGIN_HkIServerImpl_ReqAddItem_AFTER, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash, PLUGIN_HkIServerImpl_ReqSetCash, 15));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqSetCash_AFTER, PLUGIN_HkIServerImpl_ReqSetCash_AFTER, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqEquipment, PLUGIN_HkIServerImpl_ReqEquipment, 11));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ReqShipArch_AFTER, PLUGIN_HkIServerImpl_ReqShipArch_AFTER, 11));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

@@ -385,7 +385,7 @@ typedef void(__stdcall *_RCSendChatMsg)(uint iId, uint iTo, uint iSize, void *pR
 typedef void(__stdcall *_CRCAntiCheat)();
 typedef void(__stdcall *_CreateChar)(const wchar_t *wszName);
 typedef int(__cdecl *_GetFLName)(char *szBuf, const wchar_t *wszStr);
-typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjInspectImpl* &inspect, uint &iDunno);
+typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjInspectImpl* &inspect, StarSystem* &starSystem);
 
 EXPORT extern _GetShipInspect GetShipInspect;
 EXPORT extern FlMap<uint, MPlayerDataSaveStruct*>* mdataPlayerMap;
@@ -825,15 +825,35 @@ void LootDestroyedNaked();
 void BaseDestroyed(uint iObject, uint iClientIDBy);
 void ShipColGrpDestroyedHookNaked();
 void SolarColGrpDestroyedHookNaked();
+bool __fastcall ShipDropLootDummy(IObjRW*, void* edx, char*, DamageList*);
 
 // HkDamage
-void __fastcall ApplyShipDamageList(IObjRW* ship, void* edx, DamageList* dmg);
 void ApplyShipDamageListNaked();
+void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg);
 void HookExplosionHitNaked();
 void ShipHullDamageNaked();
 void SolarHullDamageNaked();
 bool AllowPlayerDamageIds(const uint clientVictim, const uint clientAttacker);
 void AllowPlayerDamageNaked();
+enum ZoneDamageType
+{
+	ZONEDMG_HULL = 1 << 0,
+	ZONEDMG_SHIELD = 1 << 1,
+	ZONEDMG_ENERGY = 1 << 2,
+	ZONEDMG_CRUISE = 1 << 3,
+};
+struct ZoneSpecialData
+{
+	uint dmgType = ZONEDMG_HULL;
+	float percentageDamage;
+	float flatDamage;
+
+	float distanceScaling;
+	float logScale;
+	float shieldMult;
+	float energyMult;
+};
+extern unordered_map<uint, ZoneSpecialData> zoneSpecialData;
 
 // HkCbCallbacks
 void _SendMessageHook();
@@ -867,7 +887,6 @@ namespace HkIEngine
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();
-	void FindInStarListNaked2();
 	void GameObjectDestructorNaked();
 	void CAsteroidInitNaked();
 	void CObjDestrOrgNaked();
@@ -930,7 +949,7 @@ extern FARPROC LootDestroyedOrigFunc;
 extern FARPROC MineDestroyedOrigFunc;
 extern FARPROC GuidedDestroyedOrigFunc;
 extern FARPROC fpOldExplosionHit;
-extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
+extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc;
 
 extern EXPORT CDPClientProxy **g_cClientProxyArray;
 extern EXPORT void *pClient;

@@ -362,22 +362,22 @@ namespace HkIServerImpl
 	ci:  only figured out where dwTargetShip is ...
 	**************************************************************************************************************/
 
-	void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID)
+	void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const & ci, unsigned int iClientID)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);
 
 		CHECK_FOR_DISCONNECT
 
-		iDmgMunitionID = ci.iProjectileArchID;
+		iDmgMunitionID = ci.projectileArchID;
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision, __stdcall, (struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
 
 		LOG_CORE_TIMER_START
-		EXECUTE_SERVER_CALL_DEBUG(Server.SPMunitionCollision(ci, iClientID), iClientID, ci.iProjectileArchID);
+		Server.SPMunitionCollision(ci, iClientID);
 		LOG_CORE_TIMER_END
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, __stdcall, (struct SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, __stdcall, (SSPMunitionCollisionInfo const & ci, unsigned int iClientID), (ci, iClientID));
 	}
 
 	/**************************************************************************************************************
@@ -769,34 +769,32 @@ namespace HkIServerImpl
 	Called when equipment is being activated/disabled
 	**************************************************************************************************************/
 
-	void __stdcall ActivateEquip(unsigned int iClientID, struct XActivateEquip const &aq)
+	void __stdcall ActivateEquip(unsigned int iClientID, XActivateEquip const &aq)
 	{
-		ISERVER_LOG();
-		ISERVER_LOGARG_UI(iClientID);
-
 		CHECK_FOR_DISCONNECT
 
-			TRY_HOOK {
+		TRY_HOOK{
 
-			list<CARGO_INFO> lstCargo;
-			int iRem;
-			HkEnumCargo(ARG_CLIENTID(iClientID), lstCargo, iRem);
-
-			foreach(lstCargo, CARGO_INFO, it) {
-				if (it->iID == aq.sID) {
-					Archetype::Equipment *eq = Archetype::GetEquipment(it->iArchID);
-					EQ_TYPE eqType = HkGetEqType(eq);
-
-					if (eqType == ET_ENGINE) {
-						ClientInfo[iClientID].bEngineKilled = !aq.bActivate;
-						if (!aq.bActivate)
-							ClientInfo[iClientID].bCruiseActivated = false; // enginekill enabled
-					}
-
+			CShip* cship = ClientInfo[iClientID].cship;
+			if (cship && cship->objectClass == CObject::CSHIP_OBJECT)
+			{
+				CEquip* equip = cship->equip_manager.FindByID(aq.sID);
+				if (equip && equip->CEquipType == Engine)
+				{
+					ClientInfo[iClientID].bEngineKilled = !aq.bActivate;
+					if (!aq.bActivate)
+						ClientInfo[iClientID].bCruiseActivated = false; // enginekill enabled
 				}
 			}
+		} CATCH_HOOK({ 
+			ConPrint(L"ActivateEquipException: %u, %u, %d\n", iClientID, Players[iClientID].iShipID, aq.sID); 
+			auto eq = Players[iClientID].equipDescList.find_equipment_item(aq.sID);
+			if (eq)
+			{
+				ConPrint(L"Activate %u\n", eq->iArchID);
+			}
 
-		} CATCH_HOOK({})
+			})
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ActivateEquip, __stdcall, (unsigned int iClientID, struct XActivateEquip const &aq), (iClientID, aq));
 
@@ -819,7 +817,19 @@ namespace HkIServerImpl
 		CHECK_FOR_DISCONNECT
 
 		ClientInfo[iClientID].bCruiseActivated = ac.bActivate;
-
+		if (ac.bActivate)
+		{
+			CShip* cship = ClientInfo[iClientID].cship;
+			if (cship)
+			{
+				CEquip* equip;
+				CEquipTraverser tr(Engine);
+				while (equip = cship->equip_manager.Traverse(tr))
+				{
+					equip->Activate(true);
+				}
+			}
+		}
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ActivateCruise, __stdcall, (unsigned int iClientID, struct XActivateCruise const &ac), (iClientID, ac));
 
 		LOG_CORE_TIMER_START

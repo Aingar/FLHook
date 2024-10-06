@@ -31,8 +31,6 @@ PATCH_INFO piCommonDLL =
 	{
 
 		{0x639D160,		&HkIEngine::CEGun_Update_naked,				4, &HkIEngine::fpOldUpdateCEGun,		false},
-		//{0x639C138,		&HkIEngine::cshipInitNaked,				4, &HkIEngine::fpOldCshipInit,		false},
-		//{0x639C138,		&HkIEngine::csolarInitNaked,				4, &HkIEngine::fpOldCsolarInit,		false},
 
 
 		{0,0,0,0} // terminate
@@ -44,6 +42,9 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
+		{0x6D65418,		&ShipDropLootDummy,					4,	0,	false},
+		{0x6D67640,		&ShipDropLootDummy,					4,	0,	false},
+		{0x6D672F0,		&ShipDropLootDummy,					4,	0,	false},
 		{0x6D672A4,		&ApplyShipDamageListNaked,				4, &ApplyShipDamageListOrigFunc,	false},
 		//{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
 		{0x6D661C4,		&MineDestroyedNaked,				4, &MineDestroyedOrigFunc,		false},
@@ -371,6 +372,29 @@ bool InitHookExports()
 
 	FARPROC FindIObjInStarList = FARPROC(0x6D0C840);
 	Detour(FindIObjInStarList, HkIEngine::FindInStarListNaked);
+
+	{
+		// Radiation patch, stop the division math
+		BYTE patch[] = { 0x75, 0x2C, 0xE9, 0x3B, 0x01, 0x00, 0x00};
+		WriteProcMem((char*)hModServer + 0x2118A, patch, sizeof(patch));
+		BYTE patch2[] = { 0xBC };
+		WriteProcMem((char*)hModServer + 0x211BE, patch2, 1);
+		WriteProcMem((char*)hModServer + 0x211C4, patch2, 1);
+
+		BYTE patch3[] = { 
+			0xEB, 0x15};
+		WriteProcMem((char*)hModServer + 0x211C8, patch3, sizeof(patch3));
+
+
+		BYTE patch4[] = { 
+			0x8B, 0x07, 0xEB, 0x21};
+		WriteProcMem((char*)hModServer + 0x211F0, patch4, sizeof(patch4));
+
+		// Override damage applying logic with our own
+		PatchCallAddr((char*)hModServer, 0x21258, (char*)ShipRadiationDamage);
+
+		*((float*)0x6D67088) = 0.2f;
+	}
 
 	// Simplified reimplementation of ShipRange.dll by Adoxa
 	pAddress = SRV_ADDR(0x17272);

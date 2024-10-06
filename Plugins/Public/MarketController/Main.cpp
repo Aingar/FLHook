@@ -12,8 +12,19 @@ PLUGIN_RETURNCODE returncode;
 DWORD* dsac_update_econ_cmd = 0;
 DWORD dsac_update_econ_cmd_len = 0;
 
-unordered_map<uint, unordered_map<ushort, float>> colGrpCargoMap;
+struct LootData
+{
+	uint maxDropPlayer = 5000;
+	uint maxDropNPC = 5000;
+	float dropChanceUnmounted = 1.0f;
+	float dropChanceMounted = 0.0f;
+};
+unordered_map<uint, LootData> lootData;
+
+unordered_map<uint, pair<float, unordered_map<ushort, float>>> colGrpCargoMap;
 float playerCargoCapacity[MAX_CLIENT_ID + 1];
+
+unordered_map<uint, unordered_map<uint, float>> cargoVolumeOverrideMap;
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
@@ -33,7 +44,7 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 	return returncode;
 }
 
-void LoadColGrpData()
+void LoadGameData()
 {
 	colGrpCargoMap.clear();
 
@@ -53,6 +64,7 @@ void LoadColGrpData()
 	}
 
 	vector<string> shipFiles;
+	vector<string> equipFiles;
 
 	while (ini.read_header())
 	{
@@ -66,21 +78,26 @@ void LoadColGrpData()
 			{
 				shipFiles.emplace_back(ini.get_value_string());
 			}
+			else if (ini.is_value("equipment"))
+			{
+				equipFiles.emplace_back(ini.get_value_string());
+			}
 		}
 	}
 
 	ini.close();
 
-	for (string equipFile : shipFiles)
+	for (string& shipFile : shipFiles)
 	{
-		equipFile = gameDir + equipFile;
-		if (!ini.open(equipFile.c_str(), false))
+		shipFile = gameDir + shipFile;
+		if (!ini.open(shipFile.c_str(), false))
 		{
 			continue;
 		}
 
 		uint currNickname = 0;
 		ushort currSID = 3;
+		float totalColGrpCapacity = 0.0f;
 		while (ini.read_header())
 		{
 			if (ini.is_header("Ship"))
@@ -91,6 +108,7 @@ void LoadColGrpData()
 					{
 						currNickname = CreateID(ini.get_value_string());
 						currSID = 3;
+						totalColGrpCapacity = 0.0f;
 						break;
 					}
 				}
@@ -102,10 +120,66 @@ void LoadColGrpData()
 				{
 					if (ini.is_value("cargo_capacity"))
 					{
-						colGrpCargoMap[currNickname][currSID] = ini.get_value_float(0);
+						totalColGrpCapacity += ini.get_value_float(0);
+						colGrpCargoMap[currNickname].first = totalColGrpCapacity;
+						colGrpCargoMap[currNickname].second[currSID] = ini.get_value_float(0);
 						break;
 					}
 				}
+			}
+		}
+		ini.close();
+	}
+
+	for (string& equipFile : equipFiles)
+	{
+		equipFile = gameDir + equipFile;
+
+		if (!ini.open(equipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+
+		while (ini.read_header())
+		{
+			LootData ld;
+			bool hasValue = false;
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("max_drop_npc"))
+				{
+					ld.maxDropNPC = ini.get_value_int(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("max_drop_player"))
+				{
+					ld.maxDropPlayer = ini.get_value_int(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("drop_chance_npc_unmounted"))
+				{
+					ld.dropChanceUnmounted = ini.get_value_float(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("drop_chance_npc_mounted"))
+				{
+					ld.dropChanceMounted = ini.get_value_float(0);
+					hasValue = true;
+				}
+				else if (ini.is_value("volume_class_override"))
+				{
+					cargoVolumeOverrideMap[ini.get_value_int(0)][currNickname] = ini.get_value_float(1);
+				}
+			}
+			if (hasValue)
+			{
+				lootData[currNickname] = ld;
 			}
 		}
 		ini.close();
@@ -382,12 +456,172 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	}
 }
 
+float __fastcall CShipGetCargoRemainingDetour(CShip* ship)
+{
+	float usedCargo = 0.0f;
+	CEquipTraverser tr(Cargo | InternalEquipment | ExternalEquipment);
+	CEquip* equip;
+	unordered_map<uint, float>* overrideMap = nullptr;
+
+	auto shipClassOverrideIter = cargoVolumeOverrideMap.find(ship->shiparch()->iShipClass);
+	if (shipClassOverrideIter != cargoVolumeOverrideMap.end())
+	{
+		overrideMap = &shipClassOverrideIter->second;
+	}
+
+	while (equip = ship->equip_manager.Traverse(tr))
+	{
+		if (equip->CEquipType == Cargo)
+		{
+			float volume = equip->archetype->fVolume;
+			if (overrideMap)
+			{
+				auto cargoVolumeOverride = overrideMap->find(equip->archetype->iArchID);
+				if (cargoVolumeOverride != overrideMap->end())
+				{
+					volume = cargoVolumeOverride->second;
+				}
+			}
+
+			usedCargo += reinterpret_cast<CECargo*>(equip)->count * volume;
+		}
+		else
+		{
+			usedCargo += equip->archetype->fVolume;
+		}
+	}
+
+	float cargoCapacity = ship->shiparch()->fHoldSize;
+	auto shipColGrpData = colGrpCargoMap.find(ship->archetype->iArchID);
+	if (shipColGrpData != colGrpCargoMap.end())
+	{
+		float totalColGrpCapacity = shipColGrpData->second.first;
+		cargoCapacity -= totalColGrpCapacity;
+
+		auto& capacityPerColGrp = shipColGrpData->second.second;
+		CArchGrpTraverser ctr;
+		CArchGroup* colGrp;
+		while (colGrp = ship->archGroupManager.Traverse(ctr))
+		{
+			if (colGrp->hitPts <= 0.0f)
+			{
+				continue;
+			}
+			auto colGrpData = capacityPerColGrp.find(colGrp->colGrp->id);
+			if (colGrpData != capacityPerColGrp.end())
+			{
+				cargoCapacity += colGrpData->second;
+			}
+		}
+	}
+
+	float finalCapacity = cargoCapacity - usedCargo;
+
+	return max(0.0f, finalCapacity);
+}
+
+uint GetSpaceForCargoTypeRetAddr = 0x62B32E8;
+__declspec(naked) int __fastcall CallOriginalGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment*)
+{
+	__asm
+	{
+		sub esp, 0x1C
+		push ebx
+		mov ebx, [esp+0x24]
+		jmp GetSpaceForCargoTypeRetAddr
+	}
+}
+
+int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment* equipArch)
+{
+	if (equipArch->fVolume <= 0.0f || equipArch->get_class_type() != Archetype::COMMODITY)
+	{
+		return CallOriginalGetSpaceForCargoType(ship, edx, equipArch);
+	}
+
+	float volume = equipArch->fVolume;
+
+	auto iter = cargoVolumeOverrideMap.find(ship->shiparch()->iShipClass);
+	if (iter != cargoVolumeOverrideMap.end())
+	{
+		auto iter2 = iter->second.find(equipArch->iArchID);
+		if (iter2 != iter->second.end())
+		{
+			volume = iter2->second;
+		}
+	}
+
+	if (volume == 0.0f)
+	{
+		return INT_MAX;
+	}
+
+	float freeSpace = CShipGetCargoRemainingDetour(ship);
+	return static_cast<int>(freeSpace / volume);
+}
+
+float __fastcall EquipDescListVolume(EquipDescList& eq)
+{
+	PlayerData* pd = reinterpret_cast<PlayerData*>(DWORD(&eq) - 0x278);
+	Archetype::Ship* ship = Archetype::GetShip(pd->iShipArchetype);
+	if (!ship)
+	{
+		return 0.0f;
+	}
+
+	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(ship->iShipClass);
+	unordered_map<uint, float>* cargoOverrideMap = nullptr;
+	if (cargoVolumeOverrideIter != cargoVolumeOverrideMap.end())
+	{
+		cargoOverrideMap = &cargoVolumeOverrideIter->second;
+	}
+
+	float cargoUsed = 0.0f;
+	for (auto& eq : eq.equip)
+	{
+		if (cargoOverrideMap)
+		{
+			auto cargoData = cargoOverrideMap->find(eq.iArchID);
+			if (cargoData != cargoOverrideMap->end())
+			{
+				cargoUsed += eq.iCount * cargoData->second;
+				continue;
+			}
+		}
+		auto archData = Archetype::GetEquipment(eq.iArchID);
+		cargoUsed += eq.iCount * archData->fVolume;
+		
+	}
+
+	return cargoUsed;
+}
+
+void Detour(void* pOFunc, void* pHkFunc)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	AlleyMF::LoadSettings();
-	LoadColGrpData();
+	LoadGameData();
+
+	HANDLE commonHandle = GetModuleHandleA("Common");
+	HANDLE serverHandle = GetModuleHandleA("Server");
+
+	Detour((char*)commonHandle + 0x53040, CShipGetCargoRemainingDetour);
+	Detour((char*)commonHandle + 0x532E0, CShipGetSpaceForCargoType);
+
+	Detour((char*)commonHandle + 0xAA8E0, (char*)EquipDescListVolume);
 
 	LoadMarketOverrides(nullptr);
 }
@@ -443,6 +677,77 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 	AlleyMF::BaseEnter_AFTER(baseId, client);
 }
 
+const LootData defaults;
+
+void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+	uint killerClientId = HkGetClientIDByShip(killerId);
+	if (killerId && !killerClientId && !cship->ownerPlayer)
+	{
+		cship->clear_equip_and_cargo();
+		return;
+	}
+
+
+	auto goodList = GoodList_get();
+
+	if (!cship->ownerPlayer)
+	{
+		PlayerData& killerData = Players[killerClientId];
+		uint targetAffiliation;
+		float attitude;
+		Reputation::Vibe::GetAffiliation(cship->repVibe, targetAffiliation, false);
+		pub::Reputation::GetGroupFeelingsTowards(killerData.iReputation, targetAffiliation, attitude);
+
+		if (attitude >= 0.0f)
+		{
+			cship->clear_equip_and_cargo();
+			return;
+		}
+	}
+	
+	CEquipTraverser tr(Cargo);
+	CECargo* cargo = nullptr;
+	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
+	{
+		auto lootIter = lootData.find(cargo->archetype->iArchID);
+
+		const LootData& ld = lootIter == lootData.end() ? defaults : lootIter->second;
+
+		uint amountToDrop;
+		if (cship->ownerPlayer)
+		{
+			amountToDrop = ld.maxDropPlayer;
+		}
+		else
+		{
+			amountToDrop = ld.maxDropNPC;
+		}
+
+		if (ld.dropChanceUnmounted < 1.0f)
+		{
+			float roll = static_cast<float>(rand()) / RAND_MAX;
+			if (roll > ld.dropChanceUnmounted)
+			{
+				continue;
+			}
+		}
+
+		if (!amountToDrop)
+		{
+			continue;
+		}
+
+		Server.MineAsteroid(cship->system, cship->vPos, cargo->archetype->get_loot_appearance()->iArchID,
+			cargo->archetype->iArchID, min(cargo->count, amountToDrop), 0);
+	}
+	
+	cship->clear_equip_and_cargo();
+}
+
 unordered_map<uint, float> dropMap;
 
 void Timer()
@@ -453,7 +758,7 @@ void Timer()
 	{
 		uint shipId = item.first;
 		IObjInspectImpl* iobj1;
-		uint dummy;
+		StarSystem* dummy;
 		GetShipInspect(shipId, iobj1, dummy);
 
 		if (!iobj1)
@@ -461,7 +766,7 @@ void Timer()
 			continue;
 		}
 
-		IObjRW* iobj = (IObjRW*)iobj1;
+		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
@@ -471,6 +776,11 @@ void Timer()
 		}
 
 		float totalCargoToJettison = item.second;
+		if (totalCargoToJettison <= 0.0f)
+		{
+			continue;
+		}
+
 		CEquipTraverser tr(Cargo);
 		CEquipManager& eqManager = cship->equip_manager;
 
@@ -513,14 +823,29 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 		return;
 	}
 
-	const auto colGrpInfo = shipColGrpInfo->second.find(colGrp->colGrp->id);
-	if (colGrpInfo == shipColGrpInfo->second.end())
+	const auto colGrpInfo = shipColGrpInfo->second.second.find(colGrp->colGrp->id);
+	if (colGrpInfo == shipColGrpInfo->second.second.end())
+	{
+		return;
+	}
+
+	float cargoRemaining = cship->get_cargo_hold_remaining();
+
+	if (cargoRemaining > colGrpInfo->second)
 	{
 		return;
 	}
 
 	uint id = iobj->get_id();
-	dropMap[id] += dropMap[id] + colGrpInfo->second;
+	auto dropIter = dropMap.find(id);
+	if (dropIter == dropMap.end())
+	{
+		dropMap[id] = colGrpInfo->second - cargoRemaining;
+	}
+	else
+	{
+		dropIter->second += colGrpInfo->second - cargoRemaining;
+	}
 }
 
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
@@ -572,6 +897,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 

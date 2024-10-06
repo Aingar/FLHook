@@ -345,9 +345,9 @@ IObjInspectImpl* HkGetInspect(uint iClientID)
 {
 	uint iShip;
 	pub::Player::GetShip(iClientID, iShip);
-	uint iDunno;
+	StarSystem* starSystem;
 	IObjInspectImpl *inspect;
-	if (!GetShipInspect(iShip, inspect, iDunno))
+	if (!GetShipInspect(iShip, inspect, starSystem))
 		return 0;
 	else
 		return inspect;

@@ -75,13 +75,144 @@ __declspec(naked) void ApplyShipDamageListNaked()
 	}
 }
 
+typedef float(__thiscall* GetZoneDistanceFunc)(Universe::IZone* zone, Vector& pos);
+GetZoneDistanceFunc GetZoneDistance = GetZoneDistanceFunc(0x6339B00);
 
-void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg)
+unordered_map<uint, ZoneSpecialData> zoneSpecialData;
+void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageList* dmg)
 {
-	if (ship->cobj->ownerPlayer)
+	if (ship->cobj->hitPoints <= 0.0f || !ship->cobj->currentDamageZone)
 	{
-		ship->damage_hull(15.f, dmg);
-		ConPrint(L"%f %f\n", ship->timer, ship->timeSinceLastUpdate);
+		return;
+	}
+
+	auto zoneDataIter = zoneSpecialData.find(ship->cobj->currentDamageZone->iZoneID);
+	if (zoneDataIter == zoneSpecialData.end())
+	{
+		return;
+	}
+	const ZoneSpecialData& zd = zoneDataIter->second;
+	uint zoneType = zd.dmgType;
+
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+
+	if (zoneType & ZONEDMG_CRUISE)
+	{
+		dmg->damageCause = DamageCause::CruiseDisrupter;
+		dmg->add_damage_entry(1, cship->hitPoints, DamageEntry::SubObjFate(0));
+		zoneType -= ZONEDMG_CRUISE;
+		if (!zoneType)
+		{
+			return;
+		}
+	}
+
+	float damage = zd.flatDamage;
+
+	if (damage <= 0.0f)
+	{
+		return;
+	}
+
+	float dmgMultiplier = 1.0f;
+
+	if (zd.distanceScaling != 0.0f)
+	{
+		float edgeDistance = -GetZoneDistance(ship->cobj->currentDamageZone, ship->cobj->vPos);
+		if (zd.distanceScaling > 0.0f)
+		{
+			if (edgeDistance <= zd.distanceScaling)
+			{
+				dmgMultiplier = powf(edgeDistance / zd.distanceScaling, zd.logScale);
+			}
+		}
+		else
+		{
+			if (edgeDistance <= -zd.distanceScaling)
+			{
+				dmgMultiplier = powf(1.0f - (edgeDistance / -zd.distanceScaling), zd.logScale);
+			}
+			else
+			{
+				return;
+			}
+		}
+	}
+
+	dmgMultiplier *=ship->pendingEnvironmentalDamage; // assembly hacked to instead store time spent in the zone.
+
+	if (zoneType & ZONEDMG_SHIELD)
+	{
+		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
+		if (shield)
+		{
+			float shielddamage = (damage + zd.percentageDamage * shield->maxShieldHitPoints) * dmgMultiplier * zd.shieldMult;
+			ship->damage_shield_direct(shield, shielddamage, dmg);
+			zoneType -= ZONEDMG_SHIELD;
+			if (!zoneType)
+			{
+				return;
+			}
+		}
+	}
+
+	if (zoneType & ZONEDMG_ENERGY)
+	{
+		float energydamage = (damage + zd.percentageDamage * cship->maxPower) * dmgMultiplier * zd.energyMult;
+		ship->damage_energy(energydamage, dmg);
+		zoneType -= ZONEDMG_ENERGY;
+		if (!zoneType)
+		{
+			return;
+		}
+	}
+
+	CArchGroupManager& carchMan = cship->archGroupManager;
+	CArchGrpTraverser tr2;
+
+	CArchGroup* carch = nullptr;
+	uint colGrpCount = 1;
+	while (carch = carchMan.Traverse(tr2))
+	{
+		if (carch->colGrp->hitPts < 100.f)
+		{
+			continue;
+		}
+		colGrpCount++;
+	}
+	tr2.Restart();
+
+	damage /= colGrpCount;
+
+	while (carch = carchMan.Traverse(tr2))
+	{
+		if (carch->colGrp->hitPts < 100.f)
+		{
+			continue;
+		}
+		float colGrpDamage = min(carch->hitPts, ((damage + (carch->colGrp->hitPts * zd.percentageDamage)) * dmgMultiplier) / colGrpCount);
+		if (colGrpDamage <= 0.0f)
+		{
+			continue;
+		}
+
+		DamageEntry::SubObjFate fate;
+		if (colGrpDamage >= carch->hitPts)
+		{
+			fate = DamageEntry::SubObjFate(1);
+		}
+		else
+		{
+			fate = DamageEntry::SubObjFate(0);
+		}
+		ship->damage_col_grp(carch, colGrpDamage, dmg);
+	}
+
+	float hulldamage = min(cship->hitPoints, dmgMultiplier * (damage + (zd.percentageDamage * ship->cobj->archetype->fHitPoints)));
+
+	if (hulldamage > 0.0f)
+	{
+		ship->damage_hull(hulldamage, dmg);
 	}
 }
 
@@ -90,14 +221,18 @@ FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	CSimple* simple = reinterpret_cast<CSimple*>(iobj->cobj);
-	if (simple->ownerPlayer && dmg->iInflictorPlayerID)
+	if (simple->ownerPlayer)
 	{
 		CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
-
-		if (incDmg > 0)
+		ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
+		if (dmg->iInflictorPlayerID)
 		{
-			ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
-			ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
+			CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
+
+			if (incDmg > 0)
+			{
+				ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
+			}
 		}
 	}
 }

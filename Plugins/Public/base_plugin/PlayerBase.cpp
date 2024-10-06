@@ -302,6 +302,10 @@ wstring PlayerBase::GetBaseHeaderText()
 			{
 				continue;
 			}
+			if (gi->iType == GOODINFO_TYPE_SHIP)
+			{
+				gi = GoodList::find_by_id(gi->iHullGoodID);
+			}
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);
 			wstring stock = UIntToPrettyStr(item.quantity);
 			wstring buyPrice = UIntToPrettyStr(item.price);
@@ -531,7 +535,16 @@ void PlayerBase::Load()
 						{
 							mi.sellPrice = mi.price;
 						}
-						market_items[good] = mi;
+
+						const GoodInfo* gi = GoodList_get()->find_by_id(good);
+						if (gi)
+						{
+							if (gi->iType == GOODINFO_TYPE_SHIP)
+							{
+								mi.shipHullId = gi->iHullGoodID;
+							}
+							market_items[good] = mi;
+						}
 					}
 					else if (ini.is_value("health"))
 					{
@@ -852,6 +865,12 @@ bool PlayerBase::AddMarketGood(uint good, uint quantity)
 	}
 
 	market_items[good].quantity += quantity;
+	const GoodInfo* gi = GoodList::find_by_id(good);
+
+	if (gi->iType == GOODINFO_TYPE_SHIP)
+	{
+		market_items[good].shipHullId = gi->iHullGoodID;
+	}
 	SendMarketGoodUpdated(this, good, market_items[good]);
 	return true;
 }
@@ -1143,6 +1162,7 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	{
 		temp_hostile_names.insert(charname);
 		ReportAttack(this->basename, charname, this->system);
+		SyncReputationForBase();
 	}
 
 	damageTakenMap[charname] += incoming_damage;

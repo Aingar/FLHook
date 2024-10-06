@@ -210,7 +210,7 @@ void HkTimer()
 
 /// Hook for ship distruction. It's easier to hook this than the PlayerDeath one.
 /// Drop a percentage of cargo + some loot representing ship bits.
-void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, uint& iClientIDKiller)
+void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, uint& iClientIDKiller, DamageCause& dmgCause)
 {
 	returncode = NOFUNCTIONCALL;
 

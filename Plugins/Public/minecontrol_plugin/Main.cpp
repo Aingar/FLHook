@@ -680,7 +680,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
 {
     returncode = DEFAULT_RETURNCODE;
     // If this is not a lootable rock, do no other processing.
-    if (ci.iProjectileArchID != set_miningMunition || ci.dwTargetShip != 0)
+    if (ci.projectileArchID != set_miningMunition || ci.targetObjId != 0)
     {
         return;
     }
@@ -822,7 +822,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         }
         targetExit:
 
-        uint miningYieldInt = static_cast<uint>(miningYield);
+        int miningYieldInt = static_cast<int>(miningYield);
         cd.overminedFraction = miningYield - miningYieldInt; // save the unused decimal portion for the next mining event.
 
         if (cd.miningSampleStart < time(nullptr))
@@ -849,16 +849,8 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         {
             return;
         }
-        float fHoldRemaining = cship->get_cargo_hold_remaining();
 
-        if (fHoldRemaining <= 0.0f)
-        {
-            miningYieldInt = 0;
-        }
-        else if (fHoldRemaining < static_cast<float>(miningYieldInt) * lootInfo->fVolume)
-        {
-            miningYieldInt = static_cast<uint>(fHoldRemaining / lootInfo->fVolume);
-        }
+        miningYieldInt = min(miningYieldInt, cship->get_space_for_cargo_type(lootInfo));
 
         if (!miningYieldInt && ((uint)time(nullptr) - cd.LastTimeMessageAboutBeingFull) > 2)
         {

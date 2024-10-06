@@ -1,13 +1,13 @@
 #include "Main.h"
 
 BuildModule::BuildModule(PlayerBase* the_base)
-	: Module(TYPE_BUILD), base(the_base)
+	: Module(TYPE_BUILD), base(the_base), amassedCookingRate(0)
 {
 }
 
 // Find the recipe for this building_type and start construction.
 BuildModule::BuildModule(PlayerBase* the_base, const RECIPE* module_recipe)
-	: Module(TYPE_BUILD), base(the_base), active_recipe(RECIPE(*module_recipe))
+	: Module(TYPE_BUILD), base(the_base), active_recipe(RECIPE(*module_recipe)), amassedCookingRate(0)
 {
 }
 
@@ -36,7 +36,7 @@ wstring BuildModule::GetInfo(bool xml)
 
 	info = start + L"Constructing " + Status + active_recipe.infotext + L". Waiting for:";
 
-	uint minutesToCompletion = 0;
+	float minutesToCompletion = 0;
 
 	for (auto& i = active_recipe.consumed_items.begin();
 		i != active_recipe.consumed_items.end(); ++i)
@@ -71,9 +71,160 @@ wstring BuildModule::GetInfo(bool xml)
 			info += L" [Insufficient cash]";
 		}
 	}
-	info += openLine + L"Time until completion: " + TimeString(minutesToCompletion * 60);
+	info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(minutesToCompletion) * 60);
 	info += end;
 	return info;
+}
+
+
+bool BuildModule::TryConsume(float volumeToProcess)
+{
+	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
+	{
+		uint good = i->first;
+		auto market_item = base->market_items.find(good);
+		if (market_item == base->market_items.end() || !market_item->second.quantity)
+		{
+			continue;
+		}
+
+		auto eq = Archetype::GetEquipment(market_item->first);
+
+		if (!eq)
+		{
+			continue;
+		}
+
+		if (volumeToProcess < eq->fVolume)
+		{
+			break;
+		}
+
+		float origVolumeToProcess = volumeToProcess;
+
+		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
+		float countToRemove = floorf(volumeToProcess / eq->fVolume);
+		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
+		i->second -= quantityToConsumeUint;
+		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
+		base->RemoveMarketGood(good, quantityToConsumeUint);
+
+		if (base->pinned_market_items.count(i->first))
+		{
+			base->pinned_item_updated = true;
+		}
+
+		if (!i->second)
+		{
+			active_recipe.consumed_items.erase(i);
+		}
+		if (amassedCookingRate > 0.0f)
+		{
+			TryConsume(amassedCookingRate);
+		}
+		return true;
+	}
+
+	for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
+		itemGroup != active_recipe.dynamic_consumed_items.end(); itemGroup++)
+	{
+		for (auto& item : *itemGroup)
+		{
+			auto& goodIter = base->market_items.find(item.first);
+			if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+			{
+				continue;
+			}
+
+			auto eq = Archetype::GetEquipment(item.first);
+
+			if (!eq)
+			{
+				continue;
+			}
+
+			if (volumeToProcess < eq->fVolume)
+			{
+				break;
+			}
+
+			float origVolumeToProcess = volumeToProcess;
+
+			volumeToProcess = min(volumeToProcess, item.second * eq->fVolume);
+			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+			item.second -= quantityToConsumeUint;
+			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+			base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+
+			if (item.second)
+			{
+				active_recipe.consumed_items.push_back({ goodIter->first, item.second });
+			}
+			active_recipe.dynamic_consumed_items.erase(itemGroup);
+
+			if (amassedCookingRate > 0.0f)
+			{
+				TryConsume(amassedCookingRate);
+			}
+			return true;
+		}
+	}
+
+	bool consumedAnything = false;
+	for (auto& items = active_recipe.dynamic_consumed_items_alt.begin();
+		items != active_recipe.dynamic_consumed_items_alt.end();)
+	{
+		for (uint itemId : items->items)
+		{
+			auto& goodIter = base->market_items.find(itemId);
+			if (goodIter == base->market_items.end() || !goodIter->second.quantity)
+			{
+				continue;
+			}
+
+			auto eq = Archetype::GetEquipment(itemId);
+
+			if (!eq)
+			{
+				continue;
+			}
+
+			if (volumeToProcess < eq->fVolume)
+			{
+				break;
+			}
+
+			float origVolumeToProcess = volumeToProcess;
+
+			volumeToProcess = min(volumeToProcess, items->sharedAmount * eq->fVolume);
+			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
+			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
+
+			base->RemoveMarketGood(goodIter->first, quantityToConsumeUint);
+			items->sharedAmount -= quantityToConsumeUint;
+			break;
+		}
+		if (!items->sharedAmount)
+		{
+			items = active_recipe.dynamic_consumed_items_alt.erase(items);
+		}
+		else
+		{
+			items++;
+		}
+		if (consumedAnything)
+		{
+			if (amassedCookingRate > 0.0f)
+			{
+				TryConsume(amassedCookingRate);
+			}
+			return true;
+		}
+	}
+	return false;
 }
 
 // Every 10 seconds we consume goods for the active recipe at the cooking rate
@@ -88,120 +239,101 @@ bool BuildModule::Timer(uint time)
 	if (Paused || (!base->isCrewSupplied && !set_holiday_mode))
 		return false;
 
-	bool cooked = true;
-
 	if (active_recipe.credit_cost)
 	{
-		uint moneyToRemove = min(active_recipe.cooking_rate * 100, active_recipe.credit_cost);
+		uint moneyToRemove = static_cast<uint>(min(active_recipe.cooking_rate * 100, active_recipe.credit_cost));
 		if (base->money >= moneyToRemove)
 		{
 			base->money -= moneyToRemove;
 			active_recipe.credit_cost -= moneyToRemove;
 		}
-		if (active_recipe.credit_cost)
-		{
-			cooked = false;
-		}
 	}
 
+	amassedCookingRate += active_recipe.cooking_rate;
 
-	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
+	bool consumedAnything = TryConsume(amassedCookingRate);
+
+	if (!consumedAnything)
 	{
-		uint good = i->first;
-		uint quantity = min(active_recipe.cooking_rate, i->second);
-		auto market_item = base->market_items.find(good);
-		if (market_item == base->market_items.end()
-			|| market_item->second.quantity < quantity)
-		{
-			cooked = false;
-			continue;
-		}
-		i->second -= quantity;
-		base->RemoveMarketGood(good, quantity);
-		if (!i->second)
-		{
-			active_recipe.consumed_items.erase(i);
-			if (!active_recipe.consumed_items.empty())
-			{
-				cooked = false;
-			}
-		}
-		else
-		{
-			cooked = false;
-		}
-		break;
+		amassedCookingRate -= active_recipe.cooking_rate;
+	}
+
+	// Do nothing if cooking is not finished
+	if (!active_recipe.consumed_items.empty()
+		|| !active_recipe.dynamic_consumed_items.empty()
+		|| !active_recipe.dynamic_consumed_items_alt.empty()
+		|| active_recipe.credit_cost)
+	{
+		return false;
 	}
 
 	// Once cooked turn this into the build type
-	if (cooked)
+
+	bool builtCore = false;
+	for (uint i = 0; i < base->modules.size(); i++)
 	{
-		bool builtCore = false;
-		for (uint i = 0; i < base->modules.size(); i++)
+		if (base->modules[i] == this)
 		{
-			if (base->modules[i] == this)
+			switch (this->active_recipe.shortcut_number)
 			{
-				switch (this->active_recipe.shortcut_number)
+			case Module::TYPE_CORE:
+
+				if (base->modules[0])
 				{
-				case Module::TYPE_CORE:
-
-					if (base->modules[0])
-					{
-						// Delete and respawn the old core module
-						delete base->modules[0];
-						base->modules[0] = nullptr;
-						return false;
-					}
-
-					base->base_level++;
-					if (base->base_level > 4)
-						base->base_level = 4;
-					base->SetupDefaults();
-
-					// Clear the build module slot.
-					builtCore = true;
-
-					base->modules[0] = new CoreModule(base);
-					base->modules[0]->Spawn();
-
-					base->modules[i] = nullptr;
-					base->RecalculateCargoSpace();
-					break;
-				case Module::TYPE_STORAGE:
-					base->modules[i] = new StorageModule(base);
-					base->RecalculateCargoSpace();
-					break;
-				case Module::TYPE_DEFENSE_1:
-					base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_1);
-					break;
-				case Module::TYPE_DEFENSE_2:
-					base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_2);
-					break;
-				case Module::TYPE_DEFENSE_3:
-					base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_3);
-					break;
-				case Module::TYPE_FACTORY:
-					//check if factory
-					if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname))
-					{
-						base->modules[i] = new FactoryModule(base, active_recipe.nickname);
-						base->RecalculateCargoSpace();
-						break;
-					}
-					base->modules[i] = nullptr;
-					break;
-				 default:
-					base->modules[i] = nullptr;
+					// Delete and respawn the old core module
+					delete base->modules[0];
+					base->modules[0] = nullptr;
+					return false;
 				}
-				base->Save();
-				return false;
-			}
-		}
 
-		if (builtCore)
-		{
-			base->modules.resize((base->base_level * 3) + 1);
+				base->base_level++;
+				if (base->base_level > 4)
+					base->base_level = 4;
+				base->SetupDefaults();
+
+				// Clear the build module slot.
+				builtCore = true;
+
+				base->modules[0] = new CoreModule(base);
+				base->modules[0]->Spawn();
+
+				base->modules[i] = nullptr;
+				base->RecalculateCargoSpace();
+				break;
+			case Module::TYPE_STORAGE:
+				base->modules[i] = new StorageModule(base);
+				base->RecalculateCargoSpace();
+				break;
+			case Module::TYPE_DEFENSE_1:
+				base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_1);
+				break;
+			case Module::TYPE_DEFENSE_2:
+				base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_2);
+				break;
+			case Module::TYPE_DEFENSE_3:
+				base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_3);
+				break;
+			case Module::TYPE_FACTORY:
+				//check if factory
+				if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname))
+				{
+					base->modules[i] = new FactoryModule(base, active_recipe.nickname);
+					base->RecalculateCargoSpace();
+					break;
+				}
+				base->modules[i] = nullptr;
+				break;
+			 default:
+				base->modules[i] = nullptr;
+			}
+			base->Save();
+			return false;
 		}
+	}
+
+	if (builtCore)
+	{
+		base->modules.resize((base->base_level * 3) + 1);
 	}
 
 	return false;

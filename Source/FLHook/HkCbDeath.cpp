@@ -16,19 +16,10 @@ wstring SetSizeToSmall(const wstring &wscDataFormat)
 Send "Death: ..." chat-message
 **************************************************************************************************************/
 
-void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller)
+void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller, DamageCause deathCause)
 {
-	// skip processing if no cship, some ships can trigger this hook multiple times
-	if (!ClientInfo[iClientIDVictim].cship)
-	{
-		return;
-	}
 
-	HkIEngine::playerShips.erase(ClientInfo[iClientIDVictim].cship->id);
-	ClientInfo[iClientIDVictim].cship = nullptr;
-	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
-
-	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller));
+	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&, DamageCause&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller, deathCause));
 
 	// encode xml string(default and small)
 	// non-sys
@@ -127,6 +118,20 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	if (!isKill)
 	{
+		uint client = iobj->cobj->ownerPlayer;
+		if (client)
+		{
+			ClientInfo[client].iShipOld = ClientInfo[client].iShip;
+			ClientInfo[client].iShip = 0;
+
+			// skip processing if no cship, some ships can trigger this hook multiple times
+			if (ClientInfo[client].cship)
+			{
+				HkIEngine::playerShips.erase(ClientInfo[client].cship->id);
+				ClientInfo[client].cship = nullptr;
+				ClientInfo[client].iBaseEnterTime = (uint)time(0); //start idle kick timer
+			}
+		}
 		return;
 	}
 	LOG_CORE_TIMER_START
@@ -185,7 +190,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, iClientIDKiller);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, iClientIDKiller, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 
 			}
@@ -193,14 +198,14 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextAdminKill, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 			}
 			else if (!killerId) {
 				wscEvent += L" type=suicide";
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextSuicide, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
 			else 
@@ -222,13 +227,22 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0);
+					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
 		}
 
 		ClientInfo[iClientID].iShipOld = ClientInfo[iClientID].iShip;
 		ClientInfo[iClientID].iShip = 0;
+
+		// skip processing if no cship, some ships can trigger this hook multiple times
+		if (ClientInfo[iClientID].cship)
+		{
+			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
+			ClientInfo[iClientID].cship = nullptr;
+			ClientInfo[iClientID].iBaseEnterTime = (uint)time(0); //start idle kick timer
+		}
+
 	} CATCH_HOOK({})
 	LOG_CORE_TIMER_END
 }
@@ -442,4 +456,24 @@ __declspec(naked) void SolarColGrpDestroyedHookNaked()
 		mov eax, [ColGrpDeathOrigFunc]
 		jmp eax
 	}
+}
+
+bool __fastcall ShipDropLootDummy(IObjRW* iobj, void* edx, char*, DamageList*)
+{
+	CEqObj* cobj = reinterpret_cast<CEqObj*>(iobj->cobj);
+
+	if (!cobj->ownerPlayer)
+	{
+		return true;
+	}
+
+	auto& pdEq = Players[cobj->ownerPlayer].equipDescList;
+	for (auto& eq : pdEq.equip)
+	{
+		if (!eq.bMounted)
+		{
+			pdEq.remove_equipment_item(eq.sID, eq.iCount);
+		}
+	}
+	return true;
 }

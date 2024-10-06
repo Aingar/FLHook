@@ -65,7 +65,7 @@ void HyperJump::KillAllUnchartedOnShutdown()
 
 void HyperJump::InitJumpHole(uint baseId, uint destSystem, uint destObject)
 {
-	uint dunno;
+	StarSystem* dunno;
 	IObjInspectImpl* inspect;
 	GetShipInspect(baseId, inspect, dunno);
 	CSolar* solar = (CSolar*)inspect->cobject();
@@ -105,7 +105,7 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	pb->destObjectName = baseNickName;
 	pb->destSystem = coords.system;
 
-	uint dunno;
+	StarSystem* dunno;
 	IObjInspectImpl* inspect;
 	GetShipInspect(info.iSpaceObjId, inspect, dunno);
 	CSolar* solar = (CSolar*)inspect->cobject();

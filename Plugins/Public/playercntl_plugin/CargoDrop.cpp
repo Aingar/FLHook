@@ -99,8 +99,7 @@ namespace CargoDrop
 				continue;
 			}
 			// If not in space, do nothing
-			uint iShip;
-			pub::Player::GetShip(iClientID, iShip);
+			uint iShip = Players[iClientID].iShipID;
 			if (!iShip)
 				continue;
 

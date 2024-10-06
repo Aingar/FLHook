@@ -1014,6 +1014,21 @@ Vector VectorMatrixMultiply(Vector& v1, Matrix& m1)
 	return ret;
 }
 
+float VectorMagnitude(Vector& v)
+{
+	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+void ResizeVector(Vector& v, float targetLength)
+{
+	float currLength = VectorMagnitude(v);
+	float ratio = targetLength / currLength;
+
+	v.x *= ratio;
+	v.y *= ratio;
+	v.z *= ratio;
+}
+
 Vector NormalizeVector(Vector& v)
 {
 	float inverseMagnitude = 1 / sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);
@@ -1023,6 +1038,20 @@ Vector NormalizeVector(Vector& v)
 	ret.y = v.y * inverseMagnitude;
 	ret.z = v.z * inverseMagnitude;
 	return ret;
+}
+
+Vector VectorMultiply(Vector& a, float b)
+{
+	return { a.x * b, a.y * b, a.z * b };
+}
+
+Vector VectorCross(Vector& v1, Vector& v2)
+{
+	Vector vec;
+	vec.x = v1.y * v2.z - v1.z * v2.y;
+	vec.y = v1.z * v2.x - v1.x * v2.z;
+	vec.z = v1.x * v2.y - v1.y * v2.x;
+	return vec;
 }
 
 // Format a chat string in accordance with the receiver's preferences and send it. Will

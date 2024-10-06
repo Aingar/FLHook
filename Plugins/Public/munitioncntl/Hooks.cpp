@@ -39,6 +39,30 @@ bool Patch(PATCH_INFO& pi)
 	return true;
 }
 
+float GetDamageModifier(ExplosionDamageEvent* explosion, Vector& targetPosition)
+{
+	float squaredRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
+	float squaredRadiusTwoThirds = squaredRadius * 0.44444444f;
+	float squaredRadiusOneThirds = squaredRadius * 0.11111111f;
+
+	float distance = HkDistance3D(explosion->explosionPosition, targetPosition);
+
+	if (distance <= squaredRadiusOneThirds)
+	{
+		return 1.0f;
+	}
+	if (distance <= squaredRadiusTwoThirds)
+	{
+		return 0.66666666f;
+	}
+	if (distance <= squaredRadius)
+	{
+		return 0.33333333f;
+	}
+
+	return 0.0f;
+}
+
 void LoadHookOverrides()
 {
 	Patch(piServerDLL);
@@ -52,31 +76,28 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-	if (!shield)
+	if (!shield || !shield->IsFunctioning())
 	{
-		return ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
+		return false;
 	}
+
+	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
+	shieldDamage *= GetDamageModifier(explosion, iobj->cobj->vPos);
 
 	auto explosionIter = explosionTypeMap.find(explosion->explosionArchetype->iID);
 	if (explosionIter == explosionTypeMap.end())
 	{
-		return ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
+		iobj->damage_shield_direct(shield, shieldDamage, dmgList);
+		return true;
 	}
 
 	float modifier = GetWeaponModifier(shield, nullptr, explosionIter->second.type);
 
-	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
-	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
+	shieldDamage *= modifier;
 
-	explosion->explosionArchetype->fHullDamage *= modifier;
-	explosion->explosionArchetype->fEnergyDamage *= modifier;
-
-	bool retVal = ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
-
-	explosion->explosionArchetype->fHullDamage = originalHullDmg;
-	explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
+	iobj->damage_shield_direct(shield, shieldDamage, dmgList);
 	
-	return retVal;
+	return true;
 }
 
 __declspec(naked) void ShipShieldExplosionDamageNaked()

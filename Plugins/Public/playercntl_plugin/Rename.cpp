@@ -612,19 +612,19 @@ namespace Rename
 
 		if (HkGetAccountByCharname(wscNewCharname))
 		{
-			PrintUserCmdText(iClientID, L"ERR Name already exists");
+			PrintUserCmdText(iClientID, L"ERR Name already taken");
 			return true;
 		}
 
 		if (wscNewCharname.length() > 23)
 		{
-			PrintUserCmdText(iClientID, L"ERR Name to long");
+			PrintUserCmdText(iClientID, L"ERR Name too long");
 			return true;
 		}
 
 		if (wscNewCharname.length() < MIN_CHAR_TAG_LEN)
 		{
-			PrintUserCmdText(iClientID, L"ERR Name to short");
+			PrintUserCmdText(iClientID, L"ERR Name too short");
 			return true;
 		}
 

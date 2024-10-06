@@ -769,14 +769,14 @@ namespace HkIServerImpl
 	Called when equipment is being activated/disabled
 	**************************************************************************************************************/
 
-	void __stdcall ActivateEquip(unsigned int iClientID, struct XActivateEquip const &aq)
+	void __stdcall ActivateEquip(unsigned int iClientID, XActivateEquip const &aq)
 	{
 		CHECK_FOR_DISCONNECT
 
 		TRY_HOOK{
 
 			CShip* cship = ClientInfo[iClientID].cship;
-			if (cship)
+			if (cship && cship->objectClass == CObject::CSHIP_OBJECT)
 			{
 				CEquip* equip = cship->equip_manager.FindByID(aq.sID);
 				if (equip && equip->CEquipType == Engine)
@@ -786,8 +786,15 @@ namespace HkIServerImpl
 						ClientInfo[iClientID].bCruiseActivated = false; // enginekill enabled
 				}
 			}
+		} CATCH_HOOK({ 
+			ConPrint(L"ActivateEquipException: %u, %u, %d\n", iClientID, Players[iClientID].iShipID, aq.sID); 
+			auto eq = Players[iClientID].equipDescList.find_equipment_item(aq.sID);
+			if (eq)
+			{
+				ConPrint(L"Activate %u\n", eq->iArchID);
+			}
 
-		} CATCH_HOOK({ ConPrint(L"ActivateEquipException: %u, %u\n", iClientID, Players[iClientID].iShipID); })
+			})
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ActivateEquip, __stdcall, (unsigned int iClientID, struct XActivateEquip const &aq), (iClientID, aq));
 

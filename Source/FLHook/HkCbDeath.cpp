@@ -18,15 +18,6 @@ Send "Death: ..." chat-message
 
 void SendDeathMsg(const wstring &wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller, DamageCause deathCause)
 {
-	// skip processing if no cship, some ships can trigger this hook multiple times
-	if (!ClientInfo[iClientIDVictim].cship)
-	{
-		return;
-	}
-
-	HkIEngine::playerShips.erase(ClientInfo[iClientIDVictim].cship->id);
-	ClientInfo[iClientIDVictim].cship = nullptr;
-	ClientInfo[iClientIDVictim].iBaseEnterTime = (uint)time(0); //start idle kick timer
 
 	CALL_PLUGINS_V(PLUGIN_SendDeathMsg, , (const wstring&, uint&, uint&, uint&, DamageCause&), (wscMsg, iSystemID, iClientIDVictim, iClientIDKiller, deathCause));
 
@@ -127,6 +118,20 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	if (!isKill)
 	{
+		uint client = iobj->cobj->ownerPlayer;
+		if (client)
+		{
+			ClientInfo[client].iShipOld = ClientInfo[client].iShip;
+			ClientInfo[client].iShip = 0;
+
+			// skip processing if no cship, some ships can trigger this hook multiple times
+			if (ClientInfo[client].cship)
+			{
+				HkIEngine::playerShips.erase(ClientInfo[client].cship->id);
+				ClientInfo[client].cship = nullptr;
+				ClientInfo[client].iBaseEnterTime = (uint)time(0); //start idle kick timer
+			}
+		}
 		return;
 	}
 	LOG_CORE_TIMER_START
@@ -229,6 +234,15 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 		ClientInfo[iClientID].iShipOld = ClientInfo[iClientID].iShip;
 		ClientInfo[iClientID].iShip = 0;
+
+		// skip processing if no cship, some ships can trigger this hook multiple times
+		if (ClientInfo[iClientID].cship)
+		{
+			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
+			ClientInfo[iClientID].cship = nullptr;
+			ClientInfo[iClientID].iBaseEnterTime = (uint)time(0); //start idle kick timer
+		}
+
 	} CATCH_HOOK({})
 	LOG_CORE_TIMER_END
 }

@@ -54,25 +54,29 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
 	if (!shield)
 	{
-		return false;
+		return ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
 	}
-
-	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
 
 	auto explosionIter = explosionTypeMap.find(explosion->explosionArchetype->iID);
 	if (explosionIter == explosionTypeMap.end())
 	{
-		iobj->damage_shield_direct(shield, shieldDamage, dmgList);
-		return true;
+		return ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
 	}
 
 	float modifier = GetWeaponModifier(shield, nullptr, explosionIter->second.type);
 
-	shieldDamage *= modifier;
+	float originalHullDmg = explosion->explosionArchetype->fHullDamage;
+	float originalEnergyDmg = explosion->explosionArchetype->fEnergyDamage;
 
-	iobj->damage_shield_direct(shield, shieldDamage, dmgList);
+	explosion->explosionArchetype->fHullDamage *= modifier;
+	explosion->explosionArchetype->fEnergyDamage *= modifier;
+
+	bool retVal = ShipShieldExlosionHitFunc(iobj, explosion, dmgList);
+
+	explosion->explosionArchetype->fHullDamage = originalHullDmg;
+	explosion->explosionArchetype->fEnergyDamage = originalEnergyDmg;
 	
-	return true;
+	return retVal;
 }
 
 __declspec(naked) void ShipShieldExplosionDamageNaked()

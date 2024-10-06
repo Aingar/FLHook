@@ -382,7 +382,7 @@ void LoadSettings()
 	LoadHookOverrides();
 
 	ID_String str;
-	str.id = CreateID("explosion_positron_discharge");
+	str.id = CreateID("missile03_mark04_explosion");
 	shieldExplosion = Archetype::GetExplosion(str);
 }
 

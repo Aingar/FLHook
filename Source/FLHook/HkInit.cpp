@@ -42,8 +42,6 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
-		{0x6D65418,		&ShipDropLootDummy,					4,	0,	false},
-		{0x6D67640,		&ShipDropLootDummy,					4,	0,	false},
 		{0x6D672F0,		&ShipDropLootDummy,					4,	0,	false},
 		{0x6D672A4,		&ApplyShipDamageListNaked,				4, &ApplyShipDamageListOrigFunc,	false},
 		//{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
@@ -171,6 +169,10 @@ clear the clientinfo
 
 void ClearClientInfo(uint iClientID)
 {
+	if (!iClientID)
+	{
+		return;
+	}
 	ClientInfo[iClientID].dieMsg = DIEMSG_ALL_NOCONN;
 	ClientInfo[iClientID].iShip = 0;
 	ClientInfo[iClientID].iShipOld = 0;

@@ -702,7 +702,7 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 		Reputation::Vibe::GetAffiliation(cship->repVibe, targetAffiliation, false);
 		pub::Reputation::GetGroupFeelingsTowards(killerData.iReputation, targetAffiliation, attitude);
 
-		if (attitude >= 0.0f)
+		if (attitude > 0.0f)
 		{
 			cship->clear_equip_and_cargo();
 			return;

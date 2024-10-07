@@ -39,15 +39,22 @@ bool Patch(PATCH_INFO& pi)
 	return true;
 }
 
-float GetDamageModifier(ExplosionDamageEvent* explosion, Vector& targetPosition)
+void LoadHookOverrides()
+{
+	Patch(piServerDLL);
+}
+
+float GetRangeModifier(CShip* cship, ExplosionDamageEvent* explosion)
 {
 	float squaredRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
 	float squaredRadiusTwoThirds = squaredRadius * 0.44444444f;
 	float squaredRadiusOneThirds = squaredRadius * 0.11111111f;
 
-	float distance = HkDistance3D(explosion->explosionPosition, targetPosition);
+	const Vector& explPos = explosion->explosionPosition;
+	float sq1 = explPos.x - cship->vPos.x, sq2 = explPos.y - cship->vPos.y, sq3 = explPos.z - cship->vPos.z;
+	float distance = sq1 * sq1 + sq2 * sq2 + sq3 * sq3;
 
-	if (distance <= squaredRadiusOneThirds)
+	if (distance <= squaredRadiusOneThirds || cship->shiparch()->iShipClass >= 6)
 	{
 		return 1.0f;
 	}
@@ -61,11 +68,6 @@ float GetDamageModifier(ExplosionDamageEvent* explosion, Vector& targetPosition)
 	}
 
 	return 0.0f;
-}
-
-void LoadHookOverrides()
-{
-	Patch(piServerDLL);
 }
 
 bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmgList)
@@ -82,18 +84,13 @@ bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* exp
 	}
 
 	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
-	shieldDamage *= GetDamageModifier(explosion, iobj->cobj->vPos);
+	shieldDamage *= GetRangeModifier(cship, explosion);
 
 	auto explosionIter = explosionTypeMap.find(explosion->explosionArchetype->iID);
-	if (explosionIter == explosionTypeMap.end())
+	if (explosionIter != explosionTypeMap.end())
 	{
-		iobj->damage_shield_direct(shield, shieldDamage, dmgList);
-		return true;
+		shieldDamage *= GetWeaponModifier(shield, nullptr, explosionIter->second.type);
 	}
-
-	float modifier = GetWeaponModifier(shield, nullptr, explosionIter->second.type);
-
-	shieldDamage *= modifier;
 
 	iobj->damage_shield_direct(shield, shieldDamage, dmgList);
 	
@@ -138,7 +135,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-		if (shield && (shield->currShieldHitPoints - incDmg) <= (shield->maxShieldHitPoints * shield->offlineThreshold))
+		if (shield && shield->IsFunctioning())
 		{
 			uint fuseId = shieldFuseMap[clientId].boostData->fuseId;
 

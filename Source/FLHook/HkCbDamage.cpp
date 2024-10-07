@@ -225,14 +225,9 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	{
 		CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
 		ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
-		if (dmg->iInflictorPlayerID)
+		if (dmg->iInflictorPlayerID && incDmg > 0)
 		{
-			CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
-
-			if (incDmg > 0)
-			{
-				ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
-			}
+			ClientInfo[simple->ownerPlayer].dmgLastPlayerId = dmg->iInflictorPlayerID;
 		}
 	}
 }

@@ -135,7 +135,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-		if (shield && shield->IsFunctioning())
+		if (shield && (shield->currShieldHitPoints - incDmg) <= (shield->maxShieldHitPoints * shield->offlineThreshold))
 		{
 			uint fuseId = shieldFuseMap[clientId].boostData->fuseId;
 

@@ -719,7 +719,7 @@ int Update()
 		}
 		HkUnLightFuse(iobj, shieldFuse.second.boostData->fuseId, 0.0f);
 
-		ShieldBoostData* boostData = shieldFuse.second.boostData;
+		const ShieldBoostData* boostData = shieldFuse.second.boostData;
 
 		if (boostData->radius == 0.0f)
 		{

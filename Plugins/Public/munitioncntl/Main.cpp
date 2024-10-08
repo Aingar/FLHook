@@ -27,6 +27,8 @@ unordered_map<uint, pair<CGuided*, float>> topSpeedWatch;
 
 uint lastProcessedProjectile = 0;
 
+bool debug = false;
+
 void LoadSettings();
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
@@ -708,6 +710,11 @@ int Update()
 			continue;
 		}
 
+		if (debug)
+		{
+			ConPrint(L"%u boostEnd %u\n", shieldFuse.first, currTime);
+		}
+
 		keysToRemove.emplace_back(shieldFuse.first);
 		IObjInspectImpl* iobj1;
 		StarSystem* dummy;
@@ -845,7 +852,12 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	CEquipTraverser tr(ShieldGenerator);
 	const CEquip* shield;
 
-	ShieldBoostData* primaryBoost = nullptr;
+	const ShieldBoostData* primaryBoost = nullptr;
+
+	if (debug)
+	{
+		ConPrint(L"%u entry\n", iClientID);
+	}
 
 	while (shield = eqManager.Traverse(tr))
 	{
@@ -861,6 +873,10 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	if (!primaryBoost)
 	{
+		if (debug)
+		{
+			ConPrint(L"%u noboost exit\n", iClientID);
+		}
 		return;
 	}
 
@@ -878,6 +894,10 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 
 	if (boostDuration < primaryBoost->minimumDuration)
 	{
+		if (debug)
+		{
+			ConPrint(L"%u minDur exit\n", iClientID);
+		}
 		return;
 	}
 
@@ -897,6 +917,11 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	ShieldBoostFuseInfo& boostInfo = shieldFuseMap[iClientID];
 	boostInfo.boostData = primaryBoost;
 	boostInfo.lastUntil = shieldState.boostUntil;
+
+	if (debug)
+	{
+		ConPrint(L"%u boostStart %u %u %u\n", iClientID, usedAmount, (uint)boostDuration, currTime);
+	}
 
 	if (!primaryBoost->fuseId)
 	{
@@ -923,6 +948,15 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (args.find(L"sbdebug") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+		debug = !debug;
+		cmd->Print(L"%u\n", (uint)debug);
+		return true;
+	}
 	return true;
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

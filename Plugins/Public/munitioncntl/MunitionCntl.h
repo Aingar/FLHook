@@ -70,7 +70,7 @@ struct ShieldBoostData
 struct ShieldBoostFuseInfo
 {
 	mstime lastUntil;
-	ShieldBoostData* boostData;
+	const ShieldBoostData* boostData;
 };
 
 struct EngineProperties

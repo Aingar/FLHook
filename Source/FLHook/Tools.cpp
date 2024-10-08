@@ -321,7 +321,7 @@ wstring TimeString(uint seconds)
 {
 	uint hours = seconds / 3600;
 	uint minutes = (seconds % 3600) / 60;
-	wchar_t buf[7];
+	wchar_t buf[20];
 	swprintf_s(buf, L"%uh%um", hours, minutes);
 	return buf;
 }

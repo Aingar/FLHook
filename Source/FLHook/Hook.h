@@ -20,8 +20,8 @@ using st6_free_t = void(*)(void*);
 EXPORT extern st6_malloc_t st6_malloc;
 EXPORT extern st6_free_t st6_free;
 
-#define CORE_TIMER_LOGGING
-#define HOOK_TIMER_LOGGING
+//#define CORE_TIMER_LOGGING
+//#define HOOK_TIMER_LOGGING
 
 #ifdef CORE_TIMER_LOGGING
 #define LOG_CORE_TIMER_START \

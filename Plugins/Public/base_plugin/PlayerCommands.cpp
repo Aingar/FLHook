@@ -144,6 +144,9 @@ namespace PlayerCommands
 
 	void PopulateHelpMenus()
 	{
+		modules_recipe_map.clear();
+		factory_recipe_map.clear();
+
 		for (const auto& buildType : buildingCraftLists)
 		{
 			modules_recipe_map[buildType] = GenerateModuleHelpMenu(buildType);
@@ -678,6 +681,9 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"OK Player has no affiliation");
 				return;
 			}
+
+			pub::SpaceObj::GetRep(base->base, rep);
+			pub::Reputation::SetAffiliation(rep, affiliation);
 
 			base->affiliation = affiliation;
 			base->Save();

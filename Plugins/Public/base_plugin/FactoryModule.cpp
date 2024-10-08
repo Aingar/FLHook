@@ -717,6 +717,17 @@ void FactoryModule::SetActiveRecipe(uint product, bool resetAmassedCookingRate)
 		{
 			item.second = static_cast<uint>(ceil(static_cast<float>(item.second) * productionModifier));
 		}
+		for (auto& list : active_recipe.dynamic_consumed_items)
+		{
+			for (auto& item : list)
+			{
+				item.second = static_cast<uint>(ceil(static_cast<float>(item.second) * productionModifier));
+			}
+		}
+		for (auto& item : active_recipe.dynamic_consumed_items_alt)
+		{
+			item.sharedAmount = static_cast<uint>(ceil(static_cast<float>(item.sharedAmount) * productionModifier));
+		}
 	}
 	for (auto& variable : active_recipe.affiliation_consumed_items)
 	{

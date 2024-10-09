@@ -276,7 +276,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	if (rootDistance == FLT_MAX)
 	{
-		return true;
+		return false;
 	}
 
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
@@ -312,7 +312,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	if (!dmgMult)
 	{
-		return;
+		return false;
 	}
 
 	if (explData && explData->cruiseDisrupt)

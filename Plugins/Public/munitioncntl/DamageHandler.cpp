@@ -287,7 +287,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
 
-	if (explData)
+	if (explData && explData->weaponType)
 	{
 		shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
 	}
@@ -296,7 +296,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	float twoThirds = squaredExplosionRadius * 0.4444444f;
 	float oneThird = squaredExplosionRadius * 0.1111111f;
 
-	float dmgMult = 0.3333f;
+	float dmgMult = 0.0f;
 	if (rootDistance < oneThird)
 	{
 		dmgMult = 1.0f;
@@ -305,6 +305,21 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	{
 		dmgMult = 0.6666f;
 	}
+	else if (rootDistance < squaredExplosionRadius)
+	{
+		dmgMult = 0.3333f;
+	}
+
+	if (!dmgMult)
+	{
+		return;
+	}
+
+	if (explData && explData->cruiseDisrupt)
+	{
+		dmg->damageCause = DamageCause::CruiseDisrupter;
+	}
+
 	ConPrint(L"ExplShieldDebug: dist mult: %0.2f, RayCastDist: %0.1fm, CenterDist: %0.1fm, explRadius: %0.0fm, baseDmg: %0.0f, finaldmg: %0.0f\n", dmgMult, sqrtf(rootDistance), Distance3D(iobj->cobj->vPos, explosion->explosionPosition), sqrtf(squaredExplosionRadius), shieldDamage, dmgMult * shieldDamage);
 	float damage = dmgMult * shieldDamage;
 	iobj->damage_shield_direct(shield, damage, dmg);

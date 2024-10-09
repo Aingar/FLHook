@@ -112,8 +112,6 @@ void __stdcall HkCb_CrashProc6F78DD0(int arg1, int arg2)
 {
 	try
 	{
-		if (set_iPluginDebug > 2)
-			ConPrint(L"HkCb_CrashProc6F78DD0(arg1=%08x,arg2=%08x)\n", arg1, arg2);
 		__asm
 		{
 			pushad
@@ -126,7 +124,6 @@ void __stdcall HkCb_CrashProc6F78DD0(int arg1, int arg2)
 	}
 	catch (...)
 	{
-		LOG_EXCEPTION
 	}
 }
 
@@ -141,8 +138,6 @@ void __cdecl HkCb_CrashProc6F671A0(int arg1)
 {
 	try
 	{
-		if (set_iPluginDebug > 2)
-			ConPrint(L"HkCb_CrashProc6F671A0(arg1=%08x)\n", arg1);
 		__asm
 		{
 			pushad
@@ -154,8 +149,40 @@ void __cdecl HkCb_CrashProc6F671A0(int arg1)
 	}
 	catch (...)
 	{
-		AddLog("arg: %d", arg1);
-		LOG_EXCEPTION
+	}
+}
+
+void __stdcall Log6D02470(CShip* cship)
+{
+	if (cship->ownerPlayer)
+	{
+		wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(cship->ownerPlayer);
+		AddLog("CruiseExceptionCatch: Player %s arch %x system %x pos %0.0f %0.0f %0.0f\n", wstos(playerName).c_str(), cship->archetype->iArchID, cship->system, cship->vPos.x, cship->vPos.y, cship->vPos.z);
+
+	}
+	else
+	{
+		AddLog("CruiseExceptionCatch: NPC arch %x system %x pos %0.0f %0.0f %0.0f\n", cship->archetype->iArchID, cship->system, cship->vPos.x, cship->vPos.y, cship->vPos.z);
+	}
+}
+
+const uint jmp6D02470Fail = 0x6D024B3;
+const uint jmp6D02470Success = 0x6D02476;
+const uint func6D02470 = 0x06D64024;
+
+__declspec(naked) void HkCb_CrashProc6D02470Naked()
+{
+	__asm
+	{
+		mov edx, [func6D02470]
+		call [edx]
+		test eax, eax
+		jz fail
+		jmp jmp6D02470Success
+		fail:
+		push [esi+0xC]
+		call Log6D02470
+		jmp jmp6D02470Fail
 	}
 }
 
@@ -311,6 +338,18 @@ static double __cdecl HkCb_TimingSeconds(__int64 &ticks_delta)
 	return seconds;
 }
 
+void Detour(void* pOFunc, void* pHkFunc)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
 void CrashCatcher::Init()
 {
 	try
@@ -423,6 +462,8 @@ void CrashCatcher::Init()
 				PatchCallAddr((char*)hModContentAC, 0xC702A, (char*)HkCb_CrashProc6F671A0);
 				PatchCallAddr((char*)hModContentAC, 0xC713B, (char*)HkCb_CrashProc6F671A0);
 				PatchCallAddr((char*)hModContentAC, 0xC7180, (char*)HkCb_CrashProc6F671A0);
+
+				Detour((char*)hModServer + 0x22470, (char*)HkCb_CrashProc6D02470Naked);
 
 				// Patch the NPC persist distance in MP to 6.5km and patch the max spawn distance to 6.5km
 				float fDistance = 6500;

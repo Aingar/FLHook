@@ -441,7 +441,7 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 		guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
 	}
 
-	auto guidedInfo = guidedDataMap.find(createGuidedPacket.iMunitionId);
+	auto guidedInfo = guidedDataMap.find(guided->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
 	{
 		return;
@@ -512,7 +512,7 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	topSpeedWatch.erase(iobj->get_id());
 
-	auto guidedInfo = guidedDataMap.find(iobj->get_id());
+	auto guidedInfo = guidedDataMap.find(iobj->cobj->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
 	{
 		return true;

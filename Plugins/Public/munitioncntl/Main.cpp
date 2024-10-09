@@ -23,7 +23,12 @@ unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 Archetype::Explosion* shieldExplosion;
 
-unordered_map<uint, pair<CGuided*, float>> topSpeedWatch;
+struct SpeedCheck
+{
+	float targetSpeed = 0;
+	uint checkCounter = 0;
+};
+unordered_map<uint, pair<CGuided*, SpeedCheck>> topSpeedWatch;
 
 uint lastProcessedProjectile = 0;
 
@@ -420,6 +425,7 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 		return;
 	}
 
+	guided->Release();
 	uint ownerType;
 	pub::SpaceObj::GetType(createGuidedPacket.iOwner, ownerType);
 	if (!(ownerType & shipObjType)) //GetTarget throws an exception for non-ship entities.
@@ -443,7 +449,7 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 
 	if (guidedInfo->second.topSpeed)
 	{
-		topSpeedWatch[createGuidedPacket.iProjectileId] = { guided, guidedInfo->second.topSpeed };
+		topSpeedWatch[createGuidedPacket.iProjectileId] = { guided, {guidedInfo->second.topSpeed, 0} };
 	}
 
 	if (guidedInfo->second.noTrackingAlert) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
@@ -691,24 +697,54 @@ int Update()
 
 	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
 	{
-		if (!iter->second.first->motorData)
+		CGuided* guided = iter->second.first;
+		SpeedCheck& speedData = iter->second.second;
+		if (speedData.checkCounter)
+		{
+			Vector velocityVec = guided->get_velocity();
+			float velocity = VectorMagnitude(velocityVec);
+
+			if (speedData.checkCounter % 10 == 0)
+			{
+				ConPrint(L"missileAccelerationWarning! id %u count %u speed %0.0f maxspeed %0.0f\n", iter->first, speedData.checkCounter, velocity, speedData.targetSpeed);
+			}
+
+			if (velocity > speedData.targetSpeed)
+			{
+				ResizeVector(velocityVec, speedData.targetSpeed);
+				guided->motorData = nullptr;
+
+				const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
+				Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
+				*linearVelocity = velocityVec;
+
+				speedData.checkCounter++;
+				iter++;
+			}
+			else
+			{
+				iter = topSpeedWatch.erase(iter);
+			}
+		}
+
+		if (!guided->motorData)
 		{
 			iter++;
 			continue;
 		}
 
-		Vector velocityVec = iter->second.first->get_velocity();
+		Vector velocityVec = guided->get_velocity();
 		float velocity = VectorMagnitude(velocityVec);
-		if (velocity >= iter->second.second)
+		if (velocity >= speedData.targetSpeed)
 		{
-			ResizeVector(velocityVec, iter->second.second);
-			iter->second.first->motorData = nullptr;
+			ResizeVector(velocityVec, speedData.targetSpeed);
+			guided->motorData = nullptr;
 
-			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(iter->second.first) + 84)) + 152);
+			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
 			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
 			*linearVelocity = velocityVec;
 
-			iter = topSpeedWatch.erase(iter);
+			speedData.checkCounter = 1;
 		}
 		else
 		{

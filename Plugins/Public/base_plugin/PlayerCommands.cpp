@@ -1702,7 +1702,7 @@ namespace PlayerCommands
 					continue;
 				}
 
-				const GoodInfo* gi = GoodList::find_by_id(affilIter->first);
+				const GoodInfo* gi = GoodList::find_by_id(affilIter->second.first);
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), affilIter->second.second);
 			}
 			if (!recipe->catalyst_items.empty())

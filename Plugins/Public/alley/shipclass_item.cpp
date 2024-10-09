@@ -198,8 +198,18 @@ void SCI::CheckItems(unsigned int iClientID)
 		{
 			const GoodInfo* gi = GoodList::find_by_id(item->iArchID);
 			wstring wscMsg = L"ERR you can't undock with %item mounted. This item can't be mounted on a %shipclass.";
-			wscMsg = ReplaceStr(wscMsg, L"%item", HkGetWStringFromIDS(gi->iIDSName).c_str());
 			wscMsg = ReplaceStr(wscMsg, L"%shipclass", classname.c_str());
+
+			if (gi)
+			{
+				wscMsg = ReplaceStr(wscMsg, L"%item", HkGetWStringFromIDS(gi->iIDSName).c_str());
+			}
+			else
+			{
+				wscMsg = ReplaceStr(wscMsg, L"%item", L"<errorStaffNotified>");
+				ConPrint(L"Alley: Error, unable to process item 0x%x\n", item->iArchID);
+			}
+
 			owned[iClientID] = wscMsg;
 			StoreReturnPointForClient(iClientID);
 			return;

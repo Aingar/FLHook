@@ -7,7 +7,7 @@
 #include <PluginUtilities.h>
 
 void ShipShieldDamageNaked();
-void ShipShieldExplosionDamageNaked();
+void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 
@@ -79,9 +79,13 @@ struct EngineProperties
 	float engineKillCDSpeedLimit;
 };
 
-struct ExplosionDamageType
+struct ExplosionDamageData
 {
-	uint type = 0;
+	uint weaponType = 0;
+	float percentageDamageHull = 0.0f;
+	float percentageDamageShield = 0.0f;
+	float percentageDamageEnergy = 0.0f;
+	bool cruiseDisrupt = false;
 };
 
 enum TRACKING_STATE {
@@ -90,6 +94,8 @@ enum TRACKING_STATE {
 	NOTRACK_NOALERT
 };
 
-extern unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
+extern PLUGIN_RETURNCODE returncode;
+extern FARPROC ShipShieldDamageOrigFunc;

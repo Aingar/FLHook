@@ -2352,9 +2352,13 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 			returncode = SKIPPLUGINS;
 			PrintUserCmdText(client, L"Purchased ship");
 
-			const auto gi2 = GoodList::find_by_id(gi->iHullGoodID);
 
-			shipPurchasePrice = curr_money - price + (gi2->fPrice * 0.5f);
+			shipPurchasePrice = curr_money - price;
+			const auto gi2 = GoodList_get()->find_by_ship_arch(Players[client].iShipArchetype);
+			if (gi2)
+			{
+				shipPurchasePrice += (gi2->fPrice * 0.5f);
+			}
 		}
 		else if (gi && gi->iType == GOODINFO_TYPE_HULL)
 		{

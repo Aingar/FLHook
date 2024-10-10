@@ -5426,6 +5426,13 @@ public:
 	CObject* cobj;
 };
 
+struct MunitionImpactData
+{
+	uint attackerId;
+	Archetype::Munition* munitionId;
+	uint subObjId;
+};
+
 struct ExplosionDamageEvent
 {
 	uint projectileId;
@@ -5535,7 +5542,7 @@ struct IObjRWAbstract
 	virtual int sub_6CEE810(void* PhySys_unk);               // physics collsion handling?                                       //372
 	virtual void sub_6CEE980(int dunno);                     // Behavior interface update?                                              //376
 	virtual void sub_6CE9250(void* unk, DamageList*);        // 380
-	virtual void sub_6CE9350(void* unk, DamageList*);        // 384
+	virtual void process_munition_impact(MunitionImpactData* unk, DamageList*);        // 384
 	virtual void process_all_explosion_damage(ExplosionDamageEvent*, DamageList*); // calls methods 508-520         //388
 	virtual void applyDamageList(DamageList*);                                     // 392 sub_6D01A10
 	virtual bool get_dunno_0x41();                                                 // 396

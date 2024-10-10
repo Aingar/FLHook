@@ -21,6 +21,7 @@ struct MineInfo
 {
 	float armingTime = 0.0f;
 	float dispersionAngle = 0.0f;
+	float armorPen = 0.0f;
 	bool detonateOnEndLifetime = false;
 	bool stopSpin = false;
 };
@@ -31,6 +32,7 @@ struct GuidedData
 	uint trackingBlacklist = 0;
 	float armingTime = 0.0f;
 	float topSpeed = 0.0f;
+	float armorPen = 0.0f;
 };
 
 struct ShieldState
@@ -85,6 +87,7 @@ struct ExplosionDamageData
 	float percentageDamageHull = 0.0f;
 	float percentageDamageShield = 0.0f;
 	float percentageDamageEnergy = 0.0f;
+	float armorPen = 0.0f;
 	bool cruiseDisrupt = false;
 };
 

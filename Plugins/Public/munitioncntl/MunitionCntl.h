@@ -102,3 +102,11 @@ extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;
+
+extern float shipArmorValue;
+extern uint shipArmorArch;
+extern float weaponArmorPenValue;
+extern uint weaponArmorPenArch;
+extern bool armorEnabled;
+
+extern unordered_map<uint, float> munitionArmorPenMap;

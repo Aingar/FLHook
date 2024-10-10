@@ -870,37 +870,48 @@ int Update()
 	return 0;
 }
 
-static float shipArmorValue = 1.0f;
-static uint shipArmorArch = 0;
+float shipArmorValue = 1.0f;
+uint shipArmorArch = 0;
 
-static float weaponArmorPenValue = 0.0f;
-static uint weaponArmorPenArch = 0;
+float weaponArmorPenValue = 0.0f;
+uint weaponArmorPenArch = 0;
+
+bool armorEnabled = 0;
 
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (shipArmorArch != iobj->cobj->archetype->iArchID)
+	if (armorEnabled)
 	{
-		shipArmorArch = iobj->cobj->archetype->iArchID;
-		const auto shipIter = shipArmorMap.find(shipArmorArch);
-		if (shipIter == shipArmorMap.end())
+		if (shipArmorArch != iobj->cobj->archetype->iArchID)
 		{
-			shipArmorArch = 1.0f;
+			shipArmorArch = iobj->cobj->archetype->iArchID;
+			const auto shipIter = shipArmorMap.find(shipArmorArch);
+			if (shipIter == shipArmorMap.end())
+			{
+				shipArmorValue = 1.0f;
+			}
+			else
+			{
+				shipArmorValue = shipIter->second;
+			}
 		}
-		else
+
+		if (shipArmorValue != 1.0f)
 		{
-			shipArmorArch = shipIter->second;
+			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
 		}
 	}
-
-	incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
 }
 
 void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const& ci, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (weaponArmorPenArch == weaponArmorPenArch)
+
+	armorEnabled = true;
+
+	if (weaponArmorPenArch == ci.projectileArchID)
 	{
 		return;
 	}
@@ -917,23 +928,11 @@ void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const& ci, unsigned 
 	}
 }
 
-void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+void __stdcall SPMunitionCollisionAfter(SSPMunitionCollisionInfo const& ci, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (weaponArmorPenArch != explosion->explosionArchetype->iID)
-	{
-		weaponArmorPenArch = explosion->explosionArchetype->iID;
-		const auto explData = explosionTypeMap.find(weaponArmorPenArch);
-		if (explData == explosionTypeMap.end())
-		{
-			weaponArmorPenValue = 0.0f;
-		}
-		else
-		{
-			weaponArmorPenValue = explData->second.armorPen;
-		}
-	}
+	armorEnabled = false;
 }
 
 bool usedBatts = false;
@@ -1102,6 +1101,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollision, PLUGIN_HkIServerImpl_SPMunitionCollision, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollisionAfter, PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 10));

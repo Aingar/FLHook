@@ -21,6 +21,8 @@ unordered_map<uint, ShieldBoostData> shieldBoostMap;
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+unordered_map<uint, float> shipArmorMap;
+unordered_map<uint, float> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 
 struct SpeedCheck
@@ -83,6 +85,7 @@ void ReadMunitionDataFromInis()
 	}
 
 	vector<string> equipFiles;
+	vector<string> shipFiles;
 
 	while (ini.read_header())
 	{
@@ -96,10 +99,46 @@ void ReadMunitionDataFromInis()
 			{
 				equipFiles.emplace_back(ini.get_value_string());
 			}
+			else if (ini.is_value("ships"))
+			{
+				shipFiles.emplace_back(ini.get_value_string());
+			}
 		}
 	}
 
 	ini.close();
+
+	for (string shipFile : shipFiles)
+	{
+		shipFile = gameDir + shipFile;
+		if (!ini.open(shipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Ship"))
+			{
+				continue;
+			}
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("armor_mult"))
+				{
+					shipArmorMap[currNickname] = ini.get_value_float(0);
+					break;
+				}
+			}
+		}
+
+		ini.close();
+	}
 
 	for (string equipFile : equipFiles)
 	{
@@ -145,6 +184,10 @@ void ReadMunitionDataFromInis()
 					if (ini.is_value("nickname"))
 					{
 						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("armor_pen"))
+					{
+						munitionArmorPenMap[currNickname] = ini.get_value_float(0);
 					}
 					else if (ini.is_value("arming_time"))
 					{
@@ -259,6 +302,10 @@ void ReadMunitionDataFromInis()
 					{
 						damageType.type = CreateID(ini.get_value_string(0));
 					}
+					else if ("armor_pen")
+					{
+						damageType.armorPen = ini.get_value_float(0);
+					}
 				}
 				if (damageType.type)
 				{
@@ -286,6 +333,10 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("weapon_type"))
 					{
 						damageType.type = CreateID(ini.get_value_string(0));
+					}
+					else if ("armor_pen")
+					{
+						damageType.armorPen = ini.get_value_float(0);
 					}
 				}
 				if (damageType.type)
@@ -799,9 +850,70 @@ int Update()
 	return 0;
 }
 
+static float shipArmorValue = 1.0f;
+static uint shipArmorArch = 0;
+
+static float weaponArmorPenValue = 0.0f;
+static uint weaponArmorPenArch = 0;
+
+void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (shipArmorArch != iobj->cobj->archetype->iArchID)
+	{
+		shipArmorArch = iobj->cobj->archetype->iArchID;
+		const auto shipIter = shipArmorMap.find(shipArmorArch);
+		if (shipIter == shipArmorMap.end())
+		{
+			shipArmorArch = 1.0f;
+		}
+		else
+		{
+			shipArmorArch = shipIter->second;
+		}
+	}
+
+	incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
+}
+
+void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const& ci, unsigned int client)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (weaponArmorPenArch == weaponArmorPenArch)
+	{
+		return;
+	}
+
+	weaponArmorPenArch = ci.projectileArchID;
+	const auto munitionIter = munitionArmorPenMap.find(ci.projectileArchID);
+	if (munitionIter == munitionArmorPenMap.end())
+	{
+		weaponArmorPenValue = 0.0f;
+	}
+	else
+	{
+		weaponArmorPenValue = munitionIter->second;
+	}
+}
+
 void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	if (weaponArmorPenArch != explosion->explosionArchetype->iID)
+	{
+		weaponArmorPenArch = explosion->explosionArchetype->iID;
+		const auto explData = explosionTypeMap.find(weaponArmorPenArch);
+		if (explData == explosionTypeMap.end())
+		{
+			weaponArmorPenValue = 0.0f;
+		}
+		else
+		{
+			weaponArmorPenValue = explData->second.armorPen;
+		}
+	}
 
 	if (engineData.empty())
 	{
@@ -1016,9 +1128,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipHullDamage, PLUGIN_ShipHullDmg, 20));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
-
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));
 

@@ -6559,7 +6559,11 @@ struct IMPORT ShipGunStats
 	void clear(void);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint activeGunCount;                     // 178
+	float averageSpeed;                      // 179
+	float maxActiveGunRange;                 // 180
+	uint activeMissileCount;                 // 181
+	float maxActiveMissileRange;             // 182
 };
 
 struct IMPORT ShipPlaceInfo

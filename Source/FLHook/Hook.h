@@ -321,6 +321,37 @@ struct PLUGIN_SORTCRIT {
 		return vPluginRet; \
 } \
 
+// Only populate retVal when NOFUNCTION is invoked
+#define CALL_PLUGINS_ALT(callback_id,ret_type,calling_convention,arg_types,args) \
+{ \
+	ret_type vPluginRet; \
+	ret_type vPluginRetTemp; \
+	bool bPluginReturn = false; \
+	TRY_HOOK { \
+		foreach(pPluginHooks[(int)callback_id],PLUGIN_HOOKDATA, itplugin) { \
+			if(itplugin->bPaused) \
+				continue; \
+			if(itplugin->pFunc) { \
+				TRY_HOOK { \
+					vPluginRetTemp = ((ret_type (calling_convention*) arg_types )itplugin->pFunc) args; \
+				} CATCH_HOOK({ AddLog("ERROR: Exception in plugin '%s' in %s", itplugin->sName.c_str(), __FUNCTION__);}) \
+			} else  \
+				AddLog("ERROR: Plugin '%s' does not export %s [%s]", itplugin->sName.c_str(), __FUNCTION__, __FUNCDNAME__); \
+			if(*itplugin->ePluginReturnCode == SKIPPLUGINS_NOFUNCTIONCALL) { \
+				bPluginReturn = true; \
+				vPluginRet = vPluginRetTemp; \
+				break; \
+			} else if(*itplugin->ePluginReturnCode == NOFUNCTIONCALL) { \
+				bPluginReturn = true; \
+				vPluginRet = vPluginRetTemp; \
+			} else if(*itplugin->ePluginReturnCode == SKIPPLUGINS) \
+				break; \
+		} \
+	} CATCH_HOOK({ AddLog("ERROR: Exception %s", __FUNCTION__);}) \
+	if(bPluginReturn) \
+		return vPluginRet; \
+} \
+
 // same for void types, not really seeing a way to integrate it in 1st macro :(
 #define CALL_PLUGINS_V(callback_id,calling_convention,arg_types,args) \
 { \

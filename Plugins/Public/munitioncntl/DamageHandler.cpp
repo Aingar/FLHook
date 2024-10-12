@@ -368,7 +368,7 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	iobj->damage_energy(damage, dmg);
 }
 
-void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
 	returncode = NOFUNCTIONCALL;
 	float rootDistance = FLT_MAX;
@@ -376,11 +376,12 @@ void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, Damag
 	const auto explData = iter == explosionTypeMap.end() ? nullptr : &iter->second;
 	if (ShieldAndDistance(iobj, explosion, dmg, rootDistance, explData))
 	{
-		return;
+		return true;
 	}
 
 	ShipExplosionHandlingExtEqColGrpHull(iobj, explosion, dmg, rootDistance, explData);
 	EnergyExplosionHit(iobj, explosion, dmg, rootDistance, explData);
+	return false;
 }
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)

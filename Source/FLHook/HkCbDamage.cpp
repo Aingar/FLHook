@@ -14,12 +14,11 @@ return 1 -> suppress
 
 FARPROC GuidedCreatedOrigFunc;
 
-
 FARPROC fpOldExplosionHit;
 
-void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
-	CALL_PLUGINS_V(PLUGIN_ExplosionHit, __stdcall, (IObjRW * iobj, ExplosionDamageEvent * explosion, DamageList * dmg), (iobj, explosion, dmg));
+	CALL_PLUGINS_ALT(PLUGIN_ExplosionHit, bool, __stdcall, (IObjRW * iobj, ExplosionDamageEvent * explosion, DamageList * dmg), (iobj, explosion, dmg));
 }
 
 __declspec(naked) void HookExplosionHitNaked()
@@ -31,7 +30,7 @@ __declspec(naked) void HookExplosionHitNaked()
 		push ecx
 		call ExplosionHit
 		pop ecx
-		jmp [fpOldExplosionHit]
+		ret 0x8
 	}
 }
 

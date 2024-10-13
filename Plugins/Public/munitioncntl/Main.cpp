@@ -328,6 +328,11 @@ void ReadMunitionDataFromInis()
 						damageType.cruiseDisrupt = ini.get_value_bool(0);
 						foundItem = true;
 					}
+					else if (ini.is_value("destroy_missiles"))
+					{
+						damageType.missileDestroy = ini.get_value_bool(0);
+						foundItem = true;
+					}
 				}
 				if (foundItem)
 				{
@@ -380,6 +385,11 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("cruise_disrupt"))
 					{
 						damageType.cruiseDisrupt = ini.get_value_bool(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("destroy_missiles"))
+					{
+						damageType.missileDestroy = ini.get_value_bool(0);
 						foundItem = true;
 					}
 				}

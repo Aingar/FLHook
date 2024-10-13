@@ -7,6 +7,7 @@
 #include <PluginUtilities.h>
 
 void ShipShieldDamageNaked();
+void GuidedExplosionHitNaked();
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
@@ -89,6 +90,7 @@ struct ExplosionDamageData
 	float percentageDamageEnergy = 0.0f;
 	float armorPen = 0.0f;
 	bool cruiseDisrupt = false;
+	bool missileDestroy = true;
 };
 
 enum TRACKING_STATE {
@@ -99,9 +101,11 @@ enum TRACKING_STATE {
 
 extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
+extern unordered_map<uint, GuidedData> guidedDataMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;
+extern FARPROC GuidedExplosionHitOrigFunc;
 
 extern float shipArmorValue;
 extern uint shipArmorArch;

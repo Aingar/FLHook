@@ -442,3 +442,37 @@ __declspec(naked) void ShipShieldDamageNaked()
 		jmp[ShipShieldDamageOrigFunc]
 	}
 }
+
+bool __stdcall GuidedExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+{
+	auto iter = explosionTypeMap.find(explosion->explosionArchetype->iID);
+	if (iter != explosionTypeMap.end() && iter->second.missileDestroy)
+	{
+		float distance = HkDistance3D(iobj->cobj->vPos, explosion->explosionPosition);
+		if (distance <= explosion->explosionArchetype->fRadius)
+		{
+			iobj->damage_hull(iobj->cobj->hitPoints, dmg);
+			return true;
+		}
+	}
+	return false;
+}
+
+__declspec(naked) void GuidedExplosionHitNaked()
+{
+	__asm
+	{
+		push ecx
+		push[esp + 0xC]
+		push[esp + 0xC]
+		push ecx
+		call GuidedExplosionHit
+		pop ecx
+		test al, al
+		jz callOriginal
+		ret 0x8
+
+		callOriginal:
+		jmp [GuidedExplosionHitOrigFunc]
+	}
+}

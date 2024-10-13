@@ -170,14 +170,13 @@ void PlayerBase::Timer(uint curr_time)
 		return;
 	}
 
-	failed_update_counter++;
-
 	if (set_plugin_debug_special && (curr_time % 60 == 0))
 	{
 		AddLog("Started processing %s\n", wstos(this->basename).c_str());
 	}
 	if ((curr_time % set_tick_time) == 0 && logic)
 	{
+		failed_update_counter++;
 		reservedCatalystMap.clear();
 		reservedCatalystMap[set_base_crew_type] = base_level * 200;
 	}
@@ -194,7 +193,10 @@ void PlayerBase::Timer(uint curr_time)
 				break;
 		}
 	}
-	failed_update_counter = 0;
+	if (curr_time % set_tick_time == 0 && logic)
+	{
+		failed_update_counter = 0;
+	}
 
 	return;
 }

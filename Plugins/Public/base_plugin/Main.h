@@ -24,7 +24,7 @@
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
-static uint MAX_PINNED_ITEMS = 10;
+static uint MAX_PINNED_ITEMS = 15;
 const ushort DEFAULT_AFFILIATION = MakeId("fc_uk_grp");
 
 void LogCheater(uint client, const wstring& reason);

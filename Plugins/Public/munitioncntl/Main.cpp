@@ -673,8 +673,6 @@ void Timer()
 
 int Update()
 {
-	returncode = DEFAULT_RETURNCODE;
-
 	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
 	{
 		CGuided* guided = iter->second.first;
@@ -705,6 +703,7 @@ int Update()
 			{
 				iter = topSpeedWatch.erase(iter);
 			}
+			continue;
 		}
 
 		if (!guided->motorData)
@@ -734,6 +733,7 @@ int Update()
 
 	if (shieldFuseMap.empty())
 	{
+		returncode = DEFAULT_RETURNCODE;
 		return 0;
 	}
 
@@ -796,6 +796,7 @@ int Update()
 	}
 	keysToRemove.clear();
 
+	returncode = DEFAULT_RETURNCODE;
 	return 0;
 }
 

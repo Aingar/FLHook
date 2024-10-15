@@ -9,6 +9,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 {
 	nickname = CreateBaseNickname(wstos(basename));
 	base = CreateID(nickname.c_str());
+	archetype = &mapArchs["legacy"];
 
 	// The creating ship is an ally by default.
 	BasePassword bp;

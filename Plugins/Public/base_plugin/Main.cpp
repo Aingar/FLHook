@@ -539,7 +539,7 @@ void LoadRecipes()
 					}
 					else if (ini.is_value("cooking_rate"))
 					{
-						recipe.cooking_rate = ini.get_value_int(0);
+						recipe.cooking_rate = ini.get_value_float(0);
 					}
 					else if (ini.is_value("credit_cost"))
 					{
@@ -1189,11 +1189,13 @@ void RebuildCSolarSystemList()
 		{
 			continue;
 		}
-
-		CSolar* csolar = reinterpret_cast<CSolar*>(CObject::Find(base.second->base, CObject::CSOLAR_OBJECT));
-		if (csolar)
+		uint solarId = base.second->base;
+		IObjInspectImpl* iobjPtr;
+		StarSystem* starSystem;
+		GetShipInspect(solarId, iobjPtr, starSystem);
+		if (iobjPtr)
 		{
-			csolar->Release();
+			CSolar* csolar = reinterpret_cast<CSolar*>(reinterpret_cast<IObjRW*>(iobjPtr)->cobj);
 			if (csolar != base.second->baseCSolar)
 			{
 				base.second->baseCSolar = csolar;
@@ -1234,24 +1236,18 @@ void HkTimerCheckKick()
 				continue;
 			}
 
-			char datapath[MAX_PATH];
-			GetUserDataPath(datapath);
-
 			WIN32_FIND_DATA findfile;
 			HANDLE h = FindFirstFile(iter->path.c_str(), &findfile);
 			if (h == INVALID_HANDLE_VALUE)
 			{
-				iter++;
+				ConPrint(L"Unable to respawn base, file not found:\n%s\n", stows(iter->path).c_str());
+				iter = basesToRespawn.erase(iter);
 				continue;
 			}
 
 			uint baseNickname = CreateID(IniGetS(iter->path, "Base", "nickname", "").c_str());
 
-			if (pub::SpaceObj::ExistsAndAlive(baseNickname) == 0) // -2 for nonexistant object, 0 for existing and alive
-			{
-				iter++;
-				continue;
-			}
+			pub::SpaceObj::Destroy(baseNickname, DestroyType::VANISH);
 
 			PlayerBase* base = new PlayerBase(iter->path);
 
@@ -1260,23 +1256,23 @@ void HkTimerCheckKick()
 			{
 				player_bases[base->base] = base;
 				base->Spawn();
-				iter = basesToRespawn.erase(iter);
-				continue;
+				ConPrint(L"Base %s respawned.\n", base->basename.c_str());
 			}
-			iter++;
+			iter = basesToRespawn.erase(iter);
 		}
 	}
 
 	uint curr_time = (uint)time(0);
+
+	if (curr_time % set_tick_time == 0)
+	{
+		RebuildCSolarSystemList();
+	}
+
 	for(auto& iter : player_bases)
 	{
 		PlayerBase *base = iter.second;
 		base->Timer(curr_time);
-	}
-
-	if (set_plugin_debug_special && (curr_time % 60 == 0))
-	{
-		AddLog("Finished\n");
 	}
 
 	if (!player_bases.empty())
@@ -1303,7 +1299,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	if ((curr_time % 60) == 0)
+	if ((curr_time % set_tick_time) == 0)
 	{
 		// Write status to an html formatted page every 60 seconds
 		if ((ExportType == 0 || ExportType == 2) && set_status_path_html.size() > 0)
@@ -1316,11 +1312,6 @@ void HkTimerCheckKick()
 		{
 			ExportData::ToJSON();
 		}
-	}
-
-	if (curr_time % 300 == 0)
-	{
-		RebuildCSolarSystemList();
 	}
 }
 
@@ -2357,7 +2348,7 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 			const auto gi2 = GoodList_get()->find_by_ship_arch(Players[client].iShipArchetype);
 			if (gi2)
 			{
-				shipPurchasePrice += (gi2->fPrice * 0.5f);
+				shipPurchasePrice += static_cast<int>(gi2->fPrice * 0.5f);
 			}
 		}
 		else if (gi && gi->iType == GOODINFO_TYPE_HULL)

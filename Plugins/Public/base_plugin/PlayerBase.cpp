@@ -167,7 +167,9 @@ void PlayerBase::Timer(uint curr_time)
 		basesToRespawn.push_back({ path, 60 });
 		base_health = 0;
 		CoreModule* core = reinterpret_cast<CoreModule*>(modules[0]);
+		uint spaceObjId = core->space_obj;
 		core->SpaceObjDestroyed(core->space_obj, false, false);
+		pub::SpaceObj::Destroy(spaceObjId, DestroyType::VANISH);
 		return;
 	}
 

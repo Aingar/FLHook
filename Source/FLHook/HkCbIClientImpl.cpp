@@ -885,12 +885,12 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SET_MISSION_MESSAGE(uint iClientID, FLP
 /**************************************************************************************************************
 **************************************************************************************************************/
 
-bool HkIClientImpl::Send_FLPACKET_SERVER_SETADDITEM(uint iClientID, FLPACKET_UNKNOWN& pDunno, FLPACKET_UNKNOWN& pDunno2)
+bool HkIClientImpl::Send_FLPACKET_SERVER_SETADDITEM(uint iClientID, FLPACKET_UNKNOWN& pDunno, FLPACKET_ADDITEM& packet)
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETADDITEM(iClientID, pDunno, pDunno2));
+	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETADDITEM(iClientID, pDunno, packet));
 	return reinterpret_cast<bool>(vRet);
 }
 
@@ -942,7 +942,7 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_SETHULLSTATUS(uint iClientID, float fSt
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 	
-	CALL_PLUGINS_NORET(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, , (uint, float), (iClientID, fStatus));
+	CALL_PLUGINS_NORET(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETHULLSTATUS, , (uint, float), (iClientID, fStatus));
 
 	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_SETHULLSTATUS(iClientID, fStatus));
 	return reinterpret_cast<bool>(vRet);

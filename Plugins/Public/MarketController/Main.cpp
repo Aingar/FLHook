@@ -851,7 +851,14 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 void AddTradeEquip(unsigned int iClientID, struct EquipDesc const& ed)
 {
 	returncode = DEFAULT_RETURNCODE;
-	auto iter = cargoVolumeOverrideMap.find(Players[iClientID].iShipArchetype);
+	CShip* cship = ClientInfo[iClientID].cship;
+
+	if (!cship)
+	{
+		return;
+	}
+
+	auto iter = cargoVolumeOverrideMap.find(cship->shiparch()->iShipClass);
 	if (iter == cargoVolumeOverrideMap.end())
 	{
 		return;

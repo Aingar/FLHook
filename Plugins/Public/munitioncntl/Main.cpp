@@ -179,7 +179,7 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("top_speed"))
 					{
-						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0);
+						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0) * ini.get_value_float(0);
 					}
 				}
 			}
@@ -673,61 +673,27 @@ void Timer()
 
 int Update()
 {
-	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
+	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); iter++)
 	{
 		CGuided* guided = iter->second.first;
 		SpeedCheck& speedData = iter->second.second;
-		if (speedData.checkCounter)
-		{
-			Vector velocityVec = guided->get_velocity();
-			float velocity = VectorMagnitude(velocityVec);
-
-			if (speedData.checkCounter % 10 == 0)
-			{
-				ConPrint(L"missileAccelerationWarning! id %u count %u speed %0.0f maxspeed %0.0f\n", iter->first, speedData.checkCounter, velocity, speedData.targetSpeed);
-			}
-
-			if (velocity > speedData.targetSpeed)
-			{
-				ResizeVector(velocityVec, speedData.targetSpeed);
-				guided->motorData = nullptr;
-
-				const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
-				Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
-				*linearVelocity = velocityVec;
-
-				speedData.checkCounter++;
-				iter++;
-			}
-			else
-			{
-				iter = topSpeedWatch.erase(iter);
-			}
-			continue;
-		}
-
-		if (!guided->motorData)
-		{
-			iter++;
-			continue;
-		}
 
 		Vector velocityVec = guided->get_velocity();
-		float velocity = VectorMagnitude(velocityVec);
-		if (velocity >= speedData.targetSpeed)
+		float velocity = SquaredVectorMagnitude(velocityVec);
+		if (velocity > speedData.targetSpeed)
 		{
-			ResizeVector(velocityVec, speedData.targetSpeed);
+			if (speedData.checkCounter)
+			{
+				AddLog("TopSpeed %x %u %u %0.0f\n", guided->archetype->iArchID, speedData.checkCounter, guided->motorData, sqrt(velocity));
+			}
+			++speedData.checkCounter;
+			
+			ResizeVector(velocityVec, sqrt(speedData.targetSpeed));
 			guided->motorData = nullptr;
 
 			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
 			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
 			*linearVelocity = velocityVec;
-
-			speedData.checkCounter = 1;
-		}
-		else
-		{
-			iter++;
 		}
 	}
 

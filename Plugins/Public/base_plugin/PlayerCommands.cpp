@@ -57,6 +57,9 @@ L"<TEXT>Highlights the selected good, causing its price and stock to be visible 
 L"<TRA bold=\"true\"/><TEXT>/shop unpin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Removes the selected good from the pinned list.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/shop addcargo [itemNickname]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Adds cargo with provided internal nickname (such as commodity_gold) to shop.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/shop [page]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items shown per page.</TEXT>",
 
@@ -2017,6 +2020,7 @@ namespace PlayerCommands
 			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop pin [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop unpin [item]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop addcargo [itemNickname]</TEXT><PARA/>";
 		}
 		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
 		status += L"<POP/></RDL>";
@@ -2157,7 +2161,7 @@ namespace PlayerCommands
 		const wstring& cmd = GetParam(args, ' ', 1);
 
 		auto& cd = clients[client];
-		if (!cd.admin && (!cd.viewshop || (cmd == L"price" || cmd == L"pin" || cmd == L"unpin" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
+		if (!cd.admin && (!cd.viewshop || (cmd == L"addcargo" || cmd == L"price" || cmd == L"pin" || cmd == L"unpin" || cmd == L"stock" || cmd == L"remove" || cmd == L"public" || cmd == L"private")))
 		{
 			PrintUserCmdText(client, L"ERROR: Access denied");
 			return;
@@ -2369,6 +2373,19 @@ namespace PlayerCommands
 				base->UpdateBaseInfoText();
 				return;
 			}
+		}
+		else if (cmd == L"addcargo")
+		{
+			uint goodId = CreateID(wstos(GetParam(args, ' ', 2)).c_str());
+			auto gi = GoodList_get()->find_by_id(goodId);
+			if (!gi)
+			{
+				PrintUserCmdText(client, L"ERROR: invalid commodity nickname");
+				return;
+			}
+			base->market_items[goodId];
+			ShowShopStatus(client, base, L"", 0);
+			PrintUserCmdText(client, L"OK");
 		}
 		else
 		{

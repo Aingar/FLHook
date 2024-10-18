@@ -1806,12 +1806,12 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 	}
 }
 
-void __stdcall BaseEnter(uint base, uint client)
+void __stdcall BaseEnter(uint baseId, uint client)
 {
 	auto& cd = clients[client];
 
 	if (set_plugin_debug > 1)
-		ConPrint(L"BaseEnter base=%u client=%u player_base=%u last_player_base=%u\n", base, client,
+		ConPrint(L"BaseEnter base=%u client=%u player_base=%u last_player_base=%u\n", baseId, client,
 			cd.player_base, cd.last_player_base);
 
 	returncode = DEFAULT_RETURNCODE;
@@ -1844,6 +1844,12 @@ void __stdcall BaseEnter(uint base, uint client)
 		PlayerBase *base = GetPlayerBaseForClient(client);
 		if (base)
 		{
+			if (base->proxy_base != baseId)
+			{
+				DeleteDockState(client);
+				SendResetMarketOverride(client);
+				return;
+			}
 			if (!IsDockingAllowed(base, client))
 			{
 				wstring rights;

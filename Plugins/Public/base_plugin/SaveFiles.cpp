@@ -74,6 +74,7 @@ void SaveDockState(uint client)
 
 void DeleteDockState(uint client)
 {
+	clients.erase(client);
 	HookExt::IniSetI(client, "base.player_base", 0);
 	HookExt::IniSetI(client, "base.last_player_base", 0);
 }

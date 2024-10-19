@@ -398,6 +398,9 @@ bool InitHookExports()
 		*((float*)0x6D67088) = 0.2f;
 	}
 
+	FARPROC CGuidedInit = FARPROC(0x62ACCB0);
+	Detour(CGuidedInit, HkIEngine::CGuidedInitNaked);
+
 	// Simplified reimplementation of ShipRange.dll by Adoxa
 	pAddress = SRV_ADDR(0x17272);
 	FARPROC radarDetour2 = FARPROC(&radarDetour);

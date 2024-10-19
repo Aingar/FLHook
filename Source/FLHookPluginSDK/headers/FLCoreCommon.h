@@ -3179,7 +3179,14 @@ public:
 		struct CreateParms & operator=(struct CreateParms const &);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		uint id;
+		StarSystem* starSystem;
+		uint playerOwner;
+		float hitPts;
+		uint dunno[19];
+		uint ownerId;
+		struct IObjRW* target;
+		ushort subObjId;
 	};
 
 	virtual ~CGuided(void);

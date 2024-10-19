@@ -427,7 +427,7 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		CAsteroidMap2[param.id] = csimple;
 	}
 
-	uint CAsteroidInitRetAddr = 0x62A28F6;
+	constexpr uint CAsteroidInitRetAddr = 0x62A28F6;
 	__declspec(naked) void CAsteroidInitNaked()
 	{
 		__asm {
@@ -439,6 +439,26 @@ static float* pGroup_range = ((float*)0x6d66af4);
 			push edi
 			mov edi, [esp+0xC]
 			jmp CAsteroidInitRetAddr
+		}
+	}
+
+	void __fastcall CGuidedInit(CGuided* cguided, void* edx, CGuided::CreateParms& param)
+	{
+		CALL_PLUGINS_NORET(PLUGIN_HkIEngine_CGuided_init, , (CGuided*, CGuided::CreateParms&), (cguided, param));
+	}
+
+	constexpr uint CGuidedInitRetAddr = 0x62ACCB6;
+	__declspec(naked) void CGuidedInitNaked()
+	{
+		__asm {
+			push ecx
+			push [esp+0x8]
+			call CGuidedInit
+			pop ecx
+			push esi
+			push edi
+			mov edi, [esp+0xC]
+			jmp CGuidedInitRetAddr
 		}
 	}
 

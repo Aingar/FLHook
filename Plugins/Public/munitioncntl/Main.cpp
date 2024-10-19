@@ -406,20 +406,6 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 	}
 
 	guided->Release();
-	uint ownerType;
-	pub::SpaceObj::GetType(createGuidedPacket.iOwner, ownerType);
-	if (!(ownerType & shipObjType)) //GetTarget throws an exception for non-ship entities.
-	{
-		return;
-	}
-
-	uint targetId;
-	pub::SpaceObj::GetTarget(createGuidedPacket.iOwner, targetId);
-
-	if (!targetId)
-	{
-		guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
-	}
 
 	auto guidedInfo = guidedDataMap.find(guided->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -427,23 +413,9 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 		return;
 	}
 
-	if (guidedInfo->second.topSpeed)
-	{
-		topSpeedWatch[createGuidedPacket.iProjectileId] = { guided, {guidedInfo->second.topSpeed, 0} };
-	}
-
 	if (guidedInfo->second.noTrackingAlert) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
 	{
 		createGuidedPacket.iTargetId = 0; // prevents the 'incoming missile' warning client-side
-	}
-	else if (guidedInfo->second.trackingBlacklist) // disable tracking for selected ship types
-	{
-		uint targetType;
-		pub::SpaceObj::GetType(createGuidedPacket.iTargetId, targetType);
-		if (guidedInfo->second.trackingBlacklist & targetType)
-		{
-			guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
-		}
 	}
 
 }
@@ -459,6 +431,48 @@ void __stdcall CreateGuided(uint& iClientID, FLPACKET_CREATEGUIDED& createGuided
 		ProcessGuided(createGuidedPacket);
 	}
 
+}
+
+void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto guidedData = guidedDataMap.find(guided->archetype->iArchID);
+	if (guidedData == guidedDataMap.end())
+	{
+		return;
+	}
+
+	uint objId = parms.ownerId;
+	IObjInspectImpl* owner;
+	StarSystem* dummy;
+	GetShipInspect(objId, owner, dummy);
+	if (owner)
+	{
+		IObjRW* ownerTarget = nullptr;
+		owner->get_target(ownerTarget);
+		if (!ownerTarget)
+		{
+			parms.target = nullptr;
+			parms.subObjId = 0;
+		}
+	}
+
+	auto& guidedInfo = guidedData->second;
+
+	if (guidedInfo.trackingBlacklist && parms.target)
+	{
+		if (parms.target->cobj->type & guidedInfo.trackingBlacklist)
+		{
+			parms.target = nullptr;
+			parms.subObjId = 0;
+		}
+	}
+
+	if (guidedInfo.topSpeed)
+	{
+		topSpeedWatch[parms.id] = { guided, {guidedInfo.topSpeed, 0} };
+	}
 }
 
 int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
@@ -673,14 +687,15 @@ void Timer()
 
 int Update()
 {
-	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); iter++)
+	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); )
 	{
 		CGuided* guided = iter->second.first;
 		SpeedCheck& speedData = iter->second.second;
 
 		Vector velocityVec = guided->get_velocity();
 		float velocity = SquaredVectorMagnitude(velocityVec);
-		if (velocity > speedData.targetSpeed)
+
+		if (velocity > speedData.targetSpeed * 1.02f)
 		{
 			if (speedData.checkCounter)
 			{
@@ -695,6 +710,7 @@ int Update()
 			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
 			*linearVelocity = velocityVec;
 		}
+		iter++;
 	}
 
 	if (shieldFuseMap.empty())
@@ -977,6 +993,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedInit, PLUGIN_HkIEngine_CGuided_init, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));

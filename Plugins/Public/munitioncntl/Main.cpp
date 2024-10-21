@@ -28,7 +28,7 @@ struct SpeedCheck
 	float targetSpeed = 0;
 	uint checkCounter = 0;
 };
-unordered_map<uint, pair<CGuided*, SpeedCheck>> topSpeedWatch;
+unordered_map<uint, SpeedCheck> topSpeedWatch;
 
 uint lastProcessedProjectile = 0;
 
@@ -444,7 +444,7 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 	}
 
 	uint objId = parms.ownerId;
-	IObjInspectImpl* owner;
+	IObjRW* owner;
 	StarSystem* dummy;
 	GetShipInspect(objId, owner, dummy);
 	if (owner)
@@ -471,7 +471,7 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 
 	if (guidedInfo.topSpeed)
 	{
-		topSpeedWatch[parms.id] = { guided, {guidedInfo.topSpeed, 0} };
+		topSpeedWatch[parms.id] = { guidedInfo.topSpeed, 0 };
 	}
 }
 
@@ -503,8 +503,6 @@ int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
-
-	topSpeedWatch.erase(iobj->get_id());
 
 	auto guidedInfo = guidedDataMap.find(iobj->cobj->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -689,8 +687,15 @@ int Update()
 {
 	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); )
 	{
-		CGuided* guided = iter->second.first;
-		SpeedCheck& speedData = iter->second.second;
+		auto iGuided = HkGetInspectObj(iter->first);
+		if (!iGuided)
+		{
+			iter = topSpeedWatch.erase(iter);
+			continue;
+		}
+
+		CGuided* guided = reinterpret_cast<CGuided*>(iGuided->cobj);
+		SpeedCheck& speedData = iter->second;
 
 		Vector velocityVec = guided->get_velocity();
 		float velocity = SquaredVectorMagnitude(velocityVec);
@@ -699,7 +704,7 @@ int Update()
 		{
 			if (speedData.checkCounter)
 			{
-				AddLog("TopSpeed %x %u %u %0.0f\n", guided->archetype->iArchID, speedData.checkCounter, guided->motorData, sqrt(velocity));
+				AddLog("TopSpeed %x %u %u %u %0.0f\n", guided->archetype->iArchID, iter->first, speedData.checkCounter, guided->motorData, sqrt(velocity));
 			}
 			++speedData.checkCounter;
 			
@@ -734,10 +739,9 @@ int Update()
 		}
 
 		keysToRemove.emplace_back(shieldFuse.first);
-		IObjInspectImpl* iobj1;
+		IObjRW* iobj;
 		StarSystem* dummy;
-		GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
-		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
+		GetShipInspect(Players[shieldFuse.first].iShipID, iobj, dummy);
 		if (!iobj)
 		{
 			continue;
@@ -947,16 +951,15 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		return;
 	}
 
-	IObjInspectImpl* iobj2;
+	IObjRW* iobj;
 	StarSystem* dummy;
-	GetShipInspect(Players[iClientID].iShipID, iobj2, dummy);
+	GetShipInspect(Players[iClientID].iShipID, iobj, dummy);
 
-	if (!iobj2)
+	if (!iobj)
 	{
 		return;
 	}
 
-	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
 	HkUnLightFuse(iobj, primaryBoost->fuseId, 0.0f);
 	HkLightFuse(iobj, primaryBoost->fuseId, 0.0f, 0.0f, -1.0f);
 }

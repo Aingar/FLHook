@@ -2347,8 +2347,8 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		if (gi && gi->iType == GOODINFO_TYPE_SHIP)
 		{
 			returncode = SKIPPLUGINS;
-			PrintUserCmdText(client, L"Purchased ship");
-
+			PrintUserCmdText(client, L"Purchased ship, kicking you to force a save.");
+			HkDelayedKick(client, 5);
 
 			shipPurchasePrice = curr_money - price;
 			const auto gi2 = GoodList_get()->find_by_ship_arch(Players[client].iShipArchetype);

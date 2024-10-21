@@ -47,7 +47,7 @@ struct CONNECTION_DATA
 	vector<uint>	lstObjUpdateIntervalls;
 	mstime		tmLastObjUpdate;
 	mstime		tmLastObjTimestamp;
-	IObjInspectImpl* obj;
+	IObjRW* obj;
 
 
 	// exception

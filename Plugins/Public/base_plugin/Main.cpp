@@ -1190,12 +1190,12 @@ void RebuildCSolarSystemList()
 			continue;
 		}
 		uint solarId = base.second->base;
-		IObjInspectImpl* iobjPtr;
+		IObjRW* iobjPtr;
 		StarSystem* starSystem;
 		GetShipInspect(solarId, iobjPtr, starSystem);
 		if (iobjPtr)
 		{
-			CSolar* csolar = reinterpret_cast<CSolar*>(reinterpret_cast<IObjRW*>(iobjPtr)->cobj);
+			CSolar* csolar = reinterpret_cast<CSolar*>(iobjPtr->cobj);
 			if (csolar != base.second->baseCSolar)
 			{
 				base.second->baseCSolar = csolar;

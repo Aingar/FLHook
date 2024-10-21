@@ -341,12 +341,21 @@ void HkGetItemsForSale(uint iBaseID, list<uint> &lstItems)
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-IObjInspectImpl* HkGetInspect(uint iClientID)
+IObjRW* HkGetInspectObj(uint objId)
 {
-	uint iShip;
-	pub::Player::GetShip(iClientID, iShip);
 	StarSystem* starSystem;
-	IObjInspectImpl *inspect;
+	IObjRW* inspect;
+	if (!GetShipInspect(objId, inspect, starSystem))
+		return 0;
+	else
+		return inspect;
+}
+
+IObjRW* HkGetInspect(uint iClientID)
+{
+	uint iShip = Players[iClientID].iShipID;
+	StarSystem* starSystem;
+	IObjRW *inspect;
 	if (!GetShipInspect(iShip, inspect, starSystem))
 		return 0;
 	else

@@ -100,7 +100,7 @@ typedef void(__stdcall *_RCSendChatMsg)(uint iId, uint iTo, uint iSize, void *pR
 typedef void(__stdcall *_CRCAntiCheat)();
 typedef void(__stdcall *_CreateChar)(const wchar_t *wszName);
 typedef int(__cdecl *_GetFLName)(char *szBuf, const wchar_t *wszStr);
-typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjInspectImpl* &inspect, StarSystem* &starSystem);
+typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjRW* &inspect, StarSystem* &starSystem);
 
 extern IMPORT _GetShipInspect GetShipInspect;
 extern IMPORT FlMap<uint, MPlayerDataSaveStruct*>* mdataPlayerMap;
@@ -459,7 +459,8 @@ IMPORT wstring HkGetSystemNickByID(uint iSystemID);
 IMPORT void HkLockAccountAccess(CAccount *acc, bool bKick);
 IMPORT void HkUnlockAccountAccess(CAccount *acc);
 IMPORT void HkGetItemsForSale(uint iBaseID, list<uint> &lstItems);
-IMPORT IObjInspectImpl* HkGetInspect(uint iClientID);
+IMPORT IObjRW* HkGetInspectObj(uint objId);
+IMPORT IObjRW* HkGetInspect(uint iClientID);
 IMPORT ENGINE_STATE HkGetEngineState(uint iClientID);
 IMPORT EQ_TYPE HkGetEqType(Archetype::Equipment *eq);
 IMPORT bool HkIsOnDeathMenu(uint iClientID);

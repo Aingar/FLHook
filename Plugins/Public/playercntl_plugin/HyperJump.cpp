@@ -466,22 +466,22 @@ namespace HyperJump
 		JUMPDRIVE &jd = mapJumpDrives[iClientID];
 		if (jd.active_fuse)
 		{
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkUnLightFuse((IObjRW*)obj, jd.active_fuse, jd.active_fuse_delay);
+				HkUnLightFuse(obj, jd.active_fuse, jd.active_fuse_delay);
 			}
 			jd.active_fuse = 0;
 		}
 
 		if (fuse)
 		{
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
 				jd.active_fuse = fuse;
 				jd.active_fuse_delay = delay;
-				HkLightFuse((IObjRW*)obj, jd.active_fuse, delay, lifetime, 0.0f);
+				HkLightFuse(obj, jd.active_fuse, delay, lifetime, 0.0f);
 			}
 		}
 	}
@@ -507,21 +507,21 @@ namespace HyperJump
 
 	void AddChargeFuse(uint iClientID, uint fuse)
 	{
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (obj)
 		{
 			mapJumpDrives[iClientID].active_charge_fuse.push_back(fuse);
-			HkLightFuse((IObjRW*)obj, fuse, 0, 0, 0);
+			HkLightFuse(obj, fuse, 0, 0, 0);
 		}
 	}
 
 	void StopChargeFuses(uint iClientID)
 	{
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (obj)
 		{
 			foreach(mapJumpDrives[iClientID].active_charge_fuse, uint, fuse)
-				HkUnLightFuse((IObjRW*)obj, *fuse, 0);
+				HkUnLightFuse(obj, *fuse, 0);
 			mapJumpDrives[iClientID].active_charge_fuse.clear();
 		}
 	}
@@ -1870,7 +1870,7 @@ namespace HyperJump
 		}
 
 		// If no ship, report a warning
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (!obj)
 		{
 			PrintUserCmdText(iClientID, L"ERR Can't jump while docked!");

@@ -757,16 +757,14 @@ void Timer()
 	for (auto& item : dropMap)
 	{
 		uint shipId = item.first;
-		IObjInspectImpl* iobj1;
+		IObjRW* iobj;
 		StarSystem* dummy;
-		GetShipInspect(shipId, iobj1, dummy);
+		GetShipInspect(shipId, iobj, dummy);
 
-		if (!iobj1)
+		if (!iobj)
 		{
 			continue;
 		}
-
-		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 

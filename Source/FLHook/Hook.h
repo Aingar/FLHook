@@ -385,7 +385,7 @@ typedef void(__stdcall *_RCSendChatMsg)(uint iId, uint iTo, uint iSize, void *pR
 typedef void(__stdcall *_CRCAntiCheat)();
 typedef void(__stdcall *_CreateChar)(const wchar_t *wszName);
 typedef int(__cdecl *_GetFLName)(char *szBuf, const wchar_t *wszStr);
-typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjInspectImpl* &inspect, StarSystem* &starSystem);
+typedef bool(__cdecl *_GetShipInspect)(uint &iShip, IObjRW* &inspect, StarSystem* &starSystem);
 
 EXPORT extern _GetShipInspect GetShipInspect;
 EXPORT extern FlMap<uint, MPlayerDataSaveStruct*>* mdataPlayerMap;
@@ -726,7 +726,8 @@ EXPORT wstring HkGetSystemNickByID(uint iSystemID);
 EXPORT void HkLockAccountAccess(CAccount *acc, bool bKick);
 EXPORT void HkUnlockAccountAccess(CAccount *acc);
 EXPORT void HkGetItemsForSale(uint iBaseID, list<uint> &lstItems);
-EXPORT IObjInspectImpl* HkGetInspect(uint iClientID);
+EXPORT IObjRW* HkGetInspectObj(uint objId);
+EXPORT IObjRW* HkGetInspect(uint iClientID);
 EXPORT ENGINE_STATE HkGetEngineState(uint iClientID);
 EXPORT EQ_TYPE HkGetEqType(Archetype::Equipment *eq);
 EXPORT bool HkIsOnDeathMenu(uint iClientID);

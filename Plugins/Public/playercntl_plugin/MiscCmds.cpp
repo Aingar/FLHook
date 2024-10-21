@@ -598,10 +598,10 @@ namespace MiscCmds
 
 			if (bKillAll)
 			{
-				IObjInspectImpl *obj = HkGetInspect(iClientID);
+				IObjRW *obj = HkGetInspect(iClientID);
 				if (obj)
 				{
-					HkLightFuse((IObjRW*)obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
+					HkLightFuse(obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
 				}
 			}
 		}
@@ -697,7 +697,7 @@ namespace MiscCmds
 
 	bool MiscCmds::UserCmd_SelfDestruct(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (!obj)
 		{
 			PrintUserCmdText(iClientID, L"Self destruct prohibited. Not in space.");
@@ -708,7 +708,7 @@ namespace MiscCmds
 		{
 			PrintUserCmdText(iClientID, L"Self destruct enabled. Standby.");
 			PrintUserCmdText(iClientID, L"Ejecting pod...");
-			HkLightFuse((IObjRW*)obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
+			HkLightFuse(obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
 			mapInfo[iClientID].bSelfDestruct = true;
 		}
 		else
@@ -970,20 +970,20 @@ namespace MiscCmds
 
 	void SetPlayerFuse(uint clientId, uint fuseId)
 	{
-		IObjInspectImpl *obj = HkGetInspect(clientId);
+		IObjRW*obj = HkGetInspect(clientId);
 		if (obj)
 		{
-			HkUnLightFuse((IObjRW*)obj, fuseId, 0.0f); // in case it's a one-time fuse, we want to pre-emptively remove the previous, lingering fuse.
-			HkLightFuse((IObjRW*)obj, fuseId, 0.0f, 0.0f, -1.0f);
+			HkUnLightFuse(obj, fuseId, 0.0f); // in case it's a one-time fuse, we want to pre-emptively remove the previous, lingering fuse.
+			HkLightFuse(obj, fuseId, 0.0f, 0.0f, -1.0f);
 		}
 	}
 
 	void UnsetPlayerFuse(uint clientId, uint fuseId)
 	{
-		IObjInspectImpl *obj = HkGetInspect(clientId);
+		IObjRW *obj = HkGetInspect(clientId);
 		if (obj)
 		{
-			HkUnLightFuse((IObjRW*)obj, fuseId, 0.0f);
+			HkUnLightFuse(obj, fuseId, 0.0f);
 		}
 	}
 

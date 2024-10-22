@@ -32,7 +32,7 @@
 unordered_set<uint> unchartedSystems;
 unordered_map<wstring, time_t> unchartedDisconnects;
 uint unchartedSystemToExclude;
-uint set_unchartedDeathGracePeriod = 10;
+uint set_unchartedDeathGracePeriod = 300;
 unordered_set<uint> HyperJump::markedForDeath;
 
 struct SYSTEMJUMPCOORDS
@@ -62,7 +62,7 @@ void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 	{
 		return;
 	}
-	if (unchartedSystems.count(Players[client].iSystemID))
+	if (unchartedSystems.count(Players[client].iSystemID) && Players[client].iShipID)
 	{
 		auto currTime = time(0);
 		if (set_unchartedDeathGracePeriod)
@@ -212,17 +212,21 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					{
 						lastJumpholeRandomization = ini.get_value_int(0);
 					}
-					if (ini.is_value("randomizationCooldown"))
+					else if (ini.is_value("randomizationCooldown"))
 					{
 						randomizationCooldown = ini.get_value_int(0);
 					}
-					if (ini.is_value("randomizationCooldownOffset"))
+					else if (ini.is_value("randomizationCooldownOffset"))
 					{
 						randomizationCooldownOffset = ini.get_value_int(0);
 					}
-					if (ini.is_value("systemToExclude"))
+					else if (ini.is_value("systemToExclude"))
 					{
 						unchartedSystemToExclude = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("disconnectGracePeriod"))
+					{
+						set_unchartedDeathGracePeriod = ini.get_value_int(0);
 					}
 				}
 			}

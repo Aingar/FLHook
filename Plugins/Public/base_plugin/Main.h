@@ -639,8 +639,11 @@ namespace HyperJump
 	void LoadHyperspaceHubConfig(const string& configPath);
 	void InitJumpHoleConfig();
 	void CheckForUnchartedDisconnect(uint client, uint ship);
-	void KillAllUnchartedOnShutdown();
 	void ClearClientInfo(uint iClientID);
+	void CharacterSelect_AFTER(uint client);
+
+
+	extern unordered_set<uint> markedForDeath;
 }
 
 namespace PlayerCommands

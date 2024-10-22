@@ -445,11 +445,6 @@ void ClearClientInfo(uint client)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void Shutdown()
-{
-	HyperJump::KillAllUnchartedOnShutdown();
-}
-
 void LoadSettings()
 {
 	Universe::IBase* base = Universe::GetFirstBase();
@@ -1771,6 +1766,8 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 	if (set_plugin_debug > 1)
 		ConPrint(L"CharacterSelect_AFTER client=%u player_base=%u\n", client, cd.player_base);
 
+	HyperJump::CharacterSelect_AFTER(client);
+
 	// If this ship is in a player base is then set then docking ID to emulate
 	// a landing.
 	LoadDockState(client);
@@ -2024,6 +2021,13 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (HyperJump::markedForDeath.count(client))
+	{
+		HyperJump::markedForDeath.erase(client);
+		pub::SpaceObj::SetRelativeHealth(ship, 0.0f);
+		returncode = SKIPPLUGINS;
+		return;
+	}
 	if (player_launch_base)
 	{
 		if (Players[client].iSystemID != player_launch_base->system)
@@ -3490,7 +3494,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
   
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Shutdown, PLUGIN_HkIServerImpl_Shutdown, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 1));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));

@@ -30,7 +30,10 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 unordered_set<uint> unchartedSystems;
+unordered_map<wstring, time_t> unchartedDisconnects;
 uint unchartedSystemToExclude;
+uint set_unchartedDeathGracePeriod = 10;
+unordered_set<uint> HyperJump::markedForDeath;
 
 struct SYSTEMJUMPCOORDS
 {
@@ -38,6 +41,20 @@ struct SYSTEMJUMPCOORDS
 	Vector pos;
 	Matrix ornt;
 };
+
+void HyperJump::CharacterSelect_AFTER(uint client)
+{
+	if (!Players[client].iBaseID && unchartedSystems.count(Players[client].iSystemID))
+	{
+		wstring name = (const wchar_t*)Players.GetActiveCharacterName(client);
+		auto entryIter = unchartedDisconnects.find(name);
+		if (entryIter != unchartedDisconnects.end() && entryIter->second > time(0))
+		{
+			return;
+		}
+		markedForDeath.insert(client);
+	}
+}
 
 void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 {
@@ -47,18 +64,15 @@ void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 	}
 	if (unchartedSystems.count(Players[client].iSystemID))
 	{
-		pub::SpaceObj::SetRelativeHealth(ship, 0.0f);
-	}
-}
-
-void HyperJump::KillAllUnchartedOnShutdown()
-{
-	PlayerData* pd = nullptr;
-	while (pd = Players.traverse_active(pd))
-	{
-		if (unchartedSystems.count(pd->iSystemID))
+		auto currTime = time(0);
+		if (set_unchartedDeathGracePeriod)
 		{
-			pub::SpaceObj::SetRelativeHealth(pd->iShipID, 0.0f);
+			wstring name = (const wchar_t*)Players.GetActiveCharacterName(client);
+			unchartedDisconnects[name] = currTime + set_unchartedDeathGracePeriod;
+		}
+		else
+		{
+			pub::SpaceObj::SetRelativeHealth(ship, 0.0f);
 		}
 	}
 }

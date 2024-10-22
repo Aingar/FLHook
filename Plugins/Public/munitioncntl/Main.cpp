@@ -23,6 +23,8 @@ unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageType> explosionTypeMap;
 Archetype::Explosion* shieldExplosion;
 
+unordered_map<uint, ShipData> equipHpMap;
+
 struct SpeedCheck
 {
 	float targetSpeed = 0;
@@ -83,6 +85,7 @@ void ReadMunitionDataFromInis()
 	}
 
 	vector<string> equipFiles;
+	vector<string> shipFiles;
 
 	while (ini.read_header())
 	{
@@ -96,12 +99,16 @@ void ReadMunitionDataFromInis()
 			{
 				equipFiles.emplace_back(ini.get_value_string());
 			}
+			else if (ini.is_value("ships"))
+			{
+				shipFiles.emplace_back(ini.get_value_string());
+			}
 		}
 	}
 
 	ini.close();
 
-	for (string equipFile : equipFiles)
+	for (string& equipFile : equipFiles)
 	{
 		equipFile = gameDir + equipFile;
 		if (!ini.open(equipFile.c_str(), false))
@@ -203,6 +210,11 @@ void ReadMunitionDataFromInis()
 						ep.engineKillCDSpeedLimit = ini.get_value_float(0);
 						FoundValue = true;
 					}
+					else if (ini.is_value("hp_type"))
+					{
+						ep.hpType = ini.get_value_string(0);
+						FoundValue = true;
+					}
 				}
 				if (FoundValue)
 				{
@@ -294,6 +306,64 @@ void ReadMunitionDataFromInis()
 				}
 			}
 		}
+	}
+
+	for (string& shipFile : shipFiles)
+	{
+		string filename = gameDir + shipFile;
+		if (!ini.open(filename.c_str(), false))
+		{
+			continue;
+		}
+
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Ship"))
+			{
+				continue;
+			}
+
+			unordered_set<string> shipEngineHPs;
+			while (ini.read_value())
+			{
+				uint currNickname;
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string(0));
+					shipEngineHPs.clear();
+				}
+				else if (ini.is_value("internal_engine"))
+				{
+					equipHpMap[currNickname].internalEngine = ini.get_value_bool(0);
+				}
+				else if (ini.is_value("hp_type"))
+				{
+					string equipType = ini.get_value_string(0);
+					int i = 1;
+					while (i < 10)
+					{
+						string hardpointName = ini.get_value_string(i);
+						if (hardpointName.empty())
+						{
+							break;
+						}
+						if (hardpointName.find("HpEngine") != string::npos)
+						{
+							if (!shipEngineHPs.count(hardpointName))
+							{
+								shipEngineHPs.insert(hardpointName);
+								equipHpMap[currNickname].engineCount++;
+							}
+							equipHpMap[currNickname].hpMap[equipType].insert(hardpointName);
+						}
+
+						i++;
+					}
+				}
+			}
+		}
+
+		ini.close();
 	}
 }
 
@@ -396,6 +466,86 @@ void LoadSettings()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+bool VerifyEngines(uint client)
+{
+	CShip* cship = ClientInfo[client].cship;
+
+	if (!cship)
+	{
+		return true;
+	}
+
+	const auto& equip = Players[client].equipDescList;
+
+	const auto& shipHpDataIter = equipHpMap.find(Players[client].iShipArchetype);
+	if (shipHpDataIter == equipHpMap.end())
+	{
+		int counter = 0;
+		CEquipTraverser tr(Engine);
+		CEEngine* cequip;
+		while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+		{
+			counter++;
+		}
+		if (counter == 1)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	auto& shipHpData = shipHpDataIter->second;
+
+	int mountedEngineCounter = 0;
+
+	bool internalEngineFound = false;
+
+	CEquipTraverser tr(Engine);
+	CEEngine* cequip;
+	while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+	{
+		auto equipDesc = equip.find_equipment_item(cequip->iSubObjId);
+		string hardpoint = equipDesc->szHardPoint.value;
+
+		if (hardpoint == "BAY")
+		{
+			if (!internalEngineFound && shipHpData.internalEngine)
+			{
+				internalEngineFound = true;
+				continue;
+			}
+			
+			return false;
+		}
+
+		mountedEngineCounter++;
+
+		auto engineType = engineData.find(cequip->archetype->iArchID);
+		if (engineType == engineData.end())
+		{
+			return false;
+		}
+
+		auto hpMapIter = shipHpData.hpMap.find(engineType->second.hpType);
+		if (hpMapIter == shipHpData.hpMap.end())
+		{
+			return false;
+		}
+
+		if (!hpMapIter->second.count(hardpoint))
+		{
+			return false;
+		}
+	}
+
+	if (mountedEngineCounter != shipHpData.engineCount)
+	{
+		return false;
+	}
+
+	return true;
+}
 
 void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 {
@@ -595,7 +745,23 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& charId, unsigned
 	}
 }
 
-void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
+void UnmountEngines(uint client)
+{
+	for(auto& eq : Players[client].equipDescList.equip)
+	{
+		auto equipArch = Archetype::GetEquipment(eq.iArchID);
+		if (!equipArch)
+		{
+			continue;
+		}
+		if (equipArch->get_class_type() == Archetype::AClassType::ENGINE)
+		{
+			eq.bMounted = false;
+		}
+	}
+}
+
+void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 	playerShieldState[iClientID] = ShieldState();
@@ -611,6 +777,14 @@ void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 		{
 			++iter;
 		}
+	}
+
+	if (!VerifyEngines(iClientID))
+	{
+		HkBeamById(iClientID, Players[iClientID].iLastBaseID);
+		PrintUserCmdText(iClientID, L"ERR Invalid engine(s) detected. You will be kicked to unmount the engines.");
+		UnmountEngines(iClientID);
+		HkDelayedKick(iClientID, 5);
 	}
 }
 
@@ -1000,7 +1174,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_After, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));

@@ -510,7 +510,7 @@ bool VerifyEngines(uint client)
 
 		if (hardpoint == "BAY")
 		{
-			if (!internalEngineFound && shipHpData.internalEngine)
+			if (!internalEngineFound && (shipHpData.internalEngine || shipHpData.hpMap.empty()))
 			{
 				internalEngineFound = true;
 				continue;

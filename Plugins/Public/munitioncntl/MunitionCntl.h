@@ -88,7 +88,7 @@ struct ExplosionDamageType
 struct ShipData
 {
 	int engineCount = 0;
-	bool internalEngine = true;
+	bool internalEngine = false;
 	unordered_map<string, unordered_set<string>> hpMap;
 };
 

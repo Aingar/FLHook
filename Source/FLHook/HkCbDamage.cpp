@@ -19,6 +19,7 @@ FARPROC fpOldExplosionHit;
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
 	CALL_PLUGINS_ALT(PLUGIN_ExplosionHit, bool, __stdcall, (IObjRW * iobj, ExplosionDamageEvent * explosion, DamageList * dmg), (iobj, explosion, dmg));
+	return true;
 }
 
 __declspec(naked) void HookExplosionHitNaked()

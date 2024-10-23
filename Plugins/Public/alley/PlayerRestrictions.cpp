@@ -1088,20 +1088,8 @@ void __stdcall BaseExit(unsigned int iBaseID, unsigned int iClientID)
 	SCI::CheckItems(iClientID);
 }
 
-void __stdcall ReqAddItem(unsigned int iArchID, char const *Hardpoint, int count, float p4, bool bMounted, unsigned int iClientID)
+void __stdcall ReqAddItem(uint& iArchID, char const *Hardpoint, int count, float p4, bool& bMounted, unsigned int iClientID)
 {
-	/*
-	string HP(Hardpoint);
-	if (HP == "BAY")
-	{
-		PrintUserCmdText(iClientID, L"Triggered on add cargo");
-	}
-	else
-	{
-		PrintUserCmdText(iClientID, L"Triggered on add equip");
-	}
-	*/
-
 	returncode = DEFAULT_RETURNCODE;
 	if (reverseTrade[iClientID])
 	{

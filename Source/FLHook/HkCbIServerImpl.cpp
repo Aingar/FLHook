@@ -1530,16 +1530,7 @@ namespace HkIServerImpl
 		ISERVER_LOGARG_UI(mounted);
 		ISERVER_LOGARG_UI(clientId);
 
-		if (mounted && strcmp(hardpoint, "BAY") == 0)
-		{
-			auto equip = Archetype::GetEquipment(goodId);
-			if (equip->get_class_type() == Archetype::AClassType::ENGINE)
-			{
-				mounted = false;
-			}
-		}
-
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqAddItem, __stdcall, (unsigned int goodId, char const * hardpoint, int count, float status, bool mounted, unsigned int clientId),
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqAddItem, __stdcall, (unsigned int& goodId, char const* hardpoint, int count, float status, bool& mounted, unsigned int clientId),
 			(goodId, hardpoint, count, status, mounted, clientId));
 
 		EXECUTE_SERVER_CALL(Server.ReqAddItem(goodId, hardpoint, count, status, mounted, clientId));

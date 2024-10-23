@@ -27,7 +27,7 @@ namespace CommodityLimit
 	void LoadSettings();
 	void ClearClientInfo(uint iClientID);
 	bool GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int iClientID);
-	void ReqAddItem(unsigned int goodID, char const* hardpoint, int count, float status, bool mounted, uint iClientID);
+	void __stdcall ReqAddItem(uint& goodID, char const* hardpoint, int count, float status, bool& mounted, uint iClientID);
 	void ReqChangeCash(int iMoneyDiff, unsigned int iClientID);
 
 }

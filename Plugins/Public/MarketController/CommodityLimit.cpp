@@ -137,7 +137,7 @@ bool CommodityLimit::GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int iC
 }
 
 /// Suppress the buying of goods.
-void CommodityLimit::ReqAddItem(unsigned int goodID, char const* hardpoint, int count, float status, bool mounted, uint iClientID)
+void __stdcall CommodityLimit::ReqAddItem(uint& goodID, char const* hardpoint, int count, float status, bool& mounted, uint iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (mapBuySuppression[iClientID])

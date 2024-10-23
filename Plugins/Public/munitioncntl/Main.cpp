@@ -25,6 +25,8 @@ Archetype::Explosion* shieldExplosion;
 
 unordered_map<uint, ShipData> equipHpMap;
 
+unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
+
 struct SpeedCheck
 {
 	float targetSpeed = 0;
@@ -331,6 +333,10 @@ void ReadMunitionDataFromInis()
 				{
 					currNickname = CreateID(ini.get_value_string(0));
 					shipEngineHPs.clear();
+				}
+				else if (ini.is_value("equip_override"))
+				{
+					equipOverrideMap[CreateID(ini.get_value_string(0))][currNickname] = CreateID(ini.get_value_string(1));
 				}
 				else if (ini.is_value("internal_engine"))
 				{
@@ -1138,6 +1144,33 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 	HkLightFuse(iobj, primaryBoost->fuseId, 0.0f, 0.0f, -1.0f);
 }
 
+void __stdcall ReqAddItem(uint& goodId, char const* hardpoint, int count, float status, bool& mounted, unsigned int clientId)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (mounted && strcmp(hardpoint, "BAY") == 0)
+	{
+		auto equip = Archetype::GetEquipment(goodId);
+		if (equip->get_class_type() == Archetype::AClassType::ENGINE)
+		{
+			mounted = false;
+		}
+	}
+
+	auto overrideMapIter = equipOverrideMap.find(goodId);
+	if (overrideMapIter == equipOverrideMap.end())
+	{
+		return;
+	}
+
+	auto shipOverrideIter = overrideMapIter->second.find(Players[clientId].iShipArchetype);
+	if (shipOverrideIter == overrideMapIter->second.end())
+	{
+		return;
+	}
+	goodId = shipOverrideIter->second;
+	
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
@@ -1179,6 +1212,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));

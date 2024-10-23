@@ -2397,7 +2397,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	}
 }
 
-void __stdcall ReqAddItem(unsigned int good, char const *hardpoint, int count, float fStatus, bool bMounted, unsigned int client)
+void __stdcall ReqAddItem(uint& good, char const *hardpoint, int count, float fStatus, bool& bMounted, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	PlayerBase *base = GetPlayerBaseForClient(client);

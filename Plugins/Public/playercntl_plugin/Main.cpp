@@ -755,32 +755,9 @@ namespace HkIServerImpl
 		}
 	}
 
-	void __stdcall ReqAddItem(unsigned int goodID, char const *hardpoint, int count, float status, bool mounted, uint iClientID)
+	void __stdcall ReqAddItem(uint& goodID, char const *hardpoint, int count, float status, bool& mounted, uint iClientID)
 	{
 		returncode = DEFAULT_RETURNCODE;
-
-		/*if (Rename::IsLockedShip(iClientID, 2))
-		{
-			string HP(hardpoint);
-			if (HP == "BAY")
-			{
-				//PrintUserCmdText(iClientID, L"Triggered on add cargo");
-			}
-			else
-			{
-				PrintUserCmdText(iClientID, L"Buying equipment is not allowed on a locked ship. You will now be kicked.");
-
-				wstring wsccharname = Players.GetActiveCharacterName(iClientID);
-				wstring spurdoip;
-				HkGetPlayerIP(iClientID, spurdoip);
-				AddLog("SHIPLOCK: Attempt to buy item on locked ship %s from IP %s", wstos(wsccharname).c_str(), wstos(spurdoip).c_str());
-				ConPrint(L"SHIPLOCK: Attempt to buy item on locked ship %s from IP %s\n", wsccharname.c_str(), spurdoip.c_str());
-
-				HkDelayedKick(iClientID, 1);
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-				//PrintUserCmdText(iClientID, L"Triggered on add equip");
-			}
-		}*/
 
 		if (PurchaseRestrictions::ReqAddItem(goodID, hardpoint, count, status, mounted, iClientID))
 		{

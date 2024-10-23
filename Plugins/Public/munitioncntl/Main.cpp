@@ -25,12 +25,14 @@ unordered_map<uint, float> shipArmorMap;
 unordered_map<uint, float> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 
+unordered_map<uint, ShipData> equipHpMap;
+
 struct SpeedCheck
 {
 	float targetSpeed = 0;
 	uint checkCounter = 0;
 };
-unordered_map<uint, pair<CGuided*, SpeedCheck>> topSpeedWatch;
+unordered_map<uint, SpeedCheck> topSpeedWatch;
 
 uint lastProcessedProjectile = 0;
 
@@ -222,7 +224,7 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("top_speed"))
 					{
-						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0);
+						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0) * ini.get_value_float(0);
 					}
 				}
 			}
@@ -244,6 +246,11 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("disruptor_engine_kill_speed_limit"))
 					{
 						ep.engineKillCDSpeedLimit = ini.get_value_float(0);
+						FoundValue = true;
+					}
+					else if (ini.is_value("hp_type"))
+					{
+						ep.hpType = ini.get_value_string(0);
 						FoundValue = true;
 					}
 				}
@@ -400,6 +407,64 @@ void ReadMunitionDataFromInis()
 			}
 		}
 	}
+
+	for (string& shipFile : shipFiles)
+	{
+		string filename = gameDir + shipFile;
+		if (!ini.open(filename.c_str(), false))
+		{
+			continue;
+		}
+
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Ship"))
+			{
+				continue;
+			}
+
+			unordered_set<string> shipEngineHPs;
+			while (ini.read_value())
+			{
+				uint currNickname;
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string(0));
+					shipEngineHPs.clear();
+				}
+				else if (ini.is_value("internal_engine"))
+				{
+					equipHpMap[currNickname].internalEngine = ini.get_value_bool(0);
+				}
+				else if (ini.is_value("hp_type"))
+				{
+					string equipType = ini.get_value_string(0);
+					int i = 1;
+					while (i < 10)
+					{
+						string hardpointName = ini.get_value_string(i);
+						if (hardpointName.empty())
+						{
+							break;
+						}
+						if (hardpointName.find("HpEngine") != string::npos)
+						{
+							if (!shipEngineHPs.count(hardpointName))
+							{
+								shipEngineHPs.insert(hardpointName);
+								equipHpMap[currNickname].engineCount++;
+							}
+							equipHpMap[currNickname].hpMap[equipType].insert(hardpointName);
+						}
+
+						i++;
+					}
+				}
+			}
+		}
+
+		ini.close();
+	}
 }
 
 struct SrvGun
@@ -478,6 +543,86 @@ void LoadSettings()
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+bool VerifyEngines(uint client)
+{
+	CShip* cship = ClientInfo[client].cship;
+
+	if (!cship)
+	{
+		return true;
+	}
+
+	const auto& equip = Players[client].equipDescList;
+
+	const auto& shipHpDataIter = equipHpMap.find(Players[client].iShipArchetype);
+	if (shipHpDataIter == equipHpMap.end())
+	{
+		int counter = 0;
+		CEquipTraverser tr(Engine);
+		CEEngine* cequip;
+		while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+		{
+			counter++;
+		}
+		if (counter == 1)
+		{
+			return true;
+		}
+		return false;
+	}
+
+	auto& shipHpData = shipHpDataIter->second;
+
+	int mountedEngineCounter = 0;
+
+	bool internalEngineFound = false;
+
+	CEquipTraverser tr(Engine);
+	CEEngine* cequip;
+	while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+	{
+		auto equipDesc = equip.find_equipment_item(cequip->iSubObjId);
+		string hardpoint = equipDesc->szHardPoint.value;
+
+		if (hardpoint == "BAY")
+		{
+			if (!internalEngineFound && (shipHpData.internalEngine || shipHpData.hpMap.empty()))
+			{
+				internalEngineFound = true;
+				continue;
+			}
+			
+			return false;
+		}
+
+		mountedEngineCounter++;
+
+		auto engineType = engineData.find(cequip->archetype->iArchID);
+		if (engineType == engineData.end())
+		{
+			return false;
+		}
+
+		auto hpMapIter = shipHpData.hpMap.find(engineType->second.hpType);
+		if (hpMapIter == shipHpData.hpMap.end())
+		{
+			return false;
+		}
+
+		if (!hpMapIter->second.count(hardpoint))
+		{
+			return false;
+		}
+	}
+
+	if (mountedEngineCounter != shipHpData.engineCount)
+	{
+		return false;
+	}
+
+	return true;
+}
+
 void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 {
 	CGuided* guided = reinterpret_cast<CGuided*>(CObject::Find(createGuidedPacket.iProjectileId, CObject::CGUIDED_OBJECT));
@@ -487,20 +632,6 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 	}
 
 	guided->Release();
-	uint ownerType;
-	pub::SpaceObj::GetType(createGuidedPacket.iOwner, ownerType);
-	if (!(ownerType & shipObjType)) //GetTarget throws an exception for non-ship entities.
-	{
-		return;
-	}
-
-	uint targetId;
-	pub::SpaceObj::GetTarget(createGuidedPacket.iOwner, targetId);
-
-	if (!targetId)
-	{
-		guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
-	}
 
 	auto guidedInfo = guidedDataMap.find(guided->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -508,23 +639,9 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 		return;
 	}
 
-	if (guidedInfo->second.topSpeed)
-	{
-		topSpeedWatch[createGuidedPacket.iProjectileId] = { guided, {guidedInfo->second.topSpeed, 0} };
-	}
-
 	if (guidedInfo->second.noTrackingAlert) // for 'dumbified' seeker missiles, disable alert, used for flaks and snub dumbfires
 	{
 		createGuidedPacket.iTargetId = 0; // prevents the 'incoming missile' warning client-side
-	}
-	else if (guidedInfo->second.trackingBlacklist) // disable tracking for selected ship types
-	{
-		uint targetType;
-		pub::SpaceObj::GetType(createGuidedPacket.iTargetId, targetType);
-		if (guidedInfo->second.trackingBlacklist & targetType)
-		{
-			guided->set_target(nullptr); //disable tracking, switch fallthrough to also disable alert
-		}
 	}
 
 }
@@ -540,6 +657,48 @@ void __stdcall CreateGuided(uint& iClientID, FLPACKET_CREATEGUIDED& createGuided
 		ProcessGuided(createGuidedPacket);
 	}
 
+}
+
+void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto guidedData = guidedDataMap.find(guided->archetype->iArchID);
+	if (guidedData == guidedDataMap.end())
+	{
+		return;
+	}
+
+	uint objId = parms.ownerId;
+	IObjRW* owner;
+	StarSystem* dummy;
+	GetShipInspect(objId, owner, dummy);
+	if (owner)
+	{
+		IObjRW* ownerTarget = nullptr;
+		owner->get_target(ownerTarget);
+		if (!ownerTarget)
+		{
+			parms.target = nullptr;
+			parms.subObjId = 0;
+		}
+	}
+
+	auto& guidedInfo = guidedData->second;
+
+	if (guidedInfo.trackingBlacklist && parms.target)
+	{
+		if (parms.target->cobj->type & guidedInfo.trackingBlacklist)
+		{
+			parms.target = nullptr;
+			parms.subObjId = 0;
+		}
+	}
+
+	if (guidedInfo.topSpeed)
+	{
+		topSpeedWatch[parms.id] = { guidedInfo.topSpeed, 0 };
+	}
 }
 
 int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
@@ -570,8 +729,6 @@ int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
-
-	topSpeedWatch.erase(iobj->get_id());
 
 	auto guidedInfo = guidedDataMap.find(iobj->cobj->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -664,7 +821,23 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& charId, unsigned
 	}
 }
 
-void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
+void UnmountEngines(uint client)
+{
+	for(auto& eq : Players[client].equipDescList.equip)
+	{
+		auto equipArch = Archetype::GetEquipment(eq.iArchID);
+		if (!equipArch)
+		{
+			continue;
+		}
+		if (equipArch->get_class_type() == Archetype::AClassType::ENGINE)
+		{
+			eq.bMounted = false;
+		}
+	}
+}
+
+void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 	playerShieldState[iClientID] = ShieldState();
@@ -680,6 +853,14 @@ void BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 		{
 			++iter;
 		}
+	}
+
+	if (!VerifyEngines(iClientID))
+	{
+		HkBeamById(iClientID, Players[iClientID].iLastBaseID);
+		PrintUserCmdText(iClientID, L"ERR Invalid engine(s) detected. You will be kicked to unmount the engines.");
+		UnmountEngines(iClientID);
+		HkDelayedKick(iClientID, 5);
 	}
 }
 
@@ -754,67 +935,42 @@ void Timer()
 
 int Update()
 {
-	returncode = DEFAULT_RETURNCODE;
-
-	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end();)
+	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); )
 	{
-		CGuided* guided = iter->second.first;
-		SpeedCheck& speedData = iter->second.second;
-		if (speedData.checkCounter)
+		auto iGuided = HkGetInspectObj(iter->first);
+		if (!iGuided)
 		{
-			Vector velocityVec = guided->get_velocity();
-			float velocity = VectorMagnitude(velocityVec);
-
-			if (speedData.checkCounter % 10 == 0)
-			{
-				ConPrint(L"missileAccelerationWarning! id %u count %u speed %0.0f maxspeed %0.0f\n", iter->first, speedData.checkCounter, velocity, speedData.targetSpeed);
-			}
-
-			if (velocity > speedData.targetSpeed)
-			{
-				ResizeVector(velocityVec, speedData.targetSpeed);
-				guided->motorData = nullptr;
-
-				const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
-				Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
-				*linearVelocity = velocityVec;
-
-				speedData.checkCounter++;
-				iter++;
-			}
-			else
-			{
-				iter = topSpeedWatch.erase(iter);
-			}
-		}
-
-		if (!guided->motorData)
-		{
-			iter++;
+			iter = topSpeedWatch.erase(iter);
 			continue;
 		}
 
+		CGuided* guided = reinterpret_cast<CGuided*>(iGuided->cobj);
+		SpeedCheck& speedData = iter->second;
+
 		Vector velocityVec = guided->get_velocity();
-		float velocity = VectorMagnitude(velocityVec);
-		if (velocity >= speedData.targetSpeed)
+		float velocity = SquaredVectorMagnitude(velocityVec);
+
+		if (velocity > speedData.targetSpeed * 1.02f)
 		{
-			ResizeVector(velocityVec, speedData.targetSpeed);
+			if (speedData.checkCounter)
+			{
+				AddLog("TopSpeed %x %u %u %u %0.0f\n", guided->archetype->iArchID, iter->first, speedData.checkCounter, guided->motorData, sqrt(velocity));
+			}
+			++speedData.checkCounter;
+			
+			ResizeVector(velocityVec, sqrt(speedData.targetSpeed));
 			guided->motorData = nullptr;
 
 			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
 			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
 			*linearVelocity = velocityVec;
-
-			speedData.checkCounter = 1;
 		}
-		else
-		{
-			iter++;
-		}
+		iter++;
 	}
 
 	if (shieldFuseMap.empty())
 	{
+		returncode = DEFAULT_RETURNCODE;
 		return 0;
 	}
 
@@ -833,10 +989,9 @@ int Update()
 		}
 
 		keysToRemove.emplace_back(shieldFuse.first);
-		IObjInspectImpl* iobj1;
+		IObjRW* iobj;
 		StarSystem* dummy;
-		GetShipInspect(Players[shieldFuse.first].iShipID, iobj1, dummy);
-		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
+		GetShipInspect(Players[shieldFuse.first].iShipID, iobj, dummy);
 		if (!iobj)
 		{
 			continue;
@@ -877,6 +1032,7 @@ int Update()
 	}
 	keysToRemove.clear();
 
+	returncode = DEFAULT_RETURNCODE;
 	return 0;
 }
 
@@ -1062,16 +1218,15 @@ void __stdcall UseItemRequest_AFTER(SSPUseItem const& p1, unsigned int iClientID
 		return;
 	}
 
-	IObjInspectImpl* iobj2;
+	IObjRW* iobj;
 	StarSystem* dummy;
-	GetShipInspect(Players[iClientID].iShipID, iobj2, dummy);
+	GetShipInspect(Players[iClientID].iShipID, iobj, dummy);
 
-	if (!iobj2)
+	if (!iobj)
 	{
 		return;
 	}
 
-	IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj2);
 	HkUnLightFuse(iobj, primaryBoost->fuseId, 0.0f);
 	HkLightFuse(iobj, primaryBoost->fuseId, 0.0f, 0.0f, -1.0f);
 }
@@ -1108,12 +1263,13 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedInit, PLUGIN_HkIEngine_CGuided_init, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollision, PLUGIN_HkIServerImpl_SPMunitionCollision, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollisionAfter, PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_After, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 10));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipHullDamage, PLUGIN_ShipHullDmg, 20));

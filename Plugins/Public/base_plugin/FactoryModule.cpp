@@ -272,7 +272,7 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 
 		if (volumeToProcess < eq->fVolume)
 		{
-			break;
+			return true;
 		}
 
 		float origVolumeToProcess = volumeToProcess;
@@ -320,7 +320,7 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 
 			if (volumeToProcess < eq->fVolume)
 			{
-				break;
+				return true;
 			}
 
 			float origVolumeToProcess = volumeToProcess;
@@ -368,7 +368,7 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 
 			if (volumeToProcess < eq->fVolume)
 			{
-				break;
+				return true;
 			}
 
 			float origVolumeToProcess = volumeToProcess;

@@ -49,6 +49,16 @@ struct FLPACKET_UNKNOWN
 	uint iDunno[20];
 };
 
+struct FLPACKET_ADDITEM
+{
+	uint dunno;
+	uint archId;
+	char* hardpoint;
+	bool mounted;
+	float status;
+	uint clientId;
+};
+
 struct FLPACKET_SYSTEM_SWITCH_OUT
 {
 	uint shipId;
@@ -192,7 +202,7 @@ public:
 	virtual bool Send_FLPACKET_SERVER_SETCOLLISIONGROUPS(uint iClientID, st6::list<CollisionGroupDesc>& collisionGrpList);
 	virtual bool Send_FLPACKET_SERVER_SETEQUIPMENT(uint iClientID, st6::vector<EquipDesc>& equipVec);
 	virtual void unknown_26(uint iClientID, uint iDunno);
-	virtual bool Send_FLPACKET_SERVER_SETADDITEM(uint iClientID, FLPACKET_UNKNOWN& pDunno, FLPACKET_UNKNOWN& pDunno2);
+	virtual bool Send_FLPACKET_SERVER_SETADDITEM(uint iClientID, FLPACKET_UNKNOWN& pDunno, FLPACKET_ADDITEM& pDunno2);
 	virtual void unknown_28(uint iClientID, uint iDunno, uint iDunno2, uint iDunno3);
 	virtual bool Send_FLPACKET_SERVER_SETSTARTROOM(uint iClientID, uint iDunno, uint iDunno2);
 	virtual bool Send_FLPACKET_SERVER_GFDESTROYCHARACTER(uint iClientID, uint iDunno, uint iDunno2);

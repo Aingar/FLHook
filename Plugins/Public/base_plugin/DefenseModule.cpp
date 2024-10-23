@@ -387,7 +387,7 @@ static void SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo const& so
 	pub::SpaceObj::CreateSolar(spaceID, solarInfo);
 
 	StarSystem* dunno;
-	IObjInspectImpl* inspect;
+	IObjRW* inspect;
 	if (GetShipInspect(spaceID, inspect, dunno))
 	{
 		CSolar* solar = (CSolar*)inspect->cobject();

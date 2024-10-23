@@ -357,19 +357,19 @@ void LoadSettings()
 
 void SetFuse(uint iClientID, uint fuse, float lifetime)
 {
-	IObjInspectImpl *obj = HkGetInspect(iClientID);
+	IObjRW *obj = HkGetInspect(iClientID);
 	if (obj)
 	{
-		HkLightFuse((IObjRW*)obj, fuse, 0.0f, lifetime, 0.0f);
+		HkLightFuse(obj, fuse, 0.0f, lifetime, 0.0f);
 	}
 }
 
 void UnSetFuse(uint iClientID, uint fuse)
 {
-	IObjInspectImpl *obj = HkGetInspect(iClientID);
+	IObjRW*obj = HkGetInspect(iClientID);
 	if (obj)
 	{
-		HkUnLightFuse((IObjRW*)obj, fuse, 0.0f);
+		HkUnLightFuse(obj, fuse, 0.0f);
 	}
 }
 

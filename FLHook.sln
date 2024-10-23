@@ -120,6 +120,9 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "newplayer", "Plugins\Public
 	EndProjectSection
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DSAceSrv Plugin", "..\..\DiscoPrivate\FLHookPrivAingar\Plugins\Private\dsacesrv_discovery\dsace_plugin.vcxproj", "{75008201-ED64-4A0F-B7EA-3B3A3E59855D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

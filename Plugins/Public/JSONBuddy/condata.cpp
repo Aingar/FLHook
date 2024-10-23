@@ -329,7 +329,7 @@ int Condata::Update()
 void Condata::PlayerLaunch(unsigned int iShip, unsigned int iClientID)
 {
 	StarSystem* dummy;
-	IObjInspectImpl* obj;
+	IObjRW* obj;
 	GetShipInspect(iShip, obj, dummy);
 	ConData[iClientID].obj = obj;
 	ConData[iClientID].tmLastObjUpdate = 0;

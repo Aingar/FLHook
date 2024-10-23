@@ -38,10 +38,10 @@ namespace AntiJumpDisconnect
 			uint iShip;
 			pub::Player::GetShip(iClientID, iShip);
 			pub::SpaceObj::SetInvincible(iShip, false, false, 0);
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkLightFuse((IObjRW*)obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
+				HkLightFuse(obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
 			}
 			HkTempBan(iClientID, 5);
 		}
@@ -54,10 +54,10 @@ namespace AntiJumpDisconnect
 			uint iShip;
 			pub::Player::GetShip(iClientID, iShip);
 			pub::SpaceObj::SetInvincible(iShip, false, false, 0);
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkLightFuse((IObjRW*)obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
+				HkLightFuse(obj, CreateID("death_comm"), 0.0f, 0.0f, 0.0f);
 			}
 			HkTempBan(iClientID, 5);
 		}

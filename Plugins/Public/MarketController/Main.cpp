@@ -757,16 +757,14 @@ void Timer()
 	for (auto& item : dropMap)
 	{
 		uint shipId = item.first;
-		IObjInspectImpl* iobj1;
+		IObjRW* iobj;
 		StarSystem* dummy;
-		GetShipInspect(shipId, iobj1, dummy);
+		GetShipInspect(shipId, iobj, dummy);
 
-		if (!iobj1)
+		if (!iobj)
 		{
 			continue;
 		}
-
-		IObjRW* iobj = reinterpret_cast<IObjRW*>(iobj1);
 
 		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
@@ -848,6 +846,32 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 	}
 }
 
+void AddTradeEquip(unsigned int iClientID, struct EquipDesc const& ed)
+{
+	returncode = DEFAULT_RETURNCODE;
+	CShip* cship = ClientInfo[iClientID].cship;
+
+	if (!cship)
+	{
+		return;
+	}
+
+	auto iter = cargoVolumeOverrideMap.find(cship->shiparch()->iShipClass);
+	if (iter == cargoVolumeOverrideMap.end())
+	{
+		return;
+	}
+
+	auto iter2 = iter->second.find(ed.iArchID);
+	if(iter2 == iter->second.end())
+	{
+		return;
+	}
+
+	PrintUserCmdText(iClientID, L"ERR Dynamic volume cargo cannot be traded on ships where volume reduction is applied. Cargo will not be traded.");
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+}
+
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -893,6 +917,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&AddTradeEquip, PLUGIN_HkIServerImpl_AddTradeEquip, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));

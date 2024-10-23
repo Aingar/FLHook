@@ -466,22 +466,22 @@ namespace HyperJump
 		JUMPDRIVE &jd = mapJumpDrives[iClientID];
 		if (jd.active_fuse)
 		{
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkUnLightFuse((IObjRW*)obj, jd.active_fuse, jd.active_fuse_delay);
+				HkUnLightFuse(obj, jd.active_fuse, jd.active_fuse_delay);
 			}
 			jd.active_fuse = 0;
 		}
 
 		if (fuse)
 		{
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
 				jd.active_fuse = fuse;
 				jd.active_fuse_delay = delay;
-				HkLightFuse((IObjRW*)obj, jd.active_fuse, delay, lifetime, 0.0f);
+				HkLightFuse(obj, jd.active_fuse, delay, lifetime, 0.0f);
 			}
 		}
 	}
@@ -507,21 +507,21 @@ namespace HyperJump
 
 	void AddChargeFuse(uint iClientID, uint fuse)
 	{
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (obj)
 		{
 			mapJumpDrives[iClientID].active_charge_fuse.push_back(fuse);
-			HkLightFuse((IObjRW*)obj, fuse, 0, 0, 0);
+			HkLightFuse(obj, fuse, 0, 0, 0);
 		}
 	}
 
 	void StopChargeFuses(uint iClientID)
 	{
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (obj)
 		{
 			foreach(mapJumpDrives[iClientID].active_charge_fuse, uint, fuse)
-				HkUnLightFuse((IObjRW*)obj, *fuse, 0);
+				HkUnLightFuse(obj, *fuse, 0);
 			mapJumpDrives[iClientID].active_charge_fuse.clear();
 		}
 	}
@@ -1542,12 +1542,60 @@ namespace HyperJump
 		return;
 	}
 
+	void JumpToTarget(CCmds* cmds)
+	{
+		RIGHT_CHECK(RIGHT_CHASEPULL)
+
+		HKPLAYERINFO adminPlyr;
+		if (HkGetPlayerInfo(cmds->GetAdminName(), adminPlyr, false) != HKE_OK || adminPlyr.iShip == 0)
+		{
+			cmds->Print(L"ERR Not in space\n");
+			return;
+		}
+
+		CShip* ship = ClientInfo[adminPlyr.iClientID].cship;
+
+		auto target = ship->get_target();
+
+		if (!target)
+		{
+			cmds->Print(L"ERR No target selected and coordinates provided\n");
+			return;
+		}
+
+		Vector dummy;
+		float radiusTarget;
+		target->get_physical_radius(radiusTarget, dummy);
+		float radiusSelf = ship->get_physical_radius_r(dummy);
+
+		if (target->cobj->objectClass == CObject::CSOLAR_OBJECT)
+		{
+			radiusTarget = max(radiusTarget, ((CSolar*)target->cobj)->get_atmosphere_range());
+		}
+
+		radiusTarget *= 1.1f;
+
+		float distance = HkDistance3D(ship->vPos, target->cobj->vPos);
+
+		Vector targetPos = target->cobj->vPos;
+		targetPos.x -= ship->vPos.x;
+		targetPos.y -= ship->vPos.y;
+		targetPos.z -= ship->vPos.z;
+		ResizeVector(targetPos, distance - (radiusTarget + radiusSelf));
+
+		targetPos.x += ship->vPos.x;
+		targetPos.y += ship->vPos.y;
+		targetPos.z += ship->vPos.z;
+
+		HkRelocateClient(adminPlyr.iClientID, targetPos, ship->mRot);
+	}
+
 	/** Move to location */
 	void HyperJump::AdminCmd_Move(CCmds* cmds, float x, float y, float z)
 	{
 		if (cmds->ArgStrToEnd(1).length() == 0)
 		{
-			cmds->Print(L"ERR Usage: move x y z\n");
+			JumpToTarget(cmds);
 			return;
 		}
 
@@ -1822,7 +1870,7 @@ namespace HyperJump
 		}
 
 		// If no ship, report a warning
-		IObjInspectImpl *obj = HkGetInspect(iClientID);
+		IObjRW *obj = HkGetInspect(iClientID);
 		if (!obj)
 		{
 			PrintUserCmdText(iClientID, L"ERR Can't jump while docked!");

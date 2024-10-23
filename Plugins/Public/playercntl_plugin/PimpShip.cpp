@@ -37,7 +37,7 @@ namespace PimpShip
 	static int set_iCost = 0;
 
 	// List of dealer rooms
-	static map<uint, wstring> set_mapDealers;
+	static unordered_map<uint, wstring> set_mapDealers;
 
 	// Item of equipment for a single client.
 	struct EQ_HARDPOINT
@@ -59,7 +59,7 @@ namespace PimpShip
 
 		bool bInPimpDealer;
 	};
-	static map<uint, INFO> mapInfo;
+	static unordered_map<uint, INFO> mapInfo;
 
 	// Map of item id to ITEM INFO
 	struct ITEM_INFO
@@ -552,7 +552,12 @@ namespace PimpShip
 			}
 		}
 
-		HkSetEquip(iClientID, equip);
+		if (&equip != &Players[iClientID].lShadowEquipDescList.equip)
+			Players[iClientID].lShadowEquipDescList.equip = equip;
+
+		if (&equip != &Players[iClientID].equipDescList.equip)
+			Players[iClientID].equipDescList.equip = equip;
+
 		PrintUserCmdText(iClientID, L"Ship pimping complete. You bought %i item%ws. Effect will be visible upon relogging.", count, endAt == beginFrom ? L"" : L"s");
 
 		if (beginFrom == 1 && endAt == mapInfo[iClientID].mapCurrEquip.size() && everyN == 1 && firstArg != L"-")

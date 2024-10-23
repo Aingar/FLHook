@@ -80,6 +80,7 @@ struct EngineProperties
 {
 	bool ignoreCDWhenEKd = false;
 	float engineKillCDSpeedLimit;
+	string hpType;
 };
 
 struct ExplosionDamageData
@@ -91,6 +92,13 @@ struct ExplosionDamageData
 	float armorPen = 0.0f;
 	bool cruiseDisrupt = false;
 	bool missileDestroy = true;
+};
+
+struct ShipData
+{
+	int engineCount = 0;
+	bool internalEngine = false;
+	unordered_map<string, unordered_set<string>> hpMap;
 };
 
 enum TRACKING_STATE {

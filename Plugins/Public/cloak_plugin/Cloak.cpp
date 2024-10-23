@@ -638,10 +638,10 @@ void HkTimerCheckKick()
 		else if (cd->second.cdwn == 1)
 		{
 			PrintUserCmdText(cd->first, L"Cloak Disruptor cooldown complete.");
-			IObjInspectImpl *obj = HkGetInspect(cd->first);
+			IObjRW*obj = HkGetInspect(cd->first);
 			if (obj)
 			{
-				HkUnLightFuse((IObjRW*)obj, cd->second.cd.effect, 0.0f);
+				HkUnLightFuse(obj, cd->second.cd.effect, 0.0f);
 			}
 			cd->second.cdwn = 0;
 		}
@@ -763,10 +763,10 @@ void SetFuse(uint iClientID, uint fuse, float lifetime)
 {
 	CDSTRUCT &cd = mapClientsCD[iClientID].cd;
 
-	IObjInspectImpl *obj = HkGetInspect(iClientID);
+	IObjRW*obj = HkGetInspect(iClientID);
 	if (obj)
 	{
-		HkLightFuse((IObjRW*)obj, fuse, 0.0f, lifetime, 0.0f);
+		HkLightFuse(obj, fuse, 0.0f, lifetime, 0.0f);
 	}
 }
 
@@ -883,10 +883,10 @@ bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wsc
 				return true;
 			}
 
-			IObjInspectImpl *obj = HkGetInspect(iClientID);
+			IObjRW *obj = HkGetInspect(iClientID);
 			if (obj)
 			{
-				HkLightFuse((IObjRW*)obj, cd->second.cd.effect, 0, cd->second.cd.effectlifetime, 0);
+				HkLightFuse(obj, cd->second.cd.effect, 0, cd->second.cd.effectlifetime, 0);
 			}
 
 			pub::Audio::PlaySoundEffect(iClientID, CreateID("cloak_osiris"));
@@ -1239,7 +1239,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete_AFTER, PLUGIN_HkIServerImpl_JumpInComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0)); p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));

@@ -9,6 +9,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 {
 	nickname = CreateBaseNickname(wstos(basename));
 	base = CreateID(nickname.c_str());
+	archetype = &mapArchs["legacy"];
 
 	// The creating ship is an ally by default.
 	BasePassword bp;
@@ -166,11 +167,11 @@ void PlayerBase::Timer(uint curr_time)
 		basesToRespawn.push_back({ path, 60 });
 		base_health = 0;
 		CoreModule* core = reinterpret_cast<CoreModule*>(modules[0]);
+		uint spaceObjId = core->space_obj;
 		core->SpaceObjDestroyed(core->space_obj, false, false);
+		pub::SpaceObj::Destroy(spaceObjId, DestroyType::VANISH);
 		return;
 	}
-
-	failed_update_counter++;
 
 	if (set_plugin_debug_special && (curr_time % 60 == 0))
 	{
@@ -178,6 +179,7 @@ void PlayerBase::Timer(uint curr_time)
 	}
 	if ((curr_time % set_tick_time) == 0 && logic)
 	{
+		failed_update_counter++;
 		reservedCatalystMap.clear();
 		reservedCatalystMap[set_base_crew_type] = base_level * 200;
 	}
@@ -194,7 +196,10 @@ void PlayerBase::Timer(uint curr_time)
 				break;
 		}
 	}
-	failed_update_counter = 0;
+	if (curr_time % set_tick_time == 0 && logic)
+	{
+		failed_update_counter = 0;
+	}
 
 	return;
 }

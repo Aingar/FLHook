@@ -24,7 +24,7 @@
 using namespace std;
 
 static uint STORAGE_MODULE_CAPACITY = 40000;
-static uint MAX_PINNED_ITEMS = 10;
+static uint MAX_PINNED_ITEMS = 15;
 const ushort DEFAULT_AFFILIATION = MakeId("fc_uk_grp");
 
 void LogCheater(uint client, const wstring& reason);
@@ -639,8 +639,11 @@ namespace HyperJump
 	void LoadHyperspaceHubConfig(const string& configPath);
 	void InitJumpHoleConfig();
 	void CheckForUnchartedDisconnect(uint client, uint ship);
-	void KillAllUnchartedOnShutdown();
 	void ClearClientInfo(uint iClientID);
+	void CharacterSelect_AFTER(uint client);
+
+
+	extern unordered_set<uint> markedForDeath;
 }
 
 namespace PlayerCommands

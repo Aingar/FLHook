@@ -206,16 +206,19 @@ namespace GiveCash
 
 	bool GiveCash::UserCmd_GiveCashTarget(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
-		uint iShip, iTargetShip;
-		pub::Player::GetShip(iClientID, iShip);
-		pub::SpaceObj::GetTarget(iShip, iTargetShip);
-		if (!iTargetShip)
+		CShip* cship = ClientInfo[iClientID].cship;
+		if (!cship)
+		{
+			PrintUserCmdText(iClientID, L"ERR Not in space");
+			return true;
+		}
+		auto target = cship->get_target();
+		if (!target || target->cobj->objectClass != CObject::CSHIP_OBJECT)
 		{
 			PrintUserCmdText(iClientID, L"ERR: This is not a ship.");
 			return true;
 		}
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-		uint iClientIDTarget = HkGetClientIDByShip(iTargetShip);
+		uint iClientIDTarget = ((CShip*)target->cobj)->ownerPlayer;
 		if (!iClientIDTarget)
 		{
 			PrintUserCmdText(iClientID, L"ERR: This is not a player ship.");
@@ -243,6 +246,7 @@ namespace GiveCash
 		else if (wscAnon.size())
 			wscComment = wscAnon + L" " + wscComment;
 
+		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 		GiveCash::GiveCashCombined(iClientID, cash, wscTargetCharname, wscCharname, bAnon, wscComment);
 		return true;
 	}

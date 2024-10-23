@@ -172,7 +172,6 @@ void LoadSettings()
 	string File_FLHook = "..\\exe\\flhook_plugins\\autobuy.cfg";
 	int iLoaded = 0;
 	int iLoaded2 = 0;
-	int iLoadedStackables = 0;
 
 	INI_Reader ini;
 	if (ini.open(File_Misc.c_str(), false))
@@ -434,7 +433,6 @@ void LoadSettings()
 
 	ConPrint(L"AUTOBUY: Loaded %u ammo limit entries\n", iLoaded);
 	ConPrint(L"AUTOBUY: Loaded %u FLHook extra items\n", iLoaded2);
-	ConPrint(L"AUTOBUY: Loaded %u stackable launchers\n", iLoadedStackables);
 
 	pub::GetGoodID(iNanobotsID, "ge_s_repair_01");
 	pub::GetGoodID(iShieldBatsID, "ge_s_battery_01");

@@ -233,13 +233,13 @@ void CoreModule::EnableShieldFuse(bool shieldEnabled)
 	if (space_obj)
 	{
 		StarSystem* dummy;
-		IObjInspectImpl* inspect;
+		IObjRW* inspect;
 		if (GetShipInspect(space_obj, inspect, dummy))
 		{
-			HkUnLightFuse((IObjRW*)inspect, shield_fuse, 0);
+			HkUnLightFuse(inspect, shield_fuse, 0);
 			if (shieldEnabled)
 			{
-				HkLightFuse((IObjRW*)inspect, shield_fuse, 0.0f, 0.0f, 0.0f);
+				HkLightFuse(inspect, shield_fuse, 0.0f, 0.0f, 0.0f);
 			}
 		}
 	}

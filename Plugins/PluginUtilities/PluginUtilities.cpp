@@ -1014,6 +1014,11 @@ Vector VectorMatrixMultiply(Vector& v1, Matrix& m1)
 	return ret;
 }
 
+float SquaredVectorMagnitude(Vector& v)
+{
+	return v.x * v.x + v.y * v.y + v.z * v.z;
+}
+
 float VectorMagnitude(Vector& v)
 {
 	return sqrtf(v.x * v.x + v.y * v.y + v.z * v.z);

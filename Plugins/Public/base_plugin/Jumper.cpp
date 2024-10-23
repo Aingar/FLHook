@@ -30,7 +30,10 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 unordered_set<uint> unchartedSystems;
+unordered_map<wstring, time_t> unchartedDisconnects;
 uint unchartedSystemToExclude;
+uint set_unchartedDeathGracePeriod = 300;
+unordered_set<uint> HyperJump::markedForDeath;
 
 struct SYSTEMJUMPCOORDS
 {
@@ -39,26 +42,37 @@ struct SYSTEMJUMPCOORDS
 	Matrix ornt;
 };
 
+void HyperJump::CharacterSelect_AFTER(uint client)
+{
+	if (!Players[client].iBaseID && unchartedSystems.count(Players[client].iSystemID))
+	{
+		wstring name = (const wchar_t*)Players.GetActiveCharacterName(client);
+		auto entryIter = unchartedDisconnects.find(name);
+		if (entryIter != unchartedDisconnects.end() && entryIter->second > time(0))
+		{
+			return;
+		}
+		markedForDeath.insert(client);
+	}
+}
+
 void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 {
 	if (set_SkipUnchartedKill)
 	{
 		return;
 	}
-	if (unchartedSystems.count(Players[client].iSystemID))
+	if (unchartedSystems.count(Players[client].iSystemID) && Players[client].iShipID)
 	{
-		pub::SpaceObj::SetRelativeHealth(ship, 0.0f);
-	}
-}
-
-void HyperJump::KillAllUnchartedOnShutdown()
-{
-	PlayerData* pd = nullptr;
-	while (pd = Players.traverse_active(pd))
-	{
-		if (unchartedSystems.count(pd->iSystemID))
+		auto currTime = time(0);
+		if (set_unchartedDeathGracePeriod)
 		{
-			pub::SpaceObj::SetRelativeHealth(pd->iShipID, 0.0f);
+			wstring name = (const wchar_t*)Players.GetActiveCharacterName(client);
+			unchartedDisconnects[name] = currTime + set_unchartedDeathGracePeriod;
+		}
+		else
+		{
+			pub::SpaceObj::SetRelativeHealth(ship, 0.0f);
 		}
 	}
 }
@@ -66,7 +80,7 @@ void HyperJump::KillAllUnchartedOnShutdown()
 void HyperJump::InitJumpHole(uint baseId, uint destSystem, uint destObject)
 {
 	StarSystem* dunno;
-	IObjInspectImpl* inspect;
+	IObjRW* inspect;
 	GetShipInspect(baseId, inspect, dunno);
 	CSolar* solar = (CSolar*)inspect->cobject();
 
@@ -106,7 +120,7 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	pb->destSystem = coords.system;
 
 	StarSystem* dunno;
-	IObjInspectImpl* inspect;
+	IObjRW* inspect;
 	GetShipInspect(info.iSpaceObjId, inspect, dunno);
 	CSolar* solar = (CSolar*)inspect->cobject();
 
@@ -198,17 +212,21 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					{
 						lastJumpholeRandomization = ini.get_value_int(0);
 					}
-					if (ini.is_value("randomizationCooldown"))
+					else if (ini.is_value("randomizationCooldown"))
 					{
 						randomizationCooldown = ini.get_value_int(0);
 					}
-					if (ini.is_value("randomizationCooldownOffset"))
+					else if (ini.is_value("randomizationCooldownOffset"))
 					{
 						randomizationCooldownOffset = ini.get_value_int(0);
 					}
-					if (ini.is_value("systemToExclude"))
+					else if (ini.is_value("systemToExclude"))
 					{
 						unchartedSystemToExclude = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("disconnectGracePeriod"))
+					{
+						set_unchartedDeathGracePeriod = ini.get_value_int(0);
 					}
 				}
 			}

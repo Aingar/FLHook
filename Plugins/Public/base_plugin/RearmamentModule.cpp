@@ -24,7 +24,6 @@ void RearmamentModule::SaveState(FILE* file)
     fprintf(file, "[RearmamentModule]\n");
 }
 
-#pragma optimize("", off)
 void RearmamentModule::Rearm(uint clientId)
 {
     PlayerBase* base = GetPlayerBaseForClient(clientId);

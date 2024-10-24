@@ -183,6 +183,7 @@ void ReadMunitionDataFromInis()
 			}
 			else if (ini.is_header("Munition"))
 			{
+				uint explosion_arch = 0;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))
@@ -227,6 +228,14 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("top_speed"))
 					{
 						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0) * ini.get_value_float(0);
+					}
+					else if (ini.is_value("explosion_arch"))
+					{
+						explosion_arch = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("detonation_dist"))
+					{
+						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0) * ini.get_value_float(0);
 					}
 				}
 			}
@@ -313,7 +322,7 @@ void ReadMunitionDataFromInis()
 						damageType.weaponType = CreateID(ini.get_value_string(0));
 						foundItem = true;
 					}
-					else if ("armor_pen")
+					else if (ini.is_value("armor_pen"))
 					{
 						damageType.armorPen = ini.get_value_float(0);
 					}
@@ -372,7 +381,7 @@ void ReadMunitionDataFromInis()
 						damageType.weaponType = CreateID(ini.get_value_string(0));
 						foundItem = true;
 					}
-					else if ("armor_pen")
+					else if (ini.is_value("armor_pen"))
 					{
 						damageType.armorPen = ini.get_value_float(0);
 					}

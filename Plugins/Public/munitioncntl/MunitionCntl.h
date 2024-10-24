@@ -90,6 +90,7 @@ struct ExplosionDamageData
 	float percentageDamageShield = 0.0f;
 	float percentageDamageEnergy = 0.0f;
 	float armorPen = 0.0f;
+	float detDist = 0.0f;
 	bool cruiseDisrupt = false;
 	bool missileDestroy = true;
 };

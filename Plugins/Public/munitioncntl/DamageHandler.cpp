@@ -78,18 +78,17 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	static float radius;
 
 	armorEnabled = true;
-	if (weaponArmorPenArch != explosion->explosionArchetype->iID)
+	float detDist = 0.0f;
+	if (explData)
 	{
-		weaponArmorPenArch = explosion->explosionArchetype->iID;
-		const auto munitionIter = munitionArmorPenMap.find(weaponArmorPenArch);
-		if (munitionIter == munitionArmorPenMap.end())
-		{
-			weaponArmorPenValue = 0.0f;
-		}
-		else
-		{
-			weaponArmorPenValue = munitionIter->second;
-		}
+		detDist = explData->detDist;
+		weaponArmorPenValue = explData->armorPen;
+		weaponArmorPenArch = 0;
+	}
+	else
+	{
+		weaponArmorPenValue = 0.0f;
+		weaponArmorPenArch = 0;
 	}
 
 	CEquipTraverser tr(ExternalEquipment);
@@ -115,6 +114,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 		float eqDmgMult = 0.0f;
 
+		if (explData)
+		{
+			distance -= explData->detDist;
+		}
 		rootDistance = min(rootDistance, distance);
 
 		if (distance < oneThird)
@@ -164,6 +167,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			}
 
 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition);
+			if (explData)
+			{
+				distance -= explData->detDist;
+			}
 			rootDistance = min(rootDistance, distance);
 
 			if (!colGrp->colGrp->rootHealthProxy)
@@ -294,6 +301,11 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	if (rootDistance == FLT_MAX)
 	{
 		return false;
+	}
+
+	if (explData)
+	{
+		rootDistance -= explData->detDist;
 	}
 
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));

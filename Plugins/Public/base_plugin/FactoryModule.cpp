@@ -254,52 +254,6 @@ wstring FactoryModule::GetInfo(bool xml)
 
 bool FactoryModule::TryConsume(float volumeToProcess)
 {
-	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
-	{
-		uint good = i->first;
-		auto market_item = base->market_items.find(good);
-		if (market_item == base->market_items.end() || !market_item->second.quantity)
-		{
-			continue;
-		}
-
-		auto eq = Archetype::GetEquipment(market_item->first);
-
-		if (!eq)
-		{
-			continue;
-		}
-
-		if (volumeToProcess < eq->fVolume)
-		{
-			return true;
-		}
-
-		float origVolumeToProcess = volumeToProcess;
-
-		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
-		float countToRemove = floorf(volumeToProcess / eq->fVolume);
-		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
-		i->second -= quantityToConsumeUint;
-		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
-		base->RemoveMarketGood(good, quantityToConsumeUint);
-
-		if (base->pinned_market_items.count(i->first))
-		{
-			base->pinned_item_updated = true;
-		}
-
-		if (!i->second)
-		{
-			active_recipe.consumed_items.erase(i);
-		}
-		if (amassedCookingRate > 0.0f)
-		{
-			TryConsume(amassedCookingRate);
-		}
-		return true;
-	}
-
 	for (auto& itemGroup = active_recipe.dynamic_consumed_items.begin();
 		itemGroup != active_recipe.dynamic_consumed_items.end(); itemGroup++)
 	{
@@ -399,6 +353,52 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 			}
 			return true;
 		}
+	}
+
+	for (auto& i = active_recipe.consumed_items.begin(); i != active_recipe.consumed_items.end(); i++)
+	{
+		uint good = i->first;
+		auto market_item = base->market_items.find(good);
+		if (market_item == base->market_items.end() || !market_item->second.quantity)
+		{
+			continue;
+		}
+
+		auto eq = Archetype::GetEquipment(market_item->first);
+
+		if (!eq)
+		{
+			continue;
+		}
+
+		if (volumeToProcess < eq->fVolume)
+		{
+			return true;
+		}
+
+		float origVolumeToProcess = volumeToProcess;
+
+		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
+		float countToRemove = floorf(volumeToProcess / eq->fVolume);
+		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
+		i->second -= quantityToConsumeUint;
+		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
+		base->RemoveMarketGood(good, quantityToConsumeUint);
+
+		if (base->pinned_market_items.count(i->first))
+		{
+			base->pinned_item_updated = true;
+		}
+
+		if (!i->second)
+		{
+			active_recipe.consumed_items.erase(i);
+		}
+		if (amassedCookingRate > 0.0f)
+		{
+			TryConsume(amassedCookingRate);
+		}
+		return true;
 	}
 	return false;
 }

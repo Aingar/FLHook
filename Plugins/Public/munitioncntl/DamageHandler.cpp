@@ -70,18 +70,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 {
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
-	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
-	float twoThirds = squaredExplosionRadius * 0.4444444f;
-	float oneThird = squaredExplosionRadius * 0.1111111f;
-
-	static Vector centerOfMass;
-	static float radius;
-
-	armorEnabled = true;
-	float detDist = 0.0f;
+	float squaredDetDist = 0.0f;
 	if (explData)
 	{
-		detDist = explData->detDist;
+		squaredDetDist = explData->detDist;
 		weaponArmorPenValue = explData->armorPen;
 		weaponArmorPenArch = 0;
 	}
@@ -90,6 +82,17 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		weaponArmorPenValue = 0.0f;
 		weaponArmorPenArch = 0;
 	}
+
+	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
+	
+	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
+	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
+	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
+
+	static Vector centerOfMass;
+	static float radius;
+
+	armorEnabled = true;
 
 	CEquipTraverser tr(ExternalEquipment);
 	CAttachedEquip* equip;
@@ -110,14 +113,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		float distance = centerOfMass.x * centerOfMass.x +
 			centerOfMass.y * centerOfMass.y +
 			centerOfMass.z * centerOfMass.z -
-			radius * radius;
+			radius * radius - squaredDetDist;
 
 		float eqDmgMult = 0.0f;
 
-		if (explData)
-		{
-			distance -= explData->detDist;
-		}
 		rootDistance = min(rootDistance, distance);
 
 		if (distance < oneThird)
@@ -167,10 +166,8 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			}
 
 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition);
-			if (explData)
-			{
-				distance -= explData->detDist;
-			}
+			distance -= squaredDetDist;
+
 			rootDistance = min(rootDistance, distance);
 
 			if (!colGrp->colGrp->rootHealthProxy)
@@ -300,13 +297,12 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	if (rootDistance == FLT_MAX)
 	{
-		return false;
+		return true;
 	}
 
-	if (explData)
-	{
-		rootDistance -= explData->detDist;
-	}
+	float squaredDetDist = explData ? explData->detDist : 0.0f;
+	rootDistance -= squaredDetDist;
+	
 
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
 	if (!shield || !shield->IsFunctioning())
@@ -322,8 +318,10 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	}
 
 	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
-	float twoThirds = squaredExplosionRadius * 0.4444444f;
-	float oneThird = squaredExplosionRadius * 0.1111111f;
+
+	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
+	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
+	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
 
 	float dmgMult = 0.0f;
 	if (rootDistance < oneThird)
@@ -341,7 +339,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	if (!dmgMult)
 	{
-		return false;
+		return true;
 	}
 
 	if (explData && explData->cruiseDisrupt)
@@ -358,9 +356,12 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, const float rootDistance, ExplosionDamageData* explData)
 {
+	float squaredDetDist = explData ? explData->detDist : 0.0f;
 	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
-	float twoThirds = squaredExplosionRadius * 0.4444444f;
-	float oneThird = squaredExplosionRadius * 0.1111111f;
+
+	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
+	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
+	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
 
 	float dmgMult = 0.3333f;
 	if (rootDistance < oneThird)

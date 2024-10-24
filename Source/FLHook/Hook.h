@@ -631,6 +631,8 @@ struct CLIENT_INFO
 	bool		bUseServersideHitDetection; //used by AC Plugin
 	CShip*		cship;
 	float		fRadarRange;
+	bool		isDocking;
+	Vector		dockPosition;
 	char		unused_data[128];
 };
 

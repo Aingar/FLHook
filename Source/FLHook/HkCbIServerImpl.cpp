@@ -291,6 +291,7 @@ namespace HkIServerImpl
 		ClientInfo[iClientID].bThrusterActivated = false;
 		ClientInfo[iClientID].bEngineKilled = false;
 		ClientInfo[iClientID].bTradelane = false;
+		ClientInfo[iClientID].isDocking = false;
 
 		// adjust cash, this is necessary when cash was added while use was in charmenu/had other char selected
 		wstring wscCharname = ToLower((wchar_t*)Players.GetActiveCharacterName(iClientID));
@@ -558,6 +559,7 @@ namespace HkIServerImpl
 			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
 		}
 		ClientInfo[iClientID].cship = nullptr;
+		ClientInfo[iClientID].isDocking = false;
 		/*
 		try {
 			// autobuy

@@ -1146,18 +1146,9 @@ void ini_write_wstring(FILE *file, const string &parmname, wstring &in)
 	fprintf(file, "\n");
 }
 
-// Print message to all ships within the specific number of meters of the player.
-void PrintLocalMsgAroundObject(uint spaceObjId, const wstring &wscMsg, float fDistance)
+void PrintLocalMsgPos(const wstring& msg, uint system, Vector& pos, float distance)
 {
-	Vector pos;
-	Matrix rot;
-	pub::SpaceObj::GetLocation(spaceObjId, pos, rot);
-
-	uint iSystem;
-	pub::SpaceObj::GetSystem(spaceObjId, iSystem);
-
-	// For all players in system...
-	struct PlayerData *pPD = 0;
+	struct PlayerData* pPD = 0;
 	while (pPD = Players.traverse_active(pPD))
 	{
 		// Get the this player's current system and location in the system.
@@ -1167,7 +1158,7 @@ void PrintLocalMsgAroundObject(uint spaceObjId, const wstring &wscMsg, float fDi
 			continue;
 		}
 
-		if (iSystem != cship->system)
+		if (system != cship->system)
 		{
 			continue;
 		}
@@ -1175,21 +1166,30 @@ void PrintLocalMsgAroundObject(uint spaceObjId, const wstring &wscMsg, float fDi
 		const Vector& cshipPos = cship->vPos;
 
 		// Is player within the specified range of the sending char.
-		if (HkDistance3D(pos, cshipPos) > fDistance)
+		if (HkDistance3D(pos, cshipPos) > distance)
 		{
 			continue;
 		}
 
-		PrintUserCmdText(pPD->iOnlineID, L"%s", wscMsg.c_str());
+		PrintUserCmdText(pPD->iOnlineID, msg.c_str());
 	}
+}
+
+// Print message to all ships within the specific number of meters of the player.
+void PrintLocalMsgAroundObject(uint spaceObjId, const wstring &wscMsg, float fDistance)
+{
+	Vector pos;
+	Matrix rot;
+	pub::SpaceObj::GetLocation(spaceObjId, pos, rot);
+
+	uint iSystem;
+	pub::SpaceObj::GetSystem(spaceObjId, iSystem);
+	PrintLocalMsgPos(wscMsg, iSystem, pos, fDistance);
 }
 
 void PrintLocalUserCmdText(uint iClientID, const wstring& wscMsg, float fDistance)
 {
-	uint iShip;
-	pub::Player::GetShip(iClientID, iShip);
-
-	PrintLocalMsgAroundObject(iShip, wscMsg, fDistance);
+	PrintLocalMsgAroundObject(Players[iClientID].iShipID, wscMsg, fDistance);
 }
 
 // Send a player to group message

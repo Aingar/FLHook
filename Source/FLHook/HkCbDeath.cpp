@@ -128,6 +128,8 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			if (ClientInfo[client].cship)
 			{
 				HkIEngine::playerShips.erase(ClientInfo[client].cship->id);
+				ClientInfo[client].isDocking = true;
+				ClientInfo[client].dockPosition = iobj->cobj->vPos;
 				ClientInfo[client].cship = nullptr;
 				ClientInfo[client].iBaseEnterTime = (uint)time(0); //start idle kick timer
 			}

@@ -58,7 +58,6 @@ float set_fMinCLootRoadkillSpeed = 25.0f;
 // set of ships which cannot use TradeLane, and are blocked
 // from forming on other ships to bypass the block
 unordered_set<uint> setLaneAndFormationBannedShips;
-bool supressDockMsg[255];
 /** A return code to indicate to FLHook if we want the hook processing to continue. */
 PLUGIN_RETURNCODE returncode;
 
@@ -341,32 +340,6 @@ namespace HkIEngine
 
 			return 0;
 		}
-		if (response == DOCK && dockPort == -1)
-		{
-			uint iClientID = HkGetClientIDByShip(iShip);
-
-			if (iClientID == 0)
-			{
-				// NPC call, let the game handle it
-				return 0;
-			}
-			if (supressDockMsg[iClientID])
-			{
-				supressDockMsg[iClientID] = false;
-				return 0;
-			}
-			uint type;
-			pub::SpaceObj::GetType(iDockTarget, type);
-			if (!(type & (Station | DockingRing)))
-			{
-				return 0;
-			}
-
-			wstring wscMsg = L"%time Traffic control alert: %player has docked";
-			wscMsg = ReplaceStr(wscMsg, L"%time", GetTimeString(set_bLocalTime));
-			wscMsg = ReplaceStr(wscMsg, L"%player", (const wchar_t*)Players.GetActiveCharacterName(iClientID));
-			PrintLocalUserCmdText(iClientID, wscMsg, set_iDockBroadcastRange);
-		}
 		return 0;
 	}
 }
@@ -454,10 +427,6 @@ namespace HkIServerImpl
 			return;
 		}
 
-		if (iType == 0)
-		{
-			supressDockMsg[iClientID] = true;
-		}
 		HyperJump::RequestCancel(iType, requestFrom, requestTo);
 	}
 
@@ -588,6 +557,16 @@ namespace HkIServerImpl
 	void __stdcall BaseEnter(unsigned int iBaseID, unsigned int iClientID)
 	{
 		returncode = DEFAULT_RETURNCODE;
+		
+		if (ClientInfo[iClientID].isDocking)
+		{
+			wstring wscMsg = L"%time Traffic control alert: %player has docked";
+			wscMsg = ReplaceStr(wscMsg, L"%time", GetTimeString(set_bLocalTime));
+			wscMsg = ReplaceStr(wscMsg, L"%player", (const wchar_t*)Players.GetActiveCharacterName(iClientID));
+			PrintLocalMsgPos(wscMsg, Players[iClientID].iSystemID, ClientInfo[iClientID].dockPosition, set_iDockBroadcastRange);
+			PrintUserCmdText(iClientID, wscMsg.c_str());
+		}
+
 		IPBans::BaseEnter(iBaseID, iClientID);
 		RepFixer::BaseEnter(iBaseID, iClientID);
 		Message::BaseEnter(iBaseID, iClientID);

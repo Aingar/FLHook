@@ -698,7 +698,7 @@ namespace PlayerCommands
 		}
 	}
 
-	void ClearAccesses(PlayerBase* base, uint client, const wstring& type)
+	bool ClearAccesses(PlayerBase* base, uint client, const wstring& type)
 	{
 		unordered_set<wstring>* nameSet = nullptr;
 		unordered_set<uint>* factionSet = nullptr;
@@ -709,6 +709,7 @@ namespace PlayerCommands
 			base->srp_names.clear();
 			base->srp_factions.clear();
 			base->srp_tags.clear();
+
 		}
 		else if (type == L"blacklist")
 		{
@@ -726,10 +727,11 @@ namespace PlayerCommands
 		{
 			PrintUserCmdText(client, L"ERR incorrect parameter!");
 			PrintUserCmdText(client, L"usage: /access clear <srp|whitelist|blacklist>");
-			return;
+			return false;
 		}
 
 		PrintUserCmdText(client, L"OK!");
+		return true;
 	}
 	void PrintAccesses(PlayerBase* base, uint client, const wstring& type)
 	{
@@ -1131,12 +1133,15 @@ namespace PlayerCommands
 
 		if (cmd == L"clear")
 		{
-			ClearAccesses(base, client, param1);
-			base->SyncReputationForBase();
+			if (ClearAccesses(base, client, param1))
+			{
+				base->SyncReputationForBase();
+			}
+			return;
 		}
 
 		PrintUserCmdText(client, L"ERR Invalid parameters");
-		PrintUserCmdText(client, L"usage: /access <list|add|remove>");
+		PrintUserCmdText(client, L"usage: /access <list|add|remove|clear>");
 		return;
 	}
 

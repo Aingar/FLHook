@@ -116,6 +116,15 @@ Called when ship was destroyed
 
 void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
+	static uint lastShipId = 0;
+
+	if (lastShipId == iobj->get_id())
+	{
+		return;
+	}
+
+	lastShipId = iobj->get_id();
+
 	if (!isKill)
 	{
 		uint client = iobj->cobj->ownerPlayer;

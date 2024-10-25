@@ -372,6 +372,12 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 
 	returncode = NOFUNCTIONCALL;
 
+	if (!ClientInfo[clientVictim].cship)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return;
+	}
+
 	map<float, uint> damageToInflictorMap; // damage is the key instead of value because keys are sorted, used to render top contributors in order
 	set<CPlayerGroup*> involvedGroups;
 	set<uint> involvedPlayers;

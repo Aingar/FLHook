@@ -8,6 +8,7 @@
 
 void ShipShieldDamageNaked();
 void GuidedExplosionHitNaked();
+void SolarExplosionHitNaked();
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
@@ -92,6 +93,7 @@ struct ExplosionDamageData
 	float armorPen = 0.0f;
 	float detDist = 0.0f;
 	bool cruiseDisrupt = false;
+	bool damageSolars = true;
 	bool missileDestroy = true;
 };
 
@@ -115,6 +117,7 @@ extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;
 extern FARPROC GuidedExplosionHitOrigFunc;
+extern FARPROC SolarExplosionHitOrigFunc;
 
 extern float shipArmorValue;
 extern uint shipArmorArch;

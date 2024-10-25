@@ -322,9 +322,15 @@ void ReadMunitionDataFromInis()
 						damageType.weaponType = CreateID(ini.get_value_string(0));
 						foundItem = true;
 					}
+					else if (ini.is_value("damage_solars"))
+					{
+						damageType.damageSolars = ini.get_value_bool(0);
+						foundItem = true;
+					}
 					else if (ini.is_value("armor_pen"))
 					{
 						damageType.armorPen = ini.get_value_float(0);
+						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_hull"))
 					{
@@ -381,9 +387,15 @@ void ReadMunitionDataFromInis()
 						damageType.weaponType = CreateID(ini.get_value_string(0));
 						foundItem = true;
 					}
+					else if (ini.is_value("damage_solars"))
+					{
+						damageType.damageSolars = ini.get_value_bool(0);
+						foundItem = true;
+					}
 					else if (ini.is_value("armor_pen"))
 					{
 						damageType.armorPen = ini.get_value_float(0);
+						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_hull"))
 					{

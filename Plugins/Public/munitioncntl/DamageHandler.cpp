@@ -336,8 +336,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	{
 		dmgMult = 0.3333f;
 	}
-
-	if (!dmgMult)
+	else
 	{
 		return true;
 	}
@@ -363,7 +362,7 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
 	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
 
-	float dmgMult = 0.3333f;
+	float dmgMult;
 	if (rootDistance < oneThird)
 	{
 		dmgMult = 1.0f;
@@ -372,10 +371,24 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	{
 		dmgMult = 0.6666f;
 	}
+	else if (rootDistance < rootedDistance)
+	{
+		dmgMult = 0.3333f;
+	}
+	else
+	{
+		return;
+	}
+
 	float damage = dmgMult * explosion->explosionArchetype->fEnergyDamage;
 	if (explData && explData->percentageDamageEnergy)
 	{
 		damage += reinterpret_cast<CShip*>(iobj->cobj)->maxPower * explData->percentageDamageEnergy;
+	}
+
+	if (explData && explData->cruiseDisrupt)
+	{
+		dmg->damageCause = DamageCause::CruiseDisrupter;
 	}
 
 	iobj->damage_energy(damage, dmg);
@@ -487,5 +500,31 @@ __declspec(naked) void GuidedExplosionHitNaked()
 
 		callOriginal:
 		jmp [GuidedExplosionHitOrigFunc]
+	}
+}
+
+bool __stdcall CheckSolarExplosionDamage(ExplosionDamageEvent* expl)
+{
+	auto iter = explosionTypeMap.find(expl->explosionArchetype->iID);
+	if (iter == explosionTypeMap.end() || iter->second.damageSolars)
+	{
+		return true;
+	}
+	return false;
+}
+
+__declspec(naked) void SolarExplosionHitNaked()
+{
+	__asm
+	{
+		push ecx
+		push[esp + 0x8]
+		call CheckSolarExplosionDamage
+		pop ecx
+		test al, al
+		jz skipDamage
+		jmp[SolarExplosionHitOrigFunc]
+		skipDamage:
+		ret 0x8
 	}
 }

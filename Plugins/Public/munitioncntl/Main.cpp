@@ -273,10 +273,6 @@ void ReadMunitionDataFromInis()
 					{
 						damageType.type = CreateID(ini.get_value_string(0));
 					}
-					else if (ini.is_value("damage_solars"))
-					{
-						damageType.damageSolars = ini.get_value_bool(0);
-					}
 				}
 				if (damageType.type)
 				{
@@ -304,10 +300,6 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("weapon_type"))
 					{
 						damageType.type = CreateID(ini.get_value_string(0));
-					}
-					else if (ini.is_value("damage_solars"))
-					{
-						damageType.damageSolars = ini.get_value_bool(0);
 					}
 				}
 				if (damageType.type)

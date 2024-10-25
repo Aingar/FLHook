@@ -8,7 +8,6 @@
 
 void ShipShieldDamageNaked();
 void ShipShieldExplosionDamageNaked();
-void SolarExplosionHitNaked();
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 
@@ -84,7 +83,6 @@ struct EngineProperties
 struct ExplosionDamageType
 {
 	uint type = 0;
-	bool damageSolars = true;
 };
 
 struct ShipData

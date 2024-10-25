@@ -1,6 +1,6 @@
 #include "MunitionCntl.h"
 
-FARPROC ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc, SolarExplosionHitOrigFunc;
+FARPROC ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc;
 
 PATCH_INFO piServerDLL =
 {
@@ -8,7 +8,6 @@ PATCH_INFO piServerDLL =
 	{
 		{0x6D67330,		&ShipShieldDamageNaked,				4, &ShipShieldDamageOrigFunc,							false},
 		{0x6D67320,		&ShipShieldExplosionDamageNaked,	4, &ShipShieldExplosionDamageOrigFunc,							false},
-		{0x6D675F0,		&SolarExplosionHitNaked,			4, &SolarExplosionHitOrigFunc,							false},
 
 		{0,0,0,0} // terminate
 	}
@@ -69,32 +68,6 @@ float GetRangeModifier(CShip* cship, ExplosionDamageEvent* explosion)
 	}
 
 	return 0.0f;
-}
-
-bool __stdcall CheckSolarExplosionDamage(ExplosionDamageEvent* expl)
-{
-	auto iter = explosionTypeMap.find(expl->explosionArchetype->iID);
-	if (iter == explosionTypeMap.end() || iter->second.damageSolars)
-	{
-		return true;
-	}
-	return false;
-}
-
-__declspec(naked) void SolarExplosionHitNaked()
-{
-	__asm
-	{
-		push ecx
-		push [esp+0x8]
-		call CheckSolarExplosionDamage
-		pop ecx
-		test al, al
-		jz skipDamage
-		jmp [SolarExplosionHitOrigFunc]
-	skipDamage:
-		ret 0x8
-	}
 }
 
 bool __stdcall ShipShieldExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmgList)

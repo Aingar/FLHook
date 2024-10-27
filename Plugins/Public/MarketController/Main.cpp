@@ -349,6 +349,17 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 							continue;
 						}
 
+						if (iSellPrice <= 0 || fPrice <= 0)
+						{
+							ConPrint(L"ERROR: Can't set price lower or equal 0\n");
+						}
+
+						if (iSellPrice > fPrice)
+						{
+							ConPrint(L"ERROR: Infinite money printer, buy for %u, sell for %u\n", static_cast<uint>(fPrice), iSellPrice);
+							continue;
+						}
+
 						auto& mapEntry = mapBaseMarketDelta[baseId][iGoodID];
 						mapEntry.iGoodID = iGoodID;
 						mapEntry.fPrice = fPrice;

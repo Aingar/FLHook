@@ -565,7 +565,7 @@ struct PlayerData
 	uint dunno2[4]; // last one seems to always be zero
 	float difficulty;
 	ushort lastEquipId;
-	uint aMenuItem;
+	CPlayerTradeOffer* tradeOffer;
 	uint onlineId2;
 	uint dunno3[2];
 	uint tradeRequestCount;

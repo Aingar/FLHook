@@ -113,6 +113,20 @@ bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstr
 bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 	uint groupId = ToUInt(GetParam(wscParam, ' ', 0));
+
+	if (!groupId && wscParam.empty())
+	{
+		if (Players[iClientID].PlayerGroup)
+		{
+			PrintUserCmdText(iClientID, L"Your group size: %u", Players[iClientID].PlayerGroup->GetMemberCount());
+		}
+		else
+		{
+			PrintUserCmdText(iClientID, L"ERR No parameter provided and you're not in a group");
+		}
+		return true;
+	}
+
 	auto groupMap = reinterpret_cast<st6::map<const uint, CPlayerGroup*>*>(0x6D90400);
 	auto groupIter = groupMap->find(groupId);
 	if (!groupId || groupIter == groupMap->end() || groupIter->second->GetMemberCount() == 0)

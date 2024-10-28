@@ -3239,9 +3239,55 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		{
 			clients[client].admin = true;
 			SendMarketGoodSync(base, client);
+			PrintUserCmdText(client, L"Logged in as admin");
+		}
+		else
+		{
+			PrintUserCmdText(client, L"ERR Not in a player base!");
 		}
 
-		PrintUserCmdText(client, L"Logged in as admin");
+		return true;
+	}
+	else if (args.find(L"baseaddcargo"))
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+		RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		if (client == -1)
+		{
+			ConPrint(L"Only usable ingame\n");
+			return true;
+		}
+
+		PlayerBase* base = GetPlayerBaseForClient(client);
+		if (!base)
+		{
+			PrintUserCmdText(client, L"ERR Not in a player base!");
+			return;
+		}
+
+		uint goodId = CreateID(wstos(cmd->ArgStr(1)).c_str());
+
+		auto gi = GoodList_get()->find_by_id(goodId);
+		if (!gi)
+		{
+			PrintUserCmdText(client, L"ERR Invalid good id!");
+			return;
+		}
+
+		uint amount = cmd->ArgUInt(2);
+
+		if (!amount)
+		{
+			PrintUserCmdText(client, L"ERR Invalid good amount!");
+			return;
+		}
+
+		base->AddMarketGood(goodId, amount);
+		base->Save();
+
 		return true;
 	}
 	else if (args.find(L"reloadbaserecipes") == 0)

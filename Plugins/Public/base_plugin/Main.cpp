@@ -3265,7 +3265,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!base)
 		{
 			PrintUserCmdText(client, L"ERR Not in a player base!");
-			return;
+			return true;
 		}
 
 		uint goodId = CreateID(wstos(cmd->ArgStr(1)).c_str());
@@ -3274,7 +3274,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!gi)
 		{
 			PrintUserCmdText(client, L"ERR Invalid good id!");
-			return;
+			return true;
 		}
 
 		uint amount = cmd->ArgUInt(2);
@@ -3282,7 +3282,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		if (!amount)
 		{
 			PrintUserCmdText(client, L"ERR Invalid good amount!");
-			return;
+			return true;
 		}
 
 		base->AddMarketGood(goodId, amount);

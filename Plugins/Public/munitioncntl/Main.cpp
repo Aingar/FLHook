@@ -371,62 +371,63 @@ void ReadMunitionDataFromInis()
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("explosion"))
+			if (!ini.is_header("explosion"))
 			{
-				uint currNickname;
-				ExplosionDamageData damageType;
-				bool foundItem = false;
-				while (ini.read_value())
+				continue;
+			}
+			uint currNickname;
+			ExplosionDamageData damageType;
+			bool foundItem = false;
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
 				{
-					if (ini.is_value("nickname"))
-					{
-						currNickname = CreateID(ini.get_value_string());
-					}
-					else if (ini.is_value("weapon_type"))
-					{
-						damageType.weaponType = CreateID(ini.get_value_string(0));
-						foundItem = true;
-					}
-					else if (ini.is_value("damage_solars"))
-					{
-						damageType.damageSolars = ini.get_value_bool(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("armor_pen"))
-					{
-						damageType.armorPen = ini.get_value_float(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("percentage_damage_hull"))
-					{
-						damageType.percentageDamageHull = ini.get_value_float(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("percentage_damage_shield"))
-					{
-						damageType.percentageDamageShield = ini.get_value_float(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("percentage_damage_energy"))
-					{
-						damageType.percentageDamageEnergy = ini.get_value_float(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("cruise_disrupt"))
-					{
-						damageType.cruiseDisrupt = ini.get_value_bool(0);
-						foundItem = true;
-					}
-					else if (ini.is_value("destroy_missiles"))
-					{
-						damageType.missileDestroy = ini.get_value_bool(0);
-						foundItem = true;
-					}
+					currNickname = CreateID(ini.get_value_string());
 				}
-				if (foundItem)
+				else if (ini.is_value("weapon_type"))
 				{
-					damageType.type = CreateID(ini.get_value_string(0));
+					damageType.weaponType = CreateID(ini.get_value_string(0));
+					foundItem = true;
 				}
+				else if (ini.is_value("damage_solars"))
+				{
+					damageType.damageSolars = ini.get_value_bool(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("armor_pen"))
+				{
+					damageType.armorPen = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_hull"))
+				{
+					damageType.percentageDamageHull = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_shield"))
+				{
+					damageType.percentageDamageShield = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_energy"))
+				{
+					damageType.percentageDamageEnergy = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("cruise_disrupt"))
+				{
+					damageType.cruiseDisrupt = ini.get_value_bool(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("destroy_missiles"))
+				{
+					damageType.missileDestroy = ini.get_value_bool(0);
+					foundItem = true;
+				}
+			}
+			if (foundItem)
+			{
+				explosionTypeMap[currNickname] = damageType;
 			}
 		}
 		ini.close();

@@ -509,7 +509,7 @@ namespace PlayerCommands
 				return false;
 		}
 
-		map<string, uint> factions;
+		unordered_map<string, uint> factions;
 		void LoadListOfReps()
 		{
 			INI_Reader ini;
@@ -567,7 +567,7 @@ namespace PlayerCommands
 				if (factions.size() == 0)
 					LoadListOfReps();
 
-				for (map<string, uint>::iterator iter = factions.begin(); iter != factions.end(); iter++)
+				for (auto iter = factions.begin(); iter != factions.end(); iter++)
 				{
 					string factionnickname = iter->first;
 					//MakeID function (in built in Flhook) is the same as mentioned here in C# to CreateFactionID https://github.com/DiscoveryGC/FLHook/blob/master/Plugins/Public/playercntl_plugin/setup_src/FLUtility.cs
@@ -609,6 +609,19 @@ namespace PlayerCommands
 			{
 				PrintUserCmdText(client, L"IFF ID: %s, %s", (iter->nickname).c_str(), (iter->factionname).c_str());
 			}
+		}
+
+		const AffCell* GetFirstAffiliationMatch(const wstring& string)
+		{
+			const wstring loweredCaseName = ToLower(string);
+			for (auto& affil : AffList)
+			{
+				if (ToLower(affil.factionname).find(loweredCaseName) != wstring::npos)
+				{
+					return &affil;
+				}
+			}
+			return nullptr;
 		}
 	};
 	Affiliations A;
@@ -917,8 +930,8 @@ namespace PlayerCommands
 		}
 		else if (entryType == L"faction")
 		{
-			uint entryId = MakeId(wstos(entry).c_str());
-			if (!A.GetAffiliation(entryId))
+			auto affil = A.GetFirstAffiliationMatch(entry);
+			if (!affil)
 			{
 				PrintUserCmdText(client, L"ERR invalid faction nickname!");
 				return false;
@@ -932,9 +945,9 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
 					return false;
 				}
-				base->hostile_factions.erase(entryId);
-				base->srp_factions.insert(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->hostile_factions.erase(affil->id);
+				base->srp_factions.insert(affil->id);
+				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
 				return true;
 			}
 			else if (type == L"blacklist")
@@ -945,9 +958,9 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_factions.size());
 					return false;
 				}
-				base->ally_factions.erase(entryId);
-				base->hostile_factions.insert(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->ally_factions.erase(affil->id);
+				base->hostile_factions.insert(affil->id);
+				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
 				return true;
 			}
 			else if (type == L"whitelist")
@@ -958,9 +971,9 @@ namespace PlayerCommands
 						base_access_entry_limit, base->ally_factions.size());
 					return false;
 				}
-				base->hostile_factions.erase(entryId);
-				base->ally_factions.insert(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->hostile_factions.erase(affil->id);
+				base->ally_factions.insert(affil->id);
+				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
 				return true;
 			}
 		}
@@ -1039,8 +1052,8 @@ namespace PlayerCommands
 		}
 		else if (entryType == L"faction")
 		{
-			uint entryId = MakeId(wstos(entry).c_str());
-			if (!A.GetAffiliation(entryId))
+			auto affil = A.GetFirstAffiliationMatch(entry);
+			if (!affil)
 			{
 				PrintUserCmdText(client, L"ERR invalid faction nickname!");
 				return false;
@@ -1054,35 +1067,35 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
 					return false;
 				}
-				if (!base->srp_factions.count(entryId))
+				if (!base->srp_factions.count(affil->id))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
 					return false;
 				}
-				base->srp_factions.erase(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->srp_factions.erase(affil->id);
+				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
 				return true;
 			}
 			else if (type == L"blacklist")
 			{
-				if (!base->hostile_factions.count(entryId))
+				if (!base->hostile_factions.count(affil->id))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
 					return false;
 				}
-				base->hostile_factions.erase(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->hostile_factions.erase(affil->id);
+				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
 				return true;
 			}
 			else if (type == L"whitelist")
 			{
-				if (!base->ally_factions.count(entryId))
+				if (!base->ally_factions.count(affil->id))
 				{
 					PrintUserCmdText(client, L"ERR No such faction!");
 					return false;
 				}
-				base->ally_factions.erase(entryId);
-				PrintUserCmdText(client, L"OK!");
+				base->ally_factions.erase(affil->id);
+				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
 				return true;
 			}
 		}

@@ -3248,7 +3248,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		return true;
 	}
-	else if (args.find(L"baseaddcargo"))
+	else if (args.find(L"baseaddcargo") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 

@@ -349,6 +349,17 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 							continue;
 						}
 
+						if (iSellPrice <= 0 || fPrice <= 0)
+						{
+							ConPrint(L"ERROR: Can't set price lower or equal 0\n");
+						}
+
+						if (iSellPrice > fPrice)
+						{
+							ConPrint(L"ERROR: Infinite money printer, buy for %u, sell for %u\n", static_cast<uint>(fPrice), iSellPrice);
+							continue;
+						}
+
 						auto& mapEntry = mapBaseMarketDelta[baseId][iGoodID];
 						mapEntry.iGoodID = iGoodID;
 						mapEntry.fPrice = fPrice;
@@ -785,13 +796,31 @@ void Timer()
 			continue;
 		}
 
+		unordered_map<uint, float>* overrideMap = nullptr;
+		auto volumeOverrideIter = cargoVolumeOverrideMap.find(cship->shiparch()->iShipClass);
+		if (volumeOverrideIter != cargoVolumeOverrideMap.end())
+		{
+			overrideMap = &volumeOverrideIter->second;
+		}
+
 		CEquipTraverser tr(Cargo);
 		CEquipManager& eqManager = cship->equip_manager;
 
 		CECargo* cargo = nullptr;
 		while (cargo = reinterpret_cast<CECargo*>(eqManager.Traverse(tr)))
 		{
-			if (cargo->archetype->fVolume == 0.0f)
+			float volume = cargo->archetype->fVolume;
+
+			if (overrideMap)
+			{
+				auto overrideIter = overrideMap->find(cargo->archetype->iArchID);
+				if (overrideIter != overrideMap->end())
+				{
+					volume = overrideIter->second;
+				}
+			}
+
+			if (volume == 0.0f)
 			{
 				continue;
 			}
@@ -802,10 +831,10 @@ void Timer()
 				continue;
 			}
 
-			float amountToJettison = min(cargo->count, ceilf(totalCargoToJettison / cargo->archetype->fVolume));
+			float amountToJettison = min(cargo->count, ceilf(totalCargoToJettison / volume));
 			iobj->jettison_cargo(cargo->iSubObjId, static_cast<ushort>(amountToJettison), cship->ownerPlayer);
 
-			totalCargoToJettison -= amountToJettison * cargo->archetype->fVolume;
+			totalCargoToJettison -= amountToJettison * volume;
 			if (totalCargoToJettison <= 0.0f)
 			{
 				break;

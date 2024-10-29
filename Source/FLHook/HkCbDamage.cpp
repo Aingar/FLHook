@@ -182,7 +182,7 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageL
 
 	while (carch = carchMan.Traverse(tr2))
 	{
-		if (carch->colGrp->hitPts < 100.f)
+		if (carch->colGrp->hitPts < 100)
 		{
 			continue;
 		}
@@ -192,15 +192,6 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageL
 			continue;
 		}
 
-		DamageEntry::SubObjFate fate;
-		if (colGrpDamage >= carch->hitPts)
-		{
-			fate = DamageEntry::SubObjFate(1);
-		}
-		else
-		{
-			fate = DamageEntry::SubObjFate(0);
-		}
 		ship->damage_col_grp(carch, colGrpDamage, dmg);
 	}
 

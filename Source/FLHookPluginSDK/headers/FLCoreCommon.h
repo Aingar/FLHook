@@ -146,6 +146,90 @@ public:
 	unsigned char data[128];
 };
 
+struct IMPORT EquipDesc
+{
+	EquipDesc(struct EquipDesc const&);
+	EquipDesc(void);
+	struct EquipDesc& operator=(struct EquipDesc const&);
+	bool operator==(struct EquipDesc const&)const;
+	bool operator!=(struct EquipDesc const&)const;
+	bool operator<(struct EquipDesc const&)const;
+	bool operator>(struct EquipDesc const&)const;
+
+	static struct CacheString const  CARGO_BAY_HP_NAME;
+	unsigned int get_arch_id(void)const;
+	float get_cargo_space_occupied(void)const;
+	int get_count(void)const;
+	struct CacheString const& get_hardpoint(void)const;
+	unsigned short get_id(void)const;
+	int get_owner(void)const;
+	float get_status(void)const;
+	bool get_temporary(void)const;
+	bool is_equipped(void)const;
+	bool is_internal(void)const;
+	void make_internal(void);
+	void set_arch_id(unsigned int);
+	void set_count(int);
+	void set_equipped(bool);
+	void set_hardpoint(struct CacheString const&);
+	void set_id(unsigned short);
+	void set_owner(int);
+	void set_status(float);
+	void set_temporary(bool);
+
+public:
+	ushort iDunno;
+	ushort sID;
+	uint iArchID;
+	CacheString szHardPoint;
+	bool bMounted;
+	float fHealth;
+	uint iCount;
+	bool bMission;
+	uint iOwner;
+};
+
+class IMPORT EquipDescList
+{
+public:
+	EquipDescList(struct EquipDescVector const&);
+	EquipDescList(class EquipDescList const&);
+	EquipDescList(void);
+	~EquipDescList(void);
+	class EquipDescList& operator=(class EquipDescList const&);
+	int add_equipment_item(struct EquipDesc const&, bool);
+	void append(class EquipDescList const&);
+	struct EquipDesc* find_equipment_item(struct CacheString const&);
+	struct EquipDesc* find_equipment_item(unsigned short);
+	struct EquipDesc const* find_equipment_item(struct CacheString const&)const;
+	struct EquipDesc const* find_equipment_item(unsigned short)const;
+	struct EquipDesc const* find_matching_cargo(unsigned int, int, float)const;
+	float get_cargo_space_occupied(void)const;
+	int remove_equipment_item(unsigned short, int);
+	struct EquipDesc* traverse_equipment_type(unsigned int, struct EquipDesc const*);
+	struct EquipDesc const* traverse_equipment_type(unsigned int, struct EquipDesc const*)const;
+
+public:
+	uint iDunno;
+	std::list<EquipDesc> equip;
+};
+
+struct IMPORT EquipDescVector
+{
+	EquipDescVector(struct EquipDescVector const&);
+	EquipDescVector(class EquipDescList const&);
+	EquipDescVector(void);
+	~EquipDescVector(void);
+	struct EquipDescVector& operator=(struct EquipDescVector const&);
+	int add_equipment_item(struct EquipDesc const&, bool);
+	void append(struct EquipDescVector const&);
+	struct EquipDesc* traverse_equipment_type(unsigned int, struct EquipDesc const*);
+
+public:
+	uint iDunno;
+	std::vector<EquipDesc> equip;
+};
+
 struct IMPORT ActionDB
 {
 	ActionDB(void);
@@ -3392,7 +3476,12 @@ public:
 	void SetTargetPlayerID(unsigned int);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint sourceClient;
+	uint targetClient;
+	CPlayerTradeOffer* counterOffer;
+	EquipDescList equipOffer;
+	int moneyOffered;
+	bool isAccepted;
 };
 
 
@@ -4013,89 +4102,6 @@ namespace EngineEquipConsts
 	IMPORT  float  THROTTLE_STEADY_TIME;
 };
 
-struct IMPORT EquipDesc
-{
-	EquipDesc(struct EquipDesc const &);
-	EquipDesc(void);
-	struct EquipDesc & operator=(struct EquipDesc const &);
-	bool operator==(struct EquipDesc const &)const;
-	bool operator!=(struct EquipDesc const &)const;
-	bool operator<(struct EquipDesc const &)const;
-	bool operator>(struct EquipDesc const &)const;
-
-	static struct CacheString const  CARGO_BAY_HP_NAME;
-	unsigned int get_arch_id(void)const;
-	float get_cargo_space_occupied(void)const;
-	int get_count(void)const;
-	struct CacheString const & get_hardpoint(void)const;
-	unsigned short get_id(void)const;
-	int get_owner(void)const;
-	float get_status(void)const;
-	bool get_temporary(void)const;
-	bool is_equipped(void)const;
-	bool is_internal(void)const;
-	void make_internal(void);
-	void set_arch_id(unsigned int);
-	void set_count(int);
-	void set_equipped(bool);
-	void set_hardpoint(struct CacheString const &);
-	void set_id(unsigned short);
-	void set_owner(int);
-	void set_status(float);
-	void set_temporary(bool);
-
-public:
-	USHORT iDunno;
-	USHORT sID;
-	UINT iArchID;
-	CacheString szHardPoint;
-	bool bMounted;
-	float fHealth;
-	UINT iCount;
-	bool bMission;
-	uint iOwner;
-};
-
-class IMPORT EquipDescList
-{
-public:
-	EquipDescList(struct EquipDescVector const &);
-	EquipDescList(class EquipDescList const &);
-	EquipDescList(void);
-	~EquipDescList(void);
-	class EquipDescList & operator=(class EquipDescList const &);
-	int add_equipment_item(struct EquipDesc const &, bool);
-	void append(class EquipDescList const &);
-	struct EquipDesc * find_equipment_item(struct CacheString const &);
-	struct EquipDesc * find_equipment_item(unsigned short);
-	struct EquipDesc const * find_equipment_item(struct CacheString const &)const;
-	struct EquipDesc const * find_equipment_item(unsigned short)const;
-	struct EquipDesc const * find_matching_cargo(unsigned int, int, float)const;
-	float get_cargo_space_occupied(void)const;
-	int remove_equipment_item(unsigned short, int);
-	struct EquipDesc * traverse_equipment_type(unsigned int, struct EquipDesc const *);
-	struct EquipDesc const * traverse_equipment_type(unsigned int, struct EquipDesc const *)const;
-
-public:
-	uint iDunno;
-	std::list<EquipDesc> equip;
-};
-
-struct IMPORT EquipDescVector
-{
-	EquipDescVector(struct EquipDescVector const &);
-	EquipDescVector(class EquipDescList const &);
-	EquipDescVector(void);
-	~EquipDescVector(void);
-	struct EquipDescVector & operator=(struct EquipDescVector const &);
-	int add_equipment_item(struct EquipDesc const &, bool);
-	void append(struct EquipDescVector const &);
-	struct EquipDesc * traverse_equipment_type(unsigned int, struct EquipDesc const *);
-
-public:
-	uint iDunno;
-	std::vector<EquipDesc> equip;
-};
 
 namespace ErrorHandler
 {

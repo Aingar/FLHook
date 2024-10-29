@@ -184,7 +184,7 @@ namespace RepFixer
 				set_mapFactionReps[id] = factionRepVector;
 			}
 		}
-
+		ini.close();
 	}
 
 	void LoadTagRephacks()

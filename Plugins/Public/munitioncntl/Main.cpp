@@ -425,10 +425,11 @@ void ReadMunitionDataFromInis()
 				}
 				if (foundItem)
 				{
-					explosionTypeMap[currNickname] = damageType;
+					damageType.type = CreateID(ini.get_value_string(0));
 				}
 			}
 		}
+		ini.close();
 	}
 
 	for (string& shipFile : shipFiles)

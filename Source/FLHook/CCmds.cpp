@@ -1284,24 +1284,6 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 			}
 
 		}
-		if (bSocket)
-		{
-			if (bLocalSocket)
-			{
-				if (set_bLogLocalSocketCmds)
-					HkAddSocketCmdLog("finnished");
-			}
-			else
-			{
-				if (set_bLogSocketCmds)
-					HkAddSocketCmdLog("finnished");
-			}
-		}
-		else
-		{
-			if (set_bLogAdminCmds)
-				HkAddAdminCmdLog("finnished");
-		}
 	}
 	catch (...) {
 		if (bSocket)

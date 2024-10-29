@@ -342,6 +342,7 @@ void InitializePlayerInfo(uint clientId)
 			paraCounter++;
 		}
 	}
+	ini.close();
 	playerInfo += L"<POP/></RDL>";
 
 	playerInfoData[clientId].playerInfo = playerInfo;

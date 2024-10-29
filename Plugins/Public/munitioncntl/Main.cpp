@@ -287,27 +287,29 @@ void ReadMunitionDataFromInis()
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("explosion"))
+			if (!ini.is_header("explosion"))
 			{
-				uint currNickname;
-				ExplosionDamageType damageType;
-				while (ini.read_value())
+				continue;
+			}
+			uint currNickname;
+			ExplosionDamageType damageType;
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
 				{
-					if (ini.is_value("nickname"))
-					{
-						currNickname = CreateID(ini.get_value_string());
-					}
-					else if (ini.is_value("weapon_type"))
-					{
-						damageType.type = CreateID(ini.get_value_string(0));
-					}
+					currNickname = CreateID(ini.get_value_string());
 				}
-				if (damageType.type)
+				else if (ini.is_value("weapon_type"))
 				{
-					explosionTypeMap[currNickname] = damageType;
+					damageType.type = CreateID(ini.get_value_string(0));
 				}
 			}
+			if (damageType.type)
+			{
+				explosionTypeMap[currNickname] = damageType;
+			}
 		}
+		ini.close();
 	}
 
 	for (string& shipFile : shipFiles)

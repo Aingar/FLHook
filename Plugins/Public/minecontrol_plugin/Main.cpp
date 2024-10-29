@@ -580,6 +580,7 @@ EXPORT void LoadSettings()
 
             miningDB.emplace_back(miningDBEntry);
         }
+        ini.close();
     }
 
     struct PlayerData* pPD = 0;

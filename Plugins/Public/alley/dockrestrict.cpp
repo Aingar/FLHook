@@ -30,16 +30,29 @@
 //Structures and shit yo
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-static unordered_set<uint> idlist;
-static unordered_set<uint> listAllowedShips;
-static map<uint, wstring> MapActiveSirens;
+struct NoDockData {
+	unordered_set<uint> blockedBaseIFFs;
+	unordered_set<uint> contrabandItems;
+	unordered_set<uint> validSystems;
+	bool canPolice = false;
+};
 
-static int duration = 60;
-static map<uint, int> mapActiveNoDock;
+unordered_map<uint, NoDockData> nodockDataMap;
+static unordered_map<uint, wstring> MapActiveSirens;
+
+static int set_duration = 60;
+
+struct ActiveNoDock
+{
+	unordered_set<uint>* blockedBaseIFFs;
+	int duration;
+};
+
+static unordered_map<uint, ActiveNoDock> mapActiveNoDock;
 
 static unordered_set<uint> baseblacklist;
 
-static list<wstring> superNoDockedShips;
+static unordered_set<wstring> superNoDockedShips;
 
 FILE *Logfile = fopen("./flhook_logs/nodockcommand.log", "at");
 
@@ -83,23 +96,32 @@ void ADOCK::LoadSettings()
 		{
 			if (ini.is_header("nodockcommand"))
 			{
+				uint currId;
+				NoDockData nodockdata;
 				while (ini.read_value())
 				{
 					if (ini.is_value("id"))
 					{
-						idlist.insert(CreateID(ini.get_value_string(0)));
+						currId = CreateID(ini.get_value_string(0));
 					}
-				}
-			}
-			else if (ini.is_header("nodockexemption"))
-			{
-				while (ini.read_value())
-				{
-					if (ini.is_value("no"))
+					else if (ini.is_value("contraband"))
 					{
-						baseblacklist.insert(CreateID(ini.get_value_string(0)));
+						nodockdata.contrabandItems.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("system"))
+					{
+						nodockdata.validSystems.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("nodock_affiliation"))
+					{
+						nodockdata.blockedBaseIFFs.insert(MakeId(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("can_police"))
+					{
+						nodockdata.canPolice = ini.get_value_bool(0);
 					}
 				}
+				nodockDataMap[currId] = nodockdata;
 			}
 			else if (ini.is_header("config"))
 			{
@@ -107,7 +129,7 @@ void ADOCK::LoadSettings()
 				{
 					if (ini.is_value("duration"))
 					{
-						duration = ini.get_value_int(0);
+						set_duration = ini.get_value_int(0);
 					}
 				}
 			}
@@ -117,7 +139,7 @@ void ADOCK::LoadSettings()
 				{
 					if (ini.is_value("ship"))
 					{
-						superNoDockedShips.push_back((const wchar_t*)ini.get_value_wstring());
+						superNoDockedShips.insert((const wchar_t*)ini.get_value_wstring());
 					}
 				}
 			}
@@ -132,9 +154,9 @@ void ADOCK::LoadSettings()
 
 void ADOCK::Timer()
 {
-	for (map<uint, int>::iterator i = mapActiveNoDock.begin(); i != mapActiveNoDock.end(); ++i)
+	for (auto i = mapActiveNoDock.begin(); i != mapActiveNoDock.end(); ++i)
 	{
-		if (i->second == 0)
+		if (i->second.duration == 0)
 		{
 			const wchar_t* wszCharname = (const wchar_t*)Players.GetActiveCharacterName(i->first);
 			if (wszCharname) {
@@ -148,86 +170,103 @@ void ADOCK::Timer()
 		}
 		else
 		{
-			i->second = i->second - 1;
+			--i->second.duration;
 		}
 	}
 }
 
 void ADOCK::ClearClientInfo(uint iClientID)
 {
-	listAllowedShips.erase(iClientID);
 	MapActiveSirens.erase(iClientID);
 }
 
-void ADOCK::PlayerLaunch(unsigned int iShip, unsigned int client)
+bool CheckContraband(IObjRW* target, NoDockData& nodockData)
 {
-	const CEquip* Id = ClientInfo[client].cship->equip_manager.FindFirst(TractorBeam);
-	if (!Id)
+	if (nodockData.contrabandItems.empty())
 	{
-		return;
+		return true;
 	}
 
-	if (idlist.count(Id->archetype->iArchID))
+	CShip* cship = reinterpret_cast<CShip*>(target->cobj);
+
+	CEquipTraverser tr(Cargo);
+	CEquip* equip;
+	while (equip = cship->equip_manager.Traverse(tr))
 	{
-		listAllowedShips.insert(client);
+		if (nodockData.contrabandItems.count(equip->archetype->iArchID))
+		{
+			return true;
+		}
 	}
+	return false;
 }
 
 bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
-	if (!listAllowedShips.count(iClientID))
+	uint clientFacID = ClientInfo[iClientID].playerID;
+	auto nodockDataIter = nodockDataMap.find(clientFacID);
+	if (nodockDataIter == nodockDataMap.end())
 	{
-		PrintUserCmdText(iClientID, L"You are not allowed to use this.");
+		PrintUserCmdText(iClientID, L"ERR Your ID has no access to this command");
+		return true;
+	}
+	NoDockData& nodockData = nodockDataIter->second;
+
+	CShip* cship = ClientInfo[iClientID].cship;
+	if (!cship) {
+		PrintUserCmdText(iClientID, L"ERR You are docked");
 		return true;
 	}
 
-	uint iShip = 0;
-	pub::Player::GetShip(iClientID, iShip);
-	if (!iShip) {
-		PrintUserCmdText(iClientID, L"Error: You are docked");
-		return true;
+	IObjRW* target = cship->get_target();
+
+	if (!target) {
+		//PrintUserCmdText(iClientID, L"ERR No target");
+		//return true;
+		target = HkGetInspectObj(cship->id);
 	}
 
-	uint iTarget = 0;
-	pub::SpaceObj::GetTarget(iShip, iTarget);
-
-	if (!iTarget) {
-		PrintUserCmdText(iClientID, L"Error: No target");
-		return true;
-	}
-
-	uint iClientIDTarget = HkGetClientIDByShip(iTarget);
-	if (!HkIsValidClientID(iClientIDTarget))
+	uint targetClientID = target->cobj->ownerPlayer;
+	if (!targetClientID)
 	{
-		PrintUserCmdText(iClientID, L"Error: Target is no player");
+		PrintUserCmdText(iClientID, L"ERR Target is not a player ship");
 		return true;
 	}
 
-	wstring wscTargetCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
-
-	for (map<uint, int>::iterator i = mapActiveNoDock.begin(); i != mapActiveNoDock.end(); ++i)
+	if (!nodockData.validSystems.count(cship->system))
 	{
-		if (i->first == iClientIDTarget)
-		{
-			PrintUserCmdText(iClientID, L"OK Removal of docking rights reset to %d seconds", duration);
-			PrintUserCmdText(iClientIDTarget, L"Removal of docking rights reset to %d seconds", duration);
-			i->second = duration;
-			return true;
-		}
+		PrintUserCmdText(iClientID, L"ERR You cannot use this command in this system");
+		return true;
 	}
 
-	mapActiveNoDock[iClientIDTarget] = duration;
+	if (!CheckContraband(target, nodockData))
+	{
+		PrintUserCmdText(iClientID, L"ERR Target does not carry contraband");
+		return true;
+	}
 
+	auto activeNodockMap = mapActiveNoDock.find(targetClientID);
+	if (activeNodockMap != mapActiveNoDock.end())
+	{
+		PrintUserCmdText(iClientID, L"OK Removal of docking rights reset to %d seconds", set_duration);
+		PrintUserCmdText(targetClientID, L"Removal of docking rights reset to %d seconds", set_duration);
+		activeNodockMap->second.duration = set_duration;
+		return true;
+	}
+
+	mapActiveNoDock[targetClientID].duration = set_duration;
+	mapActiveNoDock[targetClientID].blockedBaseIFFs = &nodockData.blockedBaseIFFs;
+	wstring targetName = (const wchar_t*)Players.GetActiveCharacterName(targetClientID);
 	//10k space message
 
 	stringstream ss;
-	ss << duration;
+	ss << set_duration;
 	string strduration = ss.str();
 
 	wstring wscMsg = L"%time %victim's docking rights have been removed by %player for minimum %duration seconds";
 	wscMsg = ReplaceStr(wscMsg, L"%time", GetTimeString(false));
 	wscMsg = ReplaceStr(wscMsg, L"%player", (const wchar_t*)Players.GetActiveCharacterName(iClientID));
-	wscMsg = ReplaceStr(wscMsg, L"%victim", wscTargetCharname.c_str());
+	wscMsg = ReplaceStr(wscMsg, L"%victim", targetName.c_str());
 	wscMsg = ReplaceStr(wscMsg, L"%duration", stows(strduration).c_str());
 	PrintLocalUserCmdText(iClientID, wscMsg, 10000);
 
@@ -236,7 +275,7 @@ bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &
 	//internal log
 	wstring wscMsgLog = L"<%sender> removed docking rights from <%victim>";
 	wscMsgLog = ReplaceStr(wscMsgLog, L"%sender", wscCharname.c_str());
-	wscMsgLog = ReplaceStr(wscMsgLog, L"%victim", wscTargetCharname.c_str());
+	wscMsgLog = ReplaceStr(wscMsgLog, L"%victim", targetName.c_str());
 	string scText = wstos(wscMsgLog);
 	Logging("%s", scText.c_str());
 
@@ -249,23 +288,11 @@ bool ADOCK::IsDockAllowed(uint iShip, uint iDockTarget, uint iClientID)
 	{
 		boolean supernodocked = false;
 		wstring curCharName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-		list<wstring>::iterator sndIter = superNoDockedShips.begin();
-		while (sndIter != superNoDockedShips.end())
+		auto sndIter = superNoDockedShips.find(curCharName);
+		if (sndIter != superNoDockedShips.end())
 		{
-			if (*sndIter == curCharName)
-			{
-				supernodocked = true;
-				break;
-			}
-			sndIter++;
-		}
-
-		if (supernodocked)
-		{
-			uint iID;
-			pub::SpaceObj::GetDockingTarget(iDockTarget, iID);
-			Universe::IBase* base = Universe::get_base(iID);
-			if (base)
+			auto iobj = HkGetInspectObj(iDockTarget);
+			if (iobj && iobj->cobj->type & (Station | DockingRing))
 			{
 				PrintUserCmdText(iClientID, L"You are not allowed to dock on any base.");
 				return false;
@@ -274,20 +301,30 @@ bool ADOCK::IsDockAllowed(uint iShip, uint iDockTarget, uint iClientID)
 	}
 
 	// instead of complicated code, we just check if he's nice. If so, we ignore the rest of the code.
-	if (!mapActiveNoDock.count(iClientID))
+	auto activeNoDockIter = mapActiveNoDock.find(iClientID);
+	if (activeNoDockIter == mapActiveNoDock.end())
 	{
 		return true;
 	}
 
-	uint base;
-	pub::SpaceObj::GetDockingTarget(iDockTarget, base);
+	auto iobj = HkGetInspectObj(iDockTarget);
+	uint affiliation = 0;
+	if (!iobj || iobj->get_affiliation(affiliation) != 0)
+	{
+		return true;
+	}
+
+	if (!(iobj->cobj->type & (Station | DockingRing)))
+	{
+		return true;
+	}
 
 	// if he's not nice, we check if the base is subject to nodock effect.
-	if (baseblacklist.count(base))
+	if (!activeNoDockIter->second.blockedBaseIFFs 
+		|| activeNoDockIter->second.blockedBaseIFFs->count(affiliation))
 	{
 		//we have found this base in the blacklist. nodock will therefore work. don't let him dock.
-		pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("info_access_denied"));
-		PrintUserCmdText(iClientID, L"You are currently not allowed to dock on this base.");
+		PrintUserCmdText(iClientID, L"Your docking permissions have been temporarily taken away. %d seconds remaining", activeNoDockIter->second.duration);
 		return false;
 	}
 
@@ -310,23 +347,24 @@ void ADOCK::AdminNoDock(CCmds* cmds, const wstring &wscCharname)
 		return;
 	}
 
-	for (map<uint, int>::iterator i = mapActiveNoDock.begin(); i != mapActiveNoDock.end(); ++i)
+	for (auto i = mapActiveNoDock.begin(); i != mapActiveNoDock.end(); ++i)
 	{
 		if (i->first == targetPlyr.iClientID)
 		{
-			cmds->Print(L"OK Removal of docking rights reset to %d seconds", duration);
-			PrintUserCmdText(targetPlyr.iClientID, L"Removal of docking rights reset to %d seconds", duration);
-			i->second = duration;
+			cmds->Print(L"OK Removal of docking rights reset to %d seconds", set_duration);
+			PrintUserCmdText(targetPlyr.iClientID, L"Removal of docking rights reset to %d seconds", set_duration);
+			i->second.duration = set_duration;
 			return;
 		}
 	}
 
-	mapActiveNoDock[targetPlyr.iClientID] = duration;
+	mapActiveNoDock[targetPlyr.iClientID].duration = set_duration;
+	mapActiveNoDock[targetPlyr.iClientID].blockedBaseIFFs = nullptr;
 
 	//10k space message
 
 	stringstream ss;
-	ss << duration;
+	ss << set_duration;
 	string strduration = ss.str();
 
 	wstring wscMsg = L"%time %victim's docking rights have been removed by %player for minimum %duration seconds";
@@ -349,16 +387,19 @@ void ADOCK::AdminNoDock(CCmds* cmds, const wstring &wscCharname)
 
 bool ADOCK::PoliceCmd(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
-	uint iShip = 0;
-	pub::Player::GetShip(iClientID, iShip);
-	if (!iShip) {
-		PrintUserCmdText(iClientID, L"Error: You are docked");
+	CShip* cship = ClientInfo[iClientID].cship;
+
+	if (!cship)
+	{
+		PrintUserCmdText(iClientID, L"ERR You are docked");
 		return true;
 	}
 
-	if (!listAllowedShips.count(iClientID))
+	auto playerID = ClientInfo[iClientID].playerID;
+	auto nodockData = nodockDataMap.find(playerID);
+	if(nodockData == nodockDataMap.end() || !nodockData->second.canPolice)
 	{
-		PrintUserCmdText(iClientID, L"You are not allowed to use this.");
+		PrintUserCmdText(iClientID, L"ERR You are not allowed to use this command.");
 		return true;
 	}
 

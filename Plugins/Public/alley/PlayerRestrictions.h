@@ -43,8 +43,7 @@ namespace REP
 namespace ADOCK
 {
 	void LoadSettings();
-	void ClearClientInfo(unsigned int iClientID);
-	void PlayerLaunch(unsigned int iShip, unsigned int client);
+	void ClearClientInfo(uint iClientID);
 	bool NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	void Timer();
 	bool IsDockAllowed(uint iShip, uint iDockTarget, uint iClientID);

@@ -1047,7 +1047,6 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int client)
 		return;
 	}
 
-	ADOCK::PlayerLaunch(iShip, client);
 	SCI::CheckOwned(client);
 	SCI::UpdatePlayerID(client);
 	PlayerMarkArray[client] = 0;
@@ -1066,14 +1065,14 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 		}
 		if (!ADOCK::IsDockAllowed(iShip, iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			iCancel = -1;
 			response = DOCK_DENIED;
 			return 0;
 		}
 		if (!SCI::CanDock(iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			iCancel = -1;
 			response = ACCESS_DENIED;
 			return 0;

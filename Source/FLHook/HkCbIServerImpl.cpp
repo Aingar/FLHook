@@ -329,10 +329,15 @@ namespace HkIServerImpl
 			return;
 		}
 		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
+		CETractor* playerID = reinterpret_cast<CETractor*>(playerCship->equip_manager.FindFirst(TractorBeam));
 		ClientInfo[iClientID].cship = playerCship;
 		HkIEngine::playerShips.insert(iShip);
 		ClientInfo[iClientID].fRadarRange = scanner->GetRadarRange();
 		ClientInfo[iClientID].fRadarRange *= ClientInfo[iClientID].fRadarRange;
+		if (playerID)
+		{
+			ClientInfo[iClientID].playerID = playerID->archetype->iArchID;
+		}
 		playerCship->Release();
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));

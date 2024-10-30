@@ -115,6 +115,8 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			centerOfMass.z * centerOfMass.z -
 			radius * radius - squaredDetDist;
 
+		distance = max(distance, 0.0f);
+
 		float eqDmgMult = 0.0f;
 
 		rootDistance = min(rootDistance, distance);
@@ -167,6 +169,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition);
 			distance -= squaredDetDist;
+			distance = max(distance, 0.0f);
 
 			rootDistance = min(rootDistance, distance);
 
@@ -232,6 +235,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		return;
 	}
 
+	rootDistance = max(rootDistance, 0.1f);
 	distanceSum += rootDistance;
 
 	float unsquaredRootDistance = sqrtf(rootDistance);
@@ -302,7 +306,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	float squaredDetDist = explData ? explData->detDist : 0.0f;
 	rootDistance -= squaredDetDist;
-	
+	rootDistance = max(rootDistance, 0.1f);
 
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
 	if (!shield || !shield->IsFunctioning())

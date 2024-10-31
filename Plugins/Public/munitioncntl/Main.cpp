@@ -235,7 +235,7 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("detonation_dist"))
 					{
-						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0) * ini.get_value_float(0);
+						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0);
 					}
 				}
 			}
@@ -347,7 +347,7 @@ void ReadMunitionDataFromInis()
 						damageType.percentageDamageEnergy = ini.get_value_float(0);
 						foundItem = true;
 					}
-					else if (ini.is_value("cruise_disrupt"))
+					else if (ini.is_value("cruise_disruptor"))
 					{
 						damageType.cruiseDisrupt = ini.get_value_bool(0);
 						foundItem = true;
@@ -414,7 +414,7 @@ void ReadMunitionDataFromInis()
 					damageType.percentageDamageEnergy = ini.get_value_float(0);
 					foundItem = true;
 				}
-				else if (ini.is_value("cruise_disrupt"))
+				else if (ini.is_value("cruise_disruptor"))
 				{
 					damageType.cruiseDisrupt = ini.get_value_bool(0);
 					foundItem = true;

@@ -70,10 +70,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 {
 	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
 
-	float squaredDetDist = 0.0f;
+	float detonationDistance = 0.0f;
 	if (explData)
 	{
-		squaredDetDist = explData->detDist;
+		detonationDistance = explData->detDist;
 		weaponArmorPenValue = explData->armorPen;
 		weaponArmorPenArch = 0;
 	}
@@ -83,11 +83,12 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		weaponArmorPenArch = 0;
 	}
 
-	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
-	
-	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
-	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
-	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
+	float threeThirds = explosion->explosionArchetype->fRadius - detonationDistance;
+	float twoThirds = (threeThirds * 0.666667f) + detonationDistance;
+	float oneThird = (threeThirds * 0.333333f) + detonationDistance;
+	threeThirds *= threeThirds;
+	twoThirds *= twoThirds;
+	oneThird *= oneThird;
 
 	static Vector centerOfMass;
 	static float radius;
@@ -113,7 +114,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		float distance = centerOfMass.x * centerOfMass.x +
 			centerOfMass.y * centerOfMass.y +
 			centerOfMass.z * centerOfMass.z -
-			radius * radius - squaredDetDist;
+			radius * radius - detonationDistance;
 
 		distance = max(distance, 0.0f);
 
@@ -129,7 +130,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		{
 			eqDmgMult = 0.666666666f;
 		}
-		else if (distance < squaredExplosionRadius)
+		else if (distance < threeThirds)
 		{
 			eqDmgMult = 0.333333333f;
 		}
@@ -168,7 +169,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			}
 
 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition);
-			distance -= squaredDetDist;
+			distance -= detonationDistance;
 			distance = max(distance, 0.0f);
 
 			rootDistance = min(rootDistance, distance);
@@ -184,7 +185,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 				{
 					colGrpDmgMult = 0.6666f;
 				}
-				else if (distance < squaredExplosionRadius)
+				else if (distance < threeThirds)
 				{
 					colGrpDmgMult = 0.3333f;
 				}
@@ -205,7 +206,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 				continue;
 			}
 
-			if (distance > squaredExplosionRadius)
+			if (distance > threeThirds)
 			{
 				continue;
 			}
@@ -225,7 +226,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	{
 		dmgMult = 0.6666f;
 	}
-	else if (rootDistance < squaredExplosionRadius)
+	else if (rootDistance < threeThirds)
 	{
 		dmgMult = 0.3333f;
 	}
@@ -304,8 +305,8 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		return true;
 	}
 
-	float squaredDetDist = explData ? explData->detDist : 0.0f;
-	rootDistance -= squaredDetDist;
+	float detDist = explData ? explData->detDist : 0.0f;
+	rootDistance -= detDist * detDist;
 	rootDistance = max(rootDistance, 0.1f);
 
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
@@ -321,11 +322,12 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
 	}
 
-	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
-
-	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
-	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
-	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
+	float threeThirds = explosion->explosionArchetype->fRadius - detDist;
+	float twoThirds = (threeThirds * 0.666667f) + detDist;
+	float oneThird = (threeThirds * 0.333333f) + detDist;
+	threeThirds *= threeThirds;
+	twoThirds *= twoThirds;
+	oneThird *= oneThird;
 
 	float dmgMult = 0.0f;
 	if (rootDistance < oneThird)
@@ -336,7 +338,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	{
 		dmgMult = 0.6666f;
 	}
-	else if (rootDistance < squaredExplosionRadius)
+	else if (rootDistance < threeThirds)
 	{
 		dmgMult = 0.3333f;
 	}
@@ -345,12 +347,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		return true;
 	}
 
-	if (explData && explData->cruiseDisrupt)
-	{
-		dmg->damageCause = DamageCause::CruiseDisrupter;
-	}
-
-	ConPrint(L"ExplShieldDebug: dist mult: %0.2f, RayCastDist: %0.1fm, CenterDist: %0.1fm, explRadius: %0.0fm, baseDmg: %0.0f, finaldmg: %0.0f\n", dmgMult, sqrtf(rootDistance), Distance3D(iobj->cobj->vPos, explosion->explosionPosition), sqrtf(squaredExplosionRadius), shieldDamage, dmgMult * shieldDamage);
+	ConPrint(L"ExplShieldDebug: dist mult: %0.2f, RayCastDist: %0.1fm, CenterDist: %0.1fm, explRadius: %0.0fm, baseDmg: %0.0f, finaldmg: %0.0f\n", dmgMult, sqrtf(rootDistance), Distance3D(iobj->cobj->vPos, explosion->explosionPosition), sqrtf(threeThirds), shieldDamage, dmgMult * shieldDamage);
 	float damage = dmgMult * shieldDamage;
 	iobj->damage_shield_direct(shield, damage, dmg);
 
@@ -359,12 +356,14 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, const float rootDistance, ExplosionDamageData* explData)
 {
-	float squaredDetDist = explData ? explData->detDist : 0.0f;
-	float squaredExplosionRadius = explosion->explosionArchetype->fRadius * explosion->explosionArchetype->fRadius;
+	float detDist = explData ? explData->detDist : 0.0f;
 
-	float rootedDistance = sqrt(squaredExplosionRadius) - squaredDetDist;
-	float twoThirds = (rootedDistance * 0.67f) + squaredDetDist;
-	float oneThird = (rootedDistance * 0.33f) + squaredDetDist;
+	float threeThirds = explosion->explosionArchetype->fRadius - detDist;
+	float twoThirds = (threeThirds * 0.666667f) + detDist;
+	float oneThird = (threeThirds * 0.333333f) + detDist;
+	threeThirds *= threeThirds;
+	twoThirds *= twoThirds;
+	oneThird *= oneThird;
 
 	float dmgMult;
 	if (rootDistance < oneThird)
@@ -375,7 +374,7 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	{
 		dmgMult = 0.6666f;
 	}
-	else if (rootDistance < rootedDistance)
+	else if (rootDistance < threeThirds)
 	{
 		dmgMult = 0.3333f;
 	}
@@ -388,11 +387,6 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	if (explData && explData->percentageDamageEnergy)
 	{
 		damage += reinterpret_cast<CShip*>(iobj->cobj)->maxPower * explData->percentageDamageEnergy;
-	}
-
-	if (explData && explData->cruiseDisrupt)
-	{
-		dmg->damageCause = DamageCause::CruiseDisrupter;
 	}
 
 	iobj->damage_energy(damage, dmg);

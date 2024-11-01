@@ -153,6 +153,7 @@ void ReadMunitionDataFromInis()
 		}
 
 		uint currNickname;
+		uint explosion_arch;
 		while (ini.read_header())
 		{
 			if (ini.is_header("Mine"))
@@ -179,11 +180,18 @@ void ReadMunitionDataFromInis()
 					{
 						mineInfoMap[currNickname].dispersionAngle = ini.get_value_float(0) / (180.f / 3.14f);
 					}
+					else if (ini.is_value("explosion_arch"))
+					{
+						explosion_arch = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("detonation_dist"))
+					{
+						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0);
+					}
 				}
 			}
 			else if (ini.is_header("Munition"))
 			{
-				uint explosion_arch = 0;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))

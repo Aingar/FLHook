@@ -116,7 +116,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			centerOfMass.z * centerOfMass.z -
 			radius * radius - detonationDistance;
 
-		distance = max(distance, 0.0f);
+		distance = max(distance, 0.1f);
 
 		float eqDmgMult = 0.0f;
 
@@ -154,7 +154,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	}
 
 
-	float distanceSum = 0.0f;
+	float distanceSum = 0.1f;
 
 	vector<pair<CArchGroup*, float>> distancesVector;
 	{
@@ -170,7 +170,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition);
 			distance -= detonationDistance;
-			distance = max(distance, 0.0f);
+			distance = max(distance, 0.1f);
 
 			rootDistance = min(rootDistance, distance);
 

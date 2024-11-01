@@ -94,7 +94,7 @@ struct ExplosionDamageData
 	float detDist = 0.0f;
 	bool cruiseDisrupt = false;
 	bool damageSolars = true;
-	bool missileDestroy = true;
+	bool missileDestroy = false;
 };
 
 struct ShipData

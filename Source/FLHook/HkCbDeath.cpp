@@ -125,48 +125,47 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	lastShipId = iobj->get_id();
 
+	uint client = iobj->cobj->ownerPlayer;
+	if (client)
+	{
+		ClientInfo[client].iShipOld = ClientInfo[client].iShip;
+		ClientInfo[client].iShip = 0;
+
+		// skip processing if no cship, some ships can trigger this hook multiple times
+		if (ClientInfo[client].cship)
+		{
+			HkIEngine::playerShips.erase(ClientInfo[client].cship->id);
+			ClientInfo[client].dockPosition = iobj->cobj->vPos;
+			ClientInfo[client].cship = nullptr;
+			ClientInfo[client].iBaseEnterTime = (uint)time(0); //start idle kick timer
+		}
+	}
+
 	if (!isKill)
 	{
-		uint client = iobj->cobj->ownerPlayer;
-		if (client)
-		{
-			ClientInfo[client].iShipOld = ClientInfo[client].iShip;
-			ClientInfo[client].iShip = 0;
-
-			// skip processing if no cship, some ships can trigger this hook multiple times
-			if (ClientInfo[client].cship)
-			{
-				HkIEngine::playerShips.erase(ClientInfo[client].cship->id);
-				ClientInfo[client].isDocking = true;
-				ClientInfo[client].dockPosition = iobj->cobj->vPos;
-				ClientInfo[client].cship = nullptr;
-				ClientInfo[client].iBaseEnterTime = (uint)time(0); //start idle kick timer
-			}
-		}
+		ClientInfo[client].isDocking = true;
 		return;
 	}
 	LOG_CORE_TIMER_START
 	TRY_HOOK {
 		CALL_PLUGINS_V(PLUGIN_ShipDestroyed, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
 
-		CShip *cship = (CShip*)iobj->cobj;
-		uint iClientID = cship->ownerPlayer;
 
-		if (iClientID) { // a player was killed
+		if (client) { // a player was killed
 
 			wstring wscEvent;
 			wscEvent.reserve(256);
 			wscEvent = L"kill";
 
 			uint iSystemID;
-			pub::Player::GetSystem(iClientID, iSystemID);
+			pub::Player::GetSystem(client, iSystemID);
 			wchar_t wszSystem[64];
 			swprintf(wszSystem, L"%u", iSystemID);
 
-			DamageCause iCause = ClientInfo[iClientID].dmgLastCause;
+			DamageCause iCause = ClientInfo[client].dmgLastCause;
 			uint iClientIDKiller = HkGetClientIDByShip(killerId);
 
-			wstring wscVictim = (wchar_t*)Players.GetActiveCharacterName(iClientID);
+			wstring wscVictim = (wchar_t*)Players.GetActiveCharacterName(client);
 			wscEvent += L" victim=" + wscVictim;
 			if (iClientIDKiller) {
 				wstring wscType = L"";
@@ -186,7 +185,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				}
 
 				wstring wscMsg;
-				if (iClientID == iClientIDKiller) {
+				if (client == iClientIDKiller) {
 					wscEvent += L" type=selfkill";
 					wscMsg = ReplaceStr(set_wscDeathMsgTextSelfKill, L"%victim", wscVictim);
 				}
@@ -201,7 +200,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, iClientIDKiller, iCause);
+					SendDeathMsg(wscMsg, iSystemID, client, iClientIDKiller, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 
 			}
@@ -209,14 +208,14 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextAdminKill, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
+					SendDeathMsg(wscMsg, iSystemID, client, 0, iCause);
 			}
 			else if (!killerId) {
 				wscEvent += L" type=suicide";
 				wstring wscMsg = ReplaceStr(set_wscDeathMsgTextSuicide, L"%victim", wscVictim);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
+					SendDeathMsg(wscMsg, iSystemID, client, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
 			else 
@@ -238,20 +237,9 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				wscMsg = ReplaceStr(wscMsg, L"%type", wscType);
 
 				if (set_bDieMsg && wscMsg.length())
-					SendDeathMsg(wscMsg, iSystemID, iClientID, 0, iCause);
+					SendDeathMsg(wscMsg, iSystemID, client, 0, iCause);
 				ProcessEvent(L"%s", wscEvent.c_str());
 			}
-		}
-
-		ClientInfo[iClientID].iShipOld = ClientInfo[iClientID].iShip;
-		ClientInfo[iClientID].iShip = 0;
-
-		// skip processing if no cship, some ships can trigger this hook multiple times
-		if (ClientInfo[iClientID].cship)
-		{
-			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
-			ClientInfo[iClientID].cship = nullptr;
-			ClientInfo[iClientID].iBaseEnterTime = (uint)time(0); //start idle kick timer
 		}
 
 	} CATCH_HOOK({})

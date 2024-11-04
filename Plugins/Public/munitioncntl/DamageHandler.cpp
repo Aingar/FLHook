@@ -260,7 +260,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			float damageToDeal = damage * distance.first->colGrp->explosionResistance;
 			iobj->damage_col_grp(distance.first, damageToDeal, dmg);
 			totalDmg += damageToDeal;
-			ConPrint(L"rootColGrpDmg %u %0.0f %0.2f\n", distance.first->colGrp->id, damageToDeal, distance.first->colGrp->explosionResistance);
 		}
 
 		float hullDmg = explosion->explosionArchetype->fHullDamage;
@@ -273,7 +272,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		float damageToDeal = dmgMult * hullDmg * cship->archetype->fExplosionResistance * (rootMult / multSum) * shipArmorValue;
 		iobj->damage_hull(damageToDeal + (rootExtraDamage * cship->archetype->fExplosionResistance), dmg);
 		
-		ConPrint(L"totalHullDamage rootextra %0.0f\nmult %0.2f\ndist %0.1fm\ndmg %0.0f\n", rootExtraDamage, dmgMult, unsquaredRootDistance, damageToDeal + (rootExtraDamage * cship->archetype->fExplosionResistance));
 	}
 
 	armorEnabled = false;
@@ -347,7 +345,6 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		return true;
 	}
 
-	ConPrint(L"ExplShieldDebug: dist mult: %0.2f, RayCastDist: %0.1fm, CenterDist: %0.1fm, explRadius: %0.0fm, baseDmg: %0.0f, finaldmg: %0.0f\n", dmgMult, sqrtf(rootDistance), Distance3D(iobj->cobj->vPos, explosion->explosionPosition), sqrtf(threeThirds), shieldDamage, dmgMult * shieldDamage);
 	float damage = dmgMult * shieldDamage;
 	iobj->damage_shield_direct(shield, damage, dmg);
 

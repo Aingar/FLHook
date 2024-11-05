@@ -53,16 +53,34 @@ static float* pPlayer_range = ((float*)0x6d66af0);
 static float* pGroup_range = ((float*)0x6d66af4);
 	void __fastcall CheckRange(uint player, CSimple* scannedObject)
 	{
-		if (!ClientInfo[player].cship)
+		CShip* cship = ClientInfo[player].cship;
+		if (!cship)
 		{
+			ConPrint(L"NoCShip\n");
+			AddLog("RadarCrash: NoCShip");
+			return;
+		}
+		if (!Players[player].iShipID)
+		{
+			ClientInfo[player].cship = nullptr;
+			ConPrint(L"NoPlayerShip\n");
+			AddLog("RadarCrash: NoPlayerShip");
 			return;
 		}
 		float radarRange = ClientInfo[player].fRadarRange;
-		float scannerInterference = ClientInfo[player].cship->get_scanner_interference();
-		scannerInterference = max(scannerInterference, scannedObject->get_scanner_interference());
-		radarRange *= (1.0f - scannerInterference);
-		*pNPC_range = *pPlayer_range = radarRange;
-		*pGroup_range = radarRange * 4;
+		try
+		{
+			float scannerInterference = cship->get_scanner_interference();
+			scannerInterference = max(scannerInterference, scannedObject->get_scanner_interference());
+			radarRange *= (1.0f - scannerInterference);
+			*pNPC_range = *pPlayer_range = radarRange;
+			*pGroup_range = radarRange * 4;
+		}
+		catch(...)
+		{
+			ConPrint(L"LeRadarCrashPrevention\n");
+			AddLog("RadarCrash: LeRadarCrashPrevention");
+		}
 	}
 
 	__declspec(naked) void Radar_Range_naked()

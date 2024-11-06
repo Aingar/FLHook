@@ -523,3 +523,33 @@ __declspec(naked) void SolarExplosionHitNaked()
 		ret 0x8
 	}
 }
+
+typedef void(__thiscall* ShipMunitionHitFunc)(IObjRW*, MunitionImpactData*, DamageList*);
+ShipMunitionHitFunc ShipMunitionHitCall = ShipMunitionHitFunc(0x6CE9350);
+
+void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg)
+{
+
+	if (weaponArmorPenArch == data->munitionId->iArchID || SubObjectID::IsShieldEquipID(data->subObjId))
+	{
+		ShipMunitionHitCall(iShip, data, dmg);
+		return;
+	}
+
+	weaponArmorPenArch = data->munitionId->iArchID;
+	const auto munitionIter = munitionArmorPenMap.find(data->munitionId->iArchID);
+	if (munitionIter == munitionArmorPenMap.end())
+	{
+		weaponArmorPenValue = 0.0f;
+	}
+	else
+	{
+		weaponArmorPenValue = munitionIter->second;
+	}
+
+	armorEnabled = true;
+
+	ShipMunitionHitCall(iShip, data, dmg);
+
+	armorEnabled = false;
+}

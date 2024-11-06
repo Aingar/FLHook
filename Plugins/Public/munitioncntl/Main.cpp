@@ -1108,36 +1108,6 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	}
 }
 
-void __stdcall SPMunitionCollision(SSPMunitionCollisionInfo const& ci, unsigned int client)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	armorEnabled = true;
-
-	if (weaponArmorPenArch == ci.projectileArchID)
-	{
-		return;
-	}
-
-	weaponArmorPenArch = ci.projectileArchID;
-	const auto munitionIter = munitionArmorPenMap.find(ci.projectileArchID);
-	if (munitionIter == munitionArmorPenMap.end())
-	{
-		weaponArmorPenValue = 0.0f;
-	}
-	else
-	{
-		weaponArmorPenValue = munitionIter->second;
-	}
-}
-
-void __stdcall SPMunitionCollisionAfter(SSPMunitionCollisionInfo const& ci, unsigned int client)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	armorEnabled = false;
-}
-
 bool usedBatts = false;
 void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 {
@@ -1331,8 +1301,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollision, PLUGIN_HkIServerImpl_SPMunitionCollision, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SPMunitionCollisionAfter, PLUGIN_HkIServerImpl_SPMunitionCollision_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_After, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 10));

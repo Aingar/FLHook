@@ -9,6 +9,7 @@
 void ShipShieldDamageNaked();
 void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
+void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
@@ -118,6 +119,7 @@ extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;
 extern FARPROC GuidedExplosionHitOrigFunc;
 extern FARPROC SolarExplosionHitOrigFunc;
+extern FARPROC ShipMunitionHitOrigFunc;
 
 extern float shipArmorValue;
 extern uint shipArmorArch;

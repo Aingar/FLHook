@@ -102,7 +102,8 @@ struct ShipData
 {
 	int engineCount = 0;
 	bool internalEngine = false;
-	unordered_map<string, unordered_set<string>> hpMap;
+	unordered_map<string, unordered_set<string>> engineHpMap;
+	unordered_map<ushort, string> colGrpHpMap;
 };
 
 enum TRACKING_STATE {

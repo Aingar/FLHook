@@ -110,15 +110,37 @@ bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstr
 	return true;
 }
 
+int GetMembersInSpace(CPlayerGroup* group)
+{
+	if (!group)
+	{
+		return 0;
+	}
+
+	uint membersInSpace = 0;
+
+	for (int i = 0; i < group->GetMemberCount(); i++)
+	{
+		if (Players[group->GetMember(i)].iShipID)
+		{
+			membersInSpace++;
+		}
+	}
+
+	return membersInSpace;
+}
+
 bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 	uint groupId = ToUInt(GetParam(wscParam, ' ', 0));
 
+	auto group = Players[iClientID].PlayerGroup;
+
 	if (!groupId && wscParam.empty())
 	{
-		if (Players[iClientID].PlayerGroup)
+		if (group)
 		{
-			PrintUserCmdText(iClientID, L"Your group size: %u", Players[iClientID].PlayerGroup->GetMemberCount());
+			PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));
 		}
 		else
 		{
@@ -135,10 +157,10 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 		return false;
 	}
 
-	PrintUserCmdText(iClientID, L"Target group size: %u", groupIter->second->GetMemberCount());
-	if (Players[iClientID].PlayerGroup && groupIter->second != Players[iClientID].PlayerGroup)
+	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", groupIter->second->GetMemberCount(), GetMembersInSpace(group));
+	if (group && groupIter->second != group)
 	{
-		PrintUserCmdText(iClientID, L"Your group size: %u", Players[iClientID].PlayerGroup->GetMemberCount());
+		PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));
 	}
 	return true;
 }

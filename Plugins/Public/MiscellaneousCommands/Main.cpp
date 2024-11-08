@@ -119,7 +119,7 @@ int GetMembersInSpace(CPlayerGroup* group)
 
 	uint membersInSpace = 0;
 
-	for (int i = 0; i < group->GetMemberCount(); i++)
+	for (uint i = 0; i < group->GetMemberCount(); i++)
 	{
 		if (Players[group->GetMember(i)].iShipID)
 		{

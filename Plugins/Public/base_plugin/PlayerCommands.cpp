@@ -52,7 +52,7 @@ L"<TRA bold=\"true\"/><TEXT>/shop remove [item]</TEXT><TRA bold=\"false\"/><PARA
 L"<TEXT>Remove the item from the stock list. It cannot be sold to the base by docked ships unless they are base administrators.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/shop pin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Highlights the selected good, causing its price and stock to be visible on the base infocard.</TEXT><PARA/><PARA/>"
+L"<TEXT>Highlights the selected good, causing its price and stock to be visible on the base infocard between the first and second paragraph of the base's infocard.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/shop unpin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Removes the selected good from the pinned list.</TEXT><PARA/><PARA/>"
@@ -73,7 +73,7 @@ L"<TEXT>Defense Mode 3 - Logic: Whitelist > Hostile.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base info</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Set the base's infocard description.</TEXT><PARA/><PARA/>"
+L"<TEXT>Set the base's infocard description. First paragraph is a 'header' printed before Pinned Items.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/craft</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control factory modules to produce various goods and equipment.</TEXT><PARA/><PARA/>"
@@ -1184,8 +1184,16 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"OK %d/%d characters used", length, MAX_CHARACTERS);
 
 			// Update the infocard text.
+
+			base->infocardHeader.clear();
+
+			if (!base->infocard_para[1].empty())
+			{
+				base->infocardHeader = L"<TEXT>" + ReplaceStr(base->infocard_para[1], L"\n", L"</TEXT><PARA/><TEXT>") + L"</TEXT><PARA/><PARA/>";
+			}
+
 			base->infocard.clear();
-			for (int i = 1; i <= MAX_PARAGRAPHS; i++)
+			for (int i = 2; i <= MAX_PARAGRAPHS; i++)
 			{
 				wstring& wscXML = base->infocard_para[i];
 				if (wscXML.length())
@@ -1200,6 +1208,12 @@ namespace PlayerCommands
 			base->infocard_para[iPara] = L"";
 			PrintUserCmdText(client, L"OK");
 
+			base->infocardHeader.clear();
+
+			if (!base->infocard_para[1].empty())
+			{
+				base->infocardHeader = L"<TEXT>" + ReplaceStr(base->infocard_para[1], L"\n", L"</TEXT><PARA/><TEXT>") + L"</TEXT><PARA/><PARA/>";
+			}
 			// Update the infocard text.
 			base->infocard.clear();
 			for (int i = 1; i <= MAX_PARAGRAPHS; i++)

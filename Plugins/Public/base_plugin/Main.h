@@ -390,6 +390,9 @@ public:
 
 	wstring description_text;
 
+	// The header infocard for the base
+	wstring infocardHeader;
+
 	// The infocard for the base
 	wstring infocard;
 

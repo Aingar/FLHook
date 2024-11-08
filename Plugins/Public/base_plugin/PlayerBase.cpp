@@ -230,8 +230,15 @@ void PlayerBase::SetupDefaults()
 	}
 
 	// Build the infocard text
+	infocardHeader.clear();
+
+	if (!infocard_para[1].empty())
+	{
+		infocardHeader = L"<TEXT>" + ReplaceStr(infocard_para[1], L"\n", L"</TEXT><PARA/><TEXT>") + L"</TEXT><PARA/><PARA/>";
+	}
+
 	infocard.clear();
-	for (int i = 1; i <= MAX_PARAGRAPHS; i++)
+	for (int i = 2; i <= MAX_PARAGRAPHS; i++)
 	{
 		wstring& wscXML = infocard_para[i];
 
@@ -286,9 +293,9 @@ wstring PlayerBase::GetBaseHeaderText()
 
 	base_status += L"<TEXT>Core " + IntToStr(base_level) + L" " + affiliation_string + L" Installation</TEXT><PARA/><PARA/>";
 
-	if (!infocard.empty())
+	if (!infocardHeader.empty())
 	{
-		base_status += infocard;
+		base_status += infocardHeader;
 	}
 	else
 	{
@@ -322,6 +329,11 @@ wstring PlayerBase::GetBaseHeaderText()
 			base_status += buf;
 		}
 		base_status += L"<PARA/><PARA/>";
+	}
+
+	if (!infocard.empty())
+	{
+		base_status += infocard;
 	}
 
 	return base_status;

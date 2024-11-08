@@ -56,15 +56,11 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		CShip* cship = ClientInfo[player].cship;
 		if (!cship)
 		{
-			ConPrint(L"NoCShip\n");
-			AddLog("RadarCrash: NoCShip");
 			return;
 		}
 		if (!Players[player].iShipID)
 		{
 			ClientInfo[player].cship = nullptr;
-			ConPrint(L"NoPlayerShip\n");
-			AddLog("RadarCrash: NoPlayerShip");
 			return;
 		}
 		float radarRange = ClientInfo[player].fRadarRange;
@@ -78,8 +74,8 @@ static float* pGroup_range = ((float*)0x6d66af4);
 		}
 		catch(...)
 		{
-			ConPrint(L"LeRadarCrashPrevention\n");
-			AddLog("RadarCrash: LeRadarCrashPrevention");
+			ConPrint(L"RadarCrashPrevention\n");
+			AddLog("RadarCrashPrevention");
 		}
 	}
 

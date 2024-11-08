@@ -1178,6 +1178,8 @@ USERCMD UserCmds[] =
 	{ L"/pm",			Message::UserCmd_PrivateMsg, L"Usage: /privatemsg <charname> <messsage> or /pm ..."},
 	{ L"/factionmsg",	Message::UserCmd_FactionMsg, L"Usage: /factionmsg <tag> <message> or /fm ..."},
 	{ L"/fm",			Message::UserCmd_FactionMsg, L"Usage: /factionmsg <tag> <message> or /fm ..."},
+	{ L"/groupmsg",		Message::UserCmd_OtherGroupMsg, L"Usage: /groupmsg <groupId> <message> or /gm ..."},
+	{ L"/gm",			Message::UserCmd_OtherGroupMsg, L"Usage: /groupmsg <groupId> <message> or /gm ..."},
 	{ L"/invite",	Message::UserCmd_Invite, L"Usage: /invite <name> or /i ..." },
 	{ L"/i",			Message::UserCmd_Invite, L"Usage: /invite <name> or /i ..." },
 	{ L"/factioninvite",Message::UserCmd_FactionInvite, L"Usage: /factioninvite <tag> or /fi ..."},

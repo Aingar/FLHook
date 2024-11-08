@@ -908,6 +908,43 @@ namespace Message
 		return true;
 	}
 
+	bool Message::UserCmd_OtherGroupMsg(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+	{
+		wstring wscSender = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+
+		uint groupId = ToUInt(GetParam(wscParam, ' ', 0));
+		wstring wscMsg = GetParamToEnd(wscParam, ' ', 1);
+
+		auto senderGroup = Players[iClientID].PlayerGroup;
+		if (senderGroup)
+		{
+			wchar_t buf[25];
+			swprintf_s(buf, L" (group %u)", senderGroup->GetID());
+			wscSender += buf;
+		}
+
+		auto groupMap = reinterpret_cast<st6::map<const uint, CPlayerGroup*>*>(0x6D90400);
+		auto groupIter = groupMap->find(groupId);
+		if (!groupId || groupIter == groupMap->end() || groupIter->second->GetMemberCount() == 0)
+		{
+			PrintUserCmdText(iClientID, L"ERR No such group");
+			return true;
+		}
+
+		for (uint i = 0; i < groupIter->second->GetMemberCount(); i++)
+		{
+			uint targetClient = groupIter->second->GetMember(i);
+			if (targetClient == iClientID)
+			{
+				continue;
+			}
+			FormatSendChat(targetClient, wscSender, wscMsg, L"1691D9");
+		}
+
+		FormatSendChat(iClientID, wscSender, wscMsg, L"1691D9");
+		return true;
+	}
+
 	/** Send an preset message to the group chat */
 	bool Message::UserCmd_GMsg(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{

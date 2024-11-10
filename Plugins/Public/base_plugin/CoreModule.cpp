@@ -388,7 +388,17 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 {
 	if (!base->has_shield)
 	{
-		return incoming_damage;
+		base->SpaceObjDamaged(space_obj, attacking_space_obj, incoming_damage);
+		if (base->base_health > incoming_damage)
+		{
+			base->base_health -= incoming_damage;
+			return incoming_damage;
+		}
+		else
+		{
+			SpaceObjDestroyed(space_obj);
+			return 0.0f;
+		}
 	}
 	base->shield_timeout = (int)time(nullptr) + 60;
 	if (!base->isShieldOn)

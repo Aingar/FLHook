@@ -165,6 +165,78 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 	return true;
 }
 
+wstring GetShipClassName(uint shipClass)
+{
+	switch (shipClass)
+	{
+	case 0:
+		return L"Light Fighter";
+	case 1:
+		return L"Heavy Fighter";
+	case 2:
+		return L"Freighter";
+	case 3:
+		return L"Very Heavy Fighter";
+	case 4:
+		return L"Bomber";
+	case 6:
+		return L"Transport";
+	case 7:
+		return L"Train";
+	case 8:
+		return L"Heavy Transport";
+	case 9:
+		return L"Heavy Train";
+	case 10:
+		return L"Liner";
+	case 11:
+		return L"Gunboat";
+	case 12:
+		return L"Frigate";
+	case 13:
+		return L"Cruiser";
+	case 14:
+		return L"Asteroid Miner";
+	case 15:
+		return L"Battlecruiser";
+	case 16:
+		return L"Battleship";
+	case 17:
+		return L"Battleship";
+	case 18:
+		return L"Heavy Battleship";
+	case 19:
+		return L"Repair Ship";
+	default:
+		return L"Unknown";
+	}
+}
+
+bool UserCmd_FleetComp(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	auto group = Players[client].PlayerGroup;
+	if (!group)
+	{
+		PrintUserCmdText(client, L"ERR Not in group");
+		return false;
+	}
+
+	map<uint, uint> shipClassMap;
+	for (uint i = 0; i < group->GetMemberCount(); i++)
+	{
+		auto shipArch = Archetype::GetShip(Players[group->GetMember(i)].iShipArchetype);
+		shipClassMap[shipArch->iShipClass]++;
+	}
+
+	PrintUserCmdText(client, L"Fleet composition:");
+	for (auto& entry : shipClassMap)
+	{
+		PrintUserCmdText(client, L"%ux %ls", entry.second, GetShipClassName(entry.first).c_str());
+	}
+
+	return true;
+}
+
 bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 	if (!Players[iClientID].iShipID)
@@ -429,6 +501,8 @@ USERCMD UserCmds[] =
 	{ L"/missionbug", UserCmd_ForceAbortMission, L""},
 	{ L"/groupsize", UserCmd_GroupSize, L""},
 	{ L"/gs", UserCmd_GroupSize, L""},
+	{ L"/fleetcomp", UserCmd_FleetComp, L""},
+	{ L"/fc", UserCmd_FleetComp, L""},
 };
 
 /**

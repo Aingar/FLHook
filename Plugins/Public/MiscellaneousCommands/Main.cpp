@@ -157,7 +157,7 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 		return false;
 	}
 
-	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", groupIter->second->GetMemberCount(), GetMembersInSpace(group));
+	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", groupIter->second->GetMemberCount(), GetMembersInSpace(groupIter->second));
 	if (group && groupIter->second != group)
 	{
 		PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));

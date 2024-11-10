@@ -121,6 +121,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="DamageHandler.cpp" />
     <ClCompile Include="Hooks.cpp" />
     <ClCompile Include="Main.cpp" />
   </ItemGroup>

@@ -20,12 +20,16 @@ vector<ShieldSyncData> shieldStateUpdateMap;
 unordered_map<uint, ShieldBoostData> shieldBoostMap;
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
-unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+unordered_map<uint, ExplosionDamageData> explosionTypeMap;
+unordered_map<uint, float> shipArmorMap;
+unordered_map<uint, float> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 
-unordered_map<uint, ShipData> equipHpMap;
+unordered_map<uint, ShipData> shipDataMap;
 
 unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
+
+vector<pair<uint, uint>> equipUpdateVector;
 
 struct SpeedCheck
 {
@@ -110,7 +114,52 @@ void ReadMunitionDataFromInis()
 
 	ini.close();
 
-	for (string& equipFile : equipFiles)
+	for (string shipFile : shipFiles)
+	{
+		shipFile = gameDir + shipFile;
+		if (!ini.open(shipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+		ushort currSID = 0;
+		while (ini.read_header())
+		{
+			if (ini.is_header("Ship"))
+			{
+				currSID = 3;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("armor_mult"))
+					{
+						shipArmorMap[currNickname] = ini.get_value_float(0);
+						break;
+					}
+				}
+			}
+			else if (ini.is_header("CollisionGroup"))
+			{
+				currSID++;
+				while (ini.read_value())
+				{
+					if (ini.is_value("hp_disable"))
+					{
+						shipDataMap[currNickname].colGrpHpMap[currSID] = ini.get_value_string();
+						break;
+					}
+				}
+			}
+		}
+
+		ini.close();
+	}
+
+	for (string equipFile : equipFiles)
 	{
 		equipFile = gameDir + equipFile;
 		if (!ini.open(equipFile.c_str(), false))
@@ -119,6 +168,7 @@ void ReadMunitionDataFromInis()
 		}
 
 		uint currNickname;
+		uint explosion_arch;
 		while (ini.read_header())
 		{
 			if (ini.is_header("Mine"))
@@ -145,6 +195,14 @@ void ReadMunitionDataFromInis()
 					{
 						mineInfoMap[currNickname].dispersionAngle = ini.get_value_float(0) / (180.f / 3.14f);
 					}
+					else if (ini.is_value("explosion_arch"))
+					{
+						explosion_arch = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("detonation_dist"))
+					{
+						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0);
+					}
 				}
 			}
 			else if (ini.is_header("Munition"))
@@ -154,6 +212,10 @@ void ReadMunitionDataFromInis()
 					if (ini.is_value("nickname"))
 					{
 						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("armor_pen"))
+					{
+						munitionArmorPenMap[currNickname] = ini.get_value_float(0);
 					}
 					else if (ini.is_value("arming_time"))
 					{
@@ -189,6 +251,14 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("top_speed"))
 					{
 						guidedDataMap[currNickname].topSpeed = ini.get_value_float(0) * ini.get_value_float(0);
+					}
+					else if (ini.is_value("explosion_arch"))
+					{
+						explosion_arch = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("detonation_dist"))
+					{
+						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0);
 					}
 				}
 			}
@@ -262,7 +332,8 @@ void ReadMunitionDataFromInis()
 			}
 			else if (ini.is_header("Explosion"))
 			{
-				ExplosionDamageType damageType;
+				ExplosionDamageData damageType;
+				bool foundItem = false;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))
@@ -271,10 +342,46 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("weapon_type"))
 					{
-						damageType.type = CreateID(ini.get_value_string(0));
+						damageType.weaponType = CreateID(ini.get_value_string(0));
+						foundItem = true;
+					}
+					else if (ini.is_value("damage_solars"))
+					{
+						damageType.damageSolars = ini.get_value_bool(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("armor_pen"))
+					{
+						damageType.armorPen = ini.get_value_float(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("percentage_damage_hull"))
+					{
+						damageType.percentageDamageHull = ini.get_value_float(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("percentage_damage_shield"))
+					{
+						damageType.percentageDamageShield = ini.get_value_float(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("percentage_damage_energy"))
+					{
+						damageType.percentageDamageEnergy = ini.get_value_float(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("cruise_disruptor"))
+					{
+						damageType.cruiseDisrupt = ini.get_value_bool(0);
+						foundItem = true;
+					}
+					else if (ini.is_value("destroy_missiles"))
+					{
+						damageType.missileDestroy = ini.get_value_bool(0);
+						foundItem = true;
 					}
 				}
-				if (damageType.type)
+				if (foundItem)
 				{
 					explosionTypeMap[currNickname] = damageType;
 				}
@@ -292,7 +399,8 @@ void ReadMunitionDataFromInis()
 				continue;
 			}
 			uint currNickname;
-			ExplosionDamageType damageType;
+			ExplosionDamageData damageType;
+			bool foundItem = false;
 			while (ini.read_value())
 			{
 				if (ini.is_value("nickname"))
@@ -301,10 +409,46 @@ void ReadMunitionDataFromInis()
 				}
 				else if (ini.is_value("weapon_type"))
 				{
-					damageType.type = CreateID(ini.get_value_string(0));
+					damageType.weaponType = CreateID(ini.get_value_string(0));
+					foundItem = true;
+				}
+				else if (ini.is_value("damage_solars"))
+				{
+					damageType.damageSolars = ini.get_value_bool(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("armor_pen"))
+				{
+					damageType.armorPen = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_hull"))
+				{
+					damageType.percentageDamageHull = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_shield"))
+				{
+					damageType.percentageDamageShield = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("percentage_damage_energy"))
+				{
+					damageType.percentageDamageEnergy = ini.get_value_float(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("cruise_disruptor"))
+				{
+					damageType.cruiseDisrupt = ini.get_value_bool(0);
+					foundItem = true;
+				}
+				else if (ini.is_value("destroy_missiles"))
+				{
+					damageType.missileDestroy = ini.get_value_bool(0);
+					foundItem = true;
 				}
 			}
-			if (damageType.type)
+			if (foundItem)
 			{
 				explosionTypeMap[currNickname] = damageType;
 			}
@@ -342,7 +486,7 @@ void ReadMunitionDataFromInis()
 				}
 				else if (ini.is_value("internal_engine"))
 				{
-					equipHpMap[currNickname].internalEngine = ini.get_value_bool(0);
+					shipDataMap[currNickname].internalEngine = ini.get_value_bool(0);
 				}
 				else if (ini.is_value("hp_type"))
 				{
@@ -360,9 +504,9 @@ void ReadMunitionDataFromInis()
 							if (!shipEngineHPs.count(hardpointName))
 							{
 								shipEngineHPs.insert(hardpointName);
-								equipHpMap[currNickname].engineCount++;
+								shipDataMap[currNickname].engineCount++;
 							}
-							equipHpMap[currNickname].hpMap[equipType].insert(hardpointName);
+							shipDataMap[currNickname].engineHpMap[equipType].insert(hardpointName);
 						}
 
 						i++;
@@ -425,30 +569,6 @@ void MineImpulse(CMine* mine, Vector& launchVec)
 	PhySys::AddToVelocity(mine, launchVec);
 }
 
-static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uint, float>>*)(0x658A9C0);
-
-float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
-{
-	if (!weaponType || !shield || !shield->highestToughnessShieldGenArch)
-	{
-		return 1.0f;
-	}
-	auto shieldResistIter = shieldResistMap->find(weaponType);
-	if (shieldResistIter == shieldResistMap->end())
-	{
-		return 1.0f;
-	}
-
-	auto shieldResistMap2 = shieldResistIter.value();
-	auto shieldResistIter2 = shieldResistMap2->find(shield->highestToughnessShieldGenArch->iShieldTypeID);
-	if (shieldResistIter2 == shieldResistMap2->end() || !shieldResistIter2.key())
-	{
-		return 1.0f;
-	}
-
-	return *shieldResistIter2.value();
-}
-
 void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -475,6 +595,25 @@ void LoadSettings()
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+void FindAndDisableEquip(uint client, const string& hardpoint)
+{
+
+	for (auto& equip : Players[client].equipDescList.equip)
+	{
+		if (strcmp(equip.szHardPoint.value, hardpoint.c_str()) == 0)
+		{
+			XActivateEquip aq;
+			aq.bActivate = false;
+			aq.iSpaceID = Players[client].iShipID;
+			aq.sID = equip.sID;
+
+			HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(client, aq);
+			Server.ActivateEquip(client, aq);
+			return;
+		}
+	}
+}
+
 bool VerifyEngines(uint client)
 {
 	CShip* cship = ClientInfo[client].cship;
@@ -486,8 +625,8 @@ bool VerifyEngines(uint client)
 
 	const auto& equip = Players[client].equipDescList;
 
-	const auto& shipHpDataIter = equipHpMap.find(Players[client].iShipArchetype);
-	if (shipHpDataIter == equipHpMap.end())
+	const auto& shipHpDataIter = shipDataMap.find(Players[client].iShipArchetype);
+	if (shipHpDataIter == shipDataMap.end())
 	{
 		int counter = 0;
 		CEquipTraverser tr(Engine);
@@ -518,7 +657,7 @@ bool VerifyEngines(uint client)
 
 		if (hardpoint == "BAY")
 		{
-			if (!internalEngineFound && (shipHpData.internalEngine || shipHpData.hpMap.empty()))
+			if (!internalEngineFound && (shipHpData.internalEngine || shipHpData.engineHpMap.empty()))
 			{
 				internalEngineFound = true;
 				continue;
@@ -535,8 +674,8 @@ bool VerifyEngines(uint client)
 			return false;
 		}
 
-		auto hpMapIter = shipHpData.hpMap.find(engineType->second.hpType);
-		if (hpMapIter == shipHpData.hpMap.end())
+		auto hpMapIter = shipHpData.engineHpMap.find(engineType->second.hpType);
+		if (hpMapIter == shipHpData.engineHpMap.end())
 		{
 			return false;
 		}
@@ -794,6 +933,8 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		UnmountEngines(iClientID);
 		HkDelayedKick(iClientID, 5);
 	}
+
+	equipUpdateVector.push_back({ iClientID, 0 });
 }
 
 void Timer()
@@ -863,6 +1004,45 @@ void Timer()
 		delete iter.second;
 	}
 	eqSids.clear();
+
+	for (auto& iter = equipUpdateVector.begin(); iter != equipUpdateVector.end();)
+	{
+		if (!Players[iter->first].iShipID)
+		{
+			iter = equipUpdateVector.erase(iter);
+			continue;
+		}
+
+		iter->second++;
+		if (iter->second <= 3)
+		{
+			auto shipDataIter = shipDataMap.find(Players[iter->first].iShipArchetype);
+			if (shipDataIter == shipDataMap.end() || shipDataIter->second.colGrpHpMap.empty())
+			{
+				iter = equipUpdateVector.erase(iter);
+				continue;
+			}
+
+			for (auto& colGrp : Players[iter->first].collisionGroupDesc)
+			{
+				if (colGrp.health > 0.0f)
+				{
+					continue;
+				}
+				auto& colGrpData = shipDataIter->second.colGrpHpMap.find(colGrp.id);
+				if (colGrpData == shipDataIter->second.colGrpHpMap.end())
+				{
+					continue;
+				}
+
+				FindAndDisableEquip(iter->first, colGrpData->second);
+			}
+			iter = equipUpdateVector.erase(iter);
+			continue;
+		}
+
+		iter++;
+	}
 }
 
 int Update()
@@ -968,51 +1148,38 @@ int Update()
 	return 0;
 }
 
-void __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+float shipArmorValue = 1.0f;
+uint shipArmorArch = 0;
+
+float weaponArmorPenValue = 0.0f;
+uint weaponArmorPenArch = 0;
+
+bool armorEnabled = 0;
+
+void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (engineData.empty())
+	if (armorEnabled)
 	{
-		return;
-	}
-
-	if (dmg->damageCause != DamageCause::CruiseDisrupter)
-	{
-		return;
-	}
-	
-	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
-	if (!cship->ownerPlayer)
-	{
-		return;
-	}
-
-	if (!ClientInfo[cship->ownerPlayer].bEngineKilled)
-	{
-		return;
-	}
-
-	bool isCDImmune = false;
-	CEEngine* engine = nullptr;
-	CEquipTraverser tr(Engine);
-	while (engine = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
-	{
-		auto engineDataIter = engineData.find(engine->archetype->iArchID);
-		if (engineDataIter == engineData.end() || !engineDataIter->second.ignoreCDWhenEKd)
+		if (shipArmorArch != iobj->cobj->archetype->iArchID)
 		{
-			continue;
+			shipArmorArch = iobj->cobj->archetype->iArchID;
+			const auto shipIter = shipArmorMap.find(shipArmorArch);
+			if (shipIter == shipArmorMap.end())
+			{
+				shipArmorValue = 1.0f;
+			}
+			else
+			{
+				shipArmorValue = shipIter->second;
+			}
 		}
 
-		Vector velocity = cship->get_velocity();
-
-		float velocityMagnitude = sqrtf(velocity.x * velocity.x + velocity.y * velocity.y + velocity.z * velocity.z);
-
-		if (velocityMagnitude <= engineDataIter->second.engineKillCDSpeedLimit)
+		if (shipArmorValue != 1.0f)
 		{
-			dmg->damageCause = DamageCause::DummyDisrupter;
+			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
 		}
-		return;
 	}
 }
 
@@ -1173,6 +1340,32 @@ void __stdcall ReqAddItem(uint& goodId, char const* hardpoint, int count, float 
 	
 }
 
+void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFate fate, DamageList* dmgList)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+
+	if (!cship->ownerPlayer)
+	{
+		return;
+	}
+
+	auto shipDataIter = shipDataMap.find(cship->archetype->iArchID);
+	if (shipDataIter == shipDataMap.end())
+	{
+		return;
+	}
+
+	auto colGrpDataIter = shipDataIter->second.colGrpHpMap.find(colGrp->colGrp->id);
+	if (colGrpDataIter == shipDataIter->second.colGrpHpMap.end())
+	{
+		return;
+	}
+
+	FindAndDisableEquip(cship->ownerPlayer, colGrpDataIter->second);
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
@@ -1208,10 +1401,12 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedInit, PLUGIN_HkIEngine_CGuided_init, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_After, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExplosionHit, PLUGIN_ExplosionHit, 10));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipHullDamage, PLUGIN_ShipHullDmg, 20));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));

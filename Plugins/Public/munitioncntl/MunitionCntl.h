@@ -7,7 +7,10 @@
 #include <PluginUtilities.h>
 
 void ShipShieldDamageNaked();
-void ShipShieldExplosionDamageNaked();
+void GuidedExplosionHitNaked();
+void SolarExplosionHitNaked();
+void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
+bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 
@@ -21,6 +24,7 @@ struct MineInfo
 {
 	float armingTime = 0.0f;
 	float dispersionAngle = 0.0f;
+	float armorPen = 0.0f;
 	bool detonateOnEndLifetime = false;
 	bool stopSpin = false;
 };
@@ -31,6 +35,7 @@ struct GuidedData
 	uint trackingBlacklist = 0;
 	float armingTime = 0.0f;
 	float topSpeed = 0.0f;
+	float armorPen = 0.0f;
 };
 
 struct ShieldState
@@ -80,16 +85,25 @@ struct EngineProperties
 	string hpType;
 };
 
-struct ExplosionDamageType
+struct ExplosionDamageData
 {
-	uint type = 0;
+	uint weaponType = 0;
+	float percentageDamageHull = 0.0f;
+	float percentageDamageShield = 0.0f;
+	float percentageDamageEnergy = 0.0f;
+	float armorPen = 0.0f;
+	float detDist = 0.0f;
+	bool cruiseDisrupt = false;
+	bool damageSolars = true;
+	bool missileDestroy = false;
 };
 
 struct ShipData
 {
 	int engineCount = 0;
 	bool internalEngine = false;
-	unordered_map<string, unordered_set<string>> hpMap;
+	unordered_map<string, unordered_set<string>> engineHpMap;
+	unordered_map<ushort, string> colGrpHpMap;
 };
 
 enum TRACKING_STATE {
@@ -98,6 +112,20 @@ enum TRACKING_STATE {
 	NOTRACK_NOALERT
 };
 
-extern unordered_map<uint, ExplosionDamageType> explosionTypeMap;
+extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
+extern unordered_map<uint, GuidedData> guidedDataMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
+extern PLUGIN_RETURNCODE returncode;
+extern FARPROC ShipShieldDamageOrigFunc;
+extern FARPROC GuidedExplosionHitOrigFunc;
+extern FARPROC SolarExplosionHitOrigFunc;
+extern FARPROC ShipMunitionHitOrigFunc;
+
+extern float shipArmorValue;
+extern uint shipArmorArch;
+extern float weaponArmorPenValue;
+extern uint weaponArmorPenArch;
+extern bool armorEnabled;
+
+extern unordered_map<uint, float> munitionArmorPenMap;

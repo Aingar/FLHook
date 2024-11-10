@@ -3,6 +3,7 @@
   <ItemGroup>
     <ClCompile Include="Main.cpp" />
     <ClCompile Include="Hooks.cpp" />
+    <ClCompile Include="DamageHandler.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="MunitionCntl.h" />

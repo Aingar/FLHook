@@ -20,8 +20,8 @@ using st6_free_t = void(*)(void*);
 EXPORT extern st6_malloc_t st6_malloc;
 EXPORT extern st6_free_t st6_free;
 
-#define CORE_TIMER_LOGGING
-#define HOOK_TIMER_LOGGING
+//#define CORE_TIMER_LOGGING
+//#define HOOK_TIMER_LOGGING
 
 #ifdef CORE_TIMER_LOGGING
 #define LOG_CORE_TIMER_START \
@@ -313,6 +313,37 @@ struct PLUGIN_SORTCRIT {
 				break; \
 			} else if(*itplugin->ePluginReturnCode == NOFUNCTIONCALL) { \
 				bPluginReturn = true; \
+			} else if(*itplugin->ePluginReturnCode == SKIPPLUGINS) \
+				break; \
+		} \
+	} CATCH_HOOK({ AddLog("ERROR: Exception %s", __FUNCTION__);}) \
+	if(bPluginReturn) \
+		return vPluginRet; \
+} \
+
+// Only populate retVal when NOFUNCTION is invoked
+#define CALL_PLUGINS_ALT(callback_id,ret_type,calling_convention,arg_types,args) \
+{ \
+	ret_type vPluginRet; \
+	ret_type vPluginRetTemp; \
+	bool bPluginReturn = false; \
+	TRY_HOOK { \
+		foreach(pPluginHooks[(int)callback_id],PLUGIN_HOOKDATA, itplugin) { \
+			if(itplugin->bPaused) \
+				continue; \
+			if(itplugin->pFunc) { \
+				TRY_HOOK { \
+					vPluginRetTemp = ((ret_type (calling_convention*) arg_types )itplugin->pFunc) args; \
+				} CATCH_HOOK({ AddLog("ERROR: Exception in plugin '%s' in %s", itplugin->sName.c_str(), __FUNCTION__);}) \
+			} else  \
+				AddLog("ERROR: Plugin '%s' does not export %s [%s]", itplugin->sName.c_str(), __FUNCTION__, __FUNCDNAME__); \
+			if(*itplugin->ePluginReturnCode == SKIPPLUGINS_NOFUNCTIONCALL) { \
+				bPluginReturn = true; \
+				vPluginRet = vPluginRetTemp; \
+				break; \
+			} else if(*itplugin->ePluginReturnCode == NOFUNCTIONCALL) { \
+				bPluginReturn = true; \
+				vPluginRet = vPluginRetTemp; \
 			} else if(*itplugin->ePluginReturnCode == SKIPPLUGINS) \
 				break; \
 		} \

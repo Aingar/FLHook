@@ -1118,7 +1118,7 @@ namespace PlayerCommands
 		wstring cmd = ToLower(GetParam(params, ' ', 1));
 		wstring param1 = ToLower(GetParam(params, ' ', 2));
 		wstring param2 = ToLower(GetParam(params, ' ', 3));
-		wstring param3 = GetParam(params, ' ', 4);
+		wstring param3 = GetParamToEnd(params, ' ', 4);
 
 		if (cmd == L"list")
 		{

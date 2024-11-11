@@ -933,7 +933,7 @@ namespace PlayerCommands
 			auto affil = A.GetFirstAffiliationMatch(entry);
 			if (!affil)
 			{
-				PrintUserCmdText(client, L"ERR invalid faction nickname!");
+				PrintUserCmdText(client, L"ERR faction with this name not found!");
 				return false;
 			}
 
@@ -1055,7 +1055,7 @@ namespace PlayerCommands
 			auto affil = A.GetFirstAffiliationMatch(entry);
 			if (!affil)
 			{
-				PrintUserCmdText(client, L"ERR invalid faction nickname!");
+				PrintUserCmdText(client, L"ERR faction with this name not found!");
 				return false;
 			}
 

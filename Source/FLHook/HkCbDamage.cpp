@@ -208,9 +208,10 @@ FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc;
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	CSimple* simple = reinterpret_cast<CSimple*>(iobj->cobj);
+
+	CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
 	if (simple->ownerPlayer)
 	{
-		CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
 		ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;
 		if (dmg->iInflictorPlayerID)
 		{

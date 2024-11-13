@@ -176,7 +176,9 @@ void UserCmd_SetDeathMsg(const uint client, const wstring& wscParam)
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (dmg->iInflictorPlayerID)
+
+	uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
+	if (targetClient && dmg->iInflictorPlayerID)
 	{
 		uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
 		if (targetClient && targetClient != dmg->iInflictorPlayerID && incDmg > 0.0f)

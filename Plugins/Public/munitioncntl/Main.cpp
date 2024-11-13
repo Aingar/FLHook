@@ -1180,6 +1180,8 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		{
 			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
 		}
+
+		armorEnabled = false;
 	}
 }
 

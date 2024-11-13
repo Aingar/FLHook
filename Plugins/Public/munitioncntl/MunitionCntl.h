@@ -9,6 +9,7 @@
 void ShipShieldDamageNaked();
 void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
+void ShipColGrpDmgNaked();
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
@@ -121,6 +122,7 @@ extern FARPROC ShipShieldDamageOrigFunc;
 extern FARPROC GuidedExplosionHitOrigFunc;
 extern FARPROC SolarExplosionHitOrigFunc;
 extern FARPROC ShipMunitionHitOrigFunc;
+extern FARPROC ShipColGrpDmgFunc;
 
 extern float shipArmorValue;
 extern uint shipArmorArch;
@@ -129,3 +131,4 @@ extern uint weaponArmorPenArch;
 extern bool armorEnabled;
 
 extern unordered_map<uint, float> munitionArmorPenMap;
+extern unordered_map<uint, float> shipArmorMap;

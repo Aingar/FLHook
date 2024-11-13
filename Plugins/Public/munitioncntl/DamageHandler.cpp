@@ -93,8 +93,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	static Vector centerOfMass;
 	static float radius;
 
-	armorEnabled = true;
-
 	CEquipTraverser tr(ExternalEquipment);
 	CAttachedEquip* equip;
 	while (equip = reinterpret_cast<CAttachedEquip*>(cship->equip_manager.Traverse(tr)))
@@ -202,6 +200,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 					hullDmg += explData->percentageDamageHull * colGrp->colGrp->hitPts;
 				}
 
+				armorEnabled = true;
 				iobj->damage_col_grp(colGrp, colGrpDmgMult* hullDmg* colGrp->colGrp->explosionResistance * shipArmorValue, dmg);
 				continue;
 			}
@@ -270,6 +269,8 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		}
 
 		float damageToDeal = dmgMult * hullDmg * cship->archetype->fExplosionResistance * (rootMult / multSum) * shipArmorValue;
+
+		armorEnabled = true;
 		iobj->damage_hull(damageToDeal + (rootExtraDamage * cship->archetype->fExplosionResistance), dmg);
 		
 	}
@@ -315,9 +316,16 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
 
-	if (explData && explData->weaponType)
+	if (explData)
 	{
-		shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
+		if (explData->percentageDamageShield)
+		{
+			shieldDamage += explData->percentageDamageShield * shield->maxShieldHitPoints;
+		}
+		if (explData->weaponType)
+		{
+			shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
+		}
 	}
 
 	float threeThirds = explosion->explosionArchetype->fRadius - detDist;
@@ -532,7 +540,9 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 
 	if (weaponArmorPenArch == data->munitionId->iArchID || SubObjectID::IsShieldEquipID(data->subObjId))
 	{
+		armorEnabled = true;
 		ShipMunitionHitCall(iShip, data, dmg);
+		armorEnabled = false;
 		return;
 	}
 
@@ -552,4 +562,45 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 	ShipMunitionHitCall(iShip, data, dmg);
 
 	armorEnabled = false;
+}
+
+void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
+{
+	if (armorEnabled)
+	{
+		if (shipArmorArch != iobj->cobj->archetype->iArchID)
+		{
+			shipArmorArch = iobj->cobj->archetype->iArchID;
+			const auto shipIter = shipArmorMap.find(shipArmorArch);
+			if (shipIter == shipArmorMap.end())
+			{
+				shipArmorValue = 1.0f;
+			}
+			else
+			{
+				shipArmorValue = shipIter->second;
+			}
+		}
+
+		if (shipArmorValue != 1.0f)
+		{
+			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
+		}
+		armorEnabled = false;
+	}
+}
+
+__declspec(naked) void ShipColGrpDmgNaked()
+{
+	__asm {
+		push ecx
+		push [esp+0x10]
+		lea eax, [esp + 0x10]
+		push eax
+		push[esp + 0x10]
+		push ecx
+		call ShipColGrpDmg
+		pop ecx
+		jmp [ShipColGrpDmgFunc]
+	}
 }

@@ -48,6 +48,15 @@ struct DOCKEDCRAFTINFO
 	bool jettisoned;
 };
 
+struct DEFERREDJUMPDATA
+{
+	uint timer;
+	uint shipId;
+	uint targetPlayer;
+	uint targetShip;
+	uint targetSystem;
+};
+
 void SendResetMarketOverride(uint client);
 void SendSetBaseInfoText2(UINT client, const wstring &message);
 void ForceLaunch(uint client);

@@ -26,6 +26,8 @@ unordered_map<uint, DOCKEDCRAFTINFO*> idToDockedInfoMap;
 
 unordered_set<uint> bannedSystems;
 
+unordered_map<uint, DEFERREDJUMPDATA> deferredJumpData;
+
 string scCarrierDataFile;
 
 
@@ -475,6 +477,29 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 	PrintUserCmdText(carrierID, L"%ls successfully docked", dockingName.c_str());
 }
 
+void BeamToCarrier(uint dockedID, uint carrierShipID)
+{
+	//teleport the player using same method as jumpdrives
+	CUSTOM_JUMP_CALLOUT_STRUCT jumpData;
+	Vector pos;
+	Matrix ori;
+	uint iSystemID;
+
+	pub::SpaceObj::GetLocation(carrierShipID, pos, ori);
+	pub::SpaceObj::GetSystem(carrierShipID, iSystemID);
+
+	pos.x += ori.data[0][1] * set_iMobileDockOffset;
+	pos.y += ori.data[1][1] * set_iMobileDockOffset;
+	pos.z += ori.data[2][1] * set_iMobileDockOffset;
+
+	jumpData.iClientID = dockedID;
+	jumpData.iSystemID = iSystemID;
+	jumpData.pos = pos;
+	jumpData.ori = ori;
+
+	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_JUMP_CALLOUT, &jumpData);
+}
+
 void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -547,6 +572,28 @@ void HkTimerCheckKick()
 	if (currTime % 60 == 0)
 	{
 		SaveData();
+	}
+
+	for (auto& launchCheck = deferredJumpData.begin(); launchCheck != deferredJumpData.end();)
+	{
+		auto client = launchCheck->first;
+		auto& launchData = launchCheck->second;
+		if (Players[client].iShipID != launchData.shipId
+			|| Players[launchData.targetPlayer].iShipID != launchData.targetShip
+			|| Players[client].iSystemID == launchData.targetSystem)
+		{
+			launchCheck = deferredJumpData.erase(launchCheck);
+			continue;
+		}
+
+		if (launchData.timer++)
+		{
+			PrintUserCmdText(client, L"Reattempting beam to carrier...");
+			BeamToCarrier(client, launchData.targetShip);
+		}
+
+		launchData.timer++;
+		launchCheck++;
 	}
 }
 
@@ -694,30 +741,6 @@ void AddClientToDockQueue(uint dockingID, uint carrierID)
 		}
 	}
 }
-
-void BeamToCarrier(uint dockedID, uint carrierShipID)
-{
-	//teleport the player using same method as jumpdrives
-	CUSTOM_JUMP_CALLOUT_STRUCT jumpData;
-	Vector pos;
-	Matrix ori;
-	uint iSystemID;
-
-	pub::SpaceObj::GetLocation(carrierShipID, pos, ori);
-	pub::SpaceObj::GetSystem(carrierShipID, iSystemID);
-
-	pos.x += ori.data[0][1] * set_iMobileDockOffset;
-	pos.y += ori.data[1][1] * set_iMobileDockOffset;
-	pos.z += ori.data[2][1] * set_iMobileDockOffset;
-
-	jumpData.iClientID = dockedID;
-	jumpData.iSystemID = iSystemID;
-	jumpData.pos = pos;
-	jumpData.ori = ori;
-
-	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_JUMP_CALLOUT, &jumpData);
-}
-
 bool CanDockOnCarrier(uint dockingID, uint carrierID)
 {
 	if (GetFreeCapacity(carrierID))
@@ -875,6 +898,8 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
 		BeamToCarrier(client, carrierShip->id);
 		PrintUserCmdText(carrierClientID, L"%ls has launched from your hangar bay.", playerName.c_str());
+
+		deferredJumpData[client] = { 0, Players[client].iShipID, carrierShip->ownerPlayer, carrierShip->id, carrierShip->system };
 	}
 
 }

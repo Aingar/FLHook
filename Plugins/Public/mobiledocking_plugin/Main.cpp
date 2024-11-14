@@ -1256,6 +1256,7 @@ void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)
 	mapPendingDockingRequests.erase(iClientID);
 	idToCarrierInfoMap.erase(iClientID);
 	idToDockedInfoMap.erase(iClientID);
+	deferredJumpData.erase(iClientID);
 }
 
 void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)

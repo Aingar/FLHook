@@ -45,7 +45,7 @@ struct SYSTEMJUMPCOORDS
 
 int GetRandom()
 {
-	static mt19937 mt = mt19937(static_cast<uint>(timeInMS()));
+	static mt19937 mt = mt19937(random_device()());
 	return mt();
 }
 

@@ -23,6 +23,7 @@
 
 #include <PluginUtilities.h>
 #include "Main.h"
+#include <random>
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,6 +42,12 @@ struct SYSTEMJUMPCOORDS
 	Vector pos;
 	Matrix ornt;
 };
+
+int GetRandom()
+{
+	static mt19937 mt = mt19937(static_cast<uint>(timeInMS()));
+	return mt();
+}
 
 void HyperJump::CharacterSelect_AFTER(uint client)
 {
@@ -364,14 +371,14 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	{
 
 		PlayerBase* pb = player_bases[returnJH];
-		uint index = rand() % legalReturnSystems.size();
+		uint index = GetRandom() % legalReturnSystems.size();
 		if (mapSystemJumps.count(legalReturnSystems.at(index)) == 0)
 		{
 			ConPrint(L"HYPERSPACE HUB: Jump Point data for return system not found, aborting randomization!\n");
 			continue;
 		}
 		const auto& coordsList = mapSystemJumps[legalReturnSystems.at(index)];
-		const auto& coords = coordsList.at(rand() % coordsList.size());
+		const auto& coords = coordsList.at(GetRandom() % coordsList.size());
 
 		pb->destSystem = coords.system;
 		pb->destPos = coords.pos;
@@ -389,7 +396,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	for (uint unchartedJH : hubToUnchartedJumpHoles)
 	{
 		PlayerBase* originJumpHole = player_bases[unchartedJH];
-		uint randomizedIndex = rand() % unchartedToHubJumpHoles.size();
+		uint randomizedIndex = GetRandom() % unchartedToHubJumpHoles.size();
 		uint randomizedTarget = unchartedToHubJumpHoles.at(randomizedIndex);
 		auto targetJumpHole = player_bases.at(randomizedTarget);
 
@@ -410,7 +417,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			AddLog("Exception: Unable to form a JH to %u system\n", targetJumpHole->system);
 			continue;
 		}
-		auto& coords = selectedSystemCoordList.at(rand() % selectedSystemCoordList.size());
+		auto& coords = selectedSystemCoordList.at(GetRandom() % selectedSystemCoordList.size());
 		targetJumpHole->position = coords.pos;
 		targetJumpHole->rotation = coords.ornt;
 

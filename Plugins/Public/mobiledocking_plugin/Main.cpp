@@ -539,6 +539,8 @@ void HkTimerCheckKick()
 			continue;
 		}
 
+		pub::SpaceObj::DrainShields(dockingShipID);
+
 		dd.timeLeft--;
 		if (!dd.timeLeft)
 		{

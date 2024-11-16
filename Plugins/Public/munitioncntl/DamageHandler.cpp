@@ -243,7 +243,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	
 	float totalDmg = 0.0f;
 	{
-		float rootExtraDamage = 0.0f;
 		float rootMult = distanceSum / unsquaredRootDistance;
 		float multSum = rootMult;
 		for (auto& distance : distancesVector)
@@ -254,9 +253,9 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 		for (auto& distance : distancesVector)
 		{
-			float damage = dmgMult * explosion->explosionArchetype->fHullDamage * (distance.second / multSum) * shipArmorValue;
-			rootExtraDamage += damage;
+			float damage = dmgMult * explosion->explosionArchetype->fHullDamage * (distance.second / multSum);
 			float damageToDeal = damage * distance.first->colGrp->explosionResistance;
+			armorEnabled = true;
 			iobj->damage_col_grp(distance.first, damageToDeal, dmg);
 			totalDmg += damageToDeal;
 		}
@@ -268,10 +267,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			hullDmg += explData->percentageDamageHull * cship->archetype->fHitPoints;
 		}
 
-		float damageToDeal = dmgMult * hullDmg * cship->archetype->fExplosionResistance * (rootMult / multSum) * shipArmorValue;
+		float damageToDeal = dmgMult * hullDmg * cship->archetype->fExplosionResistance * (rootMult / multSum);
 
 		armorEnabled = true;
-		iobj->damage_hull(damageToDeal + (rootExtraDamage * cship->archetype->fExplosionResistance), dmg);
+		iobj->damage_hull(damageToDeal, dmg);
 		
 	}
 

@@ -115,6 +115,10 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageL
 	if (zd.distanceScaling != 0.0f)
 	{
 		float edgeDistance = -GetZoneDistance(ship->cobj->currentDamageZone, ship->cobj->vPos);
+		if (edgeDistance < 0.0f)
+		{
+			return;
+		}
 		if (zd.distanceScaling > 0.0f)
 		{
 			if (edgeDistance <= zd.distanceScaling)

@@ -577,6 +577,12 @@ void LoadRecipes()
 					else if (ini.is_value("produced_item"))
 					{
 						ValidateItem(ini.get_value_string(0));
+						int goodAmount = ini.get_value_int(1);
+						if (!goodAmount)
+						{
+							ConPrint(L"Error: no amount or zero specified in a recipe %ls\n", stows(recipe.nicknameString).c_str());
+							continue;
+						}
 						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
 					}
 					else if (ini.is_value("produced_affiliation"))

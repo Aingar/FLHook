@@ -104,6 +104,7 @@ bool UserCmd_BountyScan(uint iClientID, const wstring &wscCmd, const wstring &ws
 	pub::SpaceObj::GetRep(iTargetShip, iTargetRep);
 	Reputation::Vibe::GetAffiliation(iTargetRep, uTargetAffiliation, false);
 	wstring wscTargetAffiliation = HkGetWStringFromIDS(Reputation::get_name(uTargetAffiliation));
+	wstring systemName = HkGetWStringFromIDS(Universe::get_system(Players[iClientID].iSystemID)->strid_name);
 
 	// name
 	wstring wscTargetCharName = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
@@ -111,6 +112,7 @@ bool UserCmd_BountyScan(uint iClientID, const wstring &wscCmd, const wstring &ws
 	// output
 	PrintUserCmdText(iClientID, wscTargetCharName + L" - " + wscTargetShip);
 	PrintUserCmdText(iClientID, wscTargetID + L" - " + wscTargetAffiliation);
+	PrintUserCmdText(iClientID, L"System - " + systemName);
 	PrintUserCmdText(iClientID, L"Finished bounty scan at " + GetTimeString(false));
 	return true;
 }

@@ -165,9 +165,9 @@ void ReadMunitionDataFromInis()
 	}
 
 	armorReductionVector.reserve(maxArmorValue);
-	for (int i = 1; i <= maxArmorValue; ++i)
+	for (int i = 0; i <= maxArmorValue; ++i)
 	{
-		armorReductionVector[i] = static_cast<float>(i) / (i + ARMOR_MOD);
+		armorReductionVector.emplace_back(1.0f - (static_cast<float>(i) / (i + ARMOR_MOD)));
 	}
 
 	for (string equipFile : equipFiles)
@@ -1187,7 +1187,7 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 			}
 		}
 
-		if (shipArmorRating && shipArmorRating > weaponArmorPenValue)
+		if (shipArmorRating && (shipArmorRating > weaponArmorPenValue))
 		{
 			incDmg *= armorReductionVector.at(shipArmorRating - weaponArmorPenValue);
 		}

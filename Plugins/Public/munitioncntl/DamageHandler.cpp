@@ -98,7 +98,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	}
 	else
 	{
-		weaponArmorPenValue = 0.0f;
+		weaponArmorPenValue = 0;
 		weaponArmorPenArch = 0;
 	}
 
@@ -553,7 +553,7 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 	const auto munitionIter = munitionArmorPenMap.find(data->munitionId->iArchID);
 	if (munitionIter == munitionArmorPenMap.end())
 	{
-		weaponArmorPenValue = 0.0f;
+		weaponArmorPenValue = 0;
 	}
 	else
 	{
@@ -577,18 +577,19 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 			const auto shipIter = shipArmorMap.find(shipArmorArch);
 			if (shipIter == shipArmorMap.end())
 			{
-				shipArmorValue = 1.0f;
+				shipArmorRating = 0;
 			}
 			else
 			{
-				shipArmorValue = shipIter->second;
+				shipArmorRating = shipIter->second;
 			}
 		}
 
-		if (shipArmorValue != 1.0f)
+		if (shipArmorRating && shipArmorRating > weaponArmorPenValue)
 		{
-			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
+			incDmg *= armorReductionVector.at(shipArmorRating - weaponArmorPenValue);
 		}
+
 		armorEnabled = false;
 	}
 }

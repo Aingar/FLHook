@@ -10,6 +10,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 #include "MunitionCntl.h"
 
+constexpr int ARMOR_MOD = 100;
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
@@ -21,9 +22,10 @@ unordered_map<uint, ShieldBoostData> shieldBoostMap;
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageData> explosionTypeMap;
-unordered_map<uint, float> shipArmorMap;
-unordered_map<uint, float> munitionArmorPenMap;
+unordered_map<uint, int> shipArmorMap;
+unordered_map<uint, int> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
+vector<float> armorReductionVector;
 
 unordered_map<uint, ShipData> shipDataMap;
 
@@ -114,6 +116,7 @@ void ReadMunitionDataFromInis()
 
 	ini.close();
 
+	int maxArmorValue = 0;
 	for (string shipFile : shipFiles)
 	{
 		shipFile = gameDir + shipFile;
@@ -137,7 +140,9 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("armor_mult"))
 					{
-						shipArmorMap[currNickname] = ini.get_value_float(0);
+						int armorValue = ini.get_value_int(0);
+						shipArmorMap[currNickname] = armorValue;
+						maxArmorValue = max(maxArmorValue, armorValue);
 						break;
 					}
 				}
@@ -157,6 +162,12 @@ void ReadMunitionDataFromInis()
 		}
 
 		ini.close();
+	}
+
+	armorReductionVector.reserve(maxArmorValue);
+	for (int i = 1; i <= maxArmorValue; ++i)
+	{
+		armorReductionVector[i] = static_cast<float>(i) / (i + ARMOR_MOD);
 	}
 
 	for (string equipFile : equipFiles)
@@ -215,7 +226,7 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("armor_pen"))
 					{
-						munitionArmorPenMap[currNickname] = ini.get_value_float(0);
+						munitionArmorPenMap[currNickname] = ini.get_value_int(0);
 					}
 					else if (ini.is_value("arming_time"))
 					{
@@ -352,7 +363,7 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("armor_pen"))
 					{
-						damageType.armorPen = ini.get_value_float(0);
+						damageType.armorPen = ini.get_value_int(0);
 						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_hull"))
@@ -419,7 +430,7 @@ void ReadMunitionDataFromInis()
 				}
 				else if (ini.is_value("armor_pen"))
 				{
-					damageType.armorPen = ini.get_value_float(0);
+					damageType.armorPen = ini.get_value_int(0);
 					foundItem = true;
 				}
 				else if (ini.is_value("percentage_damage_hull"))
@@ -1148,10 +1159,10 @@ int Update()
 	return 0;
 }
 
-float shipArmorValue = 1.0f;
+int shipArmorRating = 0;
 uint shipArmorArch = 0;
 
-float weaponArmorPenValue = 0.0f;
+int weaponArmorPenValue = 0;
 uint weaponArmorPenArch = 0;
 
 bool armorEnabled = 0;
@@ -1168,17 +1179,17 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 			const auto shipIter = shipArmorMap.find(shipArmorArch);
 			if (shipIter == shipArmorMap.end())
 			{
-				shipArmorValue = 1.0f;
+				shipArmorRating = 0;
 			}
 			else
 			{
-				shipArmorValue = shipIter->second;
+				shipArmorRating = shipIter->second;
 			}
 		}
 
-		if (shipArmorValue != 1.0f)
+		if (shipArmorRating && shipArmorRating > weaponArmorPenValue)
 		{
-			incDmg *= min(1.0f, shipArmorValue + weaponArmorPenValue);
+			incDmg *= armorReductionVector.at(shipArmorRating - weaponArmorPenValue);
 		}
 
 		armorEnabled = false;

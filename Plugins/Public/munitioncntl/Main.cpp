@@ -138,7 +138,7 @@ void ReadMunitionDataFromInis()
 					{
 						currNickname = CreateID(ini.get_value_string());
 					}
-					else if (ini.is_value("armor_mult"))
+					else if (ini.is_value("armor"))
 					{
 						int armorValue = ini.get_value_int(0);
 						shipArmorMap[currNickname] = armorValue;

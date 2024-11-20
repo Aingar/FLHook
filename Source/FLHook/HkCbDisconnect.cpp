@@ -49,7 +49,7 @@ HandleSaveFunc HandleSaveCall = HandleSaveFunc(0x6D4CCD0);
 
 bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* accId, uint dunno)
 {
-	if (!pd->iBaseID && !pd->iShipID)
+	if (!pd->iBaseID && !pd->iShipID && !pd->exitedBase)
 	{
 		static _GetFLName GetFLName = (_GetFLName)((char*)hModServer + 0x66370);
 		char accName[1024];

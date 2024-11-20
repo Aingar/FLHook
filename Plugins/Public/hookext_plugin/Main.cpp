@@ -47,50 +47,45 @@ string GetCharfilename(const wstring &charname)
 	return filename;
 }
 
-static PlayerData *CurrPlayer;
-int __stdcall HkCb_UpdateFile(char *filename, wchar_t *savetime, int b)
+typedef bool(__thiscall* HandleSaveFunc)(PlayerData* pd, char* filename, wchar_t* accId, uint dunno);
+HandleSaveFunc HandleSaveCall = HandleSaveFunc(0x6D4CCD0);
+
+bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* accId, uint dunno)
 {
-	// Call the original save charfile function
-	int retv;
-	__asm
+	bool fixLocation = !pd->iBaseID && !pd->iShipID && !pd->exitedBase && pd->fRelativeHealth > 0.0f;
+
+	bool retVal = HandleSaveCall(pd, filename, accId, dunno);
+
+	if (fixLocation)
 	{
-		pushad
-		mov ecx, [CurrPlayer]
-		push b
-		push savetime
-		push filename
-		mov eax, 0x6d4ccd0
-		call eax
-		mov retv, eax
-		popad
+		static _GetFLName GetFLName = (_GetFLName)((char*)hModServer + 0x66370);
+		char accName[1024];
+		GetFLName(accName, pd->accId);
+
+		string charPath = scAcctPath + accName + "\\" + filename;
+
+		char posbuf[100];
+		sprintf_s(posbuf, "%f,%f,%f", Players[pd->iOnlineID].vPosition.x, Players[pd->iOnlineID].vPosition.y, Players[pd->iOnlineID].vPosition.z);
+		WritePrivateProfileString("Player", "pos", posbuf, charPath.c_str());
+		WritePrivateProfileString("Player", "rotate", "0,0,0", charPath.c_str());
+		WritePrivateProfileString("Player", "base", nullptr, charPath.c_str());
 	}
 
-	// Readd the flhook section.
-	if (retv)
-	{
-		uint client = CurrPlayer->iOnlineID;
+	uint client = pd->iOnlineID;
 
-		string path = scAcctPath + GetAccountDir(client) + "\\" + filename;
-		FILE *file = fopen(path.c_str(), "a");
-		if (file)
-		{
-			fprintf(file, "[flhook]\n");
-			for (map<string, string>::iterator i = clients[client].lines.begin();
-				i != clients[client].lines.end(); ++i)
-				fprintf(file, "%s = %s\n", i->first.c_str(), i->second.c_str());
-			fclose(file);
-		}
+	string path = scAcctPath + GetAccountDir(client) + "\\" + filename;
+	FILE* file = fopen(path.c_str(), "a");
+	if (file)
+	{
+		fprintf(file, "[flhook]\n");
+		for (map<string, string>::iterator i = clients[client].lines.begin();
+			i != clients[client].lines.end(); ++i)
+			fprintf(file, "%s = %s\n", i->first.c_str(), i->second.c_str());
+		fclose(file);
 	}
 
-	return retv;
+	return retVal;
 }
-
-__declspec(naked)void HkCb_UpdateFileNaked()
-{
-	__asm mov CurrPlayer, ecx
-	__asm jmp HkCb_UpdateFile
-}
-
 
 /// Clear client info when a client connects.
 void ClearClientInfo(uint client)
@@ -175,8 +170,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 		if (!patched)
 		{
 			patched = true;
-			PatchCallAddr((char*)hModServer, 0x6c547, (char*)HkCb_UpdateFileNaked);
-			PatchCallAddr((char*)hModServer, 0x6c9cd, (char*)HkCb_UpdateFileNaked);
+			PatchCallAddr((char*)hModServer, 0x6c547, (char*)HandleSave);
+			PatchCallAddr((char*)hModServer, 0x6c9cd, (char*)HandleSave);
 		}
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)

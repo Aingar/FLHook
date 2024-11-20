@@ -897,7 +897,6 @@ void __stdcall HkCb_SendChat(uint iId, uint iTo, uint iSize, void *pRDL);
 // HkCbDisconnect
 void _DisconnectPacketSent();
 extern FARPROC fpOldDiscPacketSent;
-bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* accId, uint dunno);
 
 // HkIEngine
 namespace HkIEngine

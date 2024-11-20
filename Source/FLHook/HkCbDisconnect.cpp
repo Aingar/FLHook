@@ -42,31 +42,3 @@ __declspec(naked) void _DisconnectPacketSent()
 			jmp eax
 	}
 }
-
-
-typedef bool(__thiscall* HandleSaveFunc)(PlayerData* pd, char* filename, wchar_t* accId, uint dunno);
-HandleSaveFunc HandleSaveCall = HandleSaveFunc(0x6D4CCD0);
-
-bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* accId, uint dunno)
-{
-	if (!pd->iBaseID && !pd->iShipID && !pd->exitedBase)
-	{
-		static _GetFLName GetFLName = (_GetFLName)((char*)hModServer + 0x66370);
-		char accName[1024];
-		GetFLName(accName, pd->accId);
-
-		string charPath = scAcctPath + accName + "\\" + filename;
-
-		bool retVal = HandleSaveCall(pd, filename, accId, dunno);
-
-		char posbuf[100];
-		sprintf_s(posbuf, "%f,%f,%f", Players[pd->iOnlineID].vPosition.x, Players[pd->iOnlineID].vPosition.y, Players[pd->iOnlineID].vPosition.z);
-		WritePrivateProfileString("Player", "pos", posbuf, charPath.c_str());
-		WritePrivateProfileString("Player", "rotate", "0,0,0", charPath.c_str());
-		WritePrivateProfileString("Player", "base", nullptr, charPath.c_str());
-
-		return retVal;
-	}
-
-	return HandleSaveCall(pd, filename, accId, dunno);
-}

@@ -399,9 +399,6 @@ bool InitHookExports()
 		*((float*)0x6D67088) = 0.2f;
 	}
 
-	PatchCallAddr((char*)hModServer, 0x6C547, (char*)HandleSave);
-	PatchCallAddr((char*)hModServer, 0x6C9CD, (char*)HandleSave);
-
 	FARPROC CGuidedInit = FARPROC(0x62ACCB0);
 	Detour(CGuidedInit, HkIEngine::CGuidedInitNaked);
 

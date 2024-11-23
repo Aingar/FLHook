@@ -178,7 +178,7 @@ struct CLIENT_DATA
     CONTAINER_DATA* lastValidContainer = nullptr;
     MiningBonus shipClassMiningBonus;
 
-    uint LastTimeMessageAboutBeingFull = 0;
+    time_t LastTimeMessageAboutBeingFull = 0;
 };
 unordered_map<uint, CLIENT_DATA> mapClients;
 unordered_map<uint, CONTAINER_DATA> mapMiningContainers;
@@ -853,12 +853,14 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
 
         miningYieldInt = min(miningYieldInt, cship->get_space_for_cargo_type(lootInfo));
 
-        if (!miningYieldInt && ((uint)time(nullptr) - cd.LastTimeMessageAboutBeingFull) > 2)
+        time_t currTime = time(nullptr);
+        if (!miningYieldInt && (currTime - cd.LastTimeMessageAboutBeingFull) > 2)
         {
             if (iClientID != iSendToClientID)
             {
-                PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)));
-                PrintUserCmdText(iClientID, L"%s's cargo is now full.", reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID)));
+                wstring charName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID));
+                PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", charName.c_str());
+                PrintUserCmdText(iClientID, L"%s's cargo is now full.", charName.c_str());
                 pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
             }
             else
@@ -866,7 +868,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
                 PrintUserCmdText(iSendToClientID, L"Your cargo is now full.");
             }
             pub::Player::SendNNMessage(iSendToClientID, insufficientCargoSoundId);
-            cd.LastTimeMessageAboutBeingFull = (uint)time(nullptr);
+            cd.LastTimeMessageAboutBeingFull = currTime;
         
         }
         else

@@ -87,10 +87,10 @@ float GetRayHitRange(CSimple* csimple, CArchGroup* colGrp, Vector& explosionPosi
 
 void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
 {
-	CEqObj* cship = reinterpret_cast<CEqObj*>(iobj->cobj);
+	CEqObj* ceqobj = reinterpret_cast<CEqObj*>(iobj->cobj);
 
 	float detonationDistance = 0.0f;
-	if (explData)
+	if (explData && ceqobj->objectClass == CObject::CSHIP_OBJECT)
 	{
 		detonationDistance = explData->detDist;
 		weaponArmorPenValue = explData->armorPen;
@@ -114,7 +114,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 	CEquipTraverser tr(ExternalEquipment);
 	CAttachedEquip* equip;
-	while (equip = reinterpret_cast<CAttachedEquip*>(cship->equip_manager.Traverse(tr)))
+	while (equip = reinterpret_cast<CAttachedEquip*>(ceqobj->equip_manager.Traverse(tr)))
 	{
 		if (equip->archetype->fExplosionResistance == 0.0f)
 		{
@@ -178,7 +178,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		CArchGroup* colGrp;
 		CArchGrpTraverser tr2;
 
-		while (colGrp = cship->archGroupManager.Traverse(tr2))
+		while (colGrp = ceqobj->archGroupManager.Traverse(tr2))
 		{
 			if (colGrp->colGrp->explosionResistance == 0.0f)
 			{
@@ -217,7 +217,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 			if (!colGrp->colGrp->rootHealthProxy)
 			{
-				armorEnabled = true;
+				if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
+				{
+					armorEnabled = true;
+				}
 				float damage = colGrpDmgMult * hullDmg * colGrp->colGrp->explosionResistance;
 				iobj->damage_col_grp(colGrp, damage, dmg);
 
@@ -253,9 +256,9 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	float hullDmgBudget = explosion->explosionArchetype->fHullDamage;
 	if (explData && explData->percentageDamageHull)
 	{
-		hullDmgBudget += explData->percentageDamageHull * cship->archetype->fHitPoints;
+		hullDmgBudget += explData->percentageDamageHull * ceqobj->archetype->fHitPoints;
 	}
-	hullDmgBudget *= cship->archetype->fExplosionResistance;
+	hullDmgBudget *= ceqobj->archetype->fExplosionResistance;
 
 	{
 
@@ -274,7 +277,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 			return;
 		}
 
-		armorEnabled = true;
+		if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
+		{
+			armorEnabled = true;
+		}
 		iobj->damage_hull(hullDmgBudget, dmg);
 	}
 

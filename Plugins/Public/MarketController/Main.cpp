@@ -607,6 +607,43 @@ float __fastcall EquipDescListVolume(EquipDescList& eq)
 	return cargoUsed;
 }
 
+float GetShipCapacity(uint client)
+{
+	auto cargoCapacity = Archetype::GetShip(Players[client].iShipArchetype)->fHoldSize;
+	auto shipColGrpData = colGrpCargoMap.find(Players[client].iShipArchetype);
+	if (shipColGrpData != colGrpCargoMap.end())
+	{
+		float totalColGrpCapacity = shipColGrpData->second.first;
+		cargoCapacity -= totalColGrpCapacity;
+
+		auto& capacityPerColGrp = shipColGrpData->second.second;
+
+		for(auto& colGrp : Players[client].collisionGroupDesc)
+		{
+			if (colGrp.health <= 0.0f)
+			{
+				continue;
+			}
+			auto colGrpData = capacityPerColGrp.find(colGrp.id);
+			if (colGrpData != capacityPerColGrp.end())
+			{
+				cargoCapacity += colGrpData->second;
+			}
+		}
+	}
+
+	return cargoCapacity;
+}
+
+int __cdecl PubPlayerGetRemainingHoldSize(uint& client, float* holdSize)
+{
+	float cargoCapacity = GetShipCapacity(client);
+	float cargoOccupied = Players[client].equipDescList.get_cargo_space_occupied();
+	*holdSize = cargoCapacity - cargoOccupied;
+
+	return 0;
+}
+
 void Detour(void* pOFunc, void* pHkFunc)
 {
 	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
@@ -633,6 +670,7 @@ void LoadSettings()
 	Detour((char*)commonHandle + 0x532E0, CShipGetSpaceForCargoType);
 
 	Detour((char*)commonHandle + 0xAA8E0, (char*)EquipDescListVolume);
+	Detour((char*)serverHandle + 0x74DB0, (char*)PubPlayerGetRemainingHoldSize);
 
 	LoadMarketOverrides(nullptr);
 }
@@ -753,7 +791,7 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 		}
 
 		Vector dropPos = cship->vPos;
-		Vector randomVector = RandomVector((rand() % 60) + 20);
+		Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
 		dropPos.x += randomVector.x;
 		dropPos.y += randomVector.y;
 		dropPos.z += randomVector.z;

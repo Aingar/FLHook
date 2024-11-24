@@ -644,6 +644,41 @@ int __cdecl PubPlayerGetRemainingHoldSize(uint& client, float* holdSize)
 	return 0;
 }
 
+int __fastcall VerifyTargetDetour(CETractor* tractor, void* edx, CLoot* loot)
+{
+	int retVal = tractor->VerifyTarget(loot);
+	if (retVal == 3)
+	{
+		CEqObj* owner = tractor->owner;
+		if (owner->objectClass != CObject::CSHIP_OBJECT)
+		{
+			return retVal;
+		}
+
+		CShip* cship = reinterpret_cast<CShip*>(owner);
+		uint shipClass = cship->shiparch()->iShipClass;
+		auto cargoOverrideEntry = cargoVolumeOverrideMap.find(shipClass);
+		if (cargoOverrideEntry == cargoVolumeOverrideMap.end())
+		{
+			return retVal;
+		}
+
+		auto volumeOverride = cargoOverrideEntry->second.find(loot->contents_arch()->iArchID);
+		if (volumeOverride == cargoOverrideEntry->second.end())
+		{
+			return retVal;
+		}
+
+		float remainingHold = cship->get_cargo_hold_remaining();
+		if (remainingHold >= volumeOverride->second * loot->get_units())
+		{
+			return 0;
+		}
+	}
+
+	return retVal;
+}
+
 void Detour(void* pOFunc, void* pHkFunc)
 {
 	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
@@ -671,6 +706,9 @@ void LoadSettings()
 
 	Detour((char*)commonHandle + 0xAA8E0, (char*)EquipDescListVolume);
 	Detour((char*)serverHandle + 0x74DB0, (char*)PubPlayerGetRemainingHoldSize);
+
+	PatchCallAddr((char*)commonHandle, 0x3E292, (char*)VerifyTargetDetour);
+	PatchCallAddr((char*)commonHandle, 0x3DC6C, (char*)VerifyTargetDetour);
 
 	LoadMarketOverrides(nullptr);
 }

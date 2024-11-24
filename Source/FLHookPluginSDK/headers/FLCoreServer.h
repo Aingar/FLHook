@@ -143,6 +143,8 @@ struct SSPObjUpdateInfoSimple
 	Quaternion vDir;
 	Vector vPos;
 	float fTimestamp;
+	float throttle;
+	char state;
 };
 
 struct SSPObjUpdateInfo
@@ -234,13 +236,24 @@ struct MetaList
 	uint dunno[2];
 };
 
+struct Observer
+{
+	uint vtable;
+	uint dunno[11];
+	double timestamp;
+	uint clientId;
+	uint dunno2[30]; //unknown size
+};
+
 struct IMPORT StarSystem
 {
 	unsigned int count_players(unsigned int)const;
 
 public:
 	uint vftable; //0
-	uint dunno[12]; //4
+	uint dunno0; //4
+	st6::list<Observer> observerList; //8
+	uint dunno1[8] ; //20, first 3 elements are another st6list
 	MetaList shipList; // 52/13
 	MetaList lootList; // 72/18
 	MetaList solarList; // 92/23

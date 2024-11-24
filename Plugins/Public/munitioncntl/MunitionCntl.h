@@ -11,7 +11,7 @@ void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
 void ShipColGrpDmgNaked();
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
-bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
+bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 

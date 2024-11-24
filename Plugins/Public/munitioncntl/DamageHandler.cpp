@@ -87,7 +87,7 @@ float GetRayHitRange(CSimple* csimple, CArchGroup* colGrp, Vector& explosionPosi
 
 void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
 {
-	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+	CEqObj* cship = reinterpret_cast<CEqObj*>(iobj->cobj);
 
 	float detonationDistance = 0.0f;
 	if (explData)
@@ -283,7 +283,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
 {
-	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+	CEqObj* cship = reinterpret_cast<CEqObj*>(iobj->cobj);
 
 	PhySys::RayHit rayHits[20];
 	int collisionCount = FindRayCollisions(cship->system, explosion->explosionPosition, iobj->cobj->vPos, rayHits, 20);
@@ -394,13 +394,13 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	float damage = dmgMult * explosion->explosionArchetype->fEnergyDamage;
 	if (explData && explData->percentageDamageEnergy)
 	{
-		damage += reinterpret_cast<CShip*>(iobj->cobj)->maxPower * explData->percentageDamageEnergy;
+		damage += reinterpret_cast<CEqObj*>(iobj->cobj)->maxPower * explData->percentageDamageEnergy;
 	}
 
 	iobj->damage_energy(damage, dmg);
 }
 
-bool __stdcall ExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
 	returncode = NOFUNCTIONCALL;
 	float rootDistance = FLT_MAX;
@@ -509,28 +509,34 @@ __declspec(naked) void GuidedExplosionHitNaked()
 	}
 }
 
-bool __stdcall CheckSolarExplosionDamage(ExplosionDamageEvent* expl)
+void __stdcall CheckSolarExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
-	auto iter = explosionTypeMap.find(expl->explosionArchetype->iID);
-	if (iter == explosionTypeMap.end() || iter->second.damageSolars)
+	auto iter = explosionTypeMap.find(explosion->explosionArchetype->iID);
+	if (iter != explosionTypeMap.end() && !iter->second.damageSolars)
 	{
-		return true;
+		return;
 	}
-	return false;
+
+	float rootDistance = FLT_MAX;
+	const auto explData = &iter->second;
+	if (ShieldAndDistance(iobj, explosion, dmg, rootDistance, explData))
+	{
+		return;
+	}
+
+	ShipExplosionHandlingExtEqColGrpHull(iobj, explosion, dmg, rootDistance, explData);
+	EnergyExplosionHit(iobj, explosion, dmg, rootDistance, explData);
 }
 
 __declspec(naked) void SolarExplosionHitNaked()
 {
-	__asm
-	{
+	__asm {
 		push ecx
-		push[esp + 0x8]
+		push[esp + 0xC]
+		push[esp + 0xC]
+		push ecx
 		call CheckSolarExplosionDamage
 		pop ecx
-		test al, al
-		jz skipDamage
-		jmp[SolarExplosionHitOrigFunc]
-		skipDamage:
 		ret 0x8
 	}
 }

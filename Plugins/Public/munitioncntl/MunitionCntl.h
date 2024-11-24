@@ -105,6 +105,14 @@ struct ShipData
 	unordered_map<ushort, string> colGrpHpMap;
 };
 
+struct NewMissileUpdater
+{
+	uint system = 0;
+	uint counter = 0;
+	mstime mstimer = 0;
+	double timer = 0;
+};
+
 enum TRACKING_STATE {
 	TRACK_ALERT,
 	TRACK_NOALERT,

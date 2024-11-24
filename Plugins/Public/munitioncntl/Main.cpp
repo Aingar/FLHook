@@ -33,6 +33,8 @@ unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
 
 vector<pair<uint, uint>> equipUpdateVector;
 
+unordered_map<uint, uint> NewMissileUpdateMap;
+
 struct SpeedCheck
 {
 	float targetSpeed = 0;
@@ -781,6 +783,8 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 	{
 		topSpeedWatch[parms.id] = { guidedInfo.topSpeed, 0 };
 	}
+
+	NewMissileUpdateMap[parms.id] = { 0 };
 }
 
 int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
@@ -811,6 +815,8 @@ int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
+
+	NewMissileUpdateMap.erase(iobj->cobj->id);
 
 	auto guidedInfo = guidedDataMap.find(iobj->cobj->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -1087,6 +1093,50 @@ int Update()
 			const uint physicsPtr = *reinterpret_cast<uint*>(PCHAR(*reinterpret_cast<uint*>(uint(guided) + 84)) + 152);
 			Vector* linearVelocity = reinterpret_cast<Vector*>(physicsPtr + 164);
 			*linearVelocity = velocityVec;
+		}
+		iter++;
+	}
+
+	for (auto iter = NewMissileUpdateMap.begin(); iter != NewMissileUpdateMap.end();)
+	{
+
+		uint counter = ++iter->second;
+
+		if (counter >= 7)
+		{
+			iter = NewMissileUpdateMap.erase(iter);
+			continue;
+		}
+
+		if (counter % 3)
+		{
+			iter++;
+			continue;
+		}
+
+		uint id = iter->first;
+		IObjRW* guided = nullptr;
+		StarSystem* starSystem;
+		GetShipInspect(id, guided, starSystem);
+
+		if (!guided)
+		{
+			iter = NewMissileUpdateMap.erase(iter);
+			continue;
+		}
+
+		SSPObjUpdateInfoSimple ssp;
+		ssp.iShip = iter->first;
+		ssp.vPos = guided->cobj->vPos;
+		ssp.vDir = HkMatrixToQuaternion(guided->cobj->mRot);
+		ssp.throttle = 0;
+		ssp.state = 0;
+		
+		for(auto& observer : starSystem->observerList)
+		{
+			ssp.fTimestamp = observer.timestamp;
+
+			HookClient->Send_FLPACKET_COMMON_UPDATEOBJECT(observer.clientId, ssp);
 		}
 		iter++;
 	}

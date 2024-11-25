@@ -498,6 +498,8 @@ void BeamToCarrier(uint dockedID, uint carrierShipID)
 	jumpData.ori = ori;
 
 	Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_JUMP_CALLOUT, &jumpData);
+
+	pub::SpaceObj::SetInvincible(Players[dockedID].iShipID, false, false, 0);
 }
 
 void HkTimerCheckKick()

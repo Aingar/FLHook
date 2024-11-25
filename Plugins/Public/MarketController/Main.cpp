@@ -26,6 +26,8 @@ float playerCargoCapacity[MAX_CLIENT_ID + 1];
 
 unordered_map<uint, unordered_map<uint, float>> cargoVolumeOverrideMap;
 
+unordered_map<uint, float> unstableJumpObjMap;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	if (fdwReason == DLL_PROCESS_ATTACH)
@@ -47,6 +49,7 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 void LoadGameData()
 {
 	colGrpCargoMap.clear();
+	unstableJumpObjMap.clear();
 
 	INI_Reader ini;
 
@@ -65,6 +68,7 @@ void LoadGameData()
 
 	vector<string> shipFiles;
 	vector<string> equipFiles;
+	vector<string> solarFiles;
 
 	while (ini.read_header())
 	{
@@ -81,6 +85,10 @@ void LoadGameData()
 			else if (ini.is_value("equipment"))
 			{
 				equipFiles.emplace_back(ini.get_value_string());
+			}
+			else if (ini.is_value("solar"))
+			{
+				solarFiles.emplace_back(ini.get_value_string());
 			}
 		}
 	}
@@ -182,6 +190,40 @@ void LoadGameData()
 				lootData[currNickname] = ld;
 			}
 		}
+		ini.close();
+	}
+
+	for (string& solarFile : solarFiles)
+	{
+		solarFile = gameDir + solarFile;
+
+		if (!ini.open(solarFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Solar"))
+			{
+				continue;
+			}
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("cargo_limit"))
+				{
+					unstableJumpObjMap[currNickname] = ini.get_value_float(0);
+					break;
+				}
+			}
+		}
+
 		ini.close();
 	}
 }
@@ -607,6 +649,45 @@ float __fastcall EquipDescListVolume(EquipDescList& eq)
 	return cargoUsed;
 }
 
+float EquipDescCommodityVolume(uint clientId)
+{
+	Archetype::Ship* ship = Archetype::GetShip(Players[clientId].iShipArchetype);
+	if (!ship)
+	{
+		return 0.0f;
+	}
+
+	auto cargoVolumeOverrideIter = cargoVolumeOverrideMap.find(ship->iShipClass);
+	unordered_map<uint, float>* cargoOverrideMap = nullptr;
+	if (cargoVolumeOverrideIter != cargoVolumeOverrideMap.end())
+	{
+		cargoOverrideMap = &cargoVolumeOverrideIter->second;
+	}
+
+	float cargoUsed = 0.0f;
+	for (auto& eq : Players[clientId].equipDescList.equip)
+	{
+		if (eq.bMounted)
+		{
+			continue;
+		}
+		if (cargoOverrideMap)
+		{
+			auto cargoData = cargoOverrideMap->find(eq.iArchID);
+			if (cargoData != cargoOverrideMap->end())
+			{
+				cargoUsed += eq.iCount * cargoData->second;
+				continue;
+			}
+		}
+		auto archData = Archetype::GetEquipment(eq.iArchID);
+		cargoUsed += eq.iCount * archData->fVolume;
+		
+	}
+
+	return cargoUsed;
+}
+
 float GetShipCapacity(uint client)
 {
 	auto cargoCapacity = Archetype::GetShip(Players[client].iShipArchetype)->fHoldSize;
@@ -957,6 +1038,70 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 	}
 }
 
+int __cdecl Dock_Call(unsigned int const& iShip, unsigned int const& iDockTarget, int& iCancel, enum DOCK_HOST_RESPONSE& response)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	uint client = HkGetClientIDByShip(iShip);
+	if (!client)
+	{
+		return 0;
+	}
+
+	if ((response == PROCEED_DOCK || response == DOCK) && iCancel != -1)
+	{
+		uint iSolarArchetypeID;
+		pub::SpaceObj::GetSolarArchetypeID(iDockTarget, iSolarArchetypeID);
+
+		auto unstableJumpObjInfo = unstableJumpObjMap.find(iSolarArchetypeID);
+		if (unstableJumpObjInfo != unstableJumpObjMap.end() && EquipDescCommodityVolume(client) > unstableJumpObjInfo->second)
+		{
+			returncode = SKIPPLUGINS;
+			PrintUserCmdText(client, L"ERR This jumphole is unstable, can't take more than %0.0f cargo through!", unstableJumpObjInfo->second);
+			response = ACCESS_DENIED;
+			iCancel = -1;
+			return 0;
+		}
+	}
+}
+
+void __stdcall SystemSwitchOut(uint iClientID, FLPACKET_SYSTEM_SWITCH_OUT& switchOutPacket)
+{
+	returncode = DEFAULT_RETURNCODE;
+	uint jumpClient = HkGetClientIDByShip(switchOutPacket.shipId);
+	if (iClientID != jumpClient)
+	{
+		return;
+	}
+	uint spaceArchId;
+	pub::SpaceObj::GetSolarArchetypeID(switchOutPacket.jumpObjectId, spaceArchId);
+	auto jumpCargoLimit = unstableJumpObjMap.find(spaceArchId);
+	if (jumpCargoLimit == unstableJumpObjMap.end())
+	{
+		return;
+	}
+	if (EquipDescCommodityVolume(iClientID) <= jumpCargoLimit->second)
+	{
+		return;
+	}
+
+	vector<pair<ushort, int>> itemsToRemove;
+	for (auto& eq : Players[iClientID].equipDescList.equip)
+	{
+		bool isCommodity;
+		pub::IsCommodity(eq.iArchID, isCommodity);
+		if (isCommodity)
+		{
+			itemsToRemove.push_back({ eq.sID, eq.iCount });
+		}
+	}
+
+	for (auto& item : itemsToRemove)
+	{
+		pub::Player::RemoveCargo(iClientID, item.first, item.second);
+	}
+}
+
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1002,6 +1147,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
+
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 12));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SystemSwitchOut, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SYSTEM_SWITCH_OUT, 12));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));

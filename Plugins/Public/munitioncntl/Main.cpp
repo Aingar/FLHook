@@ -747,11 +747,7 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	auto guidedData = guidedDataMap.find(guided->archetype->iArchID);
-	if (guidedData == guidedDataMap.end())
-	{
-		return;
-	}
+	NewMissileUpdateMap[parms.id] = { 0 };
 
 	uint objId = parms.ownerId;
 	IObjRW* owner;
@@ -766,6 +762,12 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 			parms.target = nullptr;
 			parms.subObjId = 0;
 		}
+	}
+
+	auto guidedData = guidedDataMap.find(guided->archetype->iArchID);
+	if (guidedData == guidedDataMap.end())
+	{
+		return;
 	}
 
 	auto& guidedInfo = guidedData->second;
@@ -784,7 +786,6 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 		topSpeedWatch[parms.id] = { guidedInfo.topSpeed, 0 };
 	}
 
-	NewMissileUpdateMap[parms.id] = { 0 };
 }
 
 int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
@@ -1102,13 +1103,7 @@ int Update()
 
 		uint counter = ++iter->second;
 
-		if (counter >= 7)
-		{
-			iter = NewMissileUpdateMap.erase(iter);
-			continue;
-		}
-
-		if (counter % 3)
+		if (counter == 1)
 		{
 			iter++;
 			continue;
@@ -1134,11 +1129,12 @@ int Update()
 		
 		for(auto& observer : starSystem->observerList)
 		{
-			ssp.fTimestamp = observer.timestamp;
+			ssp.fTimestamp = static_cast<float>(observer.timestamp);
 
 			HookClient->Send_FLPACKET_COMMON_UPDATEOBJECT(observer.clientId, ssp);
 		}
-		iter++;
+
+		iter = NewMissileUpdateMap.erase(iter);
 	}
 
 	if (shieldFuseMap.empty())

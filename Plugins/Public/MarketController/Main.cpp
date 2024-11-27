@@ -756,6 +756,15 @@ int __fastcall VerifyTargetDetour(CETractor* tractor, void* edx, CLoot* loot)
 			return 0;
 		}
 	}
+	else if (retVal == 0)
+	{
+		uint client = tractor->owner->ownerPlayer;
+		if (client && Players[client].equipDescList.equip.size() >= 120)
+		{
+			PrintUserCmdText(client, L"ERR Tractor cannot proceed, too many items in hold");
+			return 1;
+		}
+	}
 
 	return retVal;
 }

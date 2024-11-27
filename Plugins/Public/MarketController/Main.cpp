@@ -1063,6 +1063,8 @@ int __cdecl Dock_Call(unsigned int const& iShip, unsigned int const& iDockTarget
 			return 0;
 		}
 	}
+
+	return 0;
 }
 
 void __stdcall SystemSwitchOut(uint iClientID, FLPACKET_SYSTEM_SWITCH_OUT& switchOutPacket)
@@ -1099,6 +1101,18 @@ void __stdcall SystemSwitchOut(uint iClientID, FLPACKET_SYSTEM_SWITCH_OUT& switc
 	for (auto& item : itemsToRemove)
 	{
 		pub::Player::RemoveCargo(iClientID, item.first, item.second);
+	}
+}
+
+void __stdcall AcceptTrade(unsigned int client, bool newTradeState)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto* tradeOffer = Players[client].tradeOffer;
+	if (newTradeState && tradeOffer && tradeOffer->equipOffer.equip.size() + Players[tradeOffer->targetClient].equipDescList.equip.size() >= 127)
+	{
+		PrintUserCmdText(client, L"ERR Target player holds too many items, trade cannot proceed");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 	}
 }
 
@@ -1154,6 +1168,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CommodityLimit::ReqChangeCash, PLUGIN_HkIServerImpl_AcceptTrade, 0));
+
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 

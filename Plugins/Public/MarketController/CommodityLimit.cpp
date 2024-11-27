@@ -85,6 +85,13 @@ bool CommodityLimit::GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int iC
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (Players[iClientID].equipDescList.equip.size() >= 127)
+	{
+		PrintUserCmdText(iClientID, L"ERR Too many individual items in hold, aborting purchase to prevent character corruption");
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		mapBuySuppression[iClientID] = true;
+		return false;
+	}
 	//Check if this a purchase this plugin must handle
 	auto commodityRestriction = mapCommodityRestrictions.find(gbi.iGoodID);
 	if (commodityRestriction == mapCommodityRestrictions.end())

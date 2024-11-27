@@ -2306,6 +2306,15 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 		auto& cd = clients[client];
+
+		if (Players[client].equipDescList.equip.size() >= 127)
+		{
+			PrintUserCmdText(client, L"ERR Too many individual items in hold, aborting purchase to prevent character corruption");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			cd.stop_buy = true;
+			return;
+		}
+
 		auto& mi = base->market_items[gbi.iGoodID];
 
 		uint count = gbi.iCount;

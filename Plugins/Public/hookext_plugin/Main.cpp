@@ -65,7 +65,14 @@ bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* a
 		string charPath = scAcctPath + accName + "\\" + filename;
 
 		char posbuf[100];
-		sprintf_s(posbuf, "%f,%f,%f", Players[pd->iOnlineID].vPosition.x, Players[pd->iOnlineID].vPosition.y, Players[pd->iOnlineID].vPosition.z);
+		if (ClientInfo[pd->iOnlineID].undockPosition.x != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.y != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.z != 0.0f)
+		{
+			sprintf_s(posbuf, "%f,%f,%f", ClientInfo[pd->iOnlineID].undockPosition.x, ClientInfo[pd->iOnlineID].undockPosition.y, ClientInfo[pd->iOnlineID].undockPosition.z);
+		}
+		else
+		{
+			sprintf_s(posbuf, "%f,%f,%f", 10000.f, 10000.f, 10000.f);
+		}
 		WritePrivateProfileString("Player", "pos", posbuf, charPath.c_str());
 		WritePrivateProfileString("Player", "rotate", "0,0,0", charPath.c_str());
 		WritePrivateProfileString("Player", "base", nullptr, charPath.c_str());

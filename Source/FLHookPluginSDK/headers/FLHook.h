@@ -319,7 +319,7 @@ struct CLIENT_INFO
 	float		fRadarRange;
 	bool		isDocking;
 	Vector		dockPosition;
-	byte		unused_data[128];
+	Vector		undockPosition;
 };
 
 struct INISECTIONVALUE

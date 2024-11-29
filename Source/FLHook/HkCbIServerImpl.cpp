@@ -340,6 +340,8 @@ namespace HkIServerImpl
 		}
 		playerCship->Release();
 
+		ClientInfo[iClientID].undockPosition = playerCship->vPos;
+
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));
 
 	}
@@ -997,7 +999,11 @@ namespace HkIServerImpl
 				(wchar_t*)Players.GetActiveCharacterName(iClientID),
 				iClientID,
 				HkGetSystemNickByID(iSystemID).c_str());
+
+			ClientInfo[iClientID].undockPosition = ClientInfo[iClientID].cship->vPos;
 		} CATCH_HOOK({})
+
+
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_JumpInComplete_AFTER, __stdcall, (unsigned int iSystemID, unsigned int iShip), (iSystemID, iShip));
 	}

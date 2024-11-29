@@ -195,21 +195,13 @@ void ClearClientInfo(uint iClientID)
 	ClientInfo[iClientID].chatSize = CS_DEFAULT;
 	ClientInfo[iClientID].chatStyle = CST_DEFAULT;
 
-	/*
-	ClientInfo[iClientID].bAutoBuyMissiles = false;
-	ClientInfo[iClientID].bAutoBuyMines = false;
-	ClientInfo[iClientID].bAutoBuyTorps = false;
-	ClientInfo[iClientID].bAutoBuyCD = false;
-	ClientInfo[iClientID].bAutoBuyCM = false;
-	ClientInfo[iClientID].bAutoBuyReload = false;
-	*/
-
 	ClientInfo[iClientID].lstIgnore.clear();
 	ClientInfo[iClientID].iKillsInARow = 0;
 	ClientInfo[iClientID].bEngineKilled = false;
 	ClientInfo[iClientID].bThrusterActivated = false;
 	ClientInfo[iClientID].bTradelane = false;
 	ClientInfo[iClientID].isDocking = false;
+	ClientInfo[iClientID].undockPosition = { 0,0,0 };
 
 	CALL_PLUGINS_V(PLUGIN_ClearClientInfo, , (uint), (iClientID));
 }

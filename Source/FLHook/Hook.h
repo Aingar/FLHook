@@ -634,7 +634,7 @@ struct CLIENT_INFO
 	float		fRadarRange;
 	bool		isDocking;
 	Vector		dockPosition;
-	char		unused_data[128];
+	Vector		undockPosition;
 };
 
 // taken from directplay

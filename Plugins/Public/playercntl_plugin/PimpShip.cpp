@@ -67,14 +67,14 @@ namespace PimpShip
 		ITEM_INFO() : iArchID(0) {}
 
 		uint iArchID;
+		bool largeShipOnly;
 		wstring wscNickname;
-		wstring wscDescription;
 	};
 	map<uint, ITEM_INFO> mapAvailableItems;
 
 	bool IsItemArchIDAvailable(uint iArchID)
 	{
-		for (map<uint, ITEM_INFO>::iterator iter = mapAvailableItems.begin();
+		for (auto iter = mapAvailableItems.begin();
 			iter != mapAvailableItems.end();
 			iter++)
 		{
@@ -86,12 +86,12 @@ namespace PimpShip
 
 	wstring GetItemDescription(uint iArchID)
 	{
-		for (map<uint, ITEM_INFO>::iterator iter = mapAvailableItems.begin();
+		for (auto iter = mapAvailableItems.begin();
 			iter != mapAvailableItems.end();
 			iter++)
 		{
 			if (iter->second.iArchID == iArchID)
-				return iter->second.wscDescription;
+				return iter->second.wscNickname;
 		}
 		return L"";
 	}
@@ -123,13 +123,10 @@ namespace PimpShip
 						else if (ini.is_value("equip"))
 						{
 							string nickname = ini.get_value_string(0);
-							string description = ini.get_value_string(1);
 							uint iArchID = CreateID(nickname.c_str());
 							mapAvailableItems[iItemID].iArchID = iArchID;
 							mapAvailableItems[iItemID].wscNickname = stows(nickname);
-							mapAvailableItems[iItemID].wscDescription = stows(description);
-							if (mapAvailableItems[iItemID].wscDescription.length() == 0)
-								mapAvailableItems[iItemID].wscDescription = mapAvailableItems[iItemID].wscNickname;
+							mapAvailableItems[iItemID].largeShipOnly = ini.get_value_bool(1);
 							iItemID++;
 						}
 						else if (ini.is_value("room"))
@@ -273,6 +270,18 @@ namespace PimpShip
 		return true;
 	}
 
+	bool IsSnub(uint client)
+	{
+		uint shipClass = Archetype::GetShip(Players[client].iShipArchetype)->iShipClass;
+
+		if (shipClass <= 4)
+		{
+			return true;
+		}
+
+		return false;
+	}
+
 	/// Show the items that may be changed.
 	bool PimpShip::UserCmd_ShowItems(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
@@ -281,6 +290,8 @@ namespace PimpShip
 
 		uint beginFrom = 1;
 		uint endAt = mapAvailableItems.size();
+
+		bool isSnub = IsSnub(iClientID);
 
 		ushort index = 0;
 		for (wstring::const_iterator it = wscParam.begin(); it != wscParam.end(); it++)
@@ -332,7 +343,12 @@ namespace PimpShip
 		PrintUserCmdText(iClientID, L"Showing %u/%u items:", endAt - beginFrom + 1, mapAvailableItems.size());
 		for (int i = beginFrom; i != endAt + 1; i++)
 		{
-			PrintUserCmdText(iClientID, L"|     %.2d:  %s", i, mapAvailableItems[i].wscDescription.c_str());
+			auto& item = mapAvailableItems[i];
+			if (item.largeShipOnly && isSnub)
+			{
+				continue;
+			}
+			PrintUserCmdText(iClientID, L"|     %.2d:  %s", i, item.wscNickname.c_str());
 		}
 		PrintUserCmdText(iClientID, L"OK");
 
@@ -360,21 +376,35 @@ namespace PimpShip
 
 		uint iSelectedItemID = ToUInt(secondArg);
 
+		bool isSnub = IsSnub(iClientID);
+
 		if (!iSelectedItemID)
 		{
 			for (map<uint, ITEM_INFO>::iterator it = mapAvailableItems.begin(); it != mapAvailableItems.end(); it++)
 			{
 				if (it->second.wscNickname == secondArg)
 				{
+					if (isSnub && it->second.largeShipOnly)
+					{
+						PrintUserCmdText(iClientID, L"Selected item is not available for this ship class");
+						return true;
+					}
 					iSelectedItemID = it->first;
 					break;
 				}
 			}
 		}
 
-		if (mapAvailableItems.find(iSelectedItemID) == mapAvailableItems.end())
+		auto foundItemIter = mapAvailableItems.find(iSelectedItemID);
+		if (foundItemIter == mapAvailableItems.end())
 		{
 			PrintUserCmdText(iClientID, L"ERR Invalid item ID");
+			return true;
+		}
+
+		if (isSnub && foundItemIter->second.largeShipOnly)
+		{
+			PrintUserCmdText(iClientID, L"Selected item is not available for this ship class");
 			return true;
 		}
 
@@ -513,7 +543,7 @@ namespace PimpShip
 
 		int count = 0;
 		map<uint, EQ_HARDPOINT>& info = mapInfo[iClientID].mapCurrEquip;
-		uint newItem = mapAvailableItems[iSelectedItemID].iArchID;
+		uint newItem = foundItemIter->second.iArchID;
 		for (uint i = beginFrom; i < endAt + 1; i += everyN)
 		{
 			if (info[i].iArchID != newItem)

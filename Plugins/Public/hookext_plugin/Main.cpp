@@ -65,7 +65,11 @@ bool __fastcall HandleSave(PlayerData* pd, void* edx, char* filename, wchar_t* a
 		string charPath = scAcctPath + accName + "\\" + filename;
 
 		char posbuf[100];
-		if (ClientInfo[pd->iOnlineID].undockPosition.x != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.y != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.z != 0.0f)
+		if (pd->vPosition.x != 0.0f || pd->vPosition.y != 0.0f || pd->vPosition.z != 0.0f)
+		{
+			sprintf_s(posbuf, "%f,%f,%f", pd->vPosition.x, pd->vPosition.y, pd->vPosition.z);
+		}
+		else if (ClientInfo[pd->iOnlineID].undockPosition.x != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.y != 0.0f || ClientInfo[pd->iOnlineID].undockPosition.z != 0.0f)
 		{
 			sprintf_s(posbuf, "%f,%f,%f", ClientInfo[pd->iOnlineID].undockPosition.x, ClientInfo[pd->iOnlineID].undockPosition.y, ClientInfo[pd->iOnlineID].undockPosition.z);
 		}

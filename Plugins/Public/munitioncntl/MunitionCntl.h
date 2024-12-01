@@ -102,7 +102,7 @@ struct ShipData
 	int engineCount = 0;
 	bool internalEngine = false;
 	unordered_map<string, unordered_set<string>> engineHpMap;
-	unordered_map<ushort, string> colGrpHpMap;
+	unordered_map<ushort, vector<string>> colGrpHpMap;
 };
 
 struct NewMissileUpdater

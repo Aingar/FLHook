@@ -156,7 +156,7 @@ void ReadMunitionDataFromInis()
 				{
 					if (ini.is_value("hp_disable"))
 					{
-						shipDataMap[currNickname].colGrpHpMap[currSID] = ini.get_value_string();
+						shipDataMap[currNickname].colGrpHpMap[currSID].push_back(ini.get_value_string());
 						break;
 					}
 				}
@@ -1053,7 +1053,10 @@ void Timer()
 					continue;
 				}
 
-				FindAndDisableEquip(iter->first, colGrpData->second);
+				for (auto& hp : colGrpData->second)
+				{
+					FindAndDisableEquip(iter->first, hp);
+				}
 			}
 			iter = equipUpdateVector.erase(iter);
 			continue;
@@ -1422,7 +1425,10 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 		return;
 	}
 
-	FindAndDisableEquip(cship->ownerPlayer, colGrpDataIter->second);
+	for (auto& hp : colGrpDataIter->second)
+	{
+		FindAndDisableEquip(cship->ownerPlayer, hp);
+	}
 }
 
 #define IS_CMD(a) !args.compare(L##a)

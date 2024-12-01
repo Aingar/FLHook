@@ -62,6 +62,7 @@ void CreateSolar::CreateSolarCallout(SPAWN_SOLAR_STRUCT* info)
 	infocard.end_mad_lib();
 
 	pub::Reputation::Alloc(si.iRep, infoname, infocard);
+	pub::Reputation::SetAffiliation(si.iRep, info->affiliation);
 
 	customSolarList.insert(CreateID(si.cNickName));
 

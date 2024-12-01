@@ -481,6 +481,7 @@ static uint CreateWPlatformSolar(PlayerBase* base, uint iSystem, Vector position
 	infocard.begin_mad_lib(solar_ids); // infocard
 	infocard.end_mad_lib();
 	pub::Reputation::Alloc(si.iRep, infoname, infocard);
+	pub::Reputation::SetAffiliation(si.iRep, 0);
 
 	//infocard.begin_mad_lib(16162); //  = ids of "%s0 %s1"
 	//infocard.append_string(solar_ids);  // ids that replaces %s0

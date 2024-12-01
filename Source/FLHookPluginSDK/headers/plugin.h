@@ -422,6 +422,7 @@ struct SPAWN_SOLAR_STRUCT
 	uint iSpaceObjId = 0;
 	uint destSystem = 0;
 	uint destObj = 0;
+	uint affiliation = 0;
 	float percentageHp = 1.0f;
 };
 struct CUSTOM_MOBILE_DOCK_CHECK_STRUCT

@@ -110,12 +110,8 @@ void CoreModule::Spawn()
 		infocard.begin_mad_lib(solar_ids); // infocard
 		infocard.end_mad_lib();
 		pub::Reputation::Alloc(si.iRep, infoname, infocard);
+		pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
 
-
-		if (!base->archetype->isjump)
-		{
-			pub::Reputation::SetAffiliation(si.iRep, base->affiliation);
-		}
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;
 

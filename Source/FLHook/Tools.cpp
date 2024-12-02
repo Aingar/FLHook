@@ -407,8 +407,13 @@ typedef BOOL(WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFi
 	CONST PMINIDUMP_CALLBACK_INFORMATION CallbackParam
 	);
 
-void WriteMiniDump(SEHException* ex)
+void WriteMiniDump(SEHException* ex, bool detailedDump)
 {
+	int dumpFlags = MiniDumpNormal;
+	if (detailedDump)
+	{
+		dumpFlags = MiniDumpScanMemory | MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithModuleHeaders;
+	}
 	AddBothLog("Attempting to write minidump...");
 	HMODULE hDll = ::LoadLibrary("DBGHELP.DLL");
 	if (hDll)
@@ -422,7 +427,14 @@ void WriteMiniDump(SEHException* ex)
 
 			time_t tNow = time(0);
 			struct tm *t = localtime(&tNow);
-			strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserver_%d.%m.%Y_%H.%M.%S", t);
+			if (detailedDump)
+			{
+				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserverCrash_%d.%m.%Y_%H.%M.%S", t);
+			}
+			else
+			{
+				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserver_%d.%m.%Y_%H.%M.%S", t);
+			}
 
 			int n = 1;
 			do
@@ -447,11 +459,11 @@ void WriteMiniDump(SEHException* ex)
 					ep.ExceptionRecord = &ex->record;
 					ExInfo.ExceptionPointers = &ep;
 					ExInfo.ClientPointers = NULL;
-					pDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, &ExInfo, NULL, NULL);
+					pDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, static_cast<MINIDUMP_TYPE>(dumpFlags), &ExInfo, NULL, NULL);
 				}
 				else
 				{
-					pDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, MiniDumpNormal, NULL, NULL, NULL);
+					pDump(GetCurrentProcess(), GetCurrentProcessId(), hFile, static_cast<MINIDUMP_TYPE>(dumpFlags), NULL, NULL, NULL);
 				}
 				::CloseHandle(hFile);
 
@@ -502,7 +514,7 @@ void AddExceptionInfoLog(SEHException* ex)
 			AddBothLog("No register information available");
 		}
 
-		WriteMiniDump(ex);
+		WriteMiniDump(ex, false);
 
 	}
 	catch (...) { AddBothLog("Exception in AddExceptionInfoLog!"); }

@@ -125,7 +125,7 @@ struct SEHException
 	}
 };
 
-EXPORT extern void WriteMiniDump(SEHException * ex);
+EXPORT extern void WriteMiniDump(SEHException * ex, bool detailedDump);
 EXPORT extern void AddExceptionInfoLog(SEHException * ex);
 #define TRY_HOOK try { _set_se_translator(SEHException::Translator);
 #define CATCH_HOOK(e) } \

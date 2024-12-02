@@ -188,7 +188,7 @@ LONG WINAPI FLHookTopLevelFilter(struct _EXCEPTION_POINTERS *pExceptionInfo)
 {
 	AddLog("!!TOP LEVEL EXCEPTION!!");
 	SEHException ex(0, pExceptionInfo);
-	WriteMiniDump(&ex);
+	WriteMiniDump(&ex, true);
 	DumpOnlinePlayers();
 	return EXCEPTION_EXECUTE_HANDLER; 	// EXCEPTION_CONTINUE_SEARCH;
 }

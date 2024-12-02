@@ -1137,7 +1137,14 @@ int Update()
 			HookClient->Send_FLPACKET_COMMON_UPDATEOBJECT(observer.clientId, ssp);
 		}
 
-		iter = NewMissileUpdateMap.erase(iter);
+		if (counter >= 3)
+		{
+			iter = NewMissileUpdateMap.erase(iter);
+		}
+		else
+		{
+			iter++;
+		}
 	}
 
 	if (shieldFuseMap.empty())

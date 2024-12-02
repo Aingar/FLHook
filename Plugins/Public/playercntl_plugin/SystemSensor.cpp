@@ -54,7 +54,7 @@ namespace SystemSensor
 
 	struct INFO
 	{
-		INFO() : iAvailableNetworkID(0), iLastScanNetworkID(0), bInJumpGate(false), iMode(MODE_OFF) {}
+		INFO() : iAvailableNetworkID(0), iLastScanNetworkID(0), bInJumpGate(false), iMode(MODE_OFF), HasRestrictedAccess(0) {}
 		uint iAvailableNetworkID;
 
 		list<CARGO_INFO> lstLastScan;

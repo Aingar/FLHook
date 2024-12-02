@@ -2156,10 +2156,11 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
 		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
 		pub::Player::SendNNMessage(client, pub::GetNicknameId("nnv_anomaly_detected"));
-		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Price = %price)\n";
+		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Good = %good, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%good", itows(gsi.iArchID).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
 		ConPrint(wscMsgU);

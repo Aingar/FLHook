@@ -61,7 +61,7 @@ struct AmmoStruct
 };
 
 // For ships, we go the easy way and map each ship belonging to each base
-static map <uint, AmmoStruct> mapAmmolimits;
+unordered_map <uint, AmmoStruct> mapAmmoLimits;
 
 // Autobuy data for players
 struct AUTOBUY_PLAYERINFO
@@ -124,27 +124,33 @@ int HkPlayerAutoBuyGetCount(uint clientId, uint iItemArchID)
 int __fastcall GetAmmoCapacityDetourHash(CShip* cship, void* edx, uint ammoArch)
 {
 	uint clientId = cship->ownerPlayer;
-	if (!clientId)
+	uint launcherCount = 1;
+	uint ammoPerLauncher = MAX_PLAYER_AMMO;
+
+	if (clientId)
 	{
-		return cship->get_ammo_capacity_remaining(ammoArch);
+		auto ammoLimits = playerAmmoLimits.find(clientId);
+		if (ammoLimits == playerAmmoLimits.end())
+		{
+			goto earlyExit;
+		}
+		auto currAmmoLimit = ammoLimits->second.find(ammoArch);
+		if (currAmmoLimit == ammoLimits->second.end())
+		{
+			goto earlyExit;
+		}
+
+		launcherCount = currAmmoLimit->second.launcherCount;
 	}
-	auto ammoLimits = playerAmmoLimits.find(clientId);
-	if (ammoLimits == playerAmmoLimits.end())
+earlyExit:
+
+	auto ammoIter = mapAmmoLimits.find(ammoArch);
+	if (ammoIter != mapAmmoLimits.end())
 	{
-		return cship->get_ammo_capacity_remaining(ammoArch);
-	}
-	auto currAmmoLimit = ammoLimits->second.find(ammoArch);
-	if (currAmmoLimit == ammoLimits->second.end())
-	{
-		return cship->get_ammo_capacity_remaining(ammoArch);
+		ammoPerLauncher = ammoIter->second.ammoLimit;
 	}
 
-	int maxCount = currAmmoLimit->second.ammoLimit;
-	if (!maxCount)
-	{
-		return cship->get_ammo_capacity_remaining(ammoArch);
-	}
-	int remainingCapacity = maxCount - HkPlayerAutoBuyGetCount(clientId, ammoArch);
+	int remainingCapacity = (ammoPerLauncher * launcherCount) - HkPlayerAutoBuyGetCount(clientId, ammoArch);
 
 	return remainingCapacity;
 }
@@ -204,7 +210,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -242,7 +248,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -272,7 +278,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -311,7 +317,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -341,7 +347,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -371,7 +377,7 @@ void LoadSettings()
 
 				if (valid == true)
 				{
-					mapAmmolimits[itemname] = ammo;
+					mapAmmoLimits[itemname] = ammo;
 					++iLoaded;
 				}
 			}
@@ -448,7 +454,7 @@ void LoadSettings()
 								lstCart.push_back(aci); }
 
 #define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc, client)	{ aci.iArchID = IDin; \
-								aci.iCount = mapAmmolimits[aci.iArchID].ammoLimit - HkPlayerAutoBuyGetCount(client, aci.iArchID); \
+								aci.iCount = mapAmmoLimits[aci.iArchID].ammoLimit - HkPlayerAutoBuyGetCount(client, aci.iArchID); \
 								aci.wscDescription = desc; \
 								lstCart.push_back(aci); }
 
@@ -646,8 +652,8 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 
 		uint ammo = ((Archetype::Launcher*)eq)->iProjectileArchID;
 		
-		auto& ammoLimit = mapAmmolimits.find(ammo);
-		if (ammoLimit == mapAmmolimits.end())
+		auto& ammoLimit = mapAmmoLimits.find(ammo);
+		if (ammoLimit == mapAmmoLimits.end())
 		{
 			continue;
 		}
@@ -671,9 +677,9 @@ unordered_map<uint, ammoData> GetAmmoLimits(uint client)
 
 	for (auto& ammo : returnMap)
 	{
-		if (mapAmmolimits.count(ammo.first))
+		if (mapAmmoLimits.count(ammo.first))
 		{
-			ammo.second.ammoLimit = max(1, ammo.second.launcherCount) * mapAmmolimits.at(ammo.first).ammoLimit;
+			ammo.second.ammoLimit = max(1, ammo.second.launcherCount) * mapAmmoLimits.at(ammo.first).ammoLimit;
 		}
 		else
 		{

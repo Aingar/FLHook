@@ -620,3 +620,45 @@ __declspec(naked) void ShipColGrpDmgNaked()
 		jmp [ShipColGrpDmgFunc]
 	}
 }
+
+void __stdcall ShipFuseLight(IObjRW* ship, uint fuseCause, uint* fuseId, ushort sId, float radius, float fuseLifetime)
+{
+	uint client = ship->cobj->ownerPlayer;
+	if (!client)
+	{
+		return;
+	}
+	auto shipDataIter = shipDataMap.find(ship->cobj->archetype->iArchID);
+	if (shipDataIter == shipDataMap.end())
+	{
+		return;
+	}
+	
+	auto hpMapIter = shipDataIter->second.fuseHpMap.find(*fuseId);
+	if (hpMapIter == shipDataIter->second.fuseHpMap.end()
+		|| hpMapIter->second.empty())
+	{
+		return;
+	}
+
+	for (auto& hp : hpMapIter->second)
+	{
+		FindAndDisableEquip(client, hp);
+	}
+}
+
+__declspec(naked) void ShipFuseLightNaked()
+{
+	__asm {
+		push ecx
+		push [esp+0x18]
+		push [esp+0x18]
+		push [esp+0x18]
+		push [esp+0x18]
+		push [esp+0x18]
+		push ecx
+		call ShipFuseLight
+		pop ecx
+		jmp [ShipFuseLightFunc]
+	}
+}

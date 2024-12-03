@@ -157,7 +157,20 @@ void ReadMunitionDataFromInis()
 					if (ini.is_value("hp_disable"))
 					{
 						shipDataMap[currNickname].colGrpHpMap[currSID].push_back(ini.get_value_string());
-						break;
+					}
+					else if (ini.is_value("fuse"))
+					{
+						uint fuseHash = CreateID(ini.get_value_string(0));
+						int index = 3;
+						while (true)
+						{
+							string HpName = ini.get_value_string(index++);
+							if (HpName.empty())
+							{
+								break;
+							}
+							shipDataMap[currNickname].fuseHpMap[fuseHash].push_back(HpName);
+						}
 					}
 				}
 			}
@@ -610,7 +623,6 @@ void LoadSettings()
 
 void FindAndDisableEquip(uint client, const string& hardpoint)
 {
-
 	for (auto& equip : Players[client].equipDescList.equip)
 	{
 		if (strcmp(equip.szHardPoint.value, hardpoint.c_str()) == 0)

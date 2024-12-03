@@ -10,10 +10,12 @@ void ShipShieldDamageNaked();
 void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
 void ShipColGrpDmgNaked();
+void ShipFuseLightNaked();
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
+void FindAndDisableEquip(uint client, const string& hardpoint);
 
 typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
 static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
@@ -103,6 +105,7 @@ struct ShipData
 	bool internalEngine = false;
 	unordered_map<string, unordered_set<string>> engineHpMap;
 	unordered_map<ushort, vector<string>> colGrpHpMap;
+	unordered_map<uint, vector<string>> fuseHpMap;
 };
 
 struct NewMissileUpdater
@@ -122,6 +125,7 @@ enum TRACKING_STATE {
 extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern unordered_map<uint, GuidedData> guidedDataMap;
+extern unordered_map<uint, ShipData> shipDataMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;
@@ -129,6 +133,7 @@ extern FARPROC GuidedExplosionHitOrigFunc;
 extern FARPROC SolarExplosionHitOrigFunc;
 extern FARPROC ShipMunitionHitOrigFunc;
 extern FARPROC ShipColGrpDmgFunc;
+extern FARPROC ShipFuseLightFunc;
 
 extern vector<float> armorReductionVector;
 extern int shipArmorRating;

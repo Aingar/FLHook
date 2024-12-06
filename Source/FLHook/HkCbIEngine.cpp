@@ -85,7 +85,8 @@ namespace HkIEngine
 		}
 		if (interference)
 		{
-			radarRange *= 1.0f - (interference * interference);
+			interference = 1.0f - interference;
+			radarRange *= interference * interference;
 		}
 
 		if (scannedClientID)

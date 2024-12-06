@@ -918,7 +918,7 @@ namespace HkIEngine
 	int __cdecl Dock_Call(unsigned int const &, unsigned int const &, int, enum DOCK_HOST_RESPONSE);
 	void _LaunchPos();
 	void CEGun_Update_naked();
-	void Radar_Range_naked();
+	bool __fastcall RadarDetection(Observer* observer, void* edx, IObjRW* scannedIObj);
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void FindInStarListNaked();

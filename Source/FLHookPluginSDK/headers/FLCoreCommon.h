@@ -1609,7 +1609,7 @@ namespace Universe
 			float fChance; // Spawn chance
 		};
 
-		uint iDunno1[1];
+		uint vftable;
 		uint iZoneID;
 		uint iSystemID;
 		Matrix mRot;
@@ -1617,7 +1617,17 @@ namespace Universe
 		uint iShapeType; // 1 = sphere, 5 = ring
 		uint iPropertyFlags;
 		Vector vSize;
-		uint iDunno4[13];
+		uint iDunno4;
+		float edgeFraction;
+		int dunno5;
+		float dunnof;
+		uint dunno6;
+		float scannerInterference;
+		float dunnof2;
+		uint dunno7;
+		char* spacedustName;
+		uint spacedustMaxParticles;
+		Vector dunnoV;
 		CmnAsteroid::LootableZone *lootableZone;
 		uint iStartFaction; // & 0xFF, always zero
 		uint iCountMaxFaction; // & 0xFF, appears related to the max number of factions in a given encounter line

@@ -242,6 +242,7 @@ struct Observer
 	uint dunno[11];
 	double timestamp;
 	uint clientId;
+	Vector position;
 	uint dunno2[30]; //unknown size
 };
 

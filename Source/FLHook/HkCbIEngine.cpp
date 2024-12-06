@@ -48,46 +48,56 @@ namespace HkIEngine
 			ret 0x8
 		}
 	}
-static float* pNPC_range    = ((float*)0x6d66aec);
-static float* pPlayer_range = ((float*)0x6d66af0);
-static float* pGroup_range = ((float*)0x6d66af4);
-	void __fastcall CheckRange(uint player, CSimple* scannedObject)
-	{
-		CShip* cship = ClientInfo[player].cship;
-		if (!cship)
-		{
-			return;
-		}
-		if (!Players[player].iShipID)
-		{
-			ClientInfo[player].cship = nullptr;
-			return;
-		}
-		float radarRange = ClientInfo[player].fRadarRange;
-		try
-		{
-			float scannerInterference = cship->get_scanner_interference();
-			scannerInterference = max(scannerInterference, scannedObject->get_scanner_interference());
-			radarRange *= (1.0f - scannerInterference);
-			*pNPC_range = *pPlayer_range = radarRange;
-			*pGroup_range = radarRange * 4;
-		}
-		catch(...)
-		{
-			ConPrint(L"RadarCrashPrevention\n");
-			AddLog("RadarCrashPrevention");
-		}
-	}
 
-	__declspec(naked) void Radar_Range_naked()
+	bool __fastcall RadarDetection(Observer* observer, void* edx, IObjRW* scannedIObj)
 	{
-		__asm {
-			mov			ecx, [edi + 0x38]
-			mov			edx, [esi + 0x10]
-			call        CheckRange
-			mov			eax, 0
-			ret
+		if (!scannedIObj)
+		{
+			return true;
 		}
+
+		CSimple* scannedCObj = reinterpret_cast<CSimple*>(scannedIObj->cobj);
+		if (!scannedCObj || ((scannedCObj->objectClass & CObject::CSIMPLE_MASK) != CObject::CSIMPLE_MASK))
+		{
+			return false;
+		}
+
+		if (observer->clientId == scannedCObj->ownerPlayer)
+		{
+			return true;
+		}
+
+		Vector distanceVector = scannedCObj->vPos;
+
+		distanceVector.x -= observer->position.x;
+		distanceVector.y -= observer->position.y;
+		distanceVector.z -= observer->position.z;
+
+		float distanceSquared = distanceVector.x * distanceVector.x + distanceVector.y * distanceVector.y + distanceVector.z * distanceVector.z;
+
+		uint scannedClientID = scannedCObj->ownerPlayer;
+		float radarRange = ClientInfo[observer->clientId].fRadarRange;
+		float interference = scannedCObj->currentDamageZone ? scannedCObj->currentDamageZone->scannerInterference : 0.0f;
+		CShip* observerShip = ClientInfo[observer->clientId].cship;
+		if (observerShip && observerShip->currentDamageZone)
+		{
+			interference = max(interference, observerShip->currentDamageZone->scannerInterference);
+		}
+		if (interference)
+		{
+			radarRange *= 1.0f - (interference * interference);
+		}
+
+		if (scannedClientID)
+		{
+			auto scannedClientGroup = Players[scannedClientID].PlayerGroup;
+			if (scannedClientGroup && scannedClientGroup == Players[observer->clientId].PlayerGroup)
+			{
+				return distanceSquared < radarRange * 4;
+			}
+		}
+
+		return distanceSquared < radarRange;
 	}
 
 	struct iobjCache

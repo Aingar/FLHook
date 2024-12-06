@@ -273,7 +273,6 @@ void LoadUserCharSettings(uint iClientID)
 /**************************************************************************************************************
 install the callback hooks
 **************************************************************************************************************/
-static FARPROC radarDetour = FARPROC(&HkIEngine::Radar_Range_naked);
 
 void Detour(void* pOFunc, void* pHkFunc)
 {
@@ -395,9 +394,9 @@ bool InitHookExports()
 	Detour(CGuidedInit, HkIEngine::CGuidedInitNaked);
 
 	// Simplified reimplementation of ShipRange.dll by Adoxa
-	pAddress = SRV_ADDR(0x17272);
-	FARPROC radarDetour2 = FARPROC(&radarDetour);
-	WriteProcMem(pAddress, &radarDetour2, 4);
+	pAddress = SRV_ADDR(0x17260);
+	FARPROC radarDetour = FARPROC(&HkIEngine::RadarDetection);
+	Detour(pAddress, radarDetour);
 
 	// Optimize Server.dll sub_6CE61D0 that is called A LOT and crashes if it fails anwyay
 	pAddress = SRV_ADDR(0x61D0);

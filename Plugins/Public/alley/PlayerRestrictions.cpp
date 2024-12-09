@@ -28,10 +28,6 @@
 #include <boost/date_time/posix_time/posix_time_io.hpp>
 #include <boost/lexical_cast.hpp>
 
-static uint maxJettisonCount = 25;
-static uint maxJettisonCountNoOwner = 100;
-static uint lootCleanupFrequency = 420;
-
 namespace pt = boost::posix_time;
 static int set_iPluginDebug = 0;
 
@@ -269,24 +265,6 @@ void LoadSettings()
 					if (ini.is_value("tr"))
 					{
 						notradelist[CreateID(ini.get_value_string(0))] = min(1.0f, max( 0.0f, ini.get_value_float(1)));
-					}
-				}
-			}
-			else if (ini.is_header("general"))
-			{
-				while (ini.read_value())
-				{
-					if (ini.is_value("MaxJettisonCount"))
-					{
-						maxJettisonCount = ini.get_value_int(0);
-					}
-					else if (ini.is_value("MaxJettisonCountNoOwner"))
-					{
-						maxJettisonCountNoOwner = ini.get_value_int(0);
-					}
-					else if (ini.is_value("LootCleanupFrequency"))
-					{
-						lootCleanupFrequency = ini.get_value_int(0);
 					}
 				}
 			}
@@ -700,35 +678,6 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 
 	PrintUserCmdText(iClientID, L"OK");
 	return true;
-}
-
-void RemoveSurplusJettisonItems()
-{
-	unordered_map<uint, vector<uint>> jettisonedItemsMap;
-	auto cObj = dynamic_cast<CLoot*>(CObject::FindFirst(CObject::CLOOT_OBJECT));
-	for (; cObj; cObj = dynamic_cast<CLoot*>(CObject::FindNext()))
-	{
-		jettisonedItemsMap[cObj->get_owner()].emplace_back(cObj->id);
-	}
-	for (const auto& jettisonData : jettisonedItemsMap)
-	{
-		uint itemLimit;
-		if (jettisonData.first == 0)
-		{
-			itemLimit = maxJettisonCountNoOwner;
-		}
-		else
-		{
-			itemLimit = maxJettisonCount;
-		}
-		if (jettisonData.second.size() <= itemLimit)
-			continue;
-		//iterate from the beginning until the defined amount of elements remain
-		for (uint i = 0; i < jettisonData.second.size() - itemLimit; i++)
-		{
-			pub::SpaceObj::Destroy(jettisonData.second[i], DestroyType::VANISH);
-		}
-	}
 }
 
 bool UserCmd_JettisonAll(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
@@ -1165,11 +1114,6 @@ void HkTimerCheckKick()
 	if ((curr_time % 15) == 0)
 	{
 		MarkUsageTimer.clear();
-	}
-	// every 7 minutes, sweep and clean up CLoot entries
-	if ((curr_time % lootCleanupFrequency) == 0)
-	{
-		RemoveSurplusJettisonItems();
 	}
 
 	AP::Timer();

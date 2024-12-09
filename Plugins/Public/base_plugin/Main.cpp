@@ -2961,6 +2961,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		PrintUserCmdText(client, L"OK: Siege Cannon deployed");
 		PrintUserCmdText(client, L"Default administration password is %s", password.c_str());
 
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"jumpcreate") == 0)
@@ -3076,6 +3077,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		PrintUserCmdText(client, L"OK: Solar deployed");
 		//PrintUserCmdText(client, L"Default administration password is %s", password.c_str());
+
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL; 
 		return true;
 	}
 	else if (args.find(L"basecreate") == 0)
@@ -3304,6 +3307,99 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		base->AddMarketGood(goodId, amount);
 		base->Save();
 
+		return true;
+		}
+	else if (args.find(L"basecheckpos") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+		RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		if (client == -1)
+		{
+			cmd->Print(L"Only usable ingame\n");
+			return true;
+		}
+
+		if (!ClientInfo[client].cship)
+		{
+			cmd->Print(L"Only usable in space\n");
+			return true;
+		}
+		if (PlayerCommands::CheckSolarDistances(client, Players[client].iSystemID, ClientInfo[client].cship->vPos))
+		{
+			cmd->Print(L"All Good");
+		}
+		else
+		{
+			cmd->Print(L"Position Invalid");
+		}
+
+		return true;
+	}
+	else if (args.find(L"basepull") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+		RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		if (client == -1)
+		{
+			cmd->Print(L"Only usable ingame\n");
+			return true;
+		}
+
+		if (!ClientInfo[client].cship)
+		{
+			cmd->Print(L"Only usable in space\n");
+			return true;
+		}
+
+		auto baseName = cmd->ArgStrToEnd(1);
+		PlayerBase* pb = nullptr;
+		if(baseName.empty())
+		{
+			auto target = ClientInfo[client].cship->get_target();
+			auto pbIter = player_bases.find(target->get_id());
+			if (pbIter == player_bases.end())
+			{
+				cmd->Print(L"Base name not provided and target is not a POB\n");
+				return true;
+			}
+			pb = pbIter->second;
+		}
+		else
+		{
+			for (auto& i : player_bases)
+			{
+				if (i.second->basename == baseName)
+				{
+					pb = i.second;
+					break;
+				}
+			}
+		}
+
+		if (!pb)
+		{
+			cmd->Print(L"Player Base with this name not found\n");
+			return true;
+		}
+
+		if (!pb->baseCSolar)
+		{
+			cmd->Print(L"No CSolar found for POB!\n");
+			return true;
+		}
+
+		pb->baseCSolar->vPos = ClientInfo[client].cship->vPos;
+		pb->baseCSolar->mRot = ClientInfo[client].cship->mRot;
+		pb->position = ClientInfo[client].cship->vPos;
+		pb->rotation = ClientInfo[client].cship->mRot;
+
+		cmd->Print(L"POB pulled to your location, change visible on system re-entry\n");
 		return true;
 	}
 	else if (args.find(L"reloadbaserecipes") == 0)

@@ -559,21 +559,14 @@ namespace HkIServerImpl
 
 		CHECK_FOR_DISCONNECT
 
-			CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
-
 		if (ClientInfo[iClientID].cship)
 		{
 			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
 		}
 		ClientInfo[iClientID].cship = nullptr;
 		ClientInfo[iClientID].isDocking = false;
-		/*
-		try {
-			// autobuy
-			if(set_bAutoBuy)
-				HkPlayerAutoBuy(iClientID, iBaseID);
-		} catch(...) { AddLog("Exception in " __FUNCTION__ " on autobuy"); LOG_EXCEPTION }
-		*/
+
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
 
 		LOG_CORE_TIMER_START
 		EXECUTE_SERVER_CALL_DEBUG(Server.BaseEnter(iBaseID, iClientID), iClientID, iBaseID);

@@ -517,7 +517,8 @@ void HkTimerCheckKick()
 		}
 		Vector V1mov, V1rot;
 		pub::SpaceObj::GetMotion(dockingShipID, V1mov, V1rot);
-		if (V1mov.x > 5 || V1mov.y > 5 || V1mov.z > 5)
+		float dockingLinearVelocity = VectorMagnitude(V1mov);
+		if (dockingLinearVelocity > 8)
 		{
 			auto dockingName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(dd.dockingID));
 			PrintUserCmdText(dd.dockingID, L"Docking aborted due to your movement");
@@ -531,7 +532,8 @@ void HkTimerCheckKick()
 		Vector V2mov, V2rot;
 		const auto& carrierShipID = Players[dd.carrierID].iShipID;
 		pub::SpaceObj::GetMotion(carrierShipID, V2mov, V2rot);
-		if (V2mov.x > 5 || V2mov.y > 5 || V2mov.z > 5)
+		float carrierLinearVelocity = VectorMagnitude(V2mov);
+		if (carrierLinearVelocity > 10)
 		{
 			PrintUserCmdText(dd.dockingID, L"Docking aborted due to carrier movement");
 			PrintUserCmdText(dd.carrierID, L"Docking aborted due to carrier movement");

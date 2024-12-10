@@ -82,7 +82,10 @@ L"<TRA bold=\"true\"/><TEXT>/base supplies</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base setfood [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT>",
+L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT><PARA/><PARA/>"
+
+L"<TRA bold=\"true\"/><TEXT>/base setpublic [public/private] [masterpassword]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Sets or unsets the base visibility to external APIs.</TEXT>",
 
 L"<TRA bold=\"true\"/><TEXT>/base defmod</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control defense modules.</TEXT><PARA/><PARA/>"
@@ -268,6 +271,51 @@ namespace PlayerCommands
 			base->unsuccessful_logins_in_a_row[charname] = 0;
 
 		return false;
+	}
+
+	void BaseSetPublic(uint client, const wstring& args)
+	{
+
+		PlayerBase* base = GetPlayerBaseForClient(client);
+
+		if (!checkBaseAdminAccess(base, client))
+		{
+			return;
+		}
+
+		//prevent too often login attempts
+		wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+		if (RateLimitLogins(client, base, charname))
+		{
+			return;
+		}
+
+		auto value = ToLower(GetParam(args, ' ', 2));
+		bool newsetting;
+		if (value == L"public")
+		{
+			newsetting = true;
+		}
+		else if (value == L"private")
+		{
+			newsetting = false;
+		}
+		else
+		{
+			PrintUserCmdText(client, L"Usage: /base setpublic <public/private> <masterpassword>");
+			return;
+		}
+
+		auto masterpw = GetParam(args, ' ', 3);
+		if (base->passwords.front().pass != masterpw)
+		{
+			base->unsuccessful_logins_in_a_row[charname]++; //count password failures
+			PrintUserCmdText(client, L"ERR Invalid master password provided");
+			return;
+		}
+
+		base->isPublic = newsetting;
+		PrintUserCmdText(client, L"OK base set to %ls", newsetting ? L"public" : L"private");
 	}
 
 	void BaseLogin(uint client, const wstring& args)

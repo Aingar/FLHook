@@ -112,103 +112,109 @@ void ExportData::ToHTML()
 	}
 }
 
+char* VectorToString(Vector& pos)
+{
+	static char buf[50];
+	_snprintf(buf, sizeof(buf), "%0.0f, %0.0f, %0.0f", pos.x, pos.y, pos.z);
+	return buf;
+}
+
 void ExportData::ToJSON()
 {
 	stringstream stream;
 	minijson::object_writer writer(stream);
 	writer.write("timestamp", pt::to_iso_string(pt::second_clock::local_time()));
+
+	minijson::object_writer sii = writer.nested_object("shop_item_info");
+
+	sii.write("0", "id");
+	sii.write("1", "quantity");
+	sii.write("2", "price");
+	sii.write("3", "sell_price");
+	sii.write("4", "min_stock");
+	sii.write("5", "max_stock");
+
+	sii.close();
+
 	minijson::object_writer pwc = writer.nested_object("bases");
 
 	static unordered_map<uint, string> itemNameMap;
 	static unordered_map<uint, string> repNameMap;
+
 	for (auto& iter : player_bases)
 	{
 		PlayerBase* base = iter.second;
-		//grab the affiliation before we begin
-		string theaffiliation;
-		if (repNameMap.count(base->affiliation))
+		if (!base->isPublic)
 		{
-			theaffiliation = repNameMap.at(base->affiliation);
-		}
-		else
-		{
-			string& repName = wstos(HtmlEncode(HkGetWStringFromIDS(Reputation::get_name(base->affiliation))));
-			if (repName == "Object Unknown")
-			{
-				repName = "No Affiliation";
-			}
-			repNameMap[base->affiliation] = repName;
-			theaffiliation = repName;
+			continue;
 		}
 
 		//begin the object writer
 		minijson::object_writer pw = pwc.nested_object(wstos(HtmlEncode(base->basename)).c_str());
 
-		minijson::array_writer pwds = pw.nested_array("passwords");
-		// first thing we'll do is grab all administrator passwords, encoded.
-		for (auto& bp : base->passwords)
-		{
-			wstring l = bp.pass;
-			if (!bp.admin && bp.viewshop)
-			{
-				l += L" viewshop";
-			}
-			pwds.write(wstos(HtmlEncode(l)).c_str());
-		}
-		pwds.close();
-
-		/* Commenting out until necessary and appropriate async processing is done.
-		minijson::array_writer shop = pw.nested_array("shop_items");
-		for (auto i : base->market_items)
-		{
-			if (!i.second.is_public)
-			{
-				continue;
-			}
-			try {
-				minijson::object_writer item = shop.nested_object();
-				item.write("quantity", i.second.quantity);
-				item.write("price", i.second.price);
-				item.write("min_stock", i.second.min_stock);
-				item.write("max_stock", i.second.max_stock);
-				item.write("is_public", i.second.is_public);
-
-				const GoodInfo* gi = GoodList::find_by_id(i.first);
-
-				if (itemNameMap.count(gi->iArchID))
-				{
-					item.write("name", itemNameMap.at(gi->iArchID).c_str());
-				}
-				else
-				{
-					string& itemName = wstos(HkGetWStringFromIDS(gi->iIDSName));
-					itemNameMap[gi->iArchID] = itemName;
-					item.write("name", itemName.c_str());
-				}
-				item.write("name_id", gi->iIDSName);
-				item.write("id", i.first);
-				item.write("nickname", EquipmentUtilities::FindNickname(i.first));
-				item.close();
-
-			}
-			catch (...)
-			{
-				ConPrint(L"WARN: failed to output to json object with id %u\n", i.first);
-			}
-		}
-		shop.close();
-		*/
+		pw.write("pass", wstos(base->passwords.begin()->pass).c_str());
 
 		//add basic elements
-		pw.write("affiliation", theaffiliation.c_str());
-		pw.write("type", base->basetype.c_str());
-		pw.write("solar", base->basesolar.c_str());
-		pw.write("loadout", base->baseloadout.c_str());
+		pw.write("pos", VectorToString(base->position));
+		pw.write("system", base->system);
+		pw.write("affiliation", base->affiliation);
 		pw.write("level", base->base_level);
 		pw.write("money", base->money);
 		pw.write("health", 100 * (base->base_health / base->max_base_health));
 		pw.write("defensemode", (int)base->defense_mode);
-		pw.write("shieldstate", base->isShieldOn);
+
+		minijson::array_writer shop = pw.nested_array("shop_items");
+		for (auto& goodId : base->pinned_market_items)
+		{
+			auto& marketItemIter = base->market_items.find(goodId);
+
+			auto& marketItem = marketItemIter->second;
+
+			minijson::array_writer item = shop.nested_array();
+			item.write(goodId);
+			item.write(marketItem.quantity);
+			item.write(marketItem.price);
+			item.write(marketItem.sellPrice);
+			item.write(marketItem.min_stock);
+			item.write(marketItem.max_stock);
+			item.close();
+
+		}
+		shop.close();
+
+
+		if (base->defense_mode == PlayerBase::DEFENSE_MODE::IFF && !base->hostile_factions.empty())
+		{
+			minijson::array_writer iffList = pw.nested_array("hostile_list");
+			for (auto& faction : base->hostile_factions)
+			{
+				iffList.write(faction);
+			}
+			iffList.close();
+		}
+
+		if ((base->defense_mode == PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE
+			|| base->defense_mode == PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL)
+			&& !base->ally_factions.empty())
+		{
+			minijson::array_writer iffList = pw.nested_array("ally_list");
+			for (auto& faction : base->ally_factions)
+			{
+				iffList.write(faction);
+			}
+			iffList.close();
+		}
+
+		if (!base->srp_factions.empty())
+		{
+			minijson::array_writer iffList = pw.nested_array("srp_ally_list");
+			for (auto& srpFaction : base->srp_factions)
+			{
+				iffList.nested_object();
+			}
+			iffList.close();
+		}
+
 		pw.close();
 
 	}

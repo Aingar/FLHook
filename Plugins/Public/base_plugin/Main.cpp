@@ -21,6 +21,8 @@ string lastDespawnedFilename;
 
 unordered_map<uint, unordered_set<uint>> eventCommodities;
 
+uint set_export_cooldown = 900;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -341,27 +343,6 @@ void LogCheater(uint client, const wstring &reason)
 	string scText = wstos(reason);
 	Logging("%s", scText.c_str());
 
-	/*
-	// Set the kick timer to kick this player. We do this to break potential
-	// stack corruption.
-	HkDelayedKick(client, 1);
-
-	// Ban the account.
-	flstr *flStr = CreateWString(acc->wszAccID);
-	Players.BanAccount(*flStr, true);
-	FreeWString(flStr);
-
-	// Overwrite the ban file so that it contains the ban reason
-	wstring wscDir;
-	HkGetAccountDirName(acc, wscDir);
-	string scBanPath = scAcctPath + wstos(wscDir) + "\\banned";
-	FILE *file = fopen(scBanPath.c_str(), "wb");
-	if (file)
-	{
-	fprintf(file, "Autobanned by BasePlugin\n");
-	fclose(file);
-	}
-	*/
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -772,6 +753,10 @@ void LoadSettingsActual()
 					if (ini.is_value("debug"))
 					{
 						set_plugin_debug = ini.get_value_int(0);
+					}
+					else if (ini.is_value("export_cooldown"))
+					{
+						set_export_cooldown = ini.get_value_int(0);
 					}
 					else if (ini.is_value("status_path_html"))
 					{
@@ -1300,7 +1285,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	if ((curr_time % set_tick_time) == 0)
+	if ((curr_time % set_export_cooldown) == 0)
 	{
 		// Write status to an html formatted page every 60 seconds
 		if ((ExportType == 0 || ExportType == 2) && set_status_path_html.size() > 0)
@@ -1549,6 +1534,12 @@ bool UserCmd_Process(uint client, const wstring &args)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseTestDeploy(client, args);
+		return true;
+	}
+	else if (args.find(L"/base setpublic") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		PlayerCommands::BaseSetPublic(client, args);
 		return true;
 	}
 	else if (args.find(L"/shop") == 0)

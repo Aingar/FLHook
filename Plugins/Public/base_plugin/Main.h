@@ -368,6 +368,8 @@ public:
 
 	bool isFreshlyBuilt;
 
+	bool isPublic;
+
 	// The base nickname
 	string nickname;
 
@@ -677,6 +679,7 @@ namespace PlayerCommands
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
 	void SetPrefFood(uint client, const wstring& cmd);
+	void BaseSetPublic(uint client, const wstring& cmd);
 
 	void BaseDeploy(uint client, const wstring& args);
 	void BaseTestDeploy(uint client, const wstring& args);

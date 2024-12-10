@@ -11,7 +11,7 @@
 #include <PluginUtilities.h>
 
 /// A map of hashcode and their associated nicknames.
-static std::map<uint, std::string> mapHashToNickname;
+static std::unordered_map<uint, std::string> mapHashToNickname;
 
 /// Read an ini file for nicknames and save the associated hashcode
 static void ReadIniNicknameFile(const string& filePath)
@@ -36,7 +36,7 @@ static void ReadIniNicknameFile(const string& filePath)
 
 const char* EquipmentUtilities::FindNickname(uint hash)
 {
-	std::map<uint, std::string>::iterator i = mapHashToNickname.find(hash);
+	auto i = mapHashToNickname.find(hash);
 	if (i == mapHashToNickname.end())
 		return "";
 	return i->second.c_str();

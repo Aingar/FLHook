@@ -5,7 +5,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0),
 	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
-	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
+	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
 {
 	nickname = CreateBaseNickname(wstos(basename));
 	base = CreateID(nickname.c_str());
@@ -40,7 +40,7 @@ PlayerBase::PlayerBase(const string &the_path)
 	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0),
 	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
-	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0)
+	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
 {
 	// Load and spawn base modules
 	Load();
@@ -490,6 +490,10 @@ void PlayerBase::Load()
 					{
 						logic = ini.get_value_int(0);
 					}
+					else if (ini.is_value("public"))
+					{
+						isPublic = ini.get_value_bool(0);
+					}
 					else if (ini.is_value("invulnerable"))
 					{
 						invulnerable = ini.get_value_int(0);
@@ -755,6 +759,10 @@ void PlayerBase::Save()
 		if (preferred_food)
 		{
 			fprintf(file, "preferred_food = %u\n", preferred_food);
+		}
+		if (isPublic)
+		{
+			fprintf(file, "public = %u\n", isPublic ? 1 : 0);
 		}
 		fprintf(file, "shieldstrength = %f\n", shield_strength_multiplier);
 		fprintf(file, "shielddmgtaken = %f\n", damage_taken_since_last_threshold);

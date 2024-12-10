@@ -564,9 +564,10 @@ namespace HkIServerImpl
 			HkIEngine::playerShips.erase(ClientInfo[iClientID].cship->id);
 		}
 		ClientInfo[iClientID].cship = nullptr;
-		ClientInfo[iClientID].isDocking = false;
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
+
+		ClientInfo[iClientID].isDocking = false;
 
 		LOG_CORE_TIMER_START
 		EXECUTE_SERVER_CALL_DEBUG(Server.BaseEnter(iBaseID, iClientID), iClientID, iBaseID);

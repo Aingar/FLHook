@@ -59,9 +59,6 @@ namespace MiscCmds
 	// Resetrep is not allowed if attempted within the resetrep time limit (in seconds)
 	uint set_iResetrepTimeLimit = 0;
 
-	/// Local chat range
-	float set_iLocalChatRange = 9999;
-
 	uint set_shieldSwapCooldown = 5;
 
 	/// Load the configuration
@@ -71,7 +68,6 @@ namespace MiscCmds
 		set_iRepdropCost = IniGetI(scPluginCfgFile, "General", "RepDropCost", 0);
 		set_iResetrepCost = IniGetI(scPluginCfgFile, "General", "ResetrepCost", 10000000);
 		set_iResetrepTimeLimit = IniGetI(scPluginCfgFile, "General", "ResetrepTimeLimit", 1209600);
-		set_iLocalChatRange = IniGetF(scPluginCfgFile, "General", "LocalChatRange", 0);
 		set_shieldSwapCooldown = IniGetI(scPluginCfgFile, "General", "ShieldToggleCooldown", set_shieldSwapCooldown);
 
 		set_wscStuckMsg = stows(IniGetS(scPluginCfgFile, "General", "StuckMsg", "Attention! Stand clear. Towing %player"));

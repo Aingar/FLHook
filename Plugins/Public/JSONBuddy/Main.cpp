@@ -19,12 +19,11 @@
 
 namespace pt = boost::posix_time;
 
-map <uint, ACTIVITY_DATA> mapActivityData;
-map <uint, string> mapShips;
-map <uint, string> mapIDs;
+unordered_map <uint, ACTIVITY_DATA> mapActivityData;
+unordered_map <uint, string> mapShips;
+unordered_map <uint, string> mapIDs;
 
 static int debug = 0;
-int jsontimer = 30;
 
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
@@ -334,95 +333,90 @@ void HkTimerJSON()
 	Condata::HkTimerCheckKick();
 
 	//update activity once per minute
-	if (!jsontimer)
+	if (time(0) % 30)
 	{
-		//ConPrint(L"JSONBuddy: Attempting to send data\n");
-		stringstream stream;
-		minijson::object_writer writer(stream);
-		writer.write("timestamp", pt::to_iso_string(pt::second_clock::local_time()));
+		return;
+	}
+	//ConPrint(L"JSONBuddy: Attempting to send data\n");
+	stringstream stream;
+	minijson::object_writer writer(stream);
+	writer.write("timestamp", pt::to_iso_string(pt::second_clock::local_time()));
 
-		string sPlayer = "players";
+	static string sPlayer = "players";
 
-		minijson::object_writer pwc = writer.nested_object(sPlayer.c_str());
+	minijson::object_writer pwc = writer.nested_object(sPlayer.c_str());
 
-		struct PlayerData *pPD = 0;
+	struct PlayerData *pPD = 0;
 
-		while (pPD = Players.traverse_active(pPD))
+	while (pPD = Players.traverse_active(pPD))
+	{
+		uint iClientID = HkGetClientIdFromPD(pPD);
+		if (HkIsInCharSelectMenu(iClientID))
+			continue;
+
+		CDPClientProxy *cdpClient = g_cClientProxyArray[iClientID - 1];
+		if (!cdpClient)
+			continue;
+
+		uint iSystemID;
+		pub::Player::GetSystem(iClientID, iSystemID);
+		const Universe::ISystem *iSys = Universe::get_system(iSystemID);
+
+		string sysname = iSys->nickname;
+
+		//if it's empty, it's probably a plugin reload. We fill the data so we don't send dumb shit or worse cause exceptions
+		if (mapActivityData[iClientID].charname.empty())
 		{
-			uint iClientID = HkGetClientIdFromPD(pPD);
-			if (HkIsInCharSelectMenu(iClientID))
-				continue;
+			mapActivityData[iClientID].charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
 
-			CDPClientProxy *cdpClient = g_cClientProxyArray[iClientID - 1];
-			if (!cdpClient)
-				continue;
+			wstring spurdoip;
+			HkGetPlayerIP(iClientID, spurdoip);
+			mapActivityData[iClientID].ip = wstos(spurdoip);
+		}
 
-			uint iSystemID;
-			pub::Player::GetSystem(iClientID, iSystemID);
-			const Universe::ISystem *iSys = Universe::get_system(iSystemID);
+		Archetype::Ship *ship = Archetype::GetShip(Players[iClientID].iShipArchetype);
+		mapActivityData[iClientID].shiparch = "UNKNOWN";
+		if (ship) {
+			mapActivityData[iClientID].shiparch = mapShips[ship->get_id()];
+		}
 
-			string sysname = iSys->nickname;
+		//ensure the ID is empty, as we want to return something if no ID is found.
+		mapActivityData[iClientID].id = "";
 
-			//if it's empty, it's probably a plugin reload. We fill the data so we don't send dumb shit or worse cause exceptions
-			if (mapActivityData[iClientID].charname.empty())
+		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+		{
+			if (mapIDs.find(item->iArchID) != mapIDs.end())
 			{
-				mapActivityData[iClientID].charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
-
-				wstring spurdoip;
-				HkGetPlayerIP(iClientID, spurdoip);
-				mapActivityData[iClientID].ip = wstos(spurdoip);
-			}
-
-			Archetype::Ship *ship = Archetype::GetShip(Players[iClientID].iShipArchetype);
-			mapActivityData[iClientID].shiparch = "UNKNOWN";
-			if (ship) {
-				mapActivityData[iClientID].shiparch = mapShips[ship->get_id()];
-			}
-
-			//ensure the ID is empty, as we want to return something if no ID is found.
-			mapActivityData[iClientID].id = "";
-
-			for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
-			{
-				if (mapIDs.find(item->iArchID) != mapIDs.end())
+				if (item->bMounted)
 				{
-					if (item->bMounted)
-					{
-						mapActivityData[iClientID].id = mapIDs[item->iArchID];
-						//PrintUserCmdText(iClientID, L"DEBUG: Found relevant item: %s", stows(mapIDs[item->equip.iArchID]).c_str());
-						//pub::Audio::PlaySoundEffect(iClientID, CreateID("cargo_jettison"));
-					}
+					mapActivityData[iClientID].id = mapIDs[item->iArchID];
+					//PrintUserCmdText(iClientID, L"DEBUG: Found relevant item: %s", stows(mapIDs[item->equip.iArchID]).c_str());
+					//pub::Audio::PlaySoundEffect(iClientID, CreateID("cargo_jettison"));
 				}
 			}
-
-			minijson::object_writer pw = pwc.nested_object(mapActivityData[iClientID].charname.c_str());
-			pw.write("system", sysname);
-			pw.write("ip", mapActivityData[iClientID].ip.c_str());
-			pw.write("ship", mapActivityData[iClientID].shiparch.c_str());
-			pw.write("id", mapActivityData[iClientID].id.c_str());
-			pw.write("ping", ConData[iClientID].iAveragePing);
-			pw.write("loss", ConData[iClientID].iAverageLoss);
-			pw.write("lag", ConData[iClientID].iLags);
-			pw.close();
-
-
-		}
-		pwc.close();
-		writer.close();
-
-		//dump to a file
-		FILE *file = fopen("c:/stats/player_status.json", "w");
-		if (file)
-		{
-			fprintf(file, "%s", stream.str().c_str());
-			fclose(file);
 		}
 
-		jsontimer = 30;
+		minijson::object_writer pw = pwc.nested_object(mapActivityData[iClientID].charname.c_str());
+		pw.write("system", sysname);
+		pw.write("ip", mapActivityData[iClientID].ip.c_str());
+		pw.write("ship", mapActivityData[iClientID].shiparch.c_str());
+		pw.write("id", mapActivityData[iClientID].id.c_str());
+		pw.write("ping", ConData[iClientID].iAveragePing);
+		pw.write("loss", ConData[iClientID].iAverageLoss);
+		pw.write("lag", ConData[iClientID].iLags);
+		pw.close();
+
+
 	}
-	else
+	pwc.close();
+	writer.close();
+
+	//dump to a file
+	FILE *file = fopen("c:/stats/player_status.json", "w");
+	if (file)
 	{
-		jsontimer = jsontimer - 1;
+		fprintf(file, "%s", stream.str().c_str());
+		fclose(file);
 	}
 }
 

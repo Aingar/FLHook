@@ -82,7 +82,7 @@ struct ACTIVITY_DATA
 	string id;
 };
 
-extern map <uint, ACTIVITY_DATA> mapActivityData;
+extern unordered_map <uint, ACTIVITY_DATA> mapActivityData;
 
 using namespace std;
 

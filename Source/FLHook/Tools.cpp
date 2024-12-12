@@ -21,7 +21,7 @@ string wstos(const wstring &wscText)
 	uint iLen = (uint)wscText.length() + 1;
 	char *szBuf = new char[iLen];
 	WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
-	string scRet = szBuf;
+	string scRet{ szBuf, szBuf + iLen };
 	delete[] szBuf;
 	return scRet;
 }

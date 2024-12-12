@@ -126,23 +126,28 @@ int __fastcall GetAmmoCapacityDetourHash(CShip* cship, void* edx, uint ammoArch)
 	uint clientId = cship->ownerPlayer;
 	uint launcherCount = 1;
 	uint ammoPerLauncher = MAX_PLAYER_AMMO;
+	uint currCount = 0;
 
-	if (clientId)
+	CEquipTraverser tr(EquipmentClass::Cargo);
+	CECargo* cargo;
+	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
 	{
-		auto ammoLimits = playerAmmoLimits.find(clientId);
-		if (ammoLimits == playerAmmoLimits.end())
+		if (cargo->archetype->iArchID == ammoArch)
 		{
-			goto earlyExit;
+			currCount = cargo->count;
+			break;
 		}
-		auto currAmmoLimit = ammoLimits->second.find(ammoArch);
-		if (currAmmoLimit == ammoLimits->second.end())
-		{
-			goto earlyExit;
-		}
-
-		launcherCount = currAmmoLimit->second.launcherCount;
 	}
-earlyExit:
+
+	auto ammoLimits = playerAmmoLimits.find(clientId);
+	if (ammoLimits != playerAmmoLimits.end())
+	{
+		auto currAmmoLimit = ammoLimits->second.find(ammoArch);
+		if (currAmmoLimit != ammoLimits->second.end())
+		{
+			launcherCount = max(1, currAmmoLimit->second.launcherCount);
+		}
+	}
 
 	auto ammoIter = mapAmmoLimits.find(ammoArch);
 	if (ammoIter != mapAmmoLimits.end())
@@ -150,8 +155,9 @@ earlyExit:
 		ammoPerLauncher = ammoIter->second.ammoLimit;
 	}
 
-	int remainingCapacity = (ammoPerLauncher * launcherCount) - HkPlayerAutoBuyGetCount(clientId, ammoArch);
+	int remainingCapacity = (ammoPerLauncher * launcherCount) - currCount;
 
+	remainingCapacity = max(remainingCapacity, 0);
 	return remainingCapacity;
 }
 

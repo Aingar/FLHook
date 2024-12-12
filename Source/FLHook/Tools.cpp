@@ -18,9 +18,9 @@ wstring stows(const string &scText)
 
 string wstos(const wstring &wscText)
 {
-	uint iLen = (uint)wscText.length() + 1;
-	char *szBuf = new char[iLen];
-	WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, szBuf, iLen, 0, 0);
+	int size = WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, 0, 0, 0, 0);
+	char *szBuf = new char[size];
+	WideCharToMultiByte(CP_UTF8, 0, wscText.c_str(), -1, szBuf, size, 0, 0);
 	string scRet = szBuf;
 	delete[] szBuf;
 	return scRet;

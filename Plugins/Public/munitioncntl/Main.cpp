@@ -961,6 +961,7 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		HkBeamById(iClientID, Players[iClientID].iLastBaseID);
 		PrintUserCmdText(iClientID, L"ERR Invalid engine(s) detected. You will be kicked to unmount the engines.");
 		UnmountEngines(iClientID);
+		Plugin_Communication(CUSTOM_BEAM_LAST_BASE, &iClientID);
 		HkDelayedKick(iClientID, 5);
 	}
 

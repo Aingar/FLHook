@@ -201,6 +201,7 @@ void ClearClientInfo(uint iClientID)
 	ClientInfo[iClientID].bThrusterActivated = false;
 	ClientInfo[iClientID].bTradelane = false;
 	ClientInfo[iClientID].isDocking = false;
+	ClientInfo[iClientID].playerID = 0;
 	ClientInfo[iClientID].undockPosition = { 0,0,0 };
 
 	CALL_PLUGINS_V(PLUGIN_ClearClientInfo, , (uint), (iClientID));

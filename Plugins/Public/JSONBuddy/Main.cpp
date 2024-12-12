@@ -287,38 +287,27 @@ void __stdcall PlayerLaunch(unsigned int iShip, unsigned int client)
 void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)
 {
 	mapActivityData.erase(iClientID);
-	mapActivityData[iClientID].charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
+	auto& ACTIVITY_DATA = mapActivityData[iClientID];
+	ACTIVITY_DATA.charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
 
 	wstring spurdoip;
 	HkGetPlayerIP(iClientID, spurdoip);
-	mapActivityData[iClientID].ip = wstos(spurdoip);
+	ACTIVITY_DATA.ip = wstos(spurdoip);
 
 	Archetype::Ship *ship = Archetype::GetShip(Players[iClientID].iShipArchetype);
-	mapActivityData[iClientID].shiparch = "UNKNOWN";
 	if (ship)
 	{
-		mapActivityData[iClientID].shiparch = mapShips[ship->get_id()];
+		ACTIVITY_DATA.shiparch = mapShips[ship->get_id()];
 	}
 	else
 	{
-		AddLog("JSONBuddy: CharacterSelect_AFTER: Client %d (%s) logged in with unknown ship archetype %d", iClientID, mapActivityData[iClientID].charname.c_str(), Players[iClientID].iShipArchetype);
+		ACTIVITY_DATA.shiparch = "UNKNOWN";
+		AddLog("JSONBuddy: CharacterSelect_AFTER: Client %d (%s) logged in with unknown ship archetype %d", iClientID, ACTIVITY_DATA.charname.c_str(), Players[iClientID].iShipArchetype);
 	}
 
 	//ensure the ID is empty, as we want to return something if no ID is found.
-	mapActivityData[iClientID].id = "";
+	ACTIVITY_DATA.id = mapIDs[ClientInfo[iClientID].playerID];
 
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
-	{
-		if (mapIDs.find(item->iArchID) != mapIDs.end())
-		{
-			if (item->bMounted)
-			{
-				mapActivityData[iClientID].id = mapIDs[item->iArchID];
-				//PrintUserCmdText(iClientID, L"DEBUG: Found relevant item: %s", stows(mapIDs[item->equip.iArchID]).c_str());
-				//pub::Audio::PlaySoundEffect(iClientID, CreateID("cargo_jettison"));			
-			}
-		}
-	}
 }
 
 void _stdcall Disconnect(unsigned int iClientID, enum EFLConnection p2)
@@ -365,23 +354,29 @@ void HkTimerJSON()
 		string sysname = iSys->nickname;
 
 		//if it's empty, it's probably a plugin reload. We fill the data so we don't send dumb shit or worse cause exceptions
-		if (mapActivityData[iClientID].charname.empty())
+		auto clientIter = mapActivityData.find(iClientID);
+		if (clientIter == mapActivityData.end())
 		{
-			mapActivityData[iClientID].charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
+			continue;
+		}
+		auto& clientData = clientIter->second;
+		if (clientData.charname.empty())
+		{
+			clientData.charname = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
 
 			wstring spurdoip;
 			HkGetPlayerIP(iClientID, spurdoip);
-			mapActivityData[iClientID].ip = wstos(spurdoip);
+			clientData.ip = wstos(spurdoip);
 		}
 
 		Archetype::Ship *ship = Archetype::GetShip(Players[iClientID].iShipArchetype);
-		mapActivityData[iClientID].shiparch = "UNKNOWN";
+		clientData.shiparch = "UNKNOWN";
 		if (ship) {
-			mapActivityData[iClientID].shiparch = mapShips[ship->get_id()];
+			clientData.shiparch = mapShips[ship->get_id()];
 		}
 
 		//ensure the ID is empty, as we want to return something if no ID is found.
-		mapActivityData[iClientID].id = "";
+		clientData.id = "";
 
 		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 		{
@@ -389,18 +384,18 @@ void HkTimerJSON()
 			{
 				if (item->bMounted)
 				{
-					mapActivityData[iClientID].id = mapIDs[item->iArchID];
+					clientData.id = mapIDs[item->iArchID];
 					//PrintUserCmdText(iClientID, L"DEBUG: Found relevant item: %s", stows(mapIDs[item->equip.iArchID]).c_str());
 					//pub::Audio::PlaySoundEffect(iClientID, CreateID("cargo_jettison"));
 				}
 			}
 		}
 
-		minijson::object_writer pw = pwc.nested_object(mapActivityData[iClientID].charname.c_str());
+		minijson::object_writer pw = pwc.nested_object(clientData.charname.c_str());
 		pw.write("system", sysname);
-		pw.write("ip", mapActivityData[iClientID].ip.c_str());
-		pw.write("ship", mapActivityData[iClientID].shiparch.c_str());
-		pw.write("id", mapActivityData[iClientID].id.c_str());
+		pw.write("ip", clientData.ip.c_str());
+		pw.write("ship", clientData.shiparch.c_str());
+		pw.write("id", clientData.id.c_str());
 		pw.write("ping", ConData[iClientID].iAveragePing);
 		pw.write("loss", ConData[iClientID].iAverageLoss);
 		pw.write("lag", ConData[iClientID].iLags);

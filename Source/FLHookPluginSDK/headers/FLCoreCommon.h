@@ -791,6 +791,8 @@ namespace Archetype
 		bool bUseGunElevation;
 		bool bAutoTurret;
 		/* 47 */ st6::vector<uint>hpTypes;
+		bool isRangeCalculated;
+		float range;
 	};
 
 	struct IMPORT InternalFXEquip : Equipment

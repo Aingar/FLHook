@@ -514,6 +514,14 @@ void AddExceptionInfoLog(SEHException* ex)
 			AddBothLog("No register information available");
 		}
 
+		static int counter = 0;
+
+		if (++counter > 30)
+		{
+			ConPrint(L"ALERT! EXCEEDINGLY HIGH AMOUNT OF EXCEPTIONS. CONTACT HEAD DEVS IMMEDIATELY!\n");
+			return;
+		}
+
 		WriteMiniDump(ex, false);
 
 	}

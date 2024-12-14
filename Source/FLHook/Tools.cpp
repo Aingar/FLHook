@@ -409,11 +409,8 @@ typedef BOOL(WINAPI *MINIDUMPWRITEDUMP)(HANDLE hProcess, DWORD dwPid, HANDLE hFi
 
 void WriteMiniDump(SEHException* ex, bool detailedDump)
 {
-	int dumpFlags = MiniDumpNormal;
-	if (detailedDump)
-	{
-		dumpFlags = MiniDumpScanMemory | MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithModuleHeaders;
-	}
+	int dumpFlags = MiniDumpScanMemory | MiniDumpWithIndirectlyReferencedMemory | MiniDumpWithModuleHeaders;
+
 	AddBothLog("Attempting to write minidump...");
 	HMODULE hDll = ::LoadLibrary("DBGHELP.DLL");
 	if (hDll)

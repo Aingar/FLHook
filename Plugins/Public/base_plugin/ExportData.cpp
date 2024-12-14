@@ -223,6 +223,77 @@ void ExportData::ToJSON()
 	writer.close();
 
 	//dump to a file
+	FILE* file = fopen(set_status_path_json_public_shop.c_str(), "w");
+	if (file)
+	{
+		fprintf(file, stream.str().c_str());
+		fclose(file);
+	}
+}
+
+void ExportData::ToJSONBasic()
+{
+	stringstream stream;
+	minijson::object_writer writer(stream);
+	writer.write("timestamp", pt::to_iso_string(pt::second_clock::local_time()));
+	minijson::object_writer pwc = writer.nested_object("bases");
+
+	static unordered_map<uint, string> itemNameMap;
+	static unordered_map<uint, string> repNameMap;
+	for (auto& iter : player_bases)
+	{
+		PlayerBase* base = iter.second;
+		//grab the affiliation before we begin
+		string theaffiliation;
+		if (repNameMap.count(base->affiliation))
+		{
+			theaffiliation = repNameMap.at(base->affiliation);
+		}
+		else
+		{
+			string& repName = wstos(HtmlEncode(HkGetWStringFromIDS(Reputation::get_name(base->affiliation))));
+			if (repName == "Object Unknown")
+			{
+				repName = "No Affiliation";
+			}
+			repNameMap[base->affiliation] = repName;
+			theaffiliation = repName;
+		}
+
+		//begin the object writer
+		minijson::object_writer pw = pwc.nested_object(wstos(HtmlEncode(base->basename)).c_str());
+
+		minijson::array_writer pwds = pw.nested_array("passwords");
+		// first thing we'll do is grab all administrator passwords, encoded.
+		for (auto& bp : base->passwords)
+		{
+			wstring l = bp.pass;
+			if (!bp.admin && bp.viewshop)
+			{
+				l += L" viewshop";
+			}
+			pwds.write(wstos(HtmlEncode(l)).c_str());
+		}
+		pwds.close();
+
+		//add basic elements
+		pw.write("affiliation", theaffiliation.c_str());
+		pw.write("type", base->basetype.c_str());
+		pw.write("solar", base->basesolar.c_str());
+		pw.write("loadout", base->baseloadout.c_str());
+		pw.write("level", base->base_level);
+		pw.write("money", base->money);
+		pw.write("health", 100 * (base->base_health / base->max_base_health));
+		pw.write("defensemode", (int)base->defense_mode);
+		pw.write("shieldstate", base->isShieldOn);
+		pw.close();
+
+	}
+	pwc.close();
+
+	writer.close();
+
+	//dump to a file
 	FILE* file = fopen(set_status_path_json.c_str(), "w");
 	if (file)
 	{

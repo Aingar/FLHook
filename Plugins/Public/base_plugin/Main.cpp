@@ -114,6 +114,8 @@ string set_status_path_html;
 /// same thing but for json
 string set_status_path_json;
 
+string set_status_path_json_public_shop;
+
 /// Damage to the base every tick
 float set_damage_per_tick = 600;
 
@@ -766,6 +768,10 @@ void LoadSettingsActual()
 					{
 						set_status_path_json = ini.get_value_string();
 					}
+					else if (ini.is_value("set_status_path_json_public_shop"))
+					{
+						set_status_path_json_public_shop = ini.get_value_string();
+					}
 					else if (ini.is_value("damage_threshold"))
 					{
 						damage_threshold = ini.get_value_float(0);
@@ -1298,6 +1304,11 @@ void HkTimerCheckKick()
 		{
 			ExportData::ToJSON();
 		}
+	}
+
+	if ((curr_time % set_tick_time) == 0)
+	{
+		ExportData::ToJSONBasic();
 	}
 }
 

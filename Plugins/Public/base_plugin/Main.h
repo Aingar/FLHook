@@ -636,6 +636,7 @@ namespace ExportData
 {
 	void ToHTML();
 	void ToJSON();
+	void ToJSONBasic();
 }
 
 namespace HyperJump
@@ -818,6 +819,7 @@ wstring IntToStr(uint iValue);
 
 extern string set_status_path_html;
 extern string set_status_path_json;
+extern string set_status_path_json_public_shop;
 
 extern float damage_threshold;
 

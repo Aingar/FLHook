@@ -517,14 +517,18 @@ __declspec(naked) void GuidedExplosionHitNaked()
 
 void __stdcall CheckSolarExplosionDamage(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
+	ExplosionDamageData* explData = nullptr;
 	auto iter = explosionTypeMap.find(explosion->explosionArchetype->iID);
-	if (iter != explosionTypeMap.end() && !iter->second.damageSolars)
+	if (iter != explosionTypeMap.end())
 	{
-		return;
+		if (!iter->second.damageSolars)
+		{
+			return;
+		}
+		explData = &iter->second;
 	}
 
 	float rootDistance = FLT_MAX;
-	const auto explData = &iter->second;
 	if (ShieldAndDistance(iobj, explosion, dmg, rootDistance, explData))
 	{
 		return;

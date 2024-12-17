@@ -2567,6 +2567,20 @@ struct Barrel
 	uint dunno[13];
 };
 
+enum class FireResult
+{
+	ObjectIsDestroyed = 0,
+	ObjectIsDisabled = 1,
+	RefireDelayNotElapsed = 2,
+	AmmoRequirementsNotMet = 3,
+	PowerRequirementsNotMet = 4,
+	FailureGunAngle = 5,
+	FailureCruiseActive = 6,
+	FailureTradelane = 7,
+	FailureCloakActive = 8,
+	Success = 9,
+};
+
 class IMPORT CELauncher : public CAttachedEquip
 {
 public:

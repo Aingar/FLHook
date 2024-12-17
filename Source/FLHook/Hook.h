@@ -921,6 +921,7 @@ namespace HkIEngine
 	bool __fastcall RadarDetection(Observer* observer, void* edx, IObjRW* scannedIObj);
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
+	void __fastcall FixPlanetSpin(CEGun* gun, void* edx, CSimple*& target, ushort& subobjid);
 	void FindInStarListNaked();
 	void GameObjectDestructorNaked();
 	void CAsteroidInitNaked();

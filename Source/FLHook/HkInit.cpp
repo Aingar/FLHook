@@ -429,6 +429,12 @@ bool InitHookExports()
 	char szSkipCrash[2] = { '\xEB', '\x30' };
 	WriteProcMem(pAddress, szSkipCrash, 2);
 
+	//Fix solar targeting causing projectile desync
+	pAddress = SRV_ADDR(0x6B39);
+	BYTE fixPlanetPatch[] = {0xE8, 0x00, 0x00, 0x00, 0x00, 0x90};
+	WriteProcMem(pAddress, fixPlanetPatch, sizeof(fixPlanetPatch));
+	PatchCallAddr((char*)hModServer, 0x6B39, (char*)HkIEngine::FixPlanetSpin);
+
 	// install hook at new address
 	pAddress = SRV_ADDR(0x78B39);
 

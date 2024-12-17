@@ -266,6 +266,12 @@ bool HkIClientImpl::Send_FLPACKET_COMMON_SETTARGET(uint iClientID, XSetTarget& s
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
+	if (st.iSpaceID & 0x80000000)
+	{
+		st.iSpaceID = 0;
+		st.iSubObjID = 0;
+	}
+
 	CALL_CLIENT_METHOD(Send_FLPACKET_COMMON_SETTARGET(iClientID, st));
 	return reinterpret_cast<bool>(vRet);
 }
@@ -1131,6 +1137,11 @@ void LoadZoneDamageData(const char* path)
 
 bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 {
+
+	// patch reading spin for solars
+	FARPROC spinPatchAddr = FARPROC(0x62B819B);
+	BYTE spinPatch = 0xEB;
+	WriteProcMem(spinPatchAddr, &spinPatch, 1);
 
 	// load universe / we load the universe directly before the server becomes internet accessible
 	lstBases.clear();

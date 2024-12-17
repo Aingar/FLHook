@@ -751,6 +751,15 @@ namespace HkIEngine
 
 	}
 
+	void __fastcall FixPlanetSpin(CEGun* gun, void* edx, CSimple*& target, ushort& subobjid)
+	{
+		gun->GetTarget(target, subobjid);
+		if (target->id & 0x80000000)
+		{
+			target = nullptr;
+			subobjid = 0;
+		}
+	}
 
 	/**************************************************************************************************************
 	**************************************************************************************************************/

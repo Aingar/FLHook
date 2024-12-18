@@ -986,9 +986,15 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 	int iCash;
 	HkGetCash(ARG_CLIENTID(iClientID), iCash);
 
-	foreach(lstCart, AUTOBUY_CARTITEM, it4)
+	for(AUTOBUY_CARTITEM& cartItem : lstCart)
 	{
-		if (it4->iCount == 0 || !Arch2Good(it4->iArchID))
+		if (Players[iClientID].equipDescList.equip.size() > 120)
+		{
+			PrintUserCmdText(iClientID, L"Auto-buy: FAILED! Too many items in inventory!");
+			break;
+		}
+
+		if (cartItem.iCount == 0 || !Arch2Good(cartItem.iArchID))
 			continue;
 
 		// check if good is available and if player has the neccessary rep
@@ -1010,7 +1016,7 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 		pub::Reputation::GetGroupFeelingsTowards(iRepID, iBaseRep, fPlayerRep);
 		foreach(bi->lstMarketMisc, DATA_MARKETITEM, itmi)
 		{
-			if (itmi->iArchID == it4->iArchID)
+			if (itmi->iArchID == cartItem.iArchID)
 			{
 				if (fPlayerRep < itmi->fRep)
 					break; // bad rep, not allowed to buy
@@ -1023,40 +1029,40 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 			continue; // base does not sell this item or bad rep
 
 		float fPrice;
-		if (pub::Market::GetPrice(iBaseID, it4->iArchID, fPrice) == -1)
+		if (pub::Market::GetPrice(iBaseID, cartItem.iArchID, fPrice) == -1)
 			continue; // good not available
 
-		Archetype::Equipment *eq = Archetype::GetEquipment(it4->iArchID);
-		if (iRemHoldSize < (eq->fVolume * it4->iCount))
+		Archetype::Equipment *eq = Archetype::GetEquipment(cartItem.iArchID);
+		if (iRemHoldSize < (eq->fVolume * cartItem.iCount))
 		{
 			uint iNewCount = (uint)(iRemHoldSize / eq->fVolume);
 			if (!iNewCount) {
-				//				PrintUserCmdText(iClientID, L"Auto-Buy(%s): FAILED! Insufficient cargo space", it4->wscDescription.c_str());
+				//				PrintUserCmdText(iClientID, L"Auto-Buy(%s): FAILED! Insufficient cargo space", cartItem.wscDescription.c_str());
 				continue;
 			}
 			else
-				it4->iCount = iNewCount;
+				cartItem.iCount = iNewCount;
 		}
 
-		int iCost = ((int)fPrice * it4->iCount);
+		int iCost = ((int)fPrice * cartItem.iCount);
 		if (iCash < iCost)
-			PrintUserCmdText(iClientID, L"Auto-Buy(%s): FAILED! Insufficient Credits", it4->wscDescription.c_str());
+			PrintUserCmdText(iClientID, L"Auto-Buy(%s): FAILED! Insufficient Credits", cartItem.wscDescription.c_str());
 		else {
 			HkAddCash(ARG_CLIENTID(iClientID), -iCost);
 			iCash -= iCost;
-			iRemHoldSize -= ((int)eq->fVolume * it4->iCount);
+			iRemHoldSize -= ((int)eq->fVolume * cartItem.iCount);
 
 
 			//Turns out we need to use HkAddCargo due to anticheat problems
-			HkAddCargo(ARG_CLIENTID(iClientID), it4->iArchID, it4->iCount, false);
+			HkAddCargo(ARG_CLIENTID(iClientID), cartItem.iArchID, cartItem.iCount, false);
 
 			// add the item, dont use hkaddcargo for performance/bug reasons
 			// assume we only mount multicount goods (missiles, ammo, bots)
-			//pub::Player::AddCargo(iClientID, it4->iArchID, it4->iCount, 1, false);
+			//pub::Player::AddCargo(iClientID, cartItem.iArchID, cartItem.iCount, 1, false);
 
-			if (it4->iCount != 0)
+			if (cartItem.iCount != 0)
 			{
-				PrintUserCmdText(iClientID, L"Auto-Buy(%s): Bought %d unit(s), cost: %s$", it4->wscDescription.c_str(), it4->iCount, ToMoneyStr(iCost).c_str());
+				PrintUserCmdText(iClientID, L"Auto-Buy(%s): Bought %d unit(s), cost: %s$", cartItem.wscDescription.c_str(), cartItem.iCount, ToMoneyStr(iCost).c_str());
 			}
 		}
 	}

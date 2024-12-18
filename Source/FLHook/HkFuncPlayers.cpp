@@ -350,36 +350,22 @@ HK_ERROR HkEnumCargo(const wstring &wscCharname, list<CARGO_INFO> &lstCargo, int
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, int iCount)
+HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, uint iCount)
 {
 	HK_GET_CLIENTID(iClientID, wscCharname);
 
 	if (iClientID == -1 || HkIsInCharSelectMenu(iClientID))
 		return HKE_PLAYER_NOT_LOGGED_IN;
 
-	list <CARGO_INFO> lstCargo;
-	int iHold;
-	HkEnumCargo(wscCharname, lstCargo, iHold);
-	foreach(lstCargo, CARGO_INFO, it)
+	for (auto& eq : Players[iClientID].equipDescList.equip)
 	{
-		if (((*it).iID == iID) && ((*it).iCount < iCount))
-			iCount = (*it).iCount; // trying to remove more than actually there, thus fix
+		if (eq.sID == iID && eq.iCount < iCount)
+		{
+			iCount = eq.iCount; // trying to remove more than actually there, thus fix
+		}
 	}
 
 	pub::Player::RemoveCargo(iClientID, iID, iCount);
-
-	// anti-cheat related
-/*	char *szClassPtr;
-	memcpy(&szClassPtr, &Players, 4);
-	szClassPtr += 0x418 * (iClientID - 1);
-	EquipDescList *edlList = (EquipDescList*)szClassPtr + 0x328;
-	const EquipDesc *ed = edlList->find_equipment_item(iID);
-	if(ed)
-	{
-		ed->get_id();
-		edlList->remove_equipment_item(
-	} */
-
 
 	return HKE_OK;
 }
@@ -392,15 +378,6 @@ HK_ERROR HkAddCargo(const wstring &wscCharname, uint iGoodID, int iCount, bool b
 
 	if (iClientID == -1 || HkIsInCharSelectMenu(iClientID))
 		return HKE_PLAYER_NOT_LOGGED_IN;
-
-	/*	// anti-cheat related
-		char *szClassPtr;
-		memcpy(&szClassPtr, &Players, 4);
-		szClassPtr += 0x418 * (iClientID - 1);
-		EquipDescList *edlList = (EquipDescList*)szClassPtr + 0x328;
-		bool bCargoFound = true;
-		if(!edlList->find_matching_cargo(iGoodID, 0, 1))
-			bCargoFound = false;*/
 
 			// add
 	const GoodInfo *gi;
@@ -417,34 +394,38 @@ HK_ERROR HkAddCargo(const wstring &wscCharname, uint iGoodID, int iCount, bool b
 	pub::Player::GetLocation(iClientID, iLocation);
 
 	// trick cheat detection
-	if (iBase) {
+	if (iBase)
+	{
 		if (iLocation)
+		{
 			Server.LocationExit(iLocation, iClientID);
+		}
 		Server.BaseExit(iBase, iClientID);
 		if (!HkIsValidClientID(iClientID)) // got cheat kicked
+		{
 			return HKE_PLAYER_NOT_LOGGED_IN;
+		}
 	}
 
-	if (bMultiCount) { // it's a good that can have multiple units(commodities, missile ammo, etc)
-		int iRet;
+	if (bMultiCount) { 
 
-		// we need to do this, else server or client may crash
-		list<CARGO_INFO> lstCargo;
-		HkEnumCargo(wscCharname, lstCargo, iRet);
-		foreach(lstCargo, CARGO_INFO, it)
+		for(auto& eq : Players[iClientID].equipDescList.equip)
 		{
-			if (((*it).iArchID == iGoodID) && ((*it).bMission != bMission))
+			if(eq.iArchID == iGoodID && eq.bMission != bMission)
 			{
-				HkRemoveCargo(wscCharname, (*it).iID, (*it).iCount);
-				iCount += (*it).iCount;
+				iCount += eq.iCount;
+				HkRemoveCargo(wscCharname, eq.sID, eq.iCount);
 			}
 		}
 
 		pub::Player::AddCargo(iClientID, iGoodID, iCount, 1, bMission);
 	}
-	else {
+	else
+	{
 		for (int i = 0; (i < iCount); i++)
+		{
 			pub::Player::AddCargo(iClientID, iGoodID, 1, 1, bMission);
+		}
 	}
 
 	if (iBase)
@@ -456,34 +437,9 @@ HK_ERROR HkAddCargo(const wstring &wscCharname, uint iGoodID, int iCount, bool b
 
 		Server.BaseEnter(iBase, iClientID);
 		if (iLocation)
+		{
 			Server.LocationEnter(iLocation, iClientID);
-
-		/*		// fix "Ship or Equipment not sold on base" kick
-				if(!bCargoFound)
-				{
-					// get last equipid
-					char *szLastEquipID = szClassPtr + 0x3C8;
-					ushort sEquipID;
-					memcpy(&sEquipID, szLastEquipID, 2);
-
-					// add to check-list which is being compared to the users equip-list when saving char
-					EquipDesc ed;
-					memset(&ed, 0, sizeof(ed));
-					ed.id = sEquipID;
-					ed.count = iCount;
-					ed.archid = iGoodID;
-					edlList->add_equipment_item(ed, true);
-				}
-
-				// fix "Ship Related" kick, update crc
-				ulong lCRC;
-				__asm
-				{
-					mov ecx, [szClassPtr]
-					call [CRCAntiCheat]
-					mov [lCRC], eax
-				}
-				memcpy(szClassPtr + 0x320, &lCRC, 4);*/
+		}
 	}
 
 	return HKE_OK;

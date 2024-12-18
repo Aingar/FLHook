@@ -789,7 +789,7 @@ EXPORT HK_ERROR HkBeam(const wstring &wscCharname, const wstring &wscBasename);
 EXPORT HK_ERROR HkBeamById(uint clientId, uint baseId);
 EXPORT HK_ERROR HkSaveChar(const wstring &wscCharname);
 EXPORT HK_ERROR HkEnumCargo(const wstring &wscCharname, list<CARGO_INFO> &lstCargo, int &iRemainingHoldSize);
-EXPORT HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, int iCount);
+EXPORT HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, uint iCount);
 EXPORT HK_ERROR HkAddCargo(const wstring &wscCharname, uint iGoodID, int iCount, bool bMission);
 EXPORT HK_ERROR HkAddCargo(const wstring &wscCharname, const wstring &wscGood, int iCount, bool bMission);
 EXPORT HK_ERROR HkRename(const wstring &wscCharname, const wstring &wscNewCharname, bool bOnlyDelete);

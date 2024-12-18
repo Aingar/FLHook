@@ -262,19 +262,11 @@ namespace RepFixer
 	{
 
 		int playerRep = Players[iClientID].iReputation;
-		for (auto& cargo : Players[iClientID].equipDescList.equip)
+
+		// If the item is not an 'ID' then skip to the next one. 
+		unordered_map<unsigned int, vector<FactionRep> >::iterator iterIDs = set_mapFactionReps.find(ClientInfo[iClientID].playerID);
+		if (iterIDs != set_mapFactionReps.end())
 		{
-			// If the item is not mounted and we are only checking mounted items
-			// then skip to the next one.
-			if (!cargo.bMounted && set_bItemMustBeMounted)
-				continue;
-
-			// If the item is not an 'ID' then skip to the next one. 
-			unordered_map<unsigned int, vector<FactionRep> >::iterator iterIDs = set_mapFactionReps.find(cargo.iArchID);
-			if (iterIDs == set_mapFactionReps.end())
-				continue;
-
-
 			// The item is an 'ID'; check and adjust the player reputations
 			// if needed.
 			for (vector<FactionRep>::iterator iterReps = iterIDs->second.begin(); iterReps != iterIDs->second.end(); iterReps++)
@@ -295,9 +287,6 @@ namespace RepFixer
 					pub::Reputation::SetReputation(playerRep, iRepGroupID, rep.fRep);
 				}
 			}
-
-			// We've adjusted the reps, stop searching the cargo list.
-			break;
 		}
 
 		wstring charName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);

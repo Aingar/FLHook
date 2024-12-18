@@ -1208,7 +1208,7 @@ void __stdcall UseItemRequest(SSPUseItem const& p1, unsigned int iClientID)
 		return;
 	}
 	CEquip* equip = cship->equip_manager.FindByID(p1.sItemId);
-	if (equip->archetype->iArchID != BATTERY_ARCH_ID)
+	if (!equip || equip->archetype->iArchID != BATTERY_ARCH_ID)
 	{
 		return;
 	}

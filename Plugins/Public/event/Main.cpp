@@ -89,6 +89,8 @@ struct TRADE_EVENT {
 	time_t endTime = 0;
 	map<uint, market_map_t> eventEconOverride;
 	bool isActive = true;
+	wstring startMessage = L"";
+	wstring endMessage = L"";
 };
 
 struct COMBAT_EVENT {
@@ -113,6 +115,8 @@ struct COMBAT_EVENT {
 	time_t startTime = 0;
 	time_t endTime = 0;
 	bool isActive = true;
+	wstring startMessage = L"";
+	wstring endMessage = L"";
 };
 
 struct EVENT_TRACKER
@@ -338,6 +342,14 @@ void LoadSettings()
 							ConPrint(L"EVENT %ls has loaded, but is already concluded!\n", stows(te.sEventName).c_str());
 						}
 					}
+					else if (ini.is_value("startmessage"))
+					{
+						te.startMessage = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("endmessage"))
+					{
+						te.endMessage = stows(ini.get_value_string());
+					}
 					else if (ini.is_value("marketgoodinfo"))
 					{
 						uint baseId = CreateID(ini.get_value_string(0));
@@ -473,6 +485,14 @@ void LoadSettings()
 							ce.isActive = false;
 							ConPrint(L"EVENT %ls has loaded, but is already concluded!\n", stows(ce.sEventName).c_str());
 						}
+					}
+					else if (ini.is_value("startmessage"))
+					{
+						ce.startMessage = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("endmessage"))
+					{
+						ce.endMessage = stows(ini.get_value_string());
 					}
 				}
 
@@ -1206,6 +1226,10 @@ void CheckActiveEvent()
 			{
 				ce.isActive = false;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(ce.sEventName)));
+				if (!ce.endMessage.empty())
+				{
+					HkMsgU(ce.endMessage);
+				}
 			}
 		}
 		else
@@ -1214,6 +1238,10 @@ void CheckActiveEvent()
 			{
 				ce.isActive = true;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
+				if (!ce.startMessage.empty())
+				{
+					HkMsgU(ce.startMessage);
+				}
 			}
 		}
 	}
@@ -1227,6 +1255,10 @@ void CheckActiveEvent()
 			{
 				te.isActive = false;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
+				if (!te.endMessage.empty())
+				{
+					HkMsgU(te.endMessage);
+				}
 				if (!te.eventEconOverride.empty())
 				{
 					SendEconOverride();
@@ -1239,7 +1271,10 @@ void CheckActiveEvent()
 			{
 				te.isActive = true;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
-
+				if (!te.startMessage.empty())
+				{
+					HkMsgU(te.startMessage);
+				}
 				if (!te.eventEconOverride.empty())
 				{
 					SendEconOverride();

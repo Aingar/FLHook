@@ -100,7 +100,7 @@ bool UserCmd_Process(uint iClientID, const wstring& wscCmd)
 
 void PluginComm(PLUGIN_MESSAGE msg, void* data)
 {
-
+	returncode = DEFAULT_RETURNCODE;
 }
 
 EXPORT PLUGIN_INFO* Get_PluginInfo()

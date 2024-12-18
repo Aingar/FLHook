@@ -174,7 +174,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				else if (iCause == DamageCause::Mine)
 					wscType = L"Mine";
 				else if ((iCause == DamageCause::CruiseDisrupter) || (iCause == DamageCause::UnkDisrupter) || (iCause == DamageCause::DummyDisrupter))
-					wscType = L"Wasp/Hornet";
+					wscType = L"Cruise Disruptor";
 				else if (iCause == DamageCause::Collision)
 					wscType = L"Collision";
 				else if (iCause == DamageCause::Gun)

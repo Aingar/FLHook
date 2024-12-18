@@ -213,6 +213,10 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	CSimple* simple = reinterpret_cast<CSimple*>(iobj->cobj);
 
+	if (simple->hitPoints == 0.0f)
+	{
+		return;
+	}
 	CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
 	if (simple->ownerPlayer)
 	{

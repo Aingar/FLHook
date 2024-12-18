@@ -491,7 +491,7 @@ IMPORT HK_ERROR HkBeam(const wstring &wscCharname, const wstring &wscBasename);
 IMPORT HK_ERROR HkBeamById(const uint clientId, const uint baseId);
 IMPORT HK_ERROR HkSaveChar(const wstring &wscCharname);
 IMPORT HK_ERROR HkEnumCargo(const wstring &wscCharname, list<CARGO_INFO> &lstCargo, int &iRemainingHoldSize);
-IMPORT HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, int iCount);
+IMPORT HK_ERROR HkRemoveCargo(const wstring &wscCharname, uint iID, uint iCount);
 IMPORT HK_ERROR HkAddCargo(const wstring &wscCharname, uint iGoodID, int iCount, bool bMission);
 IMPORT HK_ERROR HkAddCargo(const wstring &wscCharname, const wstring &wscGood, int iCount, bool bMission);
 IMPORT HK_ERROR HkRename(const wstring &wscCharname, const wstring &wscNewCharname, bool bOnlyDelete);

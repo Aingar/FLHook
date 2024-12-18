@@ -1483,134 +1483,134 @@ bool UserCmd_Process(uint client, const wstring &args)
 	returncode = DEFAULT_RETURNCODE;
 	if (args.find(L"/base login") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseLogin(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base addpwd") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseAddPwd(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base rmpwd") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseRmPwd(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base lstpwd") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseLstPwd(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base setmasterpwd") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseSetMasterPwd(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/access") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseAccess(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base myfac") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseViewMyFac(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base rep") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseRep(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base defensemode") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseDefenseMode(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base deploy") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseDeploy(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base testdeploy") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseTestDeploy(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base setpublic") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseSetPublic(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/shop") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::Shop(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/bank") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::Bank(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base info") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseInfo(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base supplies") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::GetNecessitiesStatus(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/craft") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseFacMod(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base defmod") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseDefMod(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/build") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseBuildMod(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/destroy") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseBuildModDestroy(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base swap") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseSwapModule(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base setshield") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseSetVulnerabilityWindow(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/base setfood") == 0)
@@ -1621,14 +1621,14 @@ bool UserCmd_Process(uint client, const wstring &args)
 	}
 	else if (args.find(L"/base") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		PlayerCommands::BaseHelp(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"/rearm") == 0)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		RearmamentModule::Rearm(client);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	return false;

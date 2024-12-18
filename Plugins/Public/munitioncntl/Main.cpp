@@ -33,7 +33,13 @@ unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
 
 vector<pair<uint, uint>> equipUpdateVector;
 
-unordered_map<uint, uint> NewMissileUpdateMap;
+struct NewMissileData
+{
+	uint counter = 0;
+};
+unordered_map<uint, NewMissileData> NewMissileUpdateMap;
+
+unordered_set<uint> forcedMissilePacketSet;
 
 struct SpeedCheck
 {
@@ -759,7 +765,7 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	NewMissileUpdateMap[parms.id] = { 0 };
+	NewMissileUpdateMap[parms.id] = {};
 
 	uint objId = parms.ownerId;
 	IObjRW* owner;
@@ -1079,8 +1085,54 @@ void Timer()
 	}
 }
 
-int Update()
+int UpdateBefore()
 {
+	for (auto iter = NewMissileUpdateMap.begin(); iter != NewMissileUpdateMap.end();)
+	{
+
+		uint id = iter->first;
+		IObjRW* guided = nullptr;
+		StarSystem* starSystem;
+		GetShipInspect(id, guided, starSystem);
+
+		if (!guided)
+		{
+			iter = NewMissileUpdateMap.erase(iter);
+			continue;
+		}
+
+		SSPObjUpdateInfoSimple ssp;
+		ssp.iShip = iter->first;
+		ssp.vPos = guided->cobj->vPos;
+		ssp.vDir = HkMatrixToQuaternion(guided->cobj->mRot);
+		ssp.throttle = 0;
+		ssp.state = 0;
+
+		for (auto& observer : starSystem->observerList)
+		{
+			ssp.fTimestamp = static_cast<float>(observer.timestamp);
+
+			HookClient->Send_FLPACKET_COMMON_UPDATEOBJECT(observer.clientId, ssp);
+			forcedMissilePacketSet.insert(iter->first);
+		}
+
+		if (iter->second.counter >= 3)
+		{
+			iter = NewMissileUpdateMap.erase(iter);
+		}
+		else
+		{
+			iter++;
+		}
+	}
+
+	return 0;
+}
+
+int UpdateAfter()
+{
+	forcedMissilePacketSet.clear();
+
 	for (auto iter = topSpeedWatch.begin(); iter != topSpeedWatch.end(); )
 	{
 		auto iGuided = HkGetInspectObj(iter->first);
@@ -1112,52 +1164,6 @@ int Update()
 			*linearVelocity = velocityVec;
 		}
 		iter++;
-	}
-
-	for (auto iter = NewMissileUpdateMap.begin(); iter != NewMissileUpdateMap.end();)
-	{
-
-		uint counter = ++iter->second;
-
-		if (counter == 1)
-		{
-			iter++;
-			continue;
-		}
-
-		uint id = iter->first;
-		IObjRW* guided = nullptr;
-		StarSystem* starSystem;
-		GetShipInspect(id, guided, starSystem);
-
-		if (!guided)
-		{
-			iter = NewMissileUpdateMap.erase(iter);
-			continue;
-		}
-
-		SSPObjUpdateInfoSimple ssp;
-		ssp.iShip = iter->first;
-		ssp.vPos = guided->cobj->vPos;
-		ssp.vDir = HkMatrixToQuaternion(guided->cobj->mRot);
-		ssp.throttle = 0;
-		ssp.state = 0;
-		
-		for(auto& observer : starSystem->observerList)
-		{
-			ssp.fTimestamp = static_cast<float>(observer.timestamp);
-
-			HookClient->Send_FLPACKET_COMMON_UPDATEOBJECT(observer.clientId, ssp);
-		}
-
-		if (counter >= 3)
-		{
-			iter = NewMissileUpdateMap.erase(iter);
-		}
-		else
-		{
-			iter++;
-		}
 	}
 
 	if (shieldFuseMap.empty())
@@ -1451,6 +1457,17 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 	}
 }
 
+bool __stdcall UpdateObject(uint clientId, SSPObjUpdateInfoSimple& pUpdate)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (forcedMissilePacketSet.count(pUpdate.iShip))
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+	return true;
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
@@ -1495,9 +1512,11 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, -1));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest_AFTER, PLUGIN_HkIServerImpl_SPRequestUseItem_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqAddItem, PLUGIN_HkIServerImpl_ReqAddItem, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UpdateObject, PLUGIN_HkIClientImpl_Send_FLPACKET_COMMON_UPDATEOBJECT, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UpdateBefore, PLUGIN_HkIServerImpl_Update, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UpdateAfter, PLUGIN_HkIServerImpl_Update_AFTER, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 2));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));

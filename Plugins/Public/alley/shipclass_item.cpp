@@ -50,9 +50,9 @@ struct iddockinfo
 {
 	int type;
 	uint cargo;
-	vector<uint> systems;
-	vector<uint> shipclasses;
-	vector<uint> exempt;
+	unordered_set<uint> systems;
+	unordered_set<uint> shipclasses;
+	unordered_set<uint> exempt;
 };
 
 //first uint will be the ID hash
@@ -124,15 +124,15 @@ void SCI::LoadSettings()
 					}
 					else if (ini.is_value("shipclass"))
 					{
-						info.shipclasses.push_back(ini.get_value_int(0));
+						info.shipclasses.insert(ini.get_value_int(0));
 					}
 					else if (ini.is_value("system"))
 					{
-						info.systems.push_back(CreateID(ini.get_value_string(0)));
+						info.systems.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("exempt"))
 					{
-						info.exempt.push_back(CreateID(ini.get_value_string(0)));
+						info.exempt.insert(CreateID(ini.get_value_string(0)));
 					}
 				}
 				iddock[id] = info;
@@ -334,98 +334,79 @@ void SCI::ClearClientInfo(uint iClientID)
 
 void SCI::UpdatePlayerID(unsigned int iClientID)
 {
-	// Retrieve the location and cargo list.
-	int iHoldSize;
-	list<CARGO_INFO> lstCargo;
-	HkEnumCargo((const wchar_t*)Players.GetActiveCharacterName(iClientID), lstCargo, iHoldSize);
+	auto clientId = ClientInfo[iClientID].playerID;
 
-	foreach(lstCargo, CARGO_INFO, i)
+	if (!iddock.count(clientId))
 	{
-		if (!i->bMounted)
-		{
-			continue;
-		}
-		if (!iddock.count(i->iArchID))
-		{
-			continue;
-		}
-
-		pinfo info;
-		info.playerid = i->iArchID;
-		info.shiparch = Players[iClientID].iShipArchetype;
-
-		Archetype::Ship *ship = Archetype::GetShip(info.shiparch);
-		info.maxholdsize = ship->fHoldSize;
-		info.shipclass = ship->iShipClass;
-
-		clientplayerid[iClientID] = info;
-
-		break;
+		return;
 	}
+
+	pinfo info;
+	info.playerid = clientId;
+	info.shiparch = Players[iClientID].iShipArchetype;
+
+	Archetype::Ship *ship = Archetype::GetShip(info.shiparch);
+	info.maxholdsize = ship->fHoldSize;
+	info.shipclass = ship->iShipClass;
+
+	clientplayerid[iClientID] = info;
+	
 }
 
 bool SCI::CanDock(uint iDockTarget, uint iClientID)
 {
+	auto clientInfo = clientplayerid.find(iClientID);
 	//First we check if the player is on our watchlist.
-	if (clientplayerid.count(iClientID))
+	if (clientInfo == clientplayerid.end())
 	{
-		//PrintUserCmdText(iClientID, L"DEBUG: Found you");
-		//temporarily copy the id so we don't mapception
-		uint id = clientplayerid[iClientID].playerid;
-		uint currsystem = Players[iClientID].iSystemID;
-		uint currship = clientplayerid[iClientID].shiparch;
-		bool arewe = false;
+		return true;
+	}
+	
+	//PrintUserCmdText(iClientID, L"DEBUG: Found you");
+	//temporarily copy the id so we don't mapception
+	uint id = clientInfo->second.playerid;
+	uint currsystem = Players[iClientID].iSystemID;
+	uint currship = Players[iClientID].iShipArchetype;
 
-		for (vector<uint>::iterator iter = iddock[id].exempt.begin(); iter != iddock[id].exempt.end(); iter++)
-		{
-			if (*iter == currship)
-			{
-				return true;
-			}
-		}
+	auto idDataIter = iddock.find(id);
+	if (idDataIter == iddock.end())
+	{
+		return true;
+	}
 
-		//Are we in a system we care about
-		for (vector<uint>::iterator iter = iddock[id].systems.begin(); iter != iddock[id].systems.end(); iter++)
-		{
-			if (*iter == currsystem)
-			{
-				arewe = true;
-				//PrintUserCmdText(iClientID, L"DEBUG: We are in a system we care about");
-				break;
-			}
-		}
+	auto idData = idDataIter->second;
 
-		if (arewe == true)
-		{
-			uint iTypeID;
-			pub::SpaceObj::GetType(iDockTarget, iTypeID);
+	if (idData.exempt.count(currship))
+	{
+		return true;
+	}
 
-			if (iTypeID & (DockingRing | Station))
-			{
-				//we check the cargo restriction first as that should iron out a good chunk of them
-				if (clientplayerid[iClientID].maxholdsize > iddock[id].cargo)
-				{
-					PrintUserCmdText(iClientID, L"Cargo Hold is over the authorized capacity. Docking Denied.");
-					return false;
-				}
+	if (!idData.systems.count(currsystem))
+	{
+		return true;
+	}
 
-				uint currshipclass = clientplayerid[iClientID].shipclass;
-				for (vector<uint>::iterator iter = iddock[id].shipclasses.begin(); iter != iddock[id].shipclasses.end(); iter++)
-				{
-					if (*iter == currshipclass)
-					{
-						PrintUserCmdText(iClientID, L"This ship class is not allowed to dock in this system. Docking Denied.");
-						return false;
-					}
-				}
-			}
-			else
-			{
-				return true;
-			}
-		}
+	uint iTypeID;
+	pub::SpaceObj::GetType(iDockTarget, iTypeID);
 
-		//PrintUserCmdText(iClientID, L"DEBUG: We are not in a system we care about");
+	if (!(iTypeID & (DockingRing | Station)))
+	{
+		return true;
+	}
+
+	//we check the cargo restriction first as that should iron out a good chunk of them
+	if (clientInfo->second.maxholdsize > idData.cargo)
+	{
+		PrintUserCmdText(iClientID, L"Cargo Hold is over the authorized capacity. Docking Denied.");
+		return false;
+	}
+
+	uint currshipclass = clientInfo->second.shipclass;
+	if (idData.shipclasses.count(currshipclass))
+	{
+		PrintUserCmdText(iClientID, L"This ship class is not allowed to dock in this system. Docking Denied.");
+
+		return false;
 	}
 
 	return true;

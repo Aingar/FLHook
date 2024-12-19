@@ -814,14 +814,12 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 		}
 		if (!ADOCK::IsDockAllowed(iShip, iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			iCancel = -1;
 			response = DOCK_DENIED;
 			return 0;
 		}
 		if (!SCI::CanDock(iDockTarget, iClientID))
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			iCancel = -1;
 			response = ACCESS_DENIED;
 			return 0;

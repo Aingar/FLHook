@@ -275,12 +275,14 @@ bool UserCmd_Process(uint client, const wstring& cmd)
             || system == set_iTargetSystemID)
         {
             PrintUserCmdText(client, L"ERR Cannot use command in this system or base");
+            returncode = SKIPPLUGINS_NOFUNCTIONCALL; 
             return true;
         }
         CUSTOM_MOBILE_DOCK_CHECK_STRUCT info;
         info.iClientID = client;
         info.isMobileDocked = false;
         Plugin_Communication(CUSTOM_MOBILE_DOCK_CHECK, &info);
+        returncode = SKIPPLUGINS_NOFUNCTIONCALL;
         if (info.isMobileDocked)
         {
             PrintUserCmdText(client, L"ERR Cannot go to connecticut while mobile docked");
@@ -296,6 +298,7 @@ bool UserCmd_Process(uint client, const wstring& cmd)
         CUSTOM_BASE_IS_DOCKED_STRUCT info2;
         info2.iClientID = client;
         Plugin_Communication(CUSTOM_BASE_IS_DOCKED, &info2);
+        returncode = SKIPPLUGINS_NOFUNCTIONCALL;
         if (info2.iDockedBaseID)
         {
             PrintUserCmdText(client, L"ERR Cannot go to connecticut from a Player Base");
@@ -311,10 +314,12 @@ bool UserCmd_Process(uint client, const wstring& cmd)
         PrintUserCmdText(client, L"Redirecting undock to Connecticut.");
         connInfo[client].clientState = TRANSFER;
 
+        returncode = SKIPPLUGINS_NOFUNCTIONCALL;
         return true;
     }
     else if (!cmd.compare(L"/return"))
     {
+        returncode = SKIPPLUGINS_NOFUNCTIONCALL;
         if (!IsDockedClient(client))
         {
             PrintUserCmdText(client, STR_INFO1);

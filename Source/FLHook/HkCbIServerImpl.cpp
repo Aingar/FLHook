@@ -33,11 +33,11 @@
 
 #define EXECUTE_SERVER_CALL_DEBUG(args, clientId, arg) \
 	{ \
-	try { \
+	TRY_HOOK { \
 		args; \
-	} catch(...) { const wchar_t* playerName = (const wchar_t*)Players.GetActiveCharacterName(clientId);\
+	} CATCH_HOOK({ const wchar_t* playerName = (const wchar_t*)Players.GetActiveCharacterName(clientId);\
 		AddLog("ERROR: Exception in " __FUNCTION__ " on server call, charName=%s, arg2=%u", wstos(playerName).c_str(), arg); LOG_EXCEPTION; } \
-	}
+	)}
 
 #define CHECK_FOR_DISCONNECT \
 	{ \
@@ -309,7 +309,7 @@ namespace HkIServerImpl
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));
 
-		EXECUTE_SERVER_CALL_DEBUG(Server.PlayerLaunch(iShip, iClientID), iClientID, iShip);
+		EXECUTE_SERVER_CALL(Server.PlayerLaunch(iShip, iClientID), iClientID, iShip);
 
 		if (!ClientInfo[iClientID].iLastExitedBaseID)
 		{
@@ -361,7 +361,7 @@ namespace HkIServerImpl
 
 			CALL_PLUGINS_V(PLUGIN_HkIServerImpl_FireWeapon, __stdcall, (unsigned int iClientID, struct XFireWeaponInfo const &wpn), (iClientID, wpn));
 
-		EXECUTE_SERVER_CALL_DEBUG(Server.FireWeapon(iClientID, wpn), iClientID, 0);
+		EXECUTE_SERVER_CALL(Server.FireWeapon(iClientID, wpn), iClientID, 0);
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_FireWeapon_AFTER, __stdcall, (unsigned int iClientID, struct XFireWeaponInfo const &wpn), (iClientID, wpn));
 	}
@@ -572,7 +572,7 @@ namespace HkIServerImpl
 		ClientInfo[iClientID].isDocking = false;
 
 		LOG_CORE_TIMER_START
-		EXECUTE_SERVER_CALL_DEBUG(Server.BaseEnter(iBaseID, iClientID), iClientID, iBaseID);
+		EXECUTE_SERVER_CALL(Server.BaseEnter(iBaseID, iClientID), iClientID, iBaseID);
 		LOG_CORE_TIMER_END
 
 		TRY_HOOK {

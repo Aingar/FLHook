@@ -546,6 +546,29 @@ namespace HkIServerImpl
 			})
 			LOG_CORE_TIMER_END
 
+		for (auto& eq : Players[iClientID].equipDescList.equip)
+		{
+			if (!eq.bMounted)
+			{
+				continue;
+			}
+			if (strcmp(eq.szHardPoint.value, "BAY") != 0)
+			{
+				continue;
+			}
+			Archetype::Equipment* equip = Archetype::GetEquipment(eq.iArchID);
+			if (!equip)
+			{
+				continue;
+			}
+
+			if (equip->get_class_type() == Archetype::AClassType::TRACTOR)
+			{
+				ClientInfo[iClientID].playerID = eq.iArchID;
+				break;
+			}
+		}
+
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_CharacterSelect_AFTER, __stdcall, (struct CHARACTER_ID const & cId, unsigned int iClientID), (cId, iClientID));
 	}
 

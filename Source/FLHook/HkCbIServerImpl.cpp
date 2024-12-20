@@ -546,6 +546,7 @@ namespace HkIServerImpl
 			})
 			LOG_CORE_TIMER_END
 
+		ClientInfo[iClientID].playerID = 0;
 		for (auto& eq : Players[iClientID].equipDescList.equip)
 		{
 			if (!eq.bMounted)

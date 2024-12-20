@@ -513,7 +513,7 @@ void AddExceptionInfoLog(SEHException* ex)
 
 		static int counter = 0;
 
-		if (++counter > 30)
+		if (++counter > 10)
 		{
 			ConPrint(L"ALERT! EXCEEDINGLY HIGH AMOUNT OF EXCEPTIONS. CONTACT HEAD DEVS IMMEDIATELY!\n");
 			return;

@@ -129,8 +129,6 @@ namespace HkIServerImpl
 
 		int result = 0;
 		EXECUTE_SERVER_CALL(result = Server.Update());
-
-		CALL_PLUGINS(PLUGIN_HkIServerImpl_Update_AFTER, int, __stdcall, (), ());
 		return result;
 	}
 

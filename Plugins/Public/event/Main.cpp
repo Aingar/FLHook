@@ -131,48 +131,11 @@ map<string, COMBAT_EVENT> mapCombatEvents;
 
 map<string, EVENT_TRACKER> mapEventTracking;
 
-
-//We'll map player IDs so we don't have to iterate through the player structures
-//at some point this should be moved to HookExt so all plugins can benefit from this and reduce data redudancy.
-unordered_map <uint, string> mapIDs;
-
 uint SuhlDeathCounter = 0;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Loading Settings
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void LoadIDs()
-{
-	mapIDs.clear();
-	string idfile = "..\\data\\equipment\\misc_equip.ini";
-	int idcount = 0;
-
-	INI_Reader ini;
-
-	if (ini.open(idfile.c_str(), false))
-	{
-		while (ini.read_header())
-		{
-			if (ini.is_header("Tractor"))
-			{
-				while (ini.read_value())
-				{
-					if (ini.is_value("nickname"))
-					{
-						string shipname = ini.get_value_string(0);
-						uint shiphash = CreateID(ini.get_value_string(0));
-
-						mapIDs[shiphash] = shipname;
-						++idcount;
-					}
-				}
-			}
-		}
-		ini.close();
-		ConPrint(L"EVENT DEBUG: Loaded %u IDs\n", idcount);
-	}
-}
 
 void SendEconOverride()
 {
@@ -218,7 +181,37 @@ void LoadSettings()
 	mapEventTracking.clear();
 	mapTradeEvents.clear();
 	mapCombatEvents.clear();
-	LoadIDs();
+
+
+	unordered_map <uint, string> mapIDs;
+
+	string idfile = "..\\data\\equipment\\misc_equip.ini";
+	int idcount = 0;
+
+	INI_Reader ini;
+
+	if (ini.open(idfile.c_str(), false))
+	{
+		while (ini.read_header())
+		{
+			if (ini.is_header("Tractor"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						string shipname = ini.get_value_string(0);
+						uint shiphash = CreateID(ini.get_value_string(0));
+
+						mapIDs[shiphash] = shipname;
+						++idcount;
+						break;
+					}
+				}
+			}
+		}
+		ini.close();
+	}
 
 	string File_FLHook = "..\\exe\\flhook_plugins\\events.cfg";
 	string File_FLHookStatus = "..\\exe\\flhook_plugins\\events_status.cfg";
@@ -682,24 +675,8 @@ void LoadSettings()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint GetPlayerId(uint clientId)
-{
-	if (playerData[clientId].playerID)
-	{
-		return playerData[clientId].playerID;
-	}
-
-	for (auto& equip : Players[clientId].equipDescList.equip)
-	{
-		if (!equip.bMounted || !mapIDs.count(equip.iArchID))
-		{
-			continue;
-		}
-
-		playerData[clientId].playerID = equip.iArchID;
-		break;
-	}
-	
-	return playerData[clientId].playerID;
+{	
+	return ClientInfo[clientId].playerID;
 }
 
 FILE *Logfile = fopen("./flhook_logs/event_log.log", "at");

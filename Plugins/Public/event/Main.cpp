@@ -223,7 +223,6 @@ void LoadSettings()
 
 	time_t currTime = time(0);
 
-	INI_Reader ini;
 	if (ini.open(File_FLHook.c_str(), false))
 	{
 		while (ini.read_header())
@@ -782,6 +781,8 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 
 void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iClientID)
 {
+	returncode = DEFAULT_RETURNCODE;
+
 	if (mapTradeEvents.empty())
 	{
 		return;
@@ -840,8 +841,10 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	}
 }
 
-void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
+void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 {
+	returncode = DEFAULT_RETURNCODE;
+
 	if (!playerData[iClientID].eventEnabled)
 	{
 		return;
@@ -883,7 +886,6 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 			//leave event mode
 			PrintUserCmdText(iClientID, L"You have been unregistered from the event: %s", stows(i->second.sEventName).c_str());
 			Notify_TradeEvent_Exit(iClientID, i->second.sEventName, "Sold commodity to other base than delivery point");
-			pub::Save(iClientID, 1);
 			return;
 		}
 	}
@@ -920,15 +922,13 @@ void TradeEvent_Sale(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
 		mapEventTracking[i->first].PlayerEventData[wscCharname] += iInitialCount;
 	}
 
-	pub::Player::AdjustCash(iClientID, bonus);
+	if (bonus)
+	{
+		pub::Player::AdjustCash(iClientID, bonus);
+	}
 
 	PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
 	Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
-}
-
-void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
-{
-	TradeEvent_Sale(gsi, iClientID);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

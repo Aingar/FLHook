@@ -46,6 +46,7 @@ struct DOCKEDCRAFTINFO
 	wstring carrierName;
 	uint lastDockedSolar;
 	bool jettisoned;
+	bool justloggedin;
 };
 
 struct DEFERREDJUMPDATA

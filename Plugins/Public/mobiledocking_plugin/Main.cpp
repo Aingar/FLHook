@@ -821,12 +821,13 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		return;
 	}
 
-	if (!idToDockedInfoMap.count(client))
+	auto idToDockedIter = idToDockedInfoMap.find(client);
+	if (idToDockedIter == idToDockedInfoMap.end())
 	{
 		return;
 	}
 
-	auto& dockInfo = idToDockedInfoMap.at(client);
+	auto& dockInfo = idToDockedIter->second;
 
 	if (dockInfo->jettisoned)
 	{
@@ -844,6 +845,10 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		return;
 	}
 
+	if (dockInfo->justloggedin)
+	{
+		return;
+	}
 
 	PrintUserCmdText(client, L"INFO: Launched from the carrier.");
 	uint carrierClientID = HkGetClientIdFromCharname(idToDockedInfoMap[client]->carrierName.c_str());
@@ -1021,18 +1026,20 @@ void __stdcall BaseEnter(uint iBaseID, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!idToDockedInfoMap.count(client))
+	auto idToDockedIter = idToDockedInfoMap.find(client);
+	if (idToDockedIter == idToDockedInfoMap.end())
 	{
 		return;
 	}
 
-	uint carrierID = HkGetClientIdFromCharname(idToDockedInfoMap[client]->carrierName);
+	idToDockedIter->second->justloggedin = false;
+	uint carrierID = HkGetClientIdFromCharname(idToDockedIter->second->carrierName);
 
 	if (iBaseID == mobileDockingProxyBase)
 	{
 		// Set the base name
 		wstring status = L"<RDL><PUSH/>";
-		status += L"<TEXT>Currently docked on: " + XMLText(idToDockedInfoMap[client]->carrierName);
+		status += L"<TEXT>Currently docked on: " + XMLText(idToDockedIter->second->carrierName);
 		if (carrierID != -1)
 		{
 			// if carrier online, add system info.
@@ -1279,9 +1286,10 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 	SetAvailableModuleSlots(iClientID);
 	
 	wstring charname = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID));
-	if (nameToCarrierInfoMap.count(charname))
+	auto nameToCarrierIter = nameToCarrierInfoMap.find(charname);
+	if (nameToCarrierIter != nameToCarrierInfoMap.end())
 	{
-		idToCarrierInfoMap[iClientID] = &nameToCarrierInfoMap[charname];
+		idToCarrierInfoMap[iClientID] = &nameToCarrierIter->second;
 		for (const wstring& dockedShipName : idToCarrierInfoMap[iClientID]->dockedShipList)
 		{
 			uint dockedClientID = HkGetClientIdFromCharname(dockedShipName.c_str());
@@ -1291,15 +1299,20 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 			}
 		}
 		idToCarrierInfoMap[iClientID]->lastCarrierLogin = time(nullptr);
+		return;
 	}
-	else if (nameToDockedInfoMap.count(charname))
+	
+	auto nameToDockedIter = nameToDockedInfoMap.find(charname);
+	if (nameToDockedIter != nameToDockedInfoMap.end())
 	{
 		if (Players[iClientID].iLastBaseID != mobileDockingProxyBase)
 		{
 			RemoveShipFromLists(charname, false);
+			return;
 		}
 
-		idToDockedInfoMap[iClientID] = &nameToDockedInfoMap[charname];
+		nameToDockedIter->second.justloggedin = true;
+		idToDockedInfoMap[iClientID] = &nameToDockedIter->second;
 		uint carrierClientID = HkGetClientIdFromCharname(idToDockedInfoMap[iClientID]->carrierName.c_str());
 		if (carrierClientID != -1)
 		{

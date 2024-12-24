@@ -308,7 +308,7 @@ wstring PlayerBase::GetBaseHeaderText()
 		for (auto& goodId : pinned_market_items)
 		{
 			const auto& item = market_items.at(goodId);
-			wchar_t buf[120];
+			wchar_t buf[240];
 			const GoodInfo* gi = GoodList::find_by_id(goodId);
 			if (!gi)
 			{

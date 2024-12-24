@@ -3404,15 +3404,31 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		cmd->Print(L"POB pulled to your location, change visible on system re-entry\n");
 		return true;
 	}
-	else if (args.find(L"reloadbaserecipes") == 0)
+	else if (args.find(L"dumpbaseinfo") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 		RIGHT_CHECK(RIGHT_SUPERADMIN);
 
-		LoadRecipes();
+		for (auto& base : player_bases)
+		{
+			bool printedName = false;
+			for (int i = 1; i < MAX_PARAGRAPHS; ++i)
+			{
+				if (base.second->infocard_para[i].empty())
+				{
+					continue;
+				}
 
-		cmd->Print(L"Base recipes reloaded.");
+				if (!printedName)
+				{
+					printedName = true;
+					ConPrint(L"\n%ls\n", base.second->basename.c_str());
+				}
+
+				ConPrint(L"%ls\n", base.second->infocard_para[i].c_str());
+			}
+		}
 		return true;
 	}
 

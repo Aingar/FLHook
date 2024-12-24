@@ -1514,6 +1514,32 @@ namespace PlayerCommands
 				const GoodInfo* gi = GoodList::find_by_id(material.first);
 				PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
 			}
+			for (const auto& materialList : buildRecipe->dynamic_consumed_items)
+			{
+				bool isFirst = true;
+				for (const auto& material : materialList)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material.first);
+					if (isFirst)
+					{
+						isFirst = false;
+						PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+					else
+					{
+						PrintUserCmdText(client, L"|   or %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), material.second);
+					}
+				}
+			}
+			for (const auto& materialList : buildRecipe->dynamic_consumed_items_alt)
+			{
+				PrintUserCmdText(client, L"|   x%u of either:", materialList.sharedAmount);
+				for (const auto material : materialList.items)
+				{
+					const GoodInfo* gi = GoodList::find_by_id(material);
+					PrintUserCmdText(client, L"||   %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+				}
+			}
 			if (buildRecipe->credit_cost)
 			{
 				PrintUserCmdText(client, L"|   $%u credits", buildRecipe->credit_cost);

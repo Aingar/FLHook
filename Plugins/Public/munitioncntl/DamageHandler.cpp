@@ -422,7 +422,7 @@ bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	return false;
 }
 
-void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
+void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg)
 {
 	uint clientId = iobj->cobj->ownerPlayer;
 	if (!clientId)
@@ -445,9 +445,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, float& incDmg)
 		incDmg *= 1.0f - shieldState.damageReduction;
 		shieldState.damageTaken += incDmg;
 
-		CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
-		CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
-		if (shield && (shield->currShieldHitPoints - incDmg) <= (shield->maxShieldHitPoints * shield->offlineThreshold))
+		if ((shield->currShieldHitPoints - incDmg) <= (shield->maxShieldHitPoints * shield->offlineThreshold))
 		{
 			uint fuseId = shieldFuseMap[clientId].boostData->fuseId;
 
@@ -474,6 +472,7 @@ __declspec(naked) void ShipShieldDamageNaked()
 		push ecx
 		lea eax, [esp + 0xC]
 		push eax
+		push [esp + 0xC]
 		push ecx
 		call ShipShieldDamage
 		pop ecx

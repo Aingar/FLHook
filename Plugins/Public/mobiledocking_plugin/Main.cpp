@@ -323,15 +323,25 @@ bool CheckDockingCargoUsage(uint client)
 
 wstring GetLastBaseName(uint client)
 {
-	const auto& dockedInfo = idToDockedInfoMap[client];
-	const auto& baseInfo = Universe::get_base(dockedInfo->lastDockedSolar);
-	if (!dockedInfo->lastDockedSolar)
+	const auto& dockedInfo = idToDockedInfoMap.find(client);
+	if (dockedInfo == idToDockedInfoMap.end())
+	{
+		auto lastBase = Universe::get_base(Players[client].iLastBaseID);
+		if (!lastBase)
+		{
+			return L"ERROR";
+		}
+
+		return HkGetWStringFromIDS(lastBase->iBaseIDS);
+	}
+	const auto& baseInfo = Universe::get_base(dockedInfo->second->lastDockedSolar);
+	if (!dockedInfo->second->lastDockedSolar)
 	{
 		return L"ERROR";
 	}
 	if (!baseInfo)
 	{
-		PrintUserCmdText(client, L"ERR base %u not found! Contact Developers.", dockedInfo->lastDockedSolar);
+		PrintUserCmdText(client, L"ERR base %u not found! Contact Developers.", dockedInfo->second->lastDockedSolar);
 		return L"ERROR";
 	}
 	const auto& sysInfo = Universe::get_system(baseInfo->iSystemID);
@@ -1232,9 +1242,11 @@ bool UserCmd_Process(uint client, const wstring& wscCmd)
 
 void DelayedDisconnect(uint clientId, uint shipId)
 {
-	if (idToCarrierInfoMap.count(clientId))
+	returncode = DEFAULT_RETURNCODE;
+	auto carrierInfo = idToCarrierInfoMap.find(clientId);
+	if (carrierInfo != idToCarrierInfoMap.end())
 	{
-		for (const wstring& dockedPlayer : idToCarrierInfoMap[clientId]->dockedShipList)
+		for (const wstring& dockedPlayer : carrierInfo->second->dockedShipList)
 		{
 			uint dockedClientID = HkGetClientIdFromCharname(dockedPlayer.c_str());
 			if (dockedClientID != -1)
@@ -1248,6 +1260,7 @@ void DelayedDisconnect(uint clientId, uint shipId)
 	mapPendingDockingRequests.erase(clientId);
 	idToCarrierInfoMap.erase(clientId);
 	idToDockedInfoMap.erase(clientId);
+	deferredJumpData.erase(clientId);
 }
 
 void __stdcall DisConnect(unsigned int iClientID, enum  EFLConnection state)

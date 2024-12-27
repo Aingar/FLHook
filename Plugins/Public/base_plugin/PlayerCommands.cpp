@@ -896,6 +896,12 @@ namespace PlayerCommands
 
 	bool AddAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
 	{
+		if (entry.empty())
+		{
+			PrintUserCmdText(client, L"ERR incorrect parameters!");
+			PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+			return false;
+		}
 		if (entryType == L"tag")
 		{
 			if (type == L"srp")

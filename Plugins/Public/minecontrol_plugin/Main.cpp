@@ -859,8 +859,9 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
             if (iClientID != iSendToClientID)
             {
                 wstring charName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID));
+                wstring sendToName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iSendToClientID));
                 PrintUserCmdText(iSendToClientID, L"%ls is mining into your cargo hold, but your ship is full!", charName.c_str());
-                PrintUserCmdText(iClientID, L"%s's cargo is now full.", charName.c_str());
+                PrintUserCmdText(iClientID, L"%s's cargo is now full.", sendToName.c_str());
                 pub::Player::SendNNMessage(iClientID, insufficientCargoSoundId);
             }
             else

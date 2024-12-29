@@ -3356,7 +3356,15 @@ public:
 	void set_contents_hit_pts(float);
 	void set_units(unsigned int);
 
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint lootOwner; // 57
+	uint infocardOverride; //58
+	struct Archetype::Commodity* commodityArch; //59
+	uint units; // 60
+	float contentsHitPts; //61
+	float ownerPhysicsSafetyTime;
+	bool canAITractor;
+	bool isMissionLoot;
+
 };
 
 struct IMPORT CMine : public CProjectile

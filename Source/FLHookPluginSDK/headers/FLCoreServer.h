@@ -1067,6 +1067,21 @@ namespace pub
 			bool missionMarked;
 		};
 
+		struct LootInfo {
+			uint systemId;
+			uint equipmentArchId;
+			uint infocardOverride;
+			uint ownerId;
+			Vector initialVelocity;
+			Vector pos;
+			Matrix rot;
+			Vector initialAngular;
+			int itemCount;
+			float hitPtsPercentage;
+			bool canAITractor;
+			bool isMissionLoot;
+		};
+
 		struct TerminalInfo {
 			char szHardPoint[0x20];
 			uint iType; // 1=berth 4=moor? 7=jump?

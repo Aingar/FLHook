@@ -3021,9 +3021,11 @@ public:
 	void AddGen(class CEShieldGenerator *);
 	bool CanActivate(void)const;
 	void RemGen(class CEShieldGenerator *);
-	uint dunnoShield;
+	
+	bool internalActivationState;
 	float currShieldHitPoints;
-	uint dunnoShield2[3];
+	uint seeminglyUnused;
+	double rebuildTimestamp;
 	st6::vector<CEShieldGenerator*> linkedShieldGen;
 	Archetype::ShieldGenerator* highestToughnessShieldGenArch;
 	float offlineThreshold;

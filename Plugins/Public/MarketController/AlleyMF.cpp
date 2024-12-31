@@ -135,7 +135,7 @@ void Logging(const char* szString, ...)
 	char szBuf[64];
 	time_t tNow = time(0);
 	struct tm* t = localtime(&tNow);
-	strftime(szBuf, sizeof(szBuf), "%d/%m/%Y %H:%M:%S", t);
+	strftime(szBuf, sizeof(szBuf), "%Y/%m/%d %H:%M:%S", t);
 	fprintf(Logfile, "%s %s\n", szBuf, szBufString);
 	fflush(Logfile);
 	fclose(Logfile);

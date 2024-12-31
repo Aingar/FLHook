@@ -318,7 +318,7 @@ void FLHookInit_Pre()
 		char szDate[64];
 		time_t tNow = time(0);
 		struct tm *t = localtime(&tNow);
-		strftime(szDate, sizeof(szDate), "%d.%m.%Y_%H.%M", t);
+		strftime(szDate, sizeof(szDate), "%Y.%m.%d_%H.%M", t);
 		sDebugLog = "./flhook_logs/debug/FLHookDebug_" + (string)szDate;
 		sDebugLog += ".log";
 

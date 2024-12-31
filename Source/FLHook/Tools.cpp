@@ -426,11 +426,11 @@ void WriteMiniDump(SEHException* ex, bool detailedDump)
 			struct tm *t = localtime(&tNow);
 			if (detailedDump)
 			{
-				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserverCrash_%d.%m.%Y_%H.%M.%S", t);
+				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserverCrash_%Y.%m.%d_%H.%M.%S", t);
 			}
 			else
 			{
-				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserver_%d.%m.%Y_%H.%M.%S", t);
+				strftime(szDumpPathFirst, sizeof(szDumpPathFirst), "./flhook_logs/debug/flserver_%Y.%m.%d_%H.%M.%S", t);
 			}
 
 			int n = 1;

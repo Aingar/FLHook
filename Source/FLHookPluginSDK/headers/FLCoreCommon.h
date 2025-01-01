@@ -2987,6 +2987,9 @@ public:
 	struct Archetype::Scanner const * ScannerArch(void)const;
 	void clear_cache(void);
 	void scan_for_types(unsigned int);
+
+	ScanList scanlist;
+
 };
 
 class IMPORT CEShield : public CAttachedEquip
@@ -6547,7 +6550,10 @@ public:
 	void reset(void);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint vftable;
+	BaseWatcher objectArray[256];
+	uint currSize;
+	uint maxSize;
 };
 
 class IMPORT ScriptBehavior

@@ -149,6 +149,7 @@ extern EXPORT _WStringAssign WStringAssign;
 extern EXPORT _WStringAppend WStringAppend;
 extern EXPORT _CPlayerAccount_GetServerSignature CPlayerAccount_GetServerSignature;
 extern EXPORT FILE *fLog;
+extern EXPORT FILE *fChatLog;
 extern EXPORT FILE *fLogDebug;
 extern EXPORT FILE *perfMonitorLog;
 extern EXPORT FARPROC fpOldUpdate;

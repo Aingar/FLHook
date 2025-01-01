@@ -54,6 +54,26 @@ void AddLog(const char *szString, ...)
 	}
 }
 
+void AddChatLog(const char *szString, ...)
+{
+	char szBufString[1024];
+	va_list marker;
+	va_start(marker, szString);
+	_vsnprintf(szBufString, sizeof(szBufString) - 1, szString, marker);
+
+	if (fChatLog) {
+		char szBuf[64];
+		time_t tNow = time(0);
+		struct tm* t = localtime(&tNow);
+		strftime(szBuf, sizeof(szBuf), "%Y.%m.%d %H:%M:%S", t);
+		fprintf(fChatLog, "[%s] %s\n", szBuf, szBufString);
+		fflush(fChatLog);
+	}
+	else {
+		ConPrint(L"Failed to write log! This might be due to inability to create the directory - are you running as an administrator?\n");
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 void HkHandleCheater(uint iClientID, bool bBan, wstring wscReason, ...)

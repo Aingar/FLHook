@@ -92,6 +92,7 @@ list<SOCKET_CONNECTION*> lstDelete;
 CRITICAL_SECTION cs;
 
 FILE *fLog = 0;
+FILE *fChatLog = 0;
 FILE *fLogDebug = 0;
 FILE *perfMonitorLog = 0;
 
@@ -321,6 +322,11 @@ void FLHookInit_Pre()
 		strftime(szDate, sizeof(szDate), "%Y.%m.%d_%H.%M", t);
 		sDebugLog = "./flhook_logs/debug/FLHookDebug_" + (string)szDate;
 		sDebugLog += ".log";
+
+		char szDate2[64];
+		strftime(szDate2, sizeof(szDate2), "%Y.%m.%d", t);
+		string sChatLog = "./flhook_logs/chats_" + (string)szDate2 + ".log";
+		fChatLog = fopen(sChatLog.c_str(), "at");
 
 		perfMonitorLog = fopen("./flhook_logs/perfTimer.log", "at");
 
@@ -599,6 +605,7 @@ void FLHookShutdown()
 
 	// close log
 	fclose(fLog);
+	fclose(fChatLog);
 	fclose(perfMonitorLog);
 	if (set_bDebug)
 		fclose(fLogDebug);
@@ -751,43 +758,69 @@ process and send an eventmode log message for given chat parameters
 **************************************************************************************************************/
 void SendChatEvent(uint iClientID, uint iToID, wstring &wscMsg) {
 	wstring wscEvent;
+	string from;
+	string to;
 	wscEvent.reserve(256);
 	wscEvent = L"chat";
 	wscEvent += L" from=";
 	const wchar_t *wszFrom = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 	if (!iClientID)
+	{
 		wscEvent += L"console";
+		from = "console";
+	}
 	else if (!wszFrom)
+	{
 		wscEvent += L"unknown";
+		from = "unknown";
+	}
 	else
+	{
 		wscEvent += wszFrom;
-
+		from = wstos(wszFrom);
+	}
 	wscEvent += L" id=";
 	wscEvent += stows(itos(iClientID));
 
 	wscEvent += L" type=";
 	if (iToID == 0x00010000)
+	{
 		wscEvent += L"universe";
+		to = "universe";
+	}
 	else if (iToID == 0x10003)
 	{
 		wscEvent += L"group";
 		wscEvent += L" grpidto=";
-		wscEvent += stows(itos(Players.GetGroupID(iClientID)));
+		auto group = itos(Players.GetGroupID(iClientID));
+		wscEvent += stows(group);
+		to = "group" + group;
 	}
 	else if (iToID & 0x00010000)
+	{
 		wscEvent += L"system";
+		to = Universe::get_system(Players[iClientID].iSystemID)->nickname;
+	}
 	else {
 		wscEvent += L"player";
 		wscEvent += L" to=";
 
 		const wchar_t *wszTo = (const wchar_t*)Players.GetActiveCharacterName(iToID);
 		if (!iToID)
+		{
 			wscEvent += L"console";
+			to = "console";
+		}
 		else if (!wszTo)
+		{
 			wscEvent += L"unknown";
+			to = "unknown";
+		}
 		else
+		{
 			wscEvent += wszTo;
-
+			to = wstos(wszTo);
+		}
 		wscEvent += L" idto=";
 		wscEvent += stows(itos(iToID));
 	}
@@ -795,6 +828,8 @@ void SendChatEvent(uint iClientID, uint iToID, wstring &wscMsg) {
 	wscEvent += L" text=";
 	wscEvent += wscMsg;
 	ProcessEvent(L"%s", wscEvent.c_str());
+
+	AddChatLog("%s->%s: %s", from.c_str(), to.c_str(), wstos(wscMsg).c_str());
 }
 
 /**************************************************************************************************************

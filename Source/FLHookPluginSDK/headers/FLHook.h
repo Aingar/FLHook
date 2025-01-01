@@ -510,6 +510,7 @@ IMPORT HK_ERROR HkWriteCharFile(const wstring &wscCharname, wstring wscData);
 // HkFuncLog
 IMPORT void AddDebugLog(const char *szString, ...);
 IMPORT void AddLog(const char *szString, ...);
+IMPORT void AddChatLog(const char *szString, ...);
 IMPORT void HkHandleCheater(uint iClientID, bool bBan, wstring wscReason, ...);
 IMPORT bool HkAddCheaterLog(const wstring &wscCharname, const wstring &wscReason);
 IMPORT bool HkAddCheaterLog(const uint &iClientID, const wstring &wscReason);
@@ -767,6 +768,7 @@ extern IMPORT _WStringAssign WStringAssign;
 extern IMPORT _WStringAppend WStringAppend;
 extern IMPORT _CPlayerAccount_GetServerSignature CPlayerAccount_GetServerSignature;
 extern IMPORT FILE *fLog;
+extern IMPORT FILE *fChatLog;
 extern IMPORT FILE *fLogDebug;
 extern IMPORT FARPROC fpOldUpdate;
 extern IMPORT string sDebugLog;

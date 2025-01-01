@@ -809,6 +809,7 @@ EXPORT HK_ERROR HkWriteCharFile(const wstring &wscCharname, wstring wscData);
 #define AddBothLog(s, ...) { AddLog(s, __VA_ARGS__); AddDebugLog(s, __VA_ARGS__);  }
 EXPORT void AddDebugLog(const char *szString, ...);
 EXPORT void AddLog(const char *szString, ...);
+EXPORT void AddChatLog(const char *szString, ...);
 EXPORT void HkHandleCheater(uint iClientID, bool bBan, wstring wscReason, ...);
 EXPORT bool HkAddCheaterLog(const wstring &wscCharname, const wstring &wscReason);
 EXPORT bool HkAddCheaterLog(const uint &iClientID, const wstring &wscReason);

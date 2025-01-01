@@ -2969,6 +2969,25 @@ public:
 	Archetype::RepairDroid* archetype;
 };
 
+struct IMPORT ScanList
+{
+public:
+	ScanList(struct ScanList const&);
+	ScanList(void);
+	~ScanList(void);
+	struct ScanList& operator=(struct ScanList const&);
+	bool add(struct IObjRW*);
+	int add_in_range(class Vector const&, float, struct IObjDB*, unsigned int, struct Filter*);
+	void remove(struct IObjRW*);
+	void reset(void);
+
+public:
+	uint vftable;
+	BaseWatcher objectArray[256];
+	uint currSize;
+	uint maxSize;
+};
+
 class IMPORT CEScanner : public CInternalEquip
 {
 public:
@@ -6535,25 +6554,6 @@ struct IMPORT SMMessage
 
 public:
 	unsigned char data[OBJECT_DATA_SIZE];
-};
-
-struct IMPORT ScanList
-{
-public:
-	ScanList(struct ScanList const &);
-	ScanList(void);
-	~ScanList(void);
-	struct ScanList & operator=(struct ScanList const &);
-	bool add(struct IObjRW *);
-	int add_in_range(class Vector const &, float, struct IObjDB *, unsigned int, struct Filter *);
-	void remove(struct IObjRW *);
-	void reset(void);
-
-public:
-	uint vftable;
-	BaseWatcher objectArray[256];
-	uint currSize;
-	uint maxSize;
 };
 
 class IMPORT ScriptBehavior

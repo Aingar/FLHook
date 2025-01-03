@@ -196,36 +196,95 @@ void ExportData::ToJSON()
 		shop.close();
 
 
-		if (base->defense_mode == PlayerBase::DEFENSE_MODE::IFF && !base->hostile_factions.empty())
+		if (base->defense_mode == PlayerBase::DEFENSE_MODE::IFF)
 		{
-			minijson::array_writer iffList = pw.nested_array("hostile_list");
-			for (auto& faction : base->hostile_factions)
+			if (!base->hostile_factions.empty())
 			{
-				iffList.write(faction);
+				minijson::array_writer iffList = pw.nested_array("hostile_list");
+				for (auto& faction : base->hostile_factions)
+				{
+					iffList.write(faction);
+				}
+				iffList.close();
 			}
-			iffList.close();
+			if (!base->hostile_tags.empty())
+			{
+				minijson::array_writer tagList = pw.nested_array("hostile_tag_list");
+				for (auto& tag : base->hostile_tags)
+				{
+					tagList.write(wstos(tag));
+				}
+				tagList.close();
+			}
+			if (!base->hostile_names.empty())
+			{
+				minijson::array_writer nameList = pw.nested_array("hostile_name_list");
+				for (auto& name : base->hostile_names)
+				{
+					nameList.write(wstos(name));
+				}
+				nameList.close();
+			}
 		}
 
-		if ((base->defense_mode == PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE
+		if (base->defense_mode == PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE
 			|| base->defense_mode == PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL)
-			&& !base->ally_factions.empty())
 		{
-			minijson::array_writer iffList = pw.nested_array("ally_list");
-			for (auto& faction : base->ally_factions)
+			if (!base->ally_factions.empty())
 			{
-				iffList.write(faction);
+				minijson::array_writer iffList = pw.nested_array("ally_list");
+				for (auto& faction : base->ally_factions)
+				{
+					iffList.write(faction);
+				}
+				iffList.close();
 			}
-			iffList.close();
+			if (!base->ally_tags.empty())
+			{
+				minijson::array_writer tagList = pw.nested_array("ally_tag_list");
+				for (auto& tag : base->ally_tags)
+				{
+					tagList.write(wstos(tag));
+				}
+				tagList.close();
+			}
+			if (!base->ally_names.empty())
+			{
+				minijson::array_writer nameList = pw.nested_array("ally_name_list");
+				for (auto& name : base->ally_names)
+				{
+					nameList.write(wstos(name));
+				}
+				nameList.close();
+			}
 		}
 
 		if (!base->srp_factions.empty())
 		{
-			minijson::array_writer iffList = pw.nested_array("srp_ally_list");
+			minijson::array_writer iffList = pw.nested_array("srp_list");
 			for (auto& srpFaction : base->srp_factions)
 			{
-				iffList.nested_object();
+				iffList.write(srpFaction);
 			}
 			iffList.close();
+		}
+		if (!base->srp_tags.empty())
+		{
+			minijson::array_writer tagList = pw.nested_array("srp_tag_list");
+			for (auto& tag : base->srp_tags)
+			{
+				tagList.write(wstos(tag));
+			}
+			tagList.close();
+		}
+		if (!base->srp_names.empty())
+		{
+			minijson::array_writer nameList = pw.nested_array("srp_name_list");
+			for (auto& name : base->srp_names)
+			{
+				nameList.write(wstos(name));
+			}
+			nameList.close();
 		}
 
 		pw.close();

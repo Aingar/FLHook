@@ -173,6 +173,7 @@ void ExportData::ToJSON()
 					infocards.write(wstos(infocard));
 				}
 			}
+			infocards.close();
 		}
 
 		minijson::array_writer shop = pw.nested_array("shop_items");

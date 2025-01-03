@@ -54,12 +54,11 @@ unordered_map<uint, stBountyBasePayout> mapBountyShipPayouts;
 unordered_map<uint, float> mapBountyGroupScale;
 unordered_map<uint, float> mapBountyArmorScales;
 unordered_map<uint, float> mapBountySystemScales;
-multimap<uint, stWarzone> mmapBountyWarzoneScales;
 
 multimap<uint, stDropInfo> mmapDropInfo;
 unordered_set<uint> mapDropExcludedArchetypes;
 unordered_map<uint, uint> mapShipClassTypes;
-map<int, float> mapClassDiffMultipliers;
+unordered_map<int, float> mapClassDiffMultipliers;
 
 int set_iPluginDebug = 0;
 float set_fMaximumRewardRep = 0.0f;
@@ -306,75 +305,6 @@ void NPCBountyPayout(uint iClientID, int cash) {
 	
 }
 
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Command Functions
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-bool UserCmd_Value(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
-{
-	PrintUserCmdText(iClientID, L"Ship value: $%s credits.", ToMoneyStr(Players[iClientID].worth).c_str());
-	return true;
-}
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-//Client command processing
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-typedef bool(*_UserCmdProc)(uint, const wstring &, const wstring &, const wchar_t*);
-
-struct USERCMD
-{
-	wchar_t *wszCmd;
-	_UserCmdProc proc;
-	wchar_t *usage;
-};
-
-USERCMD UserCmds[] =
-{
-	{ L"/value", UserCmd_Value, L"" },
-};
-
-/**
-This function is called by FLHook when a user types a chat string. We look at the
-string they've typed and see if it starts with one of the above commands. If it
-does we try to process it.
-*/
-bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	wstring wscCmdLineLower = ToLower(wscCmd);
-
-	// If the chat string does not match the USER_CMD then we do not handle the
-	// command, so let other plugins or FLHook kick in. We require an exact match
-	for (uint i = 0; (i < sizeof(UserCmds) / sizeof(USERCMD)); i++)
-	{
-
-		if (wscCmdLineLower.find(UserCmds[i].wszCmd) == 0)
-		{
-			// Extract the parameters string from the chat string. It should
-			// be immediately after the command and a space.
-			wstring wscParam = L"";
-			if (wscCmd.length() > wcslen(UserCmds[i].wszCmd))
-			{
-				if (wscCmd[wcslen(UserCmds[i].wszCmd)] != ' ')
-					continue;
-				wscParam = wscCmd.substr(wcslen(UserCmds[i].wszCmd) + 1);
-			}
-
-			// Dispatch the command to the appropriate processing function.
-			if (UserCmds[i].proc(iClientID, wscCmd, wscParam, UserCmds[i].usage))
-			{
-				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-				return true;
-			}
-		}
-	}
-	return false;
-}
-
 bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -456,17 +386,14 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	uint uArchID = victimShiparch->iArchID;
 
 	// Grab some info we'll need later.
-	uint uKillerSystem = 0;
+	uint uKillerSystem = iobj->cobj->system;
 	unsigned int uKillerAffiliation = 0;
-	pub::Player::GetSystem(iKillerClientId, uKillerSystem);
 
 	// Deny bounties and drops for kills on targets above the maximum reward reputation threshold.
-	int iTargetRep, iPlayerRep;
+	int iTargetRep = cship->repVibe, iPlayerRep = Players[iKillerClientId].iReputation;
 	uint uTargetAffiliation;
 	float fAttitude = 0.0f;
-	pub::SpaceObj::GetRep(iVictimShipId, iTargetRep);
 	Reputation::Vibe::GetAffiliation(iTargetRep, uTargetAffiliation, false);
-	pub::Player::GetRep(iKillerClientId, iPlayerRep);
 	Reputation::Vibe::GetAffiliation(iPlayerRep, uKillerAffiliation, false);
 	pub::Reputation::GetGroupFeelingsTowards(iPlayerRep, uTargetAffiliation, fAttitude);
 	if (fAttitude > set_fMaximumRewardRep) {
@@ -506,7 +433,7 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			if (itVictimType != mapShipClassTypes.end() && itKillerType != mapShipClassTypes.end())
 				classDiff = itVictimType->second - itKillerType->second;
 
-			const auto& itDiffMultiplier = mapClassDiffMultipliers.lower_bound(classDiff);
+			const auto& itDiffMultiplier = mapClassDiffMultipliers.find(classDiff);
 			if (itDiffMultiplier != mapClassDiffMultipliers.end())
 				fBountyPayout *= itDiffMultiplier->second;
 		}
@@ -572,7 +499,11 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			Vector vLoc;
 			Matrix mRot;
 			pub::SpaceObj::GetLocation(iVictimShipId, vLoc, mRot);
-			vLoc.x += 30.0;
+			Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
+			vLoc.x += randomVector.x;
+			vLoc.y += randomVector.y;
+			vLoc.z += randomVector.z;
+
 			uint finalAmount;
 			if (dropData.uAmountDroppedMax)
 			{
@@ -582,7 +513,8 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			{
 				finalAmount = dropData.uAmountDroppedMin;
 			}
-			Server.MineAsteroid(uKillerSystem, vLoc, set_uLootCrateID, dropData.uGoodID, finalAmount, iKillerClientId);
+			CreateLootSimple(uKillerSystem, cship->id, dropData.uGoodID, finalAmount, vLoc, false);
+
 		}
 		iter++;
 	}
@@ -591,14 +523,13 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 EXPORT PLUGIN_INFO* Get_PluginInfo()
 {
 	PLUGIN_INFO* p_PI = new PLUGIN_INFO();
-	p_PI->sName = "PvE Controller by Kazinsal et al.";
+	p_PI->sName = "PvE Controller by Kazinsal, rewritten by Aingar.";
 	p_PI->sShortName = "pvecontroller";
 	p_PI->bMayPause = true;
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
 	
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 	

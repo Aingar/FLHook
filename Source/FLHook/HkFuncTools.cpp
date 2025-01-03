@@ -59,6 +59,31 @@ uint HkGetClientIdFromCharname(const wstring &wscCharname)
 	return iClientID;
 }
 
+uint CreateLootSimple(uint system, uint ownerShip, uint commodityId, uint amount, Vector pos, bool canAITractor)
+{
+	pub::SpaceObj::LootInfo lootInfo;
+	lootInfo.systemId = system;
+	lootInfo.ownerId = ownerShip;
+	lootInfo.equipmentArchId = commodityId;
+	lootInfo.itemCount = amount;
+	lootInfo.pos = pos;
+	lootInfo.rot = { 1, 0, 0, 0, 1, 0, 0, 0, 1 };
+	lootInfo.isMissionLoot = false;
+	lootInfo.canAITractor = canAITractor;
+	lootInfo.hitPtsPercentage = 1.0f;
+	lootInfo.initialVelocity = { 0,0,0 };
+	lootInfo.initialAngular = { 0,0,0 };
+	lootInfo.infocardOverride = 0;
+
+	uint spaceObjId = 0;
+	if (0 == pub::SpaceObj::CreateLoot(spaceObjId, lootInfo))
+	{
+		return spaceObjId;
+	}
+
+	return 0;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 wstring HkGetAccountID(CAccount *acc)

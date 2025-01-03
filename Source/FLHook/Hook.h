@@ -739,6 +739,7 @@ void HookRehashed();
 void LoadUserCharSettings(uint iClientID);
 
 // HkFuncTools
+EXPORT uint CreateLootSimple(uint system, uint ownerShip, uint commodityId, uint amount, Vector pos, bool canAITractor);
 EXPORT uint HkGetClientIdFromAccount(CAccount *acc);
 EXPORT uint HkGetClientIdFromPD(struct PlayerData *pPD);
 EXPORT CAccount* HkGetAccountByCharname(const wstring &wscCharname);

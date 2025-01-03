@@ -924,8 +924,7 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 		dropPos.y += randomVector.y;
 		dropPos.z += randomVector.z;
 
-		Server.MineAsteroid(cship->system, dropPos, cargo->archetype->get_loot_appearance()->iArchID,
-			cargo->archetype->iArchID, min(cargo->count, amountToDrop), 0);
+		CreateLootSimple(cship->system, cship->id, cargo->archetype->iArchID, min(cargo->count, amountToDrop), dropPos, false);
 	}
 	
 	cship->clear_equip_and_cargo();

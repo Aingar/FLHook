@@ -230,13 +230,13 @@ void DestroyContainer(const uint clientID)
             const auto& cd = mapMiningContainers[iter->second.deployedContainerId];
             if (cd.loot1Count)
             {
-                Server.MineAsteroid(cd.systemId, cd.jettisonPos, cd.lootCrate1Id, cd.loot1Id, cd.loot1Count, cd.clientId);
+                CreateLootSimple(cd.systemId, Players[cd.clientId].iShipID, cd.loot1Id, cd.loot1Count, cd.jettisonPos, false);
             }
             if (cd.loot2Count)
             {
-                Server.MineAsteroid(cd.systemId, cd.jettisonPos, cd.lootCrate2Id, cd.loot2Id, cd.loot2Count, cd.clientId);
+                CreateLootSimple(cd.systemId, Players[cd.clientId].iShipID, cd.loot2Id, cd.loot2Count, cd.jettisonPos, false);
             }
-            Server.MineAsteroid(cd.systemId, cd.jettisonPos, set_containerLootCrateID, set_deployableContainerCommodity, 1, cd.clientId);
+            CreateLootSimple(cd.systemId, Players[cd.clientId].iShipID, set_deployableContainerCommodity, 1, cd.jettisonPos, false);
             mapMiningContainers.erase(iter->second.deployedContainerId);
             DESPAWN_SOLAR_STRUCT info;
             info.destroyType = FUSE;
@@ -817,7 +817,7 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
             uint amountToJettison = static_cast<uint>(static_cast<float>(set_containerJettisonCount) / lootInfo->fVolume);
             if (*lootCount >= amountToJettison)
             {
-                Server.MineAsteroid(container.systemId, container.jettisonPos, set_containerLootCrateID, lootId, amountToJettison, container.clientId);
+                CreateLootSimple(container.systemId, Players[container.clientId].iShipID, lootId, amountToJettison, container.jettisonPos, false);
                 *lootCount -= amountToJettison;
             }
         }
@@ -1125,19 +1125,7 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
     const auto& i = mapMiningContainers.find(space_obj);
     if (i != mapMiningContainers.end())
     {
-        const CONTAINER_DATA& cd = i->second;
-        mapClients[cd.clientId].deployedContainerId = 0;
-        // container destruction drop all contents as well as 'packed up' container.
-        if (cd.loot1Count)
-        {
-            Server.MineAsteroid(cd.systemId, cd.jettisonPos, set_containerLootCrateID, cd.loot1Id, cd.loot1Count, cd.clientId);
-        }
-        if (cd.loot2Count)
-        {
-            Server.MineAsteroid(cd.systemId, cd.jettisonPos, set_containerLootCrateID, cd.loot2Id, cd.loot2Count, cd.clientId);
-        }
-        Server.MineAsteroid(cd.systemId, cd.jettisonPos, set_containerLootCrateID, set_deployableContainerCommodity, 1, cd.clientId);
-        mapMiningContainers.erase(space_obj);
+        DestroyContainer(i->second.clientId);
 
         return;
     }
@@ -1156,7 +1144,7 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
             auto& nodeArray = miningSolarMap.at(iobj->cobj->archetype->iArchID);
             const MiningNodeInfo& node = nodeArray.at(1);
             uint minedAmount = GetAsteroidMiningYield(node, clientKiller, false);
-            Server.MineAsteroid(iobj->cobj->system, iobj->get_position(), node.lootArchId, node.itemArchId, minedAmount, 0);
+            CreateLootSimple(iobj->cobj->system, Players[clientKiller].iShipID, node.itemArchId, minedAmount, iobj->cobj->vPos, false);
         }
 
         auto& nodeDb = miningNodeMap.at(space_obj);
@@ -1197,7 +1185,7 @@ void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjF
 
     uint minedAmount = GetAsteroidMiningYield(node, dmg->iInflictorPlayerID, true);
 
-    Server.MineAsteroid(iobj->cobj->system, colGrpCenter, node.lootArchId, node.itemArchId, minedAmount, 0);
+    CreateLootSimple(iobj->cobj->system, dmg->iInflictorID, node.itemArchId, minedAmount, iobj->cobj->vPos, false);
 
 }
 

@@ -484,68 +484,65 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 
 bool UserCmd_JettisonAll(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
-	uint baseID = 0;
-	pub::Player::GetBase(iClientID, baseID);
-	if (baseID)
+	auto cship = ClientInfo[iClientID].cship;
+	if (!cship)
 	{
 		PrintUserCmdText(iClientID, L"Can't jettison while docked");
 		return true;
 	}
 
 	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-	uint iSystem = 0;
-	pub::Player::GetSystem(iClientID, iSystem);
-	uint iShip = 0;
-	pub::Player::GetShip(iClientID, iShip);
-	Vector vLoc = { 0.0f, 0.0f, 0.0f };
-	Matrix mRot = { 0.0f, 0.0f, 0.0f };
-	pub::SpaceObj::GetLocation(iShip, vLoc, mRot);
+	uint iSystem = Players[iClientID].iSystemID;
+	uint iShip = Players[iClientID].iShipID;
+	Vector vLoc = cship->vPos;
 	vLoc.x += 30.0;
 
 	list<CARGO_INFO> lstCargo;
 	int iRemainingHoldSize = 0;
 	uint items = 0;
 	bool isFirstJettisonItem = true;
-	if (HkEnumCargo(wscCharname, lstCargo, iRemainingHoldSize) == HKE_OK)
+	if (HkEnumCargo(wscCharname, lstCargo, iRemainingHoldSize) != HKE_OK)
 	{
-		uint shipClass = Archetype::GetShip(Players[iClientID].iShipArchetype)->iShipClass;
-		foreach(lstCargo, CARGO_INFO, item)
+		PrintUserCmdText(iClientID, L"OK, jettisoned %u item(s)", items);
+		return true;
+	}
+	
+	uint shipClass = Archetype::GetShip(Players[iClientID].iShipArchetype)->iShipClass;
+	foreach(lstCargo, CARGO_INFO, item)
+	{
+		bool flag = false;
+		pub::IsCommodity(item->iArchID, flag);
+		if (!item->bMounted && flag)
 		{
-			bool flag = false;
-			pub::IsCommodity(item->iArchID, flag);
-			if (!item->bMounted && flag)
+			if (notradelist.count(item->iArchID))
 			{
-				if (notradelist.count(item->iArchID))
-				{
-					continue;
-				}
-				if (shipclassitems.count(item->iArchID) && !shipclassitems.at(item->iArchID).canmount.empty())
-				{
-					continue;
-				}
-
-				if (isFirstJettisonItem)
-				{
-					isFirstJettisonItem = false;
-					XJettisonCargo jettisonCargo;
-					jettisonCargo.iShip = iShip;
-					jettisonCargo.iCount = item->iCount;
-					jettisonCargo.iSlot = item->iID;
-					pub::Player::SendNNMessage(iClientID, pub::GetNicknameId("cargo_jettisoned"));
-					Server.JettisonCargo(iClientID, jettisonCargo);
-				}
-				else
-				{
-					HkRemoveCargo(wscCharname, item->iID, item->iCount); 
-					uint lootCrateId = Archetype::GetEquipment(item->iArchID)->get_loot_appearance()->iArchID;
-					Server.MineAsteroid(iSystem, vLoc, lootCrateId, item->iArchID, item->iCount, iClientID);
-				}
-				items++;
+				continue;
 			}
+			if (shipclassitems.count(item->iArchID) && !shipclassitems.at(item->iArchID).canmount.empty())
+			{
+				continue;
+			}
+
+			if (isFirstJettisonItem)
+			{
+				isFirstJettisonItem = false;
+				XJettisonCargo jettisonCargo;
+				jettisonCargo.iShip = iShip;
+				jettisonCargo.iCount = item->iCount;
+				jettisonCargo.iSlot = item->iID;
+				const static uint jettisonedVoiceLine = pub::GetNicknameId("cargo_jettisoned");
+				pub::Player::SendNNMessage(iClientID, jettisonedVoiceLine);
+				Server.JettisonCargo(iClientID, jettisonCargo);
+			}
+			else
+			{
+				HkRemoveCargo(wscCharname, item->iID, item->iCount); 
+				CreateLootSimple(iSystem, iShip, item->iArchID, item->iCount, vLoc, false);
+
+			}
+			items++;
 		}
 	}
-	PrintUserCmdText(iClientID, L"OK, jettisoned %u item(s)", items);
-	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -637,6 +634,7 @@ void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		return;
 	}
 
+	returncode = SKIPPLUGINS;
 	const Archetype::Ship* TheShipArchHealed = cship->shiparch();
 
 	const auto& healingData = healingMultipliers.find(TheShipArchHealed->iShipClass);
@@ -681,58 +679,6 @@ void __stdcall SystemSwitchOutComplete(unsigned int iShip, unsigned int iClientI
 	pub::SpaceObj::SetInvincible(iShip, true, true, 0);
 	if (AP::SystemSwitchOutComplete(iShip, iClientID))
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-}
-
-void JettisonCargo(unsigned int iClientID, struct XJettisonCargo const &jc)
-{
-	returncode = DEFAULT_RETURNCODE;
-	
-	CShip* cship = ClientInfo[iClientID].cship;
-	if (!cship)
-	{
-		return;
-	}
-	CECargo* cargo;
-	CEquipTraverser tr(EquipmentClass::Cargo);
-
-	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
-	{
-		if (cargo->iSubObjId != jc.iSlot)
-		{
-			return;
-		}
-
-		const auto& noTradeGood = notradelist.find(cargo->archetype->iArchID);
-		if (noTradeGood == notradelist.end()) {
-			return;
-		}
-
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		const GoodInfo* gi = GoodList::find_by_id(noTradeGood->first);
-		wstring goodName = HkGetWStringFromIDS(gi->iIDSName).c_str();
-		if (noTradeGood->second == 0.0f)
-		{
-			PrintUserCmdText(iClientID, L"ERR you can't jettison %ls.", goodName.c_str());
-		}
-		else
-		{
-			uint amountToJettison = static_cast<uint>(jc.iCount * noTradeGood->second);
-			PrintUserCmdText(iClientID, L"%u units of %ls jettisoned, %u units lost in the process.", jc.iCount, goodName.c_str(), jc.iCount - amountToJettison);
-			pub::Player::RemoveCargo(iClientID, static_cast<ushort>(jc.iSlot), jc.iCount);
-			if (amountToJettison > 0) {
-				uint shipId;
-				uint sysId;
-				Vector pos;
-				Matrix ori;
-				pub::Player::GetSystem(iClientID, sysId);
-				pub::Player::GetShip(iClientID, shipId);
-				pub::SpaceObj::GetLocation(shipId, pos, ori);
-				pos.x += 30.0;
-				Server.MineAsteroid(sysId, pos, CreateID("lootcrate_ast_loot_metal"), cargo->archetype->iArchID, amountToJettison, iClientID);
-			}
-		}
-		return;
-	}
 }
 
 void AddTradeEquip(unsigned int iClientID, struct EquipDesc const &ed)
@@ -955,7 +901,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDamageHull, PLUGIN_ShipHullDmg, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JettisonCargo, PLUGIN_HkIServerImpl_JettisonCargo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&AddTradeEquip, PLUGIN_HkIServerImpl_AddTradeEquip, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ReqChangeCash, PLUGIN_HkIServerImpl_ReqChangeCash, 0));

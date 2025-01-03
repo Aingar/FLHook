@@ -441,6 +441,7 @@ struct PLUGIN_DATA
 IMPORT void Plugin_Communication(PLUGIN_MESSAGE msgtype, void* msg);
 
 // HkFuncTools
+IMPORT uint CreateLootSimple(uint system, uint ownerShip, uint commodityId, uint amount, Vector pos, bool canAITractor);
 IMPORT uint HkGetClientIdFromAccount(CAccount *acc);
 IMPORT uint HkGetClientIdFromPD(struct PlayerData *pPD);
 IMPORT CAccount* HkGetAccountByCharname(const wstring &wscCharname);

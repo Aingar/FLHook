@@ -163,6 +163,18 @@ void ExportData::ToJSON()
 		pw.write("health", 100 * (base->base_health / base->max_base_health));
 		pw.write("defensemode", (int)base->defense_mode);
 
+		if (!base->infocard.empty() || !base->infocardHeader.empty())
+		{
+			minijson::array_writer infocards = pw.nested_array("infocard_paragraphs");
+			for (auto& infocard : base->infocard_para)
+			{
+				if (!infocard.empty())
+				{
+					infocards.write(wstos(infocard));
+				}
+			}
+		}
+
 		minijson::array_writer shop = pw.nested_array("shop_items");
 		for (auto& goodId : base->pinned_market_items)
 		{

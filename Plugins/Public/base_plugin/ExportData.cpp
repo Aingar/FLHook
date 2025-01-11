@@ -193,6 +193,25 @@ void ExportData::ToJSON()
 			item.close();
 
 		}
+		for (auto& goodId : base->public_market_items)
+		{
+			auto& marketItemIter = base->market_items.find(goodId);
+
+			auto& marketItem = marketItemIter->second;
+			if (!marketItem.is_public || marketItem.is_pinned)
+			{
+				continue;
+			}
+
+			minijson::array_writer item = shop.nested_array();
+			item.write(goodId);
+			item.write(marketItem.quantity);
+			item.write(marketItem.price);
+			item.write(marketItem.sellPrice);
+			item.write(marketItem.min_stock);
+			item.write(marketItem.max_stock);
+			item.close();
+		}
 		shop.close();
 
 

@@ -552,10 +552,15 @@ void PlayerBase::Load()
 						{
 							pinned_market_items.insert(good);
 						}
+						if (mi.is_public)
+						{
+							public_market_items.insert(good);
+						}
 						if (!mi.sellPrice)
 						{
 							mi.sellPrice = mi.price;
 						}
+
 
 						const GoodInfo* gi = GoodList_get()->find_by_id(good);
 						if (gi)

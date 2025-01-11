@@ -57,6 +57,12 @@ L"<TEXT>Highlights the selected good, causing its price and stock to be visible 
 L"<TRA bold=\"true\"/><TEXT>/shop unpin [item]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Removes the selected good from the pinned list.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/shop public [item]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Causes the item to be visible in POB external API.</TEXT><PARA/><PARA/>"
+
+L"<TRA bold=\"true\"/><TEXT>/shop private [item]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Removes the item from the API list.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/shop addcargo [itemNickname]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Adds cargo with provided internal nickname (such as commodity_gold) to shop.</TEXT><PARA/><PARA/>"
 
@@ -2132,6 +2138,8 @@ namespace PlayerCommands
 			status += L"<TEXT>  /shop remove [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop pin [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop unpin [item]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop public [item]</TEXT><PARA/>";
+			status += L"<TEXT>  /shop private [item]</TEXT><PARA/>";
 			status += L"<TEXT>  /shop addcargo [itemNickname]</TEXT><PARA/>";
 		}
 		status += L"<TEXT>  /shop [page]</TEXT><PARA/><TEXT>  /shop filter [substring] [page]</TEXT><PARA/><PARA/>";
@@ -2182,7 +2190,7 @@ namespace PlayerCommands
 		{
 			page = 1;
 		}
-		wchar_t buf[1000];
+		static wchar_t buf[1000];
 		_snwprintf(buf, sizeof(buf), L"Shop Management : Page %d/%d", page, pages);
 		wstring title = buf;
 
@@ -2219,9 +2227,9 @@ namespace PlayerCommands
 					continue;
 				}
 				wchar_t buf[1000];
-				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s, buy $%u sell $%u, limits: %u/%u</TEXT><PARA/>",
+				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s, buy $%u sell $%u, limits: %u/%u%s</TEXT><PARA/>",
 					globalItem, i.second.quantity, HtmlEncode(name).c_str(),
-					i.second.sellPrice, i.second.price, i.second.min_stock, i.second.max_stock);
+					i.second.sellPrice, i.second.price, i.second.min_stock, i.second.max_stock, i.second.is_public ? L" (public)" : L"");
 				status += buf;
 				item++;
 			}
@@ -2404,9 +2412,15 @@ namespace PlayerCommands
 			auto i = std::next(base->market_items.begin(), item - 1);
 
 			if (cmd == L"public")
+			{
 				i->second.is_public = true;
+				base->public_market_items.insert(i->first);
+			}
 			else
+			{
 				i->second.is_public = false;
+				base->public_market_items.erase(i->first);
+			}
 			base->Save();
 
 			int page = ((item + ITEMS_PER_PAGE - 1) / ITEMS_PER_PAGE);

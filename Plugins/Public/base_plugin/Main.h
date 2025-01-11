@@ -423,7 +423,9 @@ public:
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 
-	set<uint> pinned_market_items;
+	unordered_set<uint> pinned_market_items;
+
+	unordered_set<uint> public_market_items;
 
 	bool pinned_item_updated;
 

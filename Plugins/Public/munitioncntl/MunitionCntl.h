@@ -11,6 +11,7 @@ void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
 void ShipColGrpDmgNaked();
 void ShipFuseLightNaked();
+void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg);
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void LoadHookOverrides();
@@ -116,6 +117,12 @@ struct NewMissileUpdater
 	double timer = 0;
 };
 
+struct InvulData
+{
+	float minHpPerc;
+	bool hullOnlyInvul;
+};
+
 enum TRACKING_STATE {
 	TRACK_ALERT,
 	TRACK_NOALERT,
@@ -126,6 +133,7 @@ extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern unordered_map<uint, GuidedData> guidedDataMap;
 extern unordered_map<uint, ShipData> shipDataMap;
+extern unordered_map<uint, InvulData> invulMap;
 extern ShieldState playerShieldState[MAX_CLIENT_ID + 1];
 extern PLUGIN_RETURNCODE returncode;
 extern FARPROC ShipShieldDamageOrigFunc;

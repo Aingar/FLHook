@@ -166,7 +166,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 		float damageToDeal = eqDmgMult * hullDmg * equip->archetype->fExplosionResistance;
 
-
 		iobj->damage_ext_eq(equip, damageToDeal, dmg);
 	}
 
@@ -260,29 +259,30 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	}
 	hullDmgBudget *= ceqobj->archetype->fExplosionResistance;
 
+	for (auto& distance : colGrpMultVector)
 	{
-
-		for (auto& distance : colGrpMultVector)
+		float dmgMult = colGrpMultSum > 1.0f ? distance.second / colGrpMultSum : distance.second;
+		float damage = dmgMult * explosion->explosionArchetype->fHullDamage;
+		float damageToDeal = damage * distance.first->colGrp->explosionResistance;
+		if (explData && explData->percentageDamageHull)
 		{
-			float dmgMult = colGrpMultSum > 1.0f ? distance.second / colGrpMultSum : distance.second;
-			float damage = dmgMult * explosion->explosionArchetype->fHullDamage;
-			float damageToDeal = damage * distance.first->colGrp->explosionResistance;
-			armorEnabled = true;
-			iobj->damage_col_grp(distance.first, damageToDeal, dmg);
-			hullDmgBudget -= damageToDeal;
+			damageToDeal += explData->percentageDamageHull * distance.first->colGrp->hitPts;
 		}
-
-		if (hullDmgBudget <= 0.0f)
-		{
-			return;
-		}
-
-		if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
-		{
-			armorEnabled = true;
-		}
-		iobj->damage_hull(hullDmgBudget, dmg);
+		armorEnabled = true;
+		iobj->damage_col_grp(distance.first, damageToDeal, dmg);
+		hullDmgBudget -= damageToDeal;
 	}
+
+	if (hullDmgBudget <= 0.0f)
+	{
+		return;
+	}
+
+	if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
+	{
+		armorEnabled = true;
+	}
+	iobj->damage_hull(hullDmgBudget, dmg);
 
 	armorEnabled = false;
 }
@@ -412,6 +412,7 @@ bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	float rootDistance = FLT_MAX;
 	const auto iter = explosionTypeMap.find(explosion->explosionArchetype->iID);
 	const auto explData = iter == explosionTypeMap.end() ? nullptr : &iter->second;
+
 	if (ShieldAndDistance(iobj, explosion, dmg, rootDistance, explData))
 	{
 		return true;
@@ -664,4 +665,34 @@ __declspec(naked) void ShipFuseLightNaked()
 		pop ecx
 		jmp [ShipFuseLightFunc]
 	}
+}
+
+using ShipEquipDamageType = void(__thiscall*)(IObjRW*, CEquip*, float incDmg, DamageList* dmg);
+ShipEquipDamageType ShipEquipDamageFunc = ShipEquipDamageType(0x6CEA4A0);
+void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg)
+{
+	if (!iobj->is_player())
+	{
+		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
+		return;
+	}
+
+	auto cship = iobj->cobj;
+	auto invulData = invulMap.find(cship->id);
+	if (invulData == invulMap.end() || invulData->second.hullOnlyInvul)
+	{
+		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
+		return;
+	}
+	float minHpAllowed = invulData->second.minHpPerc * equip->archetype->fHitPoints;
+	if (equip->hitPts <= minHpAllowed)
+	{
+		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
+		return;
+	}
+
+	float hpPercPostDamage = equip->hitPts - incDmg;
+	incDmg = min(incDmg, equip->hitPts - minHpAllowed);
+
+	ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 }

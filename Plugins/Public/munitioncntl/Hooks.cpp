@@ -6,6 +6,7 @@ PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
+		{0x6D6732C,		&ShipEquipDamage,		4, nullptr,	false},
 		{0x6D67330,		&ShipShieldDamageNaked,		4, &ShipShieldDamageOrigFunc,	false},
 		{0x6D666C0,		&GuidedExplosionHitNaked,	4, &GuidedExplosionHitOrigFunc, false},
 		{0x6D675F0,		&SolarExplosionHitNaked,	4, &SolarExplosionHitOrigFunc, false},

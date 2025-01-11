@@ -34,6 +34,7 @@ unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
 vector<pair<uint, uint>> equipUpdateVector;
 
 unordered_map<uint, uint> NewMissileUpdateMap;
+unordered_map<uint, InvulData> invulMap;
 
 struct SpeedCheck
 {
@@ -1263,6 +1264,26 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 
 		armorEnabled = false;
 	}
+
+	if (iobj->is_player())
+	{
+		auto cship = iobj->cobj;
+		auto invulIter = invulMap.find(cship->id);
+		if (invulIter == invulMap.end())
+		{
+			return;
+		}
+
+		float minHpAllowed = invulIter->second.minHpPerc * cship->archetype->fHitPoints;
+		if (cship->hitPoints <= minHpAllowed)
+		{
+			incDmg = 0;
+			return;
+		}
+
+		float hpPercPostDamage = cship->hitPoints - incDmg;
+		incDmg = min(incDmg, cship->hitPoints - minHpAllowed);
+	}
 }
 
 bool usedBatts = false;
@@ -1457,7 +1478,68 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (args.find(L"sbdebug") == 0)
+	if (IS_CMD("setinvul"))
+	{
+		RIGHT_CHECK(RIGHT_SUPERADMIN)
+
+		HKPLAYERINFO adminPlyr;
+		if (HkGetPlayerInfo(cmd->GetAdminName(), adminPlyr, false) != HKE_OK)
+		{
+			cmd->Print(L"ERR Not in space\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		auto targetName = cmd->ArgCharname(1);
+		HKPLAYERINFO targetPlyr;
+		if (HkGetPlayerInfo(targetName, targetPlyr, false) != HKE_OK || targetPlyr.iShip == 0)
+		{
+			cmd->Print(L"ERR Player not found or not in space\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		auto equipDmgStr = ToLower(cmd->ArgStr(2));
+		if (equipDmgStr != L"yes" && equipDmgStr != L"no")
+		{
+			cmd->Print(L"ERR equipment damage variable must be 'yes' or 'no'\n");
+			cmd->Print(L"Syntax: .setinvul <target> <yes/no> <min HP percentage>\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		bool equipDmg = ToLower(cmd->ArgStr(2)) == L"yes";
+
+		auto percentage = cmd->ArgInt(3);
+		float floatPerc = 0.01f * (float)percentage;
+
+		if (floatPerc == 0.0f)
+		{
+			invulMap.erase(targetPlyr.iShip);
+			cmd->Print(L"Invul off");
+		}
+		else if (floatPerc == 1.0f)
+		{
+			invulMap[targetPlyr.iShip] = { floatPerc, equipDmg };
+			cmd->Print(L"Full invul set");
+		}
+		else
+		{
+			invulMap[targetPlyr.iShip] = { floatPerc, equipDmg };
+			cmd->Print(L"Invul set, can't go below %d%% HP", percentage);
+			if (equipDmg)
+			{
+				cmd->Print(L"Equip Damage Unlimited");
+			}
+			else
+			{
+				cmd->Print(L"Equip Damage limited to same percentage");
+			}
+		}
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("sbdebug"))
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		RIGHT_CHECK(RIGHT_SUPERADMIN);

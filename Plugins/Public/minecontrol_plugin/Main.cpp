@@ -1143,7 +1143,15 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
             auto& nodeArray = miningSolarMap.at(iobj->cobj->archetype->iArchID);
             const MiningNodeInfo& node = nodeArray.at(1);
+            if (!node.itemArchId || !node.lootArchId || !node.countMin || !node.countMax)
+            {
+                return;
+            }
             uint minedAmount = GetAsteroidMiningYield(node, clientKiller, false);
+            if (!minedAmount)
+            {
+                return;
+            }
             CreateLootSimple(iobj->cobj->system, Players[clientKiller].iShipID, node.itemArchId, minedAmount, iobj->cobj->vPos, false);
         }
 

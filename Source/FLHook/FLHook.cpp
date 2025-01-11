@@ -323,9 +323,7 @@ void FLHookInit_Pre()
 		sDebugLog = "./flhook_logs/debug/FLHookDebug_" + (string)szDate;
 		sDebugLog += ".log";
 
-		char szDate2[64];
-		strftime(szDate2, sizeof(szDate2), "%Y.%m.%d", t);
-		string sChatLog = "./flhook_logs/chats_" + (string)szDate2 + ".log";
+		string sChatLog = "./flhook_logs/chats.log";
 		fChatLog = fopen(sChatLog.c_str(), "at");
 
 		perfMonitorLog = fopen("./flhook_logs/perfTimer.log", "at");

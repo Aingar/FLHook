@@ -5618,10 +5618,10 @@ struct IObjRWAbstract
 	virtual void applyDamageList(DamageList*);                                     // 392 sub_6D01A10
 	virtual bool get_dunno_0x41();                                                 // 396
 	virtual void sub_6CEEFA0();                                                    // 400
-	virtual void sub_6CEF0F0();                                                    // 404
+	virtual void set_invincible(struct InvincibilityStruct&);                      // 404 sub_6CEF0F0
 	virtual bool is_player_vulnerable();                                           // 408 sub_6CE61A0
 	virtual bool is_invulnerable();                                                // 412 sub_6CE61B0
-	virtual float get_dunno_0x3C();                     // hitpoint % related?                                                           //416 sub_6CE61C0
+	virtual float get_max_hp_loss();                     // hitpoint % related?                                                           //416 sub_6CE61C0
 	virtual bool process_collision_unk(void*);          // unknown data type, an object containing a IObjRW as 2nd element?? //420 sub_6CEE9F0
 	virtual CArchGroup* sethp_unk(DamageList*, float);  // set relative hp to all eq and colgrps to provided float?  //424 sub_6CEB210
 	virtual int set_relative_health(float newHp);       // 428
@@ -5690,7 +5690,7 @@ struct CShipAbstract
 	virtual int set_gun_target(ushort gunSId, uint target, ushort targetSId, int flag); // 68
 	virtual int set_target(IObjRW* target, ushort sId, int dunno); // 72
 	virtual int sub_6CE70B0(ushort sId, int dunno, int flag);  // 76 something about strafing/thrusting
-	virtual int toggle_cruise(bool cruiseActive, bool disruptCruise, int dunno2); // 80 engine related, engage cruise?
+	virtual int toggle_cruise(bool cruiseActive, bool disruptCruise, int dunno2); // 80
 	virtual int sub_6D02500();                                 // 84 activates thrusters?
 	virtual int use_item(ushort sId, uint amount, int unused); // 88 sub_6CE7210
 	virtual int request_event(uint eventType, uint requestTarget, uint param1, uint param2, uint dunno); // 92
@@ -5720,7 +5720,7 @@ struct IObjRW : public IObjRWAbstract, public CShipAbstract, public CBase
 	int iDunno_0x34;     // length of 0x30
 	byte isInvulnerable; // not entirely sure on those two
 	byte isPlayerVulnerable;
-	float fDunno_0x3C; // hitpoint related?
+	float maxHpLoss; // hitpoint related?
 	byte bDunno_0x40;  // is alive? Used when fetching IObjRW via sub_6D00670
 	byte bDunno_041;
 	byte bAlign_0x42; // probably not used

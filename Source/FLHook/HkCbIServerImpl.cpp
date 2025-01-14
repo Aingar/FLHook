@@ -1077,7 +1077,10 @@ namespace HkIServerImpl
 		ISERVER_LOGARG_WS(&li);
 		ISERVER_LOGARG_UI(iClientID);
 
-		connectingPlayerIPs.erase(ClientInfo[iClientID].IP);
+		if (!connectingPlayerIPs.erase(ClientInfo[iClientID].IP))
+		{
+			return;
+		}
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_Login_BEFORE, __stdcall, (struct SLoginInfo const& li, unsigned int iClientID), (li, iClientID));
 

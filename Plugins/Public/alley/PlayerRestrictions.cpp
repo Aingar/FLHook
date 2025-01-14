@@ -543,6 +543,7 @@ bool UserCmd_JettisonAll(uint iClientID, const wstring &wscCmd, const wstring &w
 			items++;
 		}
 	}
+	return true;
 }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -762,12 +763,14 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 		{
 			iCancel = -1;
 			response = DOCK_DENIED;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return 0;
 		}
 		if (!SCI::CanDock(iDockTarget, iClientID))
 		{
 			iCancel = -1;
 			response = ACCESS_DENIED;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return 0;
 		}
 	}

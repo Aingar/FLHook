@@ -53,6 +53,9 @@ struct iddockinfo
 	unordered_set<uint> systems;
 	unordered_set<uint> shipclasses;
 	unordered_set<uint> exempt;
+	unordered_set<uint> iff;
+	unordered_set<uint> bases;
+	wstring dockMessage;
 };
 
 //first uint will be the ID hash
@@ -133,6 +136,18 @@ void SCI::LoadSettings()
 					else if (ini.is_value("exempt"))
 					{
 						info.exempt.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("iff"))
+					{
+						info.iff.insert(MakeId(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("base"))
+					{
+						info.bases.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("message"))
+					{
+						info.dockMessage = stows(ini.get_value_string());
 					}
 				}
 				iddock[id] = info;
@@ -376,16 +391,6 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 
 	auto idData = idDataIter->second;
 
-	if (idData.exempt.count(currship))
-	{
-		return true;
-	}
-
-	if (!idData.systems.count(currsystem))
-	{
-		return true;
-	}
-
 	uint iTypeID;
 	pub::SpaceObj::GetType(iDockTarget, iTypeID);
 
@@ -394,20 +399,59 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		return true;
 	}
 
-	//we check the cargo restriction first as that should iron out a good chunk of them
-	if (clientInfo->second.maxholdsize > idData.cargo)
+	if (idData.type == 3) // cargo restriction
 	{
-		PrintUserCmdText(iClientID, L"Cargo Hold is over the authorized capacity. Docking Denied.");
-		return false;
+		if (idData.exempt.count(currship))
+		{
+			return true;
+		}
+
+		if (!idData.systems.count(currsystem))
+		{
+			return true;
+		}
+
+		//we check the cargo restriction first as that should iron out a good chunk of them
+		if (clientInfo->second.maxholdsize > idData.cargo)
+		{
+			PrintUserCmdText(iClientID, L"Cargo Hold is over the authorized capacity. Docking Denied.");
+			return false;
+		}
+
+		uint currshipclass = clientInfo->second.shipclass;
+		if (idData.shipclasses.count(currshipclass))
+		{
+			PrintUserCmdText(iClientID, L"This ship class is not allowed to dock in this system. Docking Denied.");
+
+			return false;
+		}
 	}
 
-	uint currshipclass = clientInfo->second.shipclass;
-	if (idData.shipclasses.count(currshipclass))
+	if (idData.type == 2) // iffRestriction
 	{
-		PrintUserCmdText(iClientID, L"This ship class is not allowed to dock in this system. Docking Denied.");
+		auto iobj = HkGetInspectObj(iDockTarget);
+		if (!iobj)
+		{
+			return true;
+		}
 
-		return false;
+		CSolar* csolar = (CSolar*)iobj->cobj;
+		uint affiliation;
+		Reputation::Vibe::GetAffiliation(csolar->repVibe, affiliation, false);
+		if (csolar->isDynamic)
+		{
+			if (!idData.iff.count(affiliation))
+			{
+				PrintUserCmdText(iClientID, L"Your ID cannot dock on Modular Bases of this IFF");
+				return false;
+			}
+		}
+
+		if (!idData.iff.count(affiliation) && !idData.bases.count(csolar->dockTargetId))
+		{
+			PrintUserCmdText(iClientID, idData.dockMessage.c_str());
+			return false;
+		}
 	}
-
 	return true;
 }

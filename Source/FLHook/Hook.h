@@ -635,6 +635,8 @@ struct CLIENT_INFO
 	bool		isDocking;
 	Vector		dockPosition;
 	Vector		undockPosition;
+
+	wstring IP;
 };
 
 // taken from directplay

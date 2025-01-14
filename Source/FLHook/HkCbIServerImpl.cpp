@@ -658,10 +658,18 @@ namespace HkIServerImpl
 	Called when player connects
 	**************************************************************************************************************/
 
+	unordered_set<wstring> connectingPlayerIPs;
 	void __stdcall OnConnect(unsigned int iClientID)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);
+
+		wstring wscIP;
+		HkGetPlayerIP(iClientID, wscIP);
+		if (connectingPlayerIPs.count(wscIP))
+		{
+			return;
+		}
 
 		TRY_HOOK {
 			// If ID is too high due to disconnect buffer time then manually drop the connection.
@@ -697,9 +705,9 @@ namespace HkIServerImpl
 		EXECUTE_SERVER_CALL(Server.OnConnect(iClientID));
 		LOG_CORE_TIMER_END
 
+		connectingPlayerIPs.insert(wscIP);
+		ClientInfo[iClientID].IP = wscIP;
 		// event
-		wstring wscIP;
-		HkGetPlayerIP(iClientID, wscIP);
 		ProcessEvent(L"connect id=%d ip=%s",
 			iClientID,
 			wscIP.c_str());
@@ -716,6 +724,8 @@ namespace HkIServerImpl
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);
 		ISERVER_LOGARG_UI(p2);
+
+		connectingPlayerIPs.erase(ClientInfo[iClientID].IP);
 
 		wstring wscCharname;
 		TRY_HOOK
@@ -1066,6 +1076,8 @@ namespace HkIServerImpl
 		ISERVER_LOG();
 		ISERVER_LOGARG_WS(&li);
 		ISERVER_LOGARG_UI(iClientID);
+
+		connectingPlayerIPs.erase(ClientInfo[iClientID].IP);
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_Login_BEFORE, __stdcall, (struct SLoginInfo const& li, unsigned int iClientID), (li, iClientID));
 

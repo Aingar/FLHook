@@ -162,6 +162,7 @@ void ExportData::ToJSON()
 		pw.write("money", base->money);
 		pw.write("health", 100 * (base->base_health / base->max_base_health));
 		pw.write("defensemode", (int)base->defense_mode);
+		pw.write("cargospace", base->GetRemainingCargoSpace());
 
 		if (!base->infocard.empty() || !base->infocardHeader.empty())
 		{

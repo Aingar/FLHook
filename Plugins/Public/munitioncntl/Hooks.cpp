@@ -18,6 +18,17 @@ PATCH_INFO piServerDLL =
 	}
 };
 
+PATCH_INFO piCommonDLL =
+{
+	"common.dll", 0x6260000,
+	{
+		{0x639D1CC,			&CELauncherFire,		4, nullptr,	false},
+		{0x639C138,			&CShipInit,		4, nullptr,	false},
+
+		{0,0,0,0} // terminate
+	}
+};
+
 bool Patch(PATCH_INFO& pi)
 {
 	HMODULE hMod = GetModuleHandle(pi.szBinName);
@@ -47,4 +58,5 @@ bool Patch(PATCH_INFO& pi)
 void LoadHookOverrides()
 {
 	Patch(piServerDLL);
+	Patch(piCommonDLL);
 }

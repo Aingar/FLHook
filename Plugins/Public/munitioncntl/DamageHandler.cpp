@@ -696,3 +696,70 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 
 	ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 }
+
+void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms)
+{
+	using CSHIPINIT = void(__thiscall*)(CShip*, CShip::CreateParms&);
+	const static CSHIPINIT cshipInitFunc = CSHIPINIT(0x62B2690);
+	
+	cshipInitFunc(ship, parms);
+
+	if (ship->ownerPlayer)
+	{
+		return;
+	}
+
+	CEquipTraverser tr(EquipmentClass::Gun);
+	CELauncher* gun;
+	while (gun = reinterpret_cast<CELauncher*>(ship->equip_manager.Traverse(tr)))
+	{
+		auto burstGunDataIter = burstGunData.find(gun->archetype->iArchID);
+		if (burstGunDataIter == burstGunData.end())
+		{
+			continue;
+		}
+
+		shipGunData[ship->id][gun->iSubObjId] =
+		{ burstGunDataIter->second.magSize,burstGunDataIter->second.magSize, burstGunDataIter->second.reloadTime };
+	}
+}
+
+FireResult __fastcall CELauncherFire(CELauncher* gun, void* edx, const Vector& pos)
+{
+	using CELAUNCHERFIRE = FireResult(__thiscall*)(CELauncher*, const Vector&);
+	const static CELAUNCHERFIRE gunfirefunc = CELAUNCHERFIRE(0x62995C0);
+
+	FireResult fireResult = gunfirefunc(gun, pos);
+	if (fireResult != FireResult::Success)
+	{
+		return fireResult;
+	}
+
+	if (gun->owner->ownerPlayer)
+	{
+		return fireResult;
+	}
+
+	if (gun->owner->objectClass == CObject::CSHIP_OBJECT)
+	{
+		auto shipDataIter = shipGunData.find(gun->owner->id);
+		if (shipDataIter == shipGunData.end())
+		{
+			return fireResult;
+		}
+
+		auto gunData = shipDataIter->second.find(gun->iSubObjId);
+		if (gunData == shipDataIter->second.end())
+		{
+			return fireResult;
+		}
+
+		if (--gunData->second.bulletsLeft == 0)
+		{
+			gunData->second.bulletsLeft = gunData->second.maxMagSize;
+			gun->refireDelayElapsed = gunData->second.reloadTime;
+		}
+	}
+
+	return fireResult;
+}

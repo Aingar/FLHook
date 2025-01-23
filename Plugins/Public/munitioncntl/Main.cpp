@@ -27,6 +27,9 @@ unordered_map<uint, int> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 vector<float> armorReductionVector;
 
+unordered_map<uint, unordered_map<ushort, BurstFireGunData>> shipGunData;
+unordered_map<uint, BurstFireData> burstGunData;
+
 unordered_map<uint, ShipData> shipDataMap;
 
 unordered_map<uint, unordered_map<uint, uint>> equipOverrideMap;
@@ -198,7 +201,22 @@ void ReadMunitionDataFromInis()
 		uint explosion_arch;
 		while (ini.read_header())
 		{
-			if (ini.is_header("Mine"))
+			if (ini.is_header("Gun"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string(0));
+					}
+					else if (ini.is_value("burst_fire"))
+					{
+						float baseRefire = ((Archetype::Gun*)Archetype::GetEquipment(currNickname))->fRefireDelay;
+						burstGunData[currNickname] = { ini.get_value_int(0), baseRefire - ini.get_value_float(1) };
+					}
+				}
+			}
+			else if (ini.is_header("Mine"))
 			{
 				while (ini.read_value())
 				{
@@ -799,6 +817,13 @@ void GuidedInit(CGuided* guided, CGuided::CreateParms& parms)
 		topSpeedWatch[parms.id] = { guidedInfo.topSpeed, 0 };
 	}
 
+}
+
+void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	shipGunData.erase(iobj->cobj->id);
 }
 
 int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
@@ -1567,6 +1592,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreateGuided, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATEGUIDED, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedInit, PLUGIN_HkIEngine_CGuided_init, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&MineDestroyed, PLUGIN_MineDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GuidedDestroyed, PLUGIN_GuidedDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));

@@ -83,14 +83,14 @@ bool CheckIsInBase(uint iClientID)
 
 struct RequestPathStruct
 {
-	uint shipId;
-	uint unused1;
-	uint unused2;
+	uint repId;
+	uint waypointCount = 2;
+	bool noPathFound = false;
 	Vector sourcePos;
-	uint unused6;
+	uint unused6 = 0;
 	uint sourceSystem;
 	Vector targetPos;
-	uint unused11;
+	uint targetObjId = 0;
 	uint targetSystem;
 };
 
@@ -272,7 +272,7 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 			continue;
 		}
 
-		requestPathStruct.shipId = Players[iClientID].iShipID;
+		requestPathStruct.repId = Players[memberId].iReputation;
 		requestPathStruct.sourceSystem = Players[iClientID].iSystemID;
 		requestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
 
@@ -296,10 +296,11 @@ bool UserCmd_WayPoint(uint iClientID, const wstring& wscCmd, const wstring& wscP
 	Vector pos = { ToFloat(GetParam(wscParam, ' ', 0)),ToFloat(GetParam(wscParam, ' ', 1)),ToFloat(GetParam(wscParam, ' ', 2)) };
 
 	RequestPathStruct bestPathStruct;
-	bestPathStruct.shipId = Players[iClientID].iShipID;
-	bestPathStruct.sourceSystem = bestPathStruct.targetSystem = Players[iClientID].iSystemID;
-	bestPathStruct.targetPos = pos;
+	bestPathStruct.repId = Players[iClientID].iReputation;
+	bestPathStruct.sourceSystem = Players[iClientID].iSystemID;
 	bestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+	bestPathStruct.targetPos = pos;
+	bestPathStruct.targetSystem = Players[iClientID].iSystemID;
 
 	Server.RequestBestPath(iClientID, (unsigned char*)&bestPathStruct, 0);
 
@@ -365,7 +366,7 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 	PrintUserCmdText(iClientID, L"Plotting waypoint to: %ls", memberName.c_str());
 
 	RequestPathStruct bestPathStruct;
-	bestPathStruct.shipId = Players[iClientID].iShipID;
+	bestPathStruct.repId = Players[iClientID].iReputation;
 	bestPathStruct.sourceSystem = Players[iClientID].iSystemID;
 	bestPathStruct.targetSystem = Players[targetClient].iSystemID;
 	bestPathStruct.targetPos = ClientInfo[targetClient].cship->vPos;

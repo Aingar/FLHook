@@ -668,6 +668,7 @@ namespace HkIServerImpl
 		HkGetPlayerIP(iClientID, wscIP);
 		if (connectingPlayerIPs.count(wscIP))
 		{
+			AddLog("potential dos attempt: %s", wstos(wscIP).c_str());
 			return;
 		}
 

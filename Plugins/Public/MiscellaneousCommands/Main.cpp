@@ -81,19 +81,6 @@ bool CheckIsInBase(uint iClientID)
 
 // /refresh - Updates the timestamps of the character file for all the ships on the account.
 
-struct RequestPathStruct
-{
-	uint repId;
-	uint waypointCount = 2;
-	bool noPathFound = false;
-	Vector sourcePos;
-	uint unused6 = 0;
-	uint sourceSystem;
-	Vector targetPos;
-	uint targetObjId = 0;
-	uint targetSystem;
-};
-
 bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 	if (!Players[iClientID].iMissionID)
@@ -252,8 +239,8 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 	}
 
 	RequestPathStruct requestPathStruct;
-	requestPathStruct.targetPos = ClientInfo[iClientID].cship->vPos;
-	requestPathStruct.targetSystem = Players[iClientID].iSystemID;
+	requestPathStruct.pathEntries[1].pos = ClientInfo[iClientID].cship->vPos;
+	requestPathStruct.pathEntries[1].systemId = Players[iClientID].iSystemID;
 
 	wstring clientName = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 
@@ -273,8 +260,8 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 		}
 
 		requestPathStruct.repId = Players[memberId].iReputation;
-		requestPathStruct.sourceSystem = Players[iClientID].iSystemID;
-		requestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+		requestPathStruct.pathEntries[0].systemId = Players[iClientID].iSystemID;
+		requestPathStruct.pathEntries[0].pos = ClientInfo[iClientID].cship->vPos;
 
 		Server.RequestBestPath(memberId, (unsigned char*)&requestPathStruct, 0);
 		PrintUserCmdText(memberId, L"%ls is rallying you to their position.", clientName.c_str());
@@ -297,10 +284,12 @@ bool UserCmd_WayPoint(uint iClientID, const wstring& wscCmd, const wstring& wscP
 
 	RequestPathStruct bestPathStruct;
 	bestPathStruct.repId = Players[iClientID].iReputation;
-	bestPathStruct.sourceSystem = Players[iClientID].iSystemID;
-	bestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
-	bestPathStruct.targetPos = pos;
-	bestPathStruct.targetSystem = Players[iClientID].iSystemID;
+	bestPathStruct.waypointCount = 2;
+	bestPathStruct.noPathFound = false;
+	bestPathStruct.pathEntries[0].systemId = Players[iClientID].iSystemID;
+	bestPathStruct.pathEntries[0].pos = ClientInfo[iClientID].cship->vPos;
+	bestPathStruct.pathEntries[1].pos = pos;
+	bestPathStruct.pathEntries[1].systemId = Players[iClientID].iSystemID;
 
 	Server.RequestBestPath(iClientID, (unsigned char*)&bestPathStruct, 0);
 
@@ -367,10 +356,12 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 
 	RequestPathStruct bestPathStruct;
 	bestPathStruct.repId = Players[iClientID].iReputation;
-	bestPathStruct.sourceSystem = Players[iClientID].iSystemID;
-	bestPathStruct.targetSystem = Players[targetClient].iSystemID;
-	bestPathStruct.targetPos = ClientInfo[targetClient].cship->vPos;
-	bestPathStruct.sourcePos = ClientInfo[iClientID].cship->vPos;
+	bestPathStruct.waypointCount = 2;
+	bestPathStruct.noPathFound = false;
+	bestPathStruct.pathEntries[0].systemId = Players[iClientID].iSystemID;
+	bestPathStruct.pathEntries[0].pos = ClientInfo[iClientID].cship->vPos;
+	bestPathStruct.pathEntries[1].pos = ClientInfo[targetClient].cship->vPos;
+	bestPathStruct.pathEntries[1].systemId = Players[targetClient].iSystemID;
 
 	Server.RequestBestPath(iClientID, (unsigned char*)&bestPathStruct, 0);
 

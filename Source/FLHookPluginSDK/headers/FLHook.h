@@ -439,6 +439,21 @@ struct PLUGIN_DATA
 	bool bPaused;
 };
 
+struct PathEntry
+{
+	Vector pos;
+	uint objId = 0;
+	uint systemId;
+};
+
+struct RequestPathStruct
+{
+	int repId;
+	uint waypointCount;
+	bool noPathFound = false;
+	PathEntry pathEntries[100];
+};
+
 // plugin
 IMPORT void Plugin_Communication(PLUGIN_MESSAGE msgtype, void* msg);
 

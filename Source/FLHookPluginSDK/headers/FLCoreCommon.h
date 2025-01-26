@@ -410,6 +410,18 @@ namespace Archetype
 		ARMOR = 34,
 	};
 
+	enum class DockType
+	{
+		Berth = 1,
+		MoorSmall = 3,
+		MoorMedium = 4,
+		MoorLarge = 5,
+		Ring = 6,
+		Pad = 6,
+		Jump = 7,
+		Airlock = 8
+	};
+
 	struct IMPORT Root
 	{
 		Root(struct Root const &);
@@ -495,6 +507,13 @@ namespace Archetype
 		virtual bool read(class INI_Reader &);
 		virtual void redefine(struct Root const &);
 		bool traverse_groups(struct CollisionGroup const * &)const;
+		struct DockHardpointInfo
+		{
+			float radius;
+			const char* hardpoint;
+			const char* dockAnimation;
+			DockType dockType;
+		};
 	public:
 		/* 23 */ CollisionGroup *collisiongroup;
 		/* 24 */ uint iDunno1;
@@ -507,9 +526,7 @@ namespace Archetype
 		/* 31 */ uint sizeOfFuseList;
 		/* 32 */ bool b128;
 		bool bDockingCamera;
-		/* 33 */ uint iDunno10;
-		/* 34 */ uint iDunno11;
-		/* 35 */ uint iDunno12;
+		st6::vector<DockHardpointInfo> dockInfo;
 	};
 
 	struct IMPORT AttachedEquipment : public Equipment
@@ -1107,7 +1124,9 @@ namespace Archetype
 		virtual void redefine(struct Root const &);
 
 	public:
-		/* 36 */ uint iDunno12[19];
+		/* 37 */ uint iDunno12;
+		/* 38 */ size_t msgidprefix_len;
+		/* 39 */ char   msgidprefix_str[64];
 		/* 55 */ char* szBayDoorAnim;
 		/* 56 */ char* szHpBaySurface;
 		/* 57 */ char* szHpBayExternal;
@@ -3280,9 +3299,6 @@ public:
 
 	CEquipmentObj(class CEquipmentObj const &);
 	CEquipmentObj(enum CObject::Class);
-
-public:
-	unsigned char data[OBJECT_DATA_SIZE];
 };
 
 class IMPORT CFLIDMaker

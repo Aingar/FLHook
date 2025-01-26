@@ -15,6 +15,11 @@
 #include <sstream>
 #include <hookext_exports.h>
 
+using st6_malloc_t = void* (*)(size_t);
+using st6_free_t = void(*)(void*);
+IMPORT st6_malloc_t st6_malloc;
+IMPORT st6_free_t st6_free;
+
 bool set_SkipUnchartedKill = false;
 
 string lastDespawnedFilename;
@@ -185,6 +190,11 @@ unordered_set<uint> customSolarList;
 unordered_map<uint, float> siegeWeaponryMap;
 
 vector<pair<uint, float>> rearmamentCreditRatio;
+
+int GetRandom(int min, int max)
+{
+	return (rand() % (max - min)) + min;
+}
 
 uint GetAffliationFromClient(uint client)
 {
@@ -1966,24 +1976,25 @@ void __stdcall RequestEvent(int iIsFormationRequest, unsigned int iShip, unsigne
 	}
 }
 
+struct LaunchComm
+{
+	int dockId;
+	CSolar* solar;
+};
+
+static std::unordered_map<uint, LaunchComm> unprocessedLaunchComms;
+
 /// The base the player is launching from.
 PlayerBase* player_launch_base = nullptr;
 
 /// If the ship is launching from a player base record this so that
 /// override the launch location.
-bool __stdcall LaunchPosHook(uint space_obj, struct CEqObj &p1, Vector &pos, Matrix &rot, int dock_mode)
+bool __stdcall LaunchPosHook(uint space_obj, struct CEqObj &p1, Vector &pos, Matrix &rot, int dockId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (player_launch_base)
 	{
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		pos = player_launch_base->position;
-		rot = player_launch_base->rotation;
-		TranslateZ(pos, rot, 750);
-		if (set_plugin_debug)
-			ConPrint(L"LaunchPosHook[1] space_obj=%u pos=%0.0f %0.0f %0.0f dock_mode=%u\n",
-				space_obj, pos.x, pos.y, pos.z, dock_mode);
-		player_launch_base = nullptr;
+		unprocessedLaunchComms[client] = { dockId, player_launch_base->baseCSolar };
 	}
 	return true;
 }
@@ -2024,6 +2035,53 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 	cd.player_base = 0;
 }
 
+static uint GetShipMessageId(uint shipId)
+{
+	IObjRW* inspect;
+	StarSystem* starSystem;
+	if (!GetShipInspect(shipId, inspect, starSystem))
+		return 0;
+	const Archetype::Ship* shipArchetype = static_cast<Archetype::Ship*>(inspect->cobj->archetype);
+	char msgIdPrefix[64];
+	strncpy_s(msgIdPrefix, sizeof(msgIdPrefix), shipArchetype->msgidprefix_str, shipArchetype->msgidprefix_len);
+	return CreateID(msgIdPrefix);
+}
+
+static bool SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* solar)
+{
+	std::string clearMessageIdBase;
+	auto dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
+
+	switch (dockInfo.dockType)
+	{
+	case Archetype::DockType::Berth:
+	case Archetype::DockType::Jump:
+		clearMessageIdBase = "gcs_docklaunch_clear_berth_0";
+		break;
+
+	case Archetype::DockType::MoorSmall:
+	case Archetype::DockType::MoorMedium:
+	case Archetype::DockType::MoorLarge:
+		clearMessageIdBase = "gcs_docklaunch_clear_moor_0";
+		break;
+
+	case Archetype::DockType::Ring:
+		clearMessageIdBase = "gcs_docklaunch_clear_ring_0";
+		break;
+
+	default:
+		return false;
+	}
+
+	std::vector<uint> lines = {
+		GetShipMessageId(shipId),
+		CreateID((clearMessageIdBase + std::to_string(GetRandom(1,2)) + "-").c_str()),
+		CreateID(("gcs_misc_wellwish_0" + std::to_string(GetRandom(1,2)) + "-").c_str())
+	};
+
+	pub::SpaceObj::SendComm(launchComm.solar->id, shipId, launchComm.solar->voiceId, &launchComm.solar->commCostume, 0, lines.data(), lines.size(), 19007 /* base comms type*/, 0.5f, false);
+	return true;
+}
 
 void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
@@ -2051,6 +2109,14 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 			}
 			solar->dockTargetId2 = player_launch_base->proxy_base;
 		}
+
+		auto launchCommIter = unprocessedLaunchComms.find(client);
+		if (launchCommIter != unprocessedLaunchComms.end())
+		{
+			SendLaunchWellWishes(ship, launchCommIter->second, player_launch_base->baseCSolar);
+			unprocessedLaunchComms.erase(client);
+		}
+
 		player_launch_base = nullptr;
 	}
 
@@ -3658,6 +3724,199 @@ void PopUpDialogue(uint client, uint buttonPressed)
 	}
 }
 
+static std::unordered_map<uint, std::unordered_set<uint>> dockQueues;
+// Gets called whenever a dock request begins, ends, is cancelled, or the ship is destroyed/despawned. Does not get called when the station gets destroyed.
+int __cdecl Dock_Call_After(unsigned int const& ship, unsigned int const& dockTargetId, int& dockPortIndex, DOCK_HOST_RESPONSE& response)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	auto pbIter = player_bases.find(dockTargetId);
+	if (pbIter == player_bases.end() || pbIter->second->archetype->isjump)
+	{
+		return 0;
+	}
+
+	// dockPortIndex -1 means docking was cancelled.
+	if (dockPortIndex < 0 || response == DOCK_HOST_RESPONSE::DOCK)
+	{
+		dockQueues[dockTargetId].erase(ship);
+		return 0;
+	}
+
+	if (response == DOCK_HOST_RESPONSE::DOCK_IN_USE)
+	{
+		dockQueues[dockTargetId].insert(ship);
+	}
+
+
+	auto solar = pbIter->second->baseCSolar;
+	const Archetype::EqObj* solarArchetype = static_cast<Archetype::EqObj*>(solar->archetype);
+	Archetype::DockType dockType;
+	try
+	{
+		dockType = solarArchetype->dockInfo.at(dockPortIndex).dockType;
+	}
+	catch (const std::out_of_range& e)
+	{
+		return 0;
+	}
+
+	std::vector<uint> lines;
+	switch (response)
+	{
+	case DOCK_HOST_RESPONSE::PROCEED_DOCK:
+	{
+		std::string dockTypeMessageId;
+		switch (dockType)
+		{
+		case Archetype::DockType::Jump:
+		case Archetype::DockType::Berth:
+			dockTypeMessageId = "gcs_dockrequest_todock";
+			break;
+
+		case Archetype::DockType::MoorSmall:
+		case Archetype::DockType::MoorMedium:
+		case Archetype::DockType::MoorLarge:
+			dockTypeMessageId = "gcs_dockrequest_tomoor";
+			break;
+
+		case Archetype::DockType::Ring:
+			dockTypeMessageId = "gcs_dockrequest_toland";
+			break;
+
+		default:
+			dockTypeMessageId = "";
+			break;
+		}
+
+		std::string dockTargetMessageId;
+		switch (dockType)
+		{
+		case Archetype::DockType::Jump:
+		case Archetype::DockType::Berth:
+			dockTargetMessageId = "gcs_dockrequest_todock_number";
+			break;
+
+		case Archetype::DockType::MoorSmall:
+		case Archetype::DockType::MoorMedium:
+		case Archetype::DockType::MoorLarge:
+			dockTargetMessageId = "gcs_dockrequest_tomoor_number";
+			break;
+
+		case Archetype::DockType::Ring:
+			dockTargetMessageId = "gcs_dockrequest_toland-";
+			break;
+
+		default:
+			dockTargetMessageId = "";
+			break;
+		}
+
+
+		std::string dockNumberMessageId;
+		switch (dockType)
+		{
+		case Archetype::DockType::Jump:
+		case Archetype::DockType::Berth:
+		case Archetype::DockType::MoorSmall:
+		case Archetype::DockType::MoorMedium:
+		case Archetype::DockType::MoorLarge:
+			dockNumberMessageId = "gcs_misc_number_" + std::to_string(dockPortIndex + 1) + "-";
+			break;
+
+		default:
+			dockNumberMessageId = "";
+			break;
+		}
+
+		if (dockQueues[dockTargetId].count(ship))
+		{
+			lines = {
+				GetShipMessageId(ship),
+				CreateID("gcs_dockrequest_nowcleared_01+"),
+				CreateID((!dockTypeMessageId.empty() ? (dockTypeMessageId + "-") : "").c_str()),
+				CreateID("gcs_dockrequest_proceed_01+"),
+				CreateID(dockTargetMessageId.c_str()),
+				CreateID(dockNumberMessageId.c_str())
+			};
+		}
+		else
+		{
+			lines = {
+				CreateID(("gcs_misc_ack_0" + std::to_string(GetRandom(1,3)) + "-").c_str()),
+				CreateID("gcs_dockrequest_yourrequest+"),
+				CreateID(dockTypeMessageId.c_str()),
+				CreateID("gcs_dockrequest_granted_01-"),
+				CreateID("gcs_dockrequest_proceed_01+"),
+				CreateID(dockTargetMessageId.c_str()),
+				CreateID(dockNumberMessageId.c_str())
+			};
+		}
+		break;
+	}
+
+
+
+	case DOCK_HOST_RESPONSE::DOCK_IN_USE:
+	{
+		lines = {
+			CreateID(("gcs_misc_ack_0" + std::to_string(GetRandom(1,3)) + "-").c_str()),
+			CreateID("gcs_dockrequest_standby_01-"),
+			CreateID("gcs_dockrequest_delayedreason_01-"),
+			CreateID("gcs_dockrequest_willbecleared_01-")
+		};
+		break;
+	}
+
+
+
+	case DOCK_HOST_RESPONSE::DOCK_DENIED:
+	{
+		std::string dockTypeMessageId;
+		switch (dockType)
+		{
+		case Archetype::DockType::Berth:
+		case Archetype::DockType::Jump:
+			dockTypeMessageId = "gcs_dockrequest_todock";
+			break;
+
+		case Archetype::DockType::MoorSmall:
+		case Archetype::DockType::MoorMedium:
+		case Archetype::DockType::MoorLarge:
+			dockTypeMessageId = "gcs_dockrequest_tomoor";
+			break;
+
+		case Archetype::DockType::Ring:
+			dockTypeMessageId = "gcs_dockrequest_toland";
+			break;
+
+		default:
+			dockTypeMessageId = "";
+			break;
+		}
+
+		lines = {
+			CreateID(("gcs_misc_ack_0" + std::to_string(GetRandom(1,3)) + "-").c_str()),
+			CreateID("gcs_dockrequest_yourrequest+"),
+			CreateID(dockTypeMessageId.c_str()),
+			CreateID("gcs_dockrequest_denied_01-"),
+			CreateID("gcs_dockrequest_nofit_01-")
+		};
+		break;
+	}
+
+
+
+	case DOCK_HOST_RESPONSE::ACCESS_DENIED:
+		lines = { CreateID("gcs_dockrequest_denied_01-") };
+		break;
+	}
+
+	uint shipId = ship;
+	pub::SpaceObj::SendComm(solar->id, shipId, solar->voiceId, &solar->commCostume, 0, lines.data(), lines.size(), 19007 /* base comms type*/, 0.5f, false);
+	return 0;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -3682,6 +3941,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call_After, PLUGIN_HkCb_Dock_Call_AFTER, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LaunchPosHook, PLUGIN_LaunchPosHook, 0));
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetEquipPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETEQUIPMENT, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SetHullPacket, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_SETHULLSTATUS, 0));

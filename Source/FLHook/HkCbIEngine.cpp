@@ -670,10 +670,10 @@ namespace HkIEngine
 
 	FARPROC fpOldLaunchPos;
 
-	bool __stdcall LaunchPos(uint iSpaceID, struct CEqObj &p1, Vector &p2, Matrix &p3, int iDock)
+	bool __stdcall LaunchPos(uint iSpaceID, struct CEqObj &p1, Vector &p2, Matrix &p3, int iDock, uint client)
 	{
 
-		CALL_PLUGINS(PLUGIN_LaunchPosHook, bool, __stdcall, (uint, CEqObj &, Vector &, Matrix &, int), (iSpaceID, p1, p2, p3, iDock));
+		CALL_PLUGINS(PLUGIN_LaunchPosHook, bool, __stdcall, (uint, CEqObj &, Vector &, Matrix &, int, uint), (iSpaceID, p1, p2, p3, iDock, client));
 
 		return p1.launch_pos(p2, p3, iDock);
 
@@ -685,9 +685,10 @@ namespace HkIEngine
 		__asm
 		{
 			push ecx //4
-			push[esp + 8 + 8] //8
-			push[esp + 12 + 4] //12
-			push[esp + 16 + 0] //16
+			push[esp + 20]
+			push[esp + 20]
+			push[esp + 20]
+			push[esp + 20]
 			push ecx
 			push[ecx + 176]
 			call LaunchPos

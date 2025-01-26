@@ -326,7 +326,7 @@ bool UserCmd_Process(uint client, const wstring& cmd)
             return true;
         }
 
-        if (!CheckReturnDock(client, set_iTargetBaseID))
+        if(Players[client].iSystemID != set_iTargetSystemID || !Players[client].iBaseID)
         {
             PrintUserCmdText(client, L"Not in correct base");
             return true;

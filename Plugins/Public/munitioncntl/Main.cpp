@@ -1103,6 +1103,8 @@ void Timer()
 
 		iter++;
 	}
+
+	returncode = DEFAULT_RETURNCODE;
 }
 
 int Update()
@@ -1124,12 +1126,6 @@ int Update()
 
 		if (velocity > speedData.targetSpeed * 1.02f)
 		{
-			if (speedData.checkCounter)
-			{
-				AddLog("TopSpeed %x %u %u %u %0.0f\n", guided->archetype->iArchID, iter->first, speedData.checkCounter, guided->motorData, sqrt(velocity));
-			}
-			++speedData.checkCounter;
-			
 			ResizeVector(velocityVec, sqrt(speedData.targetSpeed));
 			guided->motorData = nullptr;
 

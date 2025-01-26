@@ -923,6 +923,7 @@ namespace HkIEngine
 	void _LaunchPos();
 	void CEGun_Update_naked();
 	bool __fastcall RadarDetection(Observer* observer, void* edx, IObjRW* scannedIObj);
+	int __cdecl SetReputation(uint& clinetId, const uint& affiliation, float newRepValue);
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId);
 	void _HkLoadRepFromCharFile();
 	void __fastcall FixPlanetSpin(CEGun* gun, void* edx, CSimple*& target, ushort& subobjid);

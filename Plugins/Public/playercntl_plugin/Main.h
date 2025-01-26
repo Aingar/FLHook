@@ -220,6 +220,7 @@ namespace RepFixer
 	void PlayerLaunch(unsigned int iShip, unsigned int iClientID);
 	void BaseEnter(unsigned int iBaseID, unsigned int iClientID);
 	void ReloadFactionReps();
+	void SetReputation(uint& repVibe, const uint& affiliation, float& newRep);
 }
 
 namespace GiveCash

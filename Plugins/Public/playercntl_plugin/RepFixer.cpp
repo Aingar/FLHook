@@ -54,15 +54,23 @@ namespace RepFixer
 
 	struct TagHack
 	{
-		string scRepGroup;
+		uint hash;
 		float fRep;
 	};
 
+	struct RepLimit
+	{
+		float minRep = -0.9f;
+		float maxRep = 1.0f;
+	};
+
 	/// Map of faction equipment IDs to reputations list.
-	static unordered_map<unsigned int, vector<FactionRep>> set_mapFactionReps;
+	static unordered_map<unsigned int, unordered_map<uint, RepLimit>> set_mapFactionReps;
 
 	/// Tag rephacks, (regex, rephacks associated)
 	static unordered_map<wstring, vector<TagHack>> set_mapTagHacks;
+
+	static unordered_map<uint, unordered_map<uint, RepLimit>> playerRepLimits;
 
 	/// If true updates are logged to flhook.log
 	static bool set_bLogUpdates = false;
@@ -89,7 +97,7 @@ namespace RepFixer
 			return;
 		}
 
-		unordered_map<uint, FactionRep> defaultRepMap;
+		unordered_map<uint, RepLimit> defaultRepMap;
 
 		while (ini.read_header())
 		{
@@ -97,22 +105,20 @@ namespace RepFixer
 			{
 				while (ini.read_value())
 				{
-					FactionRep factionRep;
-					factionRep.scRepGroup = ini.get_name_ptr();
+					uint repHash = MakeId(ini.get_name_ptr());
 
-					factionRep.fRep = ini.get_value_float(0);
-					if (factionRep.fRep > 1.0f)
-						factionRep.fRep = 1.0f;
-					else if (factionRep.fRep < -1.0f)
-						factionRep.fRep = -1.0f;
-
-					factionRep.iMode = ini.get_value_int(1);
-					if (factionRep.iMode == FactionRep::MODE_REP_LESSTHAN
-						|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
-						|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
+					int mode = ini.get_value_int(1);
+					if(mode == FactionRep::MODE_REP_LESSTHAN)
 					{
-						uint repHash = CreateID(factionRep.scRepGroup.c_str());
-						defaultRepMap[repHash] = factionRep;
+						defaultRepMap[repHash] = { -0.9f, ini.get_value_float(0) };
+					}
+					else if (mode == FactionRep::MODE_REP_GREATERTHAN)
+					{
+						defaultRepMap[repHash] = { ini.get_value_float(0), 1.0f };
+					}
+					else if (mode == FactionRep::MODE_REP_STATIC)
+					{
+						defaultRepMap[repHash] = { ini.get_value_float(0), ini.get_value_float(0) };
 					}
 				}
 				continue;
@@ -122,7 +128,7 @@ namespace RepFixer
 				continue;
 			}
 			vector<uint> idList;
-			unordered_map<uint, FactionRep> factionReps = defaultRepMap;
+			unordered_map<uint, RepLimit> factionReps = defaultRepMap;
 
 			while (ini.read_value())
 			{
@@ -143,8 +149,7 @@ namespace RepFixer
 					{
 						for (auto& rep : set_mapFactionReps.at(inheritedGrp))
 						{
-							uint repHash = CreateID(rep.scRepGroup.c_str());
-							factionReps[repHash] = rep;
+							factionReps[rep.first] = rep.second;
 						}
 					}
 					else
@@ -154,34 +159,27 @@ namespace RepFixer
 				}
 				else
 				{
-					FactionRep factionRep;
-					factionRep.scRepGroup = ini.get_name_ptr();
+					uint repHash = MakeId(ini.get_name_ptr());
 
-					factionRep.fRep = ini.get_value_float(0);
-					if (factionRep.fRep > 1.0f)
-						factionRep.fRep = 1.0f;
-					else if (factionRep.fRep < -1.0f)
-						factionRep.fRep = -1.0f;
-
-					factionRep.iMode = ini.get_value_int(1);
-					if (factionRep.iMode == FactionRep::MODE_REP_LESSTHAN
-						|| factionRep.iMode == FactionRep::MODE_REP_GREATERTHAN
-						|| factionRep.iMode == FactionRep::MODE_REP_STATIC)
+					int mode = ini.get_value_int(1);
+					if (mode == FactionRep::MODE_REP_LESSTHAN)
 					{
-						uint repHash = CreateID(factionRep.scRepGroup.c_str());
-						factionReps[repHash] = factionRep;
+						factionReps[repHash] = { -0.9f, ini.get_value_float(0) };
+					}
+					else if (mode == FactionRep::MODE_REP_GREATERTHAN)
+					{
+						factionReps[repHash] = { ini.get_value_float(0), 1.0f };
+					}
+					else if (mode == FactionRep::MODE_REP_STATIC)
+					{
+						factionReps[repHash] = { ini.get_value_float(0), ini.get_value_float(0) };
 					}
 				}
 			}
 
-			vector<FactionRep> factionRepVector;
-			for (auto& rep : factionReps)
-			{
-				factionRepVector.emplace_back(rep.second);
-			}
 			for (uint id : idList)
 			{
-				set_mapFactionReps[id] = factionRepVector;
+				set_mapFactionReps[id] = factionReps;
 			}
 		}
 		ini.close();
@@ -222,7 +220,7 @@ namespace RepFixer
 				else if (ini.is_value("rep"))
 				{
 					TagHack th;
-					th.scRepGroup = ini.get_value_string(0);
+					th.hash = MakeId(ini.get_value_string(0));
 					th.fRep = ini.get_value_float(1);
 					replist.push_back(th);
 				}
@@ -260,32 +258,20 @@ namespace RepFixer
 	/// that are greater than the allowed value.
 	static void CheckReps(unsigned int iClientID)
 	{
+		auto playerVibe = Players[iClientID].iReputation;
 
-		int playerRep = Players[iClientID].iReputation;
+		auto& playerRepLimitEntry = playerRepLimits[iClientID];
+		playerRepLimitEntry.clear();
 
-		// If the item is not an 'ID' then skip to the next one. 
-		unordered_map<unsigned int, vector<FactionRep> >::iterator iterIDs = set_mapFactionReps.find(ClientInfo[iClientID].playerID);
+		auto iterIDs = set_mapFactionReps.find(ClientInfo[iClientID].playerID);
 		if (iterIDs != set_mapFactionReps.end())
 		{
-			// The item is an 'ID'; check and adjust the player reputations
-			// if needed.
-			for (vector<FactionRep>::iterator iterReps = iterIDs->second.begin(); iterReps != iterIDs->second.end(); iterReps++)
+			playerRepLimitEntry = iterIDs->second;
+			for (auto& factionRepItem : iterIDs->second)
 			{
-				const FactionRep& rep = *iterReps;
-
-				uint iRepGroupID;
-				float fRep;
-				pub::Reputation::GetReputationGroup(iRepGroupID, rep.scRepGroup.c_str());
-				pub::Reputation::GetGroupFeelingsTowards(playerRep, iRepGroupID, fRep);
-				if (((fRep > rep.fRep) && (rep.iMode == FactionRep::MODE_REP_LESSTHAN))
-					|| ((fRep < rep.fRep) && (rep.iMode == FactionRep::MODE_REP_GREATERTHAN)))
-				{
-					pub::Reputation::SetReputation(playerRep, iRepGroupID, rep.fRep);
-				}
-				else if ((fRep != rep.fRep) && (rep.iMode == FactionRep::MODE_REP_STATIC))
-				{
-					pub::Reputation::SetReputation(playerRep, iRepGroupID, rep.fRep);
-				}
+				float currRep;
+				Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, factionRepItem.first, currRep);
+				pub::Reputation::SetReputation(playerVibe, factionRepItem.first, currRep);
 			}
 		}
 
@@ -299,11 +285,10 @@ namespace RepFixer
 				continue;
 			}
 			//we have a match, apply reps
-			for each (TagHack tag in tagReps->second)
+			for (TagHack& tag : tagReps->second)
 			{
-				uint iRepGroupID;
-				pub::Reputation::GetReputationGroup(iRepGroupID, tag.scRepGroup.c_str());
-				pub::Reputation::SetReputation(playerRep, iRepGroupID, tag.fRep);
+				playerRepLimitEntry[tag.hash] = { tag.fRep, tag.fRep };
+				pub::Reputation::SetReputation(playerVibe, tag.hash, tag.fRep);
 			}
 			break;
 		}
@@ -321,5 +306,40 @@ namespace RepFixer
 	{
 		if (set_bEnableRepFixUpdates)
 			CheckReps(iClientID);
+	}
+
+	float ClampRep(float rep, float minRep, float maxRep)
+	{
+		if (rep < minRep)
+		{
+			return minRep;
+		}
+
+		if (rep > maxRep)
+		{
+			return maxRep;
+		}
+
+		return rep;
+	}
+
+	void RepFixer::SetReputation(uint& repVibe, const uint& affiliation, float& newRep)
+	{
+		float currRep;
+		Reputation::Vibe::GetGroupFeelingsTowards(repVibe, affiliation, currRep);
+		uint clientId = Reputation::Vibe::GetClientID(repVibe);
+
+		auto clientData = playerRepLimits.find(clientId);
+		if (clientData == playerRepLimits.end())
+		{
+			return;
+		}
+		auto repLimits = clientData->second.find(affiliation);
+		if(repLimits == clientData->second.end())
+		{
+			return;
+		}
+
+		newRep = ClampRep(newRep, repLimits->second.minRep, repLimits->second.maxRep);
 	}
 }

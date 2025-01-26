@@ -761,6 +761,21 @@ namespace HkIEngine
 		}
 	}
 
+	int __cdecl SetReputation(uint& repVibe, const uint& affiliation, float newRepValue)
+	{
+		using RepUpdateFunc = void(__cdecl*)(uint&, uint);
+		RepUpdateFunc RepUpdateFuncCall = RepUpdateFunc(0x6D5F130);
+
+		CALL_PLUGINS(PLUGIN_HkIEngine_SetReputation, int, , (uint&, const uint&, float&), (repVibe, affiliation, newRepValue));
+
+		if (0 != Reputation::Vibe::SetGroupFeelingsTowards(repVibe, affiliation, newRepValue))
+		{
+			return -2;
+		}
+		RepUpdateFuncCall(repVibe, 0);
+		return 0;
+	}
+
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 

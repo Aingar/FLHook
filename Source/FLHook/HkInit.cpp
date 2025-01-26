@@ -416,6 +416,10 @@ bool InitHookExports()
 	char szNop[2] = { '\x90', '\x90' };
 	WriteProcMem(pAddress, szNop, sizeof(szNop)); // nop the SinglePlayer() check
 
+	pAddress = SRV_ADDR(0x7F470);
+	FARPROC setRepDetour = FARPROC(&HkIEngine::SetReputation);
+	Detour(pAddress, setRepDetour);
+
 	// patch flserver so it can better handle faulty house entries in char files
 
 	// divert call to house load/save func

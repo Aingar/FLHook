@@ -32,11 +32,11 @@ void CreateSolar::CreateSolarCallout(SPAWN_SOLAR_STRUCT* info)
 	si.iSystemID = info->iSystemId;
 	si.mOrientation = info->ori;
 	si.vPos = info->pos;
-	si.Costume.head = CreateID("pi_pirate2_head");
-	si.Costume.body = CreateID("pi_pirate8_body");
-	si.Costume.lefthand = 0;
-	si.Costume.righthand = 0;
-	si.Costume.accessories = 0;
+	si.costume.head = CreateID("pi_pirate2_head");
+	si.costume.body = CreateID("pi_pirate8_body");
+	si.costume.leftHand = 0;
+	si.costume.rightHand = 0;
+	si.costume.accessories = 0;
 	si.iVoiceID = CreateID("atc_leg_m01");
 	si.baseId = info->destSystem;
 	strncpy_s(si.cNickName, sizeof(si.cNickName), info->nickname.c_str(), info->nickname.size());

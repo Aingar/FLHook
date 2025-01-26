@@ -1047,16 +1047,7 @@ namespace pub
 			Vector vPos;
 			Matrix mOrientation;
 			uint iLoadoutID;
-			struct structCostume
-			{
-				UINT head;
-				UINT body;
-				UINT lefthand;
-				UINT righthand;
-				UINT accessory[8];
-				int  accessories;
-			};
-			structCostume Costume;
+			Costume costume;
 			int iRep;
 			int iVoiceID;
 			uint baseId;

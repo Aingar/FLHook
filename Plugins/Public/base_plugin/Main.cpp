@@ -38,6 +38,8 @@ unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin
 
 vector<ScheduledRespawn> basesToRespawn;
 
+unordered_map<uint, std::pair<uint, Costume>> factionCostumeMap;
+
 /// 0 = HTML, 1 = JSON, 2 = Both
 int ExportType = 0;
 
@@ -738,6 +740,23 @@ void LoadSettingsActual()
 	string cfg_filearch = string(szCurDir) + R"(\flhook_plugins\base_archtypes.cfg)";
 	string cfg_fileforbiddencommodities = string(szCurDir) + R"(\flhook_plugins\base_forbidden_cargo.cfg)";
 	uint bmapLoadHyperspaceHubConfig = 0;
+
+	CSolar* csolar = (CSolar*)CObject::FindFirst(CObject::CSOLAR_OBJECT);
+	while (csolar)
+	{
+		if (!csolar->dockTargetId || csolar->type != ObjectType::Station)
+		{
+			csolar = (CSolar*)CObject::FindNext();
+			continue;
+		}
+		uint affiliation;
+		Reputation::Vibe::GetAffiliation(csolar->id, affiliation, false);
+		if (!factionCostumeMap.count(affiliation))
+		{
+			factionCostumeMap[affiliation] = { csolar->voiceId, csolar->commCostume };
+		}
+		csolar = (CSolar*)CObject::FindNext();
+	}
 
 	for (auto base : player_bases)
 	{

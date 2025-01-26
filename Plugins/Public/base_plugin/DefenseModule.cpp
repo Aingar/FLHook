@@ -459,11 +459,11 @@ static uint CreateWPlatformSolar(PlayerBase* base, uint iSystem, Vector position
 		break;
 	}
 
-	si.Costume.head = CreateID("pi_pirate2_head");
-	si.Costume.body = CreateID("pi_pirate8_body");
-	si.Costume.lefthand = 0;
-	si.Costume.righthand = 0;
-	si.Costume.accessories = 0;
+	si.costume.head = CreateID("pi_pirate2_head");
+	si.costume.body = CreateID("pi_pirate8_body");
+	si.costume.leftHand = 0;
+	si.costume.rightHand = 0;
+	si.costume.accessories = 0;
 	si.iVoiceID = CreateID("atc_leg_m01");
 
 	string wplatform_nickname = base->nickname + itos(rand());

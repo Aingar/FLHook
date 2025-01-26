@@ -76,12 +76,19 @@ void CoreModule::Spawn()
 		si.iSystemID = base->system;
 		si.mOrientation = base->rotation;
 		si.vPos = base->position;
-		si.Costume.head = CreateID("pi_pirate2_head");
-		si.Costume.body = CreateID("pi_pirate8_body");
-		si.Costume.lefthand = 0;
-		si.Costume.righthand = 0;
-		si.Costume.accessories = 0;
-		si.iVoiceID = CreateID("atc_leg_m01");
+
+		auto factionInfo = factionCostumeMap.find(base->affiliation);
+		if (factionInfo != factionCostumeMap.end())
+		{
+			si.iVoiceID = factionInfo->second.first;
+			si.costume = factionInfo->second.second;
+		}
+		else
+		{
+			si.costume.head = CreateID("pi_pirate2_head");
+			si.costume.body = CreateID("pi_pirate8_body");
+			si.iVoiceID = CreateID("atc_leg_m01");
+		}
 		strncpy_s(si.cNickName, sizeof(si.cNickName), base->nickname.c_str(), base->nickname.size());
 
 		// Check to see if the hook IDS limit has been reached

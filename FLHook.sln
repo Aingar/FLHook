@@ -126,6 +126,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DSAceSrv Plugin", "..\..\Di
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Racing", "Plugins\Public\racing\racing.vcxproj", "{29DD7FEC-ECCB-42F1-A32B-E8913D826E38}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CommFixer", "Plugins\Public\comm_fixer\CommFixer.vcxproj", "{5F5B6544-16BA-4F89-991D-8CABEBA2613D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -463,6 +465,18 @@ Global
 		{29DD7FEC-ECCB-42F1-A32B-E8913D826E38}.Release|Win32.Build.0 = Release|Win32
 		{29DD7FEC-ECCB-42F1-A32B-E8913D826E38}.Release|x64.ActiveCfg = Release|Win32
 		{29DD7FEC-ECCB-42F1-A32B-E8913D826E38}.Release|x64.Build.0 = Release|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Debug|Win32.ActiveCfg = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Debug|Win32.Build.0 = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Debug|x64.ActiveCfg = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Debug|x64.Build.0 = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.DebugDONOTUSE|x64.ActiveCfg = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.DebugDONOTUSE|x64.Build.0 = Debug|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Release|Win32.ActiveCfg = Release|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Release|Win32.Build.0 = Release|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Release|x64.ActiveCfg = Release|Win32
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D}.Release|x64.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -499,6 +513,7 @@ Global
 		{48A9CADD-245D-4AE5-B1CE-56F72E3E7042} = {B802515E-816B-4FC3-AF09-4684613A7425}
 		{75008201-ED64-4A0F-B7EA-3B3A3E59855D} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
 		{29DD7FEC-ECCB-42F1-A32B-E8913D826E38} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{5F5B6544-16BA-4F89-991D-8CABEBA2613D} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}
@@ -513,6 +528,7 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{48a9cadd-245d-4ae5-b1ce-56f72e3e7042}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{4b9ab78f-085b-4f29-8e03-99fcf081f273}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{55fdea3d-7f65-4a84-a0c6-1ffd3b4f6744}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{5f5b6544-16ba-4f89-991d-8cabeba2613d}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7ba66b1c-47c0-40a6-a9e4-1b26664b536b}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7c84f18c-fe8c-4731-882d-05c237753a54}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{7de3df47-662f-4e34-9899-140f103d2d01}*SharedItemsImports = 4

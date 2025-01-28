@@ -399,6 +399,9 @@ bool InitHookExports()
 	FARPROC radarDetour = FARPROC(&HkIEngine::RadarDetection);
 	Detour(pAddress, radarDetour);
 
+	pAddress = SRV_ADDR(0x19230);
+	Detour(pAddress, HkIEngine::SendComm);
+
 	// Optimize Server.dll sub_6CE61D0 that is called A LOT and crashes if it fails anwyay
 	pAddress = SRV_ADDR(0x61D0);
 	BYTE szOptimize[] = { 0x8B, 0x41, 0x10, 0x8b, 0x80, 0xb0, 0x00, 0x00, 0x00, 0xc3,

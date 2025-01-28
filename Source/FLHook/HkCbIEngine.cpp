@@ -777,6 +777,26 @@ namespace HkIEngine
 		return 0;
 	}
 
+	int __cdecl SendComm(uint sender, uint receiver, uint voiceId, const Costume* costume, uint infocardId, uint* lines, int lineCount, uint infocardId2, float radioSilenceTimerAfter, bool global)
+	{
+		static uint freelancerHash = CreateID("gcs_refer_faction_player_short");
+		static BYTE origMemory[] = {0x8B, 0x44, 0x24, 0x18, 0x83};
+		static BYTE currMemory[5];
+		memcpy(currMemory, pub::SpaceObj::SendComm, sizeof(currMemory));
+
+		if (playerShips.count(receiver))
+		{
+			CALL_PLUGINS(PLUGIN_HkIEngine_SendComm, int, __cdecl, (uint, uint, uint, const Costume*, uint, uint*, int&, uint, float, float), (sender, receiver, voiceId, costume, infocardId, lines, lineCount, infocardId2, radioSilenceTimerAfter, global));
+		}
+
+		memcpy(pub::SpaceObj::SendComm, origMemory, sizeof(origMemory));
+		int retVal = pub::SpaceObj::SendComm(sender, receiver, voiceId, costume, infocardId, lines, lineCount, infocardId2, radioSilenceTimerAfter, global);
+		memcpy(pub::SpaceObj::SendComm, currMemory, sizeof(currMemory));
+		
+		return retVal;
+	}
+
+
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 

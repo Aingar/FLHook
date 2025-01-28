@@ -921,6 +921,7 @@ namespace HkIEngine
 	void __stdcall Elapse_Time(float p1);
 	int __cdecl Dock_Call(unsigned int const &, unsigned int const &, int, enum DOCK_HOST_RESPONSE);
 	void _LaunchPos();
+	int __cdecl SendComm(uint sender, uint receiver, uint voiceId, const Costume* costume, uint infocardId, uint* lines, int lineCount, uint infocardId2, float radioSilenceTimerAfter, bool global);
 	void CEGun_Update_naked();
 	bool __fastcall RadarDetection(Observer* observer, void* edx, IObjRW* scannedIObj);
 	int __cdecl SetReputation(uint& clinetId, const uint& affiliation, float newRepValue);

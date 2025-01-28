@@ -307,6 +307,7 @@ namespace HkIServerImpl
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));
 
+		HkIEngine::playerShips.insert(iShip);
 		EXECUTE_SERVER_CALL(Server.PlayerLaunch(iShip, iClientID));
 
 		if (!ClientInfo[iClientID].iLastExitedBaseID)
@@ -331,7 +332,6 @@ namespace HkIServerImpl
 		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
 		CETractor* playerID = reinterpret_cast<CETractor*>(playerCship->equip_manager.FindFirst(TractorBeam));
 		ClientInfo[iClientID].cship = playerCship;
-		HkIEngine::playerShips.insert(iShip);
 		ClientInfo[iClientID].fRadarRange = scanner->GetRadarRange();
 		ClientInfo[iClientID].fRadarRange *= ClientInfo[iClientID].fRadarRange;
 		if (playerID)

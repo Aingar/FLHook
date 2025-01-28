@@ -119,6 +119,11 @@ void __cdecl SendComm(uint sender, uint receiver, uint voiceId, const Costume* c
 			continue;
 		}
 
+		if (i + 4 < lineCount)
+		{
+			break;
+		}
+
 		lines[i] = cd->second.factionLine;
 		lines[i + 1] = cd->second.formationLine;
 		lines[i + 2] = cd->second.number1;
@@ -170,7 +175,6 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& cId, unsigned in
 {
 	returncode = DEFAULT_RETURNCODE;
 	clientData.erase(client);
-	//FetchPlayerData(client);
 }
 
 typedef bool(*_UserCmdProc)(uint, const wstring &, const wstring &, const wchar_t*);

@@ -81,7 +81,7 @@ Vector VectorCross(Vector& v1, Vector& v2);
 
 void FormatSendChat(uint iToClientID, const wstring &wscSender, const wstring &wscText, const wstring &wscTextColor);
 void ini_get_wstring(INI_Reader &ini, wstring &wscValue);
-void ini_write_wstring(FILE *file, const string &parmname, wstring &in);
+void ini_write_wstring(FILE *file, const string &parmname, const wstring &in);
 void PrintLocalUserCmdText(uint iClientID, const wstring &wscMsg, float fDistance);
 void PrintLocalMsgAroundObject(uint spaceObjId, const wstring& wscMsg, float fDistance);
 void PrintLocalMsgPos(const wstring& msg, uint system, Vector& pos, float distance);

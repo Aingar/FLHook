@@ -37,6 +37,13 @@ public:
 	float data[3][3];
 };
 
+class Transform
+{
+public:
+	Vector pos;
+	Matrix ori;
+};
+
 class Quaternion
 {
 public:

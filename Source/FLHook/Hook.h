@@ -773,6 +773,7 @@ EXPORT bool HkIsOnDeathMenu(uint iClientID);
 EXPORT HK_ERROR HkMsg(uint iClientID, const wstring &wscMessage);
 EXPORT HK_ERROR HkMsg(const wstring &wscCharname, const wstring &wscMessage);
 EXPORT HK_ERROR HkMsgS(const wstring &wscSystemname, const wstring &wscMessage);
+EXPORT void HkMsgS(uint iSystemID, const wstring& wscMessage);
 EXPORT HK_ERROR HkMsgU(const wstring &wscMessage);
 EXPORT HK_ERROR HkFMsgEncodeXML(const wstring &wscXML, char *szBuf, uint iSize, uint &iRet);
 EXPORT HK_ERROR HkFMsgSendChat(uint iClientID, char *szBuf, uint iSize);

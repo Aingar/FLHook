@@ -1134,7 +1134,7 @@ void ini_get_wstring(INI_Reader &ini, wstring &wscValue)
 	}
 }
 
-void ini_write_wstring(FILE *file, const string &parmname, wstring &in)
+void ini_write_wstring(FILE *file, const string &parmname, const wstring &in)
 {
 	fprintf(file, "%s=", parmname.c_str());
 	for (int i = 0; i < (int)in.size(); i++)

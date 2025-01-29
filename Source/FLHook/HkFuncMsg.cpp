@@ -34,6 +34,33 @@ HK_ERROR HkMsg(const wstring &wscCharname, const wstring &wscMessage)
 
 bool g_bMsgS = false;
 
+void HkMsgS(uint iSystemID, const wstring& wscMessage)
+{
+	// prepare xml
+	wstring wscXML = L"<TRA data=\"0xE6C68400\" mask=\"-1\"/><TEXT>" + XMLText(wscMessage) + L"</TEXT>";
+	uint iRet;
+	char szBuf[1024];
+	HkFMsgEncodeXML(wscXML, szBuf, sizeof(szBuf), iRet);
+
+	struct CHAT_ID ci = { 0 };
+
+	// for all players in system...
+	struct PlayerData* pPD = 0;
+	while (pPD = Players.traverse_active(pPD))
+	{
+		uint iClientID = HkGetClientIdFromPD(pPD);
+		uint iClientSystemID = 0;
+		pub::Player::GetSystem(iClientID, iClientSystemID);
+		if (iSystemID == iClientSystemID)
+		{
+			struct CHAT_ID ciClient = { iClientID };
+			g_bMsgS = true;
+			HkIServerImpl::SubmitChat(ci, iRet, szBuf, ciClient, -1);
+			g_bMsgS = false;
+		}
+	}
+}
+
 HK_ERROR HkMsgS(const wstring &wscSystemname, const wstring &wscMessage)
 {
 	uint iSystemID = 0;

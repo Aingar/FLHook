@@ -26,9 +26,22 @@ struct WaypointData
 struct Race
 {
 	list<WaypointData> waypoints;
+	uint startingSystem;
+	vector<Transform> startingPositions;
 };
 
-unordered_map<uint, Race> raceMap;
+unordered_map<uint, unordered_map<wstring, Race>> raceObjMap;
+
+struct PendingRace
+{
+	uint hostId;
+	int cashPool;
+	unordered_set<uint> participantSet;
+	vector<uint> participants;
+	Race* race;
+};
+
+unordered_map<uint, PendingRace> pendingRaces;
 
 struct Racer
 {
@@ -37,6 +50,8 @@ struct Racer
 };
 
 unordered_map<uint, Racer> racersMap;
+
+unordered_map<uint, std::pair<Race*, int>> raceRegistration;
 
 void LoadSettings();
 
@@ -75,12 +90,17 @@ void LoadSettings()
 		if (ini.is_header("Race"))
 		{
 			uint startObj;
+			wstring raceName;
 			Race race;
 			while (ini.read_value())
 			{
 				if (ini.is_value("start_object"))
 				{
 					startObj = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("race_name"))
+				{
+					raceName = stows(ini.get_value_string(0));
 				}
 				else if (ini.is_value("waypoint_obj"))
 				{
@@ -91,15 +111,33 @@ void LoadSettings()
 						ConPrint(L"ERROR PARSING RACE CONFIG: %s\n", stows(ini.get_value_string(0)).c_str());
 						continue;
 					}
+					
+					if (race.waypoints.empty())
+					{
+						race.startingSystem = obj->cobj->system;
+					}
+
 					race.waypoints.push_back({ obj->cobj->vPos, objId, obj->cobj->system });
 				}
 				else if (ini.is_value("waypoint_pos"))
 				{
 					Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
-					race.waypoints.push_back({ pos, 0u, CreateID(ini.get_value_string(0)) });
+					uint system = CreateID(ini.get_value_string(0));
+					if (race.waypoints.empty())
+					{
+						race.startingSystem = system;
+					}
+					race.waypoints.push_back({ pos, 0u, system });
+				}
+				else if (ini.is_value("starting_pos"))
+				{
+					Vector pos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
+					Vector rot = { ini.get_value_float(3), ini.get_value_float(4), ini.get_value_float(5) };
+					Transform startingPos = { pos, EulerMatrix(rot) };
+					race.startingPositions.push_back(startingPos);
 				}
 			}
-			raceMap[startObj] = race;
+			raceObjMap[startObj][raceName] = race;
 		}
 	}
 	ini.close();
@@ -109,7 +147,7 @@ void LoadSettings()
 //Functions
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool UserCmd_StartRace(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+bool UserCmd_SetupRace(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
 	auto cship = ClientInfo[clientID].cship;
 	if (!cship)
@@ -125,10 +163,124 @@ bool UserCmd_StartRace(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-	auto raceIter = raceMap.find(target->get_id());
-	if (raceIter == raceMap.end())
+	if (pendingRaces.count(clientID))
+	{
+		PrintUserCmdText(clientID, L"ERR You're already hosting a race!");
+		return true;
+	}
+
+	auto raceObjIter = raceObjMap.find(target->get_id());
+	if (raceObjIter == raceObjMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR Invalid start point object selected!");
+		return true;
+	}
+
+	auto raceName = GetParam(param, ' ', 1);
+	auto raceIter = raceObjIter->second.find(raceName);
+	if (raceIter == raceObjIter->second.end())
+	{
+		PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+		for (auto& raceName : raceObjIter->second)
+		{
+			PrintUserCmdText(clientID, L"- %s", raceName.first.c_str());
+		}
+		return true;
+	}
+
+	int initialPool = ToInt(GetParam(param, ' ', 2));
+	if (initialPool < 0)
+	{
+		initialPool = 0;
+	}
+	if (initialPool < Players[clientID].iInspectCash)
+	{
+		PrintUserCmdText(clientID, L"ERR You don't have enough cash!");
+		return true;
+	}
+
+	PendingRace pr;
+	pr.race = &raceIter->second;
+	pr.hostId = clientID;
+	pr.participants.push_back(clientID);
+	pr.participantSet.insert(clientID);
+	pr.cashPool = initialPool;
+
+	wstring hostName = (const wchar_t*)Players.GetActiveCharacterName(clientID);
+
+	static wchar_t buf[100];
+	_snwprintf(buf, sizeof(buf), L"New race: %s started by %s!", raceName.c_str(), hostName.c_str());
+	HkMsgS(pr.race->startingSystem, buf);
+
+	if (initialPool)
+	{
+		_snwprintf(buf, sizeof(buf), L"Initial prize pool: %d credits!", pr.cashPool);
+		HkMsgS(pr.race->startingSystem, buf);
+	}
+
+	pendingRaces[clientID] = pr;
+	raceRegistration[clientID] = { pr.race, pr.cashPool };
+}
+
+bool UserCmd_StartRaceSolo(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+	auto cship = ClientInfo[clientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(clientID, L"ERR Not in space!");
+		return true;
+	}
+
+	auto pendingRace = pendingRaces.find(clientID);
+	if (pendingRace == pendingRaces.end(clientID))
+	{
+		PrintUserCmdText(clientID, L"ERR You're not hosting a race!");
+		return true;
+	}
+
+	for (auto& participant : pendingRace->second.participants)
+	{
+		PrintUserCmdText(participant, L"Beaming you into position, best of luck!");
+		raceRegistration.erase(participant);
+	}
+
+
+
+	pendingRaces.erase(clientID);
+}
+
+bool UserCmd_StartRaceSolo(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+	auto cship = ClientInfo[clientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(clientID, L"ERR Not in space!");
+		return true;
+	}
+
+	auto target = cship->get_target();
+	if (!target)
+	{
+		PrintUserCmdText(clientID, L"ERR No target!");
+		return true;
+	}
+
+	auto raceObjIter = raceObjMap.find(target->get_id());
+	if (raceObjIter == raceObjMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR Invalid start point object selected!");
+		return true;
+	}
+
+	auto raceName = GetParam(param, ' ', 1);
+	auto raceIter = raceObjIter->second.find(raceName);
+	if (raceIter == raceObjIter->second.end())
+	{
+		PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+		for (auto& raceName : raceObjIter->second)
+		{
+			PrintUserCmdText(clientID, L"- %s", raceName.first.c_str());
+		}
 		return true;
 	}
 
@@ -213,6 +365,8 @@ struct USERCMD
 
 USERCMD UserCmds[] =
 {
+	{ L"/solorace", UserCmd_StartRaceSolo, L"Usage: /startrace" },
+	{ L"/setrace", UserCmd_SetupRace, L"Usage: /startrace" },
 	{ L"/startrace", UserCmd_StartRace, L"Usage: /startrace" },
 };
 

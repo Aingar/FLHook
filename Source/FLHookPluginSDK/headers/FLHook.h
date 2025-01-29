@@ -490,6 +490,7 @@ IMPORT bool HkIsOnDeathMenu(uint iClientID);
 IMPORT HK_ERROR HkMsg(int iClientID, const wstring &wscMessage);
 IMPORT HK_ERROR HkMsg(const wstring &wscCharname, const wstring &wscMessage);
 IMPORT HK_ERROR HkMsgS(const wstring &wscSystemname, const wstring &wscMessage);
+IMPORT void HkMsgS(uint systemId, const wstring &wscMessage);
 IMPORT HK_ERROR HkMsgU(const wstring &wscMessage);
 IMPORT HK_ERROR HkFMsgEncodeXML(const wstring &wscXML, char *szBuf, uint iSize, uint &iRet);
 IMPORT HK_ERROR HkFMsgSendChat(uint iClientID, char *szBuf, uint iSize);

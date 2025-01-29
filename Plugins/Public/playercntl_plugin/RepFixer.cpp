@@ -69,6 +69,7 @@ namespace RepFixer
 
 	/// Tag rephacks, (regex, rephacks associated)
 	static unordered_map<wstring, vector<TagHack>> set_mapTagHacks;
+	static unordered_map<wstring, vector<TagHack>> set_mapNameHacks;
 
 	static unordered_map<uint, unordered_map<uint, RepLimit>> playerRepLimits;
 
@@ -194,8 +195,6 @@ namespace RepFixer
 		GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 		string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\playercntl_tagrephacks.cfg";
 
-		int iLoaded = 0;
-
 		INI_Reader ini;
 		if (!ini.open(scPluginCfgFile.c_str(), false))
 		{
@@ -204,33 +203,51 @@ namespace RepFixer
 
 		while (ini.read_header())
 		{
-			if (!ini.is_header("tag"))
+			if (ini.is_header("tag"))
 			{
-				continue;
-			}
-			wstring tagname;
-			vector<TagHack> replist;
+				wstring tagname;
+				vector<TagHack> replist;
 
-			while (ini.read_value())
-			{
-				if (ini.is_value("name"))
+				while (ini.read_value())
 				{
-					tagname = stows(ini.get_value_string());
+					if (ini.is_value("name"))
+					{
+						tagname = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("rep"))
+					{
+						TagHack th;
+						th.hash = MakeId(ini.get_value_string(0));
+						th.fRep = ini.get_value_float(1);
+						replist.push_back(th);
+					}
 				}
-				else if (ini.is_value("rep"))
-				{
-					TagHack th;
-					th.hash = MakeId(ini.get_value_string(0));
-					th.fRep = ini.get_value_float(1);
-					replist.push_back(th);
-				}
+				set_mapTagHacks[tagname] = replist;
 			}
-			set_mapTagHacks[tagname] = replist;
-			++iLoaded;
+			else if (ini.is_header("name"))
+			{
+				wstring tagname;
+				vector<TagHack> replist;
+
+				while (ini.read_value())
+				{
+					if (ini.is_value("name"))
+					{
+						tagname = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("rep"))
+					{
+						TagHack th;
+						th.hash = MakeId(ini.get_value_string(0));
+						th.fRep = ini.get_value_float(1);
+						replist.push_back(th);
+					}
+				}
+				set_mapNameHacks[tagname] = replist;
+			}
 		}
 		ini.close();
 
-		ConPrint(L"Playercntl: Loaded %u tag rephacks\n", iLoaded);
 	}
 
 	void ReloadFactionReps()
@@ -293,6 +310,15 @@ namespace RepFixer
 			break;
 		}
 
+		auto nameHackIter = set_mapNameHacks.find(charName);
+		if (nameHackIter != set_mapNameHacks.end())
+		{
+			for (TagHack& tag : nameHackIter->second)
+			{
+				playerRepLimitEntry[tag.hash] = { tag.fRep, tag.fRep };
+				pub::Reputation::SetReputation(playerVibe, tag.hash, tag.fRep);
+			}
+		}
 		return;
 	}
 

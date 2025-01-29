@@ -52,6 +52,44 @@ uint numberOfKillers = 3;
 float deathBroadcastRange = 15000;
 uint minimumAssistPercentage = 5;
 
+FILE* damageDeathLog;
+
+void LogDeathDamage(const char* szString, ...)
+{
+	char szBufString[1024];
+	va_list marker;
+	va_start(marker, szString);
+	_vsnprintf(szBufString, sizeof(szBufString) - 1, szString, marker);
+
+	if (damageDeathLog) {
+		char szBuf[64];
+		time_t tNow = time(0);
+		struct tm* t = localtime(&tNow);
+		strftime(szBuf, sizeof(szBuf), "%Y.%m.%d %H:%M:%S", t);
+		fprintf(damageDeathLog, "[%s] %s\n", szBuf, szBufString);
+		fflush(damageDeathLog);
+	}
+	else {
+		ConPrint(L"Failed to write damage log!\n");
+	}
+}
+
+BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
+{
+	// If we're being loaded from the command line while FLHook is running then
+	// set_scCfgFile will not be empty so load the settings as FLHook only
+	// calls load settings on FLHook startup and .rehash.
+	if (fdwReason == DLL_PROCESS_ATTACH)
+	{
+		damageDeathLog = fopen("./flhook_logs/damage_death.log", "at");
+	}
+	else if (fdwReason == DLL_PROCESS_DETACH)
+	{
+		fclose(damageDeathLog);
+	}
+	return true;
+}
+
 // Load Settings
 void __stdcall LoadSettings()
 {
@@ -183,7 +221,15 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
 		if (targetClient && targetClient != dmg->iInflictorPlayerID && incDmg > 0.0f)
 		{
-			damageArray[targetClient][dmg->iInflictorPlayerID].currDamage += incDmg;
+			auto& currDmg = damageArray[targetClient][dmg->iInflictorPlayerID].currDamage;
+			if (currDmg == 0.0f)
+			{
+				string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
+				string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
+				
+				LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
+			}
+			currDmg += incDmg;
 		}
 	}
 }
@@ -404,7 +450,6 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 
 	if (clientKiller && clientKiller != clientVictim && totalDamageTaken == 0.0f)
 	{
-		AddLog("Supressing kill message: %s", wstos(message).c_str());
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
 	}
@@ -456,7 +501,7 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		killerCounter++;
 	}
 
-	AddLog("Player Death: %s %s, total %0.0f", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken);
+	LogDeathDamage("Player Death: %s %s, total %0.0f", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken);
 
 	if (assistMessage.empty())
 	{

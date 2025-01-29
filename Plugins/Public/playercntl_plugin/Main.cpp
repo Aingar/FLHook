@@ -1658,6 +1658,12 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
+	else if (IS_CMD("changepwtag"))
+	{
+		Rename::AdminCmd_ChangeTag(cmds, cmds->ArgStr(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
 	else if (IS_CMD("reloadlockedships"))
 	{
 		if (!(cmds->rights & RIGHT_SUPERADMIN))

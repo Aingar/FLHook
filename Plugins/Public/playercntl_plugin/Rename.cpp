@@ -49,14 +49,13 @@ namespace Rename
 
 	struct TAG_DATA
 	{
-		wstring tag;
 		wstring master_password;
 		wstring rename_password;
 		uint last_access;
 		wstring description;
 	};
 
-	std::map<wstring, TAG_DATA> mapTagToPassword;
+	std::unordered_map<wstring, TAG_DATA> mapTagToPassword;
 
 	struct LockedShipsStruct
 	{
@@ -92,7 +91,6 @@ namespace Rename
 						if (ini.is_value("tag"))
 						{
 							ini_get_wstring(ini, tag);
-							mapTagToPassword[tag].tag = tag;
 						}
 						else if (ini.is_value("master_password"))
 						{
@@ -132,14 +130,14 @@ namespace Rename
 		FILE *file = fopen(scPath.c_str(), "w");
 		if (file)
 		{
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& tag : mapTagToPassword)
 			{
 				fprintf(file, "[faction]\n");
-				ini_write_wstring(file, "tag", i->second.tag);
-				ini_write_wstring(file, "master_password", i->second.master_password);
-				ini_write_wstring(file, "rename_password", i->second.rename_password);
-				ini_write_wstring(file, "description", i->second.description);
-				fprintf(file, "last_access = %u\n", i->second.last_access);
+				ini_write_wstring(file, "tag", tag.first);
+				ini_write_wstring(file, "master_password", tag.second.master_password);
+				ini_write_wstring(file, "rename_password", tag.second.rename_password);
+				ini_write_wstring(file, "description", tag.second.description);
+				fprintf(file, "last_access = %u\n", tag.second.last_access);
 			}
 			fclose(file);
 		}
@@ -152,9 +150,9 @@ namespace Rename
 			// If this ship name starts with a restricted tag then the ship may only be
 			// created using rename and the faction password
 			wstring wscCharname(si.wszCharname);
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (WstrInsensitiveFind(wscCharname, i->second.tag) == 0
+				if (WstrInsensitiveFind(wscCharname, i->first) == 0
 					&& i->second.rename_password.size() != 0)
 				{
 					Server.CharacterInfoReq(iClientID, true);
@@ -191,9 +189,9 @@ namespace Rename
 		if (set_bCharnameTags)
 		{
 			wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (wscCharname.find(i->second.tag) == 0)
+				if (wscCharname.find(i->first) == 0)
 				{
 					i->second.last_access = (uint)time(0);
 				}
@@ -248,9 +246,9 @@ namespace Rename
 			}
 
 			// If this tag is in use then reject the request.
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (tag.find(i->second.tag) == 0 || i->second.tag.find(tag) == 0)
+				if (tag.find(i->first) == 0 || i->first.find(tag) == 0)
 				{
 					PrintUserCmdText(iClientID, L"ERR Tag already exists or conflicts with existing tag");
 					return true;
@@ -279,7 +277,6 @@ namespace Rename
 			HkAddCash(wscCharname, 0 - set_iMakeTagCost);
 
 			// TODO: Try to check if any player is using this tag
-			mapTagToPassword[tag].tag = tag;
 			mapTagToPassword[tag].master_password = pass;
 			mapTagToPassword[tag].rename_password = L"";
 			mapTagToPassword[tag].last_access = (uint)time(0);
@@ -311,9 +308,9 @@ namespace Rename
 			wstring pass = GetParam(wscParam, ' ', 1);
 
 			// If this tag is in use then reject the request.
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (tag == i->second.tag && pass == i->second.master_password)
+				if (tag == i->first && pass == i->second.master_password)
 				{
 					mapTagToPassword.erase(tag);
 					SaveSettings();
@@ -348,9 +345,9 @@ namespace Rename
 			wstring rename_password = GetParam(wscParam, ' ', 2);
 
 			// If this tag is in use then reject the request.
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (tag == i->second.tag && master_password == i->second.master_password)
+				if (tag == i->first && master_password == i->second.master_password)
 				{
 					i->second.rename_password = rename_password;
 					SaveSettings();
@@ -393,21 +390,6 @@ namespace Rename
 
 	void Timer()
 	{
-		// Every 100 seconds expire unused tags and save the tag database
-		/* uint curr_time = (uint)time(0);
-		if (curr_time % 100)
-		{
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
-			{
-				if (i->second.last_access < (curr_time - (3600 * 24 * 30)))
-				{
-					mapTagToPassword.erase(i);
-					break;
-				}
-			}
-			SaveSettings();
-		} */
-
 		// Check for pending renames and execute them. We do this on a timer so that the
 		// player is definitely not online when we do the rename.
 		while (pendingRenames.size())
@@ -632,7 +614,7 @@ namespace Rename
 		{
 			wstring wscPassword = Trim(GetParam(wscParam, L' ', 1));
 
-			for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
 				if (WstrInsensitiveFind(wscNewCharname, i->first) == 0
 					&& i->second.rename_password.size() != 0)
@@ -1001,12 +983,12 @@ namespace Rename
 		}
 
 		uint curr_time = (uint)time(0);
-		for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+		for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 		{
 			int last_access = i->second.last_access;
 			int days = (curr_time - last_access) / (24 * 3600);
 			cmds->Print(L"tag=%s master_password=%s rename_password=%s last_access=%u days description=%s\n",
-				i->second.tag.c_str(), i->second.master_password.c_str(), i->second.rename_password.c_str(), days, i->second.description.c_str());
+				i->first.c_str(), i->second.master_password.c_str(), i->second.rename_password.c_str(), days, i->second.description.c_str());
 		}
 		cmds->Print(L"OK\n");
 	}
@@ -1038,16 +1020,15 @@ namespace Rename
 		}
 
 		// If this tag is in use then reject the request.
-		for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+		for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 		{
-			if (tag.find(i->second.tag) == 0 || i->second.tag.find(tag) == 0)
+			if (tag.find(i->first) == 0 || i->first.find(tag) == 0)
 			{
 				cmds->Print(L"ERR Tag already exists or conflicts with another tag\n");
 				return;
 			}
 		}
 
-		mapTagToPassword[tag].tag = tag;
 		mapTagToPassword[tag].master_password = password;
 		mapTagToPassword[tag].rename_password = L"";
 		mapTagToPassword[tag].last_access = (uint)time(0);
@@ -1065,15 +1046,35 @@ namespace Rename
 		}
 
 		// If this tag is in use then reject the request.
-		for (std::map<wstring, TAG_DATA>::iterator i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
+		auto tagData = mapTagToPassword.find(tag);
+		if (tagData != mapTagToPassword.end())
 		{
-			if (tag == i->second.tag)
-			{
-				mapTagToPassword.erase(tag);
-				SaveSettings();
-				cmds->Print(L"OK Tag dropped\n");
-				return;
-			}
+			mapTagToPassword.erase(tag);
+			SaveSettings();
+			cmds->Print(L"OK Tag dropped\n");
+			return;
+		}
+
+		cmds->Print(L"ERR tag is invalid\n");
+		return;
+	}
+
+	void AdminCmd_ChangeTag(CCmds* cmds, const wstring& tag, const wstring& newPassword)
+	{
+		if (cmds->rights != RIGHT_SUPERADMIN)
+		{
+			cmds->Print(L"ERR No permission\n");
+			return;
+		}
+
+		// If this tag is in use then reject the request.
+		auto tagData = mapTagToPassword.find(tag);
+		if (tagData != mapTagToPassword.end())
+		{
+			tagData->second.master_password = newPassword;
+			SaveSettings();
+			cmds->Print(L"OK Tag master password changed\n");
+			return;
 		}
 
 		cmds->Print(L"ERR tag is invalid\n");

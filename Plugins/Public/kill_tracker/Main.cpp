@@ -488,15 +488,15 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		{
 			clientKiller = i->second; // override the killer ID to the top damage contributor for other plugins.
 			deathMessage = ReplaceStr(deathMessage, L"%killer", inflictorName);
-			deathMessage += L" (" + stows(itos(contributionPercentage)) + L"%)";
+			deathMessage += L"(" + stows(itos(contributionPercentage)) + L"%)";
 		}
 		else if (killerCounter == 1)
 		{
-			assistMessage = L"Assisted by: " + inflictorName + L" (" + stows(itos(contributionPercentage)) + L"%)";
+			assistMessage = L"Assisted by: " + inflictorName + L"(" + stows(itos(contributionPercentage)) + L"%)";
 		}
 		else
 		{
-			assistMessage += L", " + inflictorName + L" (" + stows(itos(contributionPercentage)) + L"%)";
+			assistMessage += L", " + inflictorName + L"(" + stows(itos(contributionPercentage)) + L"%)";
 		}
 		killerCounter++;
 	}

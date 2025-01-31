@@ -44,6 +44,7 @@ PATCH_INFO piServerDLL =
 	{
 		{0x6D672F0,		&ShipDropLootDummy,					4,	0,	false},
 		{0x6D672A4,		&ApplyShipDamageListNaked,				4, &ApplyShipDamageListOrigFunc,	false},
+		{0x6D67330,		&ShipShieldDamageNaked,		4, &ShipShieldDamageOrigFunc,	false},
 		//{0x6D67F4C,		&LootDestroyedNaked,				4, &LootDestroyedOrigFunc,		false},
 		{0x6D661C4,		&MineDestroyedNaked,				4, &MineDestroyedOrigFunc,		false},
 		{0x6D66694,		&GuidedDestroyedNaked,				4, &GuidedDestroyedOrigFunc,		false},

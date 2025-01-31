@@ -226,6 +226,7 @@ enum PLUGIN_CALLBACKS
 	PLUGIN_HkIEngine_CGuided_init,
 	PLUGIN_HkIEngine_SetReputation,
 	PLUGIN_HkIEngine_SendComm,
+	PLUGIN_ShipShieldDmg,
 	PLUGIN_CALLBACKS_AMOUNT,
 };
 

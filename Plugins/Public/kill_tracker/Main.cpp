@@ -37,6 +37,7 @@ struct DamageDoneStruct
 {
 	float currDamage = 0.0f;
 	float lastUndockDamage = 0.0f;
+	bool hasAttacked = false;
 };
 
 static array<array<DamageDoneStruct, MAX_CLIENT_ID + 1>, MAX_CLIENT_ID + 1> damageArray;
@@ -216,27 +217,48 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	returncode = DEFAULT_RETURNCODE;
 
 	uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
-	if (targetClient && dmg->iInflictorPlayerID)
+	if (!targetClient || !dmg->iInflictorPlayerID || targetClient == dmg->iInflictorPlayerID || incDmg <= 0.0f)
 	{
-		uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
-		if (targetClient && targetClient != dmg->iInflictorPlayerID && incDmg > 0.0f)
-		{
-			auto& currDmg = damageArray[targetClient][dmg->iInflictorPlayerID].currDamage;
-			if (currDmg == 0.0f)
-			{
-				string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
-				string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
-				
-				LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
-			}
-			currDmg += incDmg;
-		}
+		return;
+	}
+	
+	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
+		&& dmg->damageCause != DamageCause::CruiseDisrupter
+		&& dmg->damageCause != DamageCause::Collision)
+	{
+		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
+		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));
+		string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
+		
+		LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
+	}
+	damageArray[targetClient][dmg->iInflictorPlayerID].currDamage += incDmg;
+}
+void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	uint targetClient = reinterpret_cast<CShip*>(iobj->cobj)->ownerPlayer;
+	if (!targetClient || !dmg->iInflictorPlayerID || targetClient == dmg->iInflictorPlayerID || incDmg <= 0.0f)
+	{
+		return;
+	}
+
+	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
+		&& dmg->damageCause != DamageCause::CruiseDisrupter
+		&& dmg->damageCause != DamageCause::Collision)
+	{
+		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
+		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));
+		string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
+
+		LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
 	}
 }
 
 void ClearDamageTaken(const uint victim)
 {
-	damageArray[victim].fill({ 0.0f, 0.0f });
+	damageArray[victim].fill({ 0.0f, 0.0f, false });
 }
 
 void ClearDamageDone(const uint inflictor, const bool isFullReset)
@@ -253,6 +275,7 @@ void ClearDamageDone(const uint inflictor, const bool isFullReset)
 			damageData.lastUndockDamage = damageData.currDamage;
 		}
 		damageData.currDamage = 0.0f;
+		damageData.hasAttacked = false;
 	}
 }
 
@@ -501,14 +524,14 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		killerCounter++;
 	}
 
-	LogDeathDamage("Player Death: %s %s, total %0.0f", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken);
-
 	if (assistMessage.empty())
 	{
+		LogDeathDamage("Player Death: %s, total %0.0f", wstos(deathMessage).c_str(), totalDamageTaken);
 		ProcessDeath(clientVictim, &deathMessage, nullptr, system, true, involvedGroups, involvedPlayers);
 	}
 	else
 	{
+		LogDeathDamage("Player Death: %s %s, total %0.0f", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken);
 		ProcessDeath(clientVictim, &deathMessage, &assistMessage, system, true, involvedGroups, involvedPlayers);
 	}
 	ClearDamageTaken(clientVictim);
@@ -567,6 +590,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipHullDamage, PLUGIN_ShipHullDmg, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipShieldDamage, PLUGIN_ShipShieldDmg, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SendDeathMessage, PLUGIN_SendDeathMsg, 5));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Disconnect, PLUGIN_HkIServerImpl_DisConnect, 0));

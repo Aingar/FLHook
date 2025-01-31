@@ -869,6 +869,7 @@ bool __fastcall ShipDropLootDummy(IObjRW*, void* edx, char*, DamageList*);
 
 // HkDamage
 void ApplyShipDamageListNaked();
+void ShipShieldDamageNaked();
 void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float incDamage, DamageList* dmg);
 void HookExplosionHitNaked();
 void ShipHullDamageNaked();
@@ -993,7 +994,7 @@ extern FARPROC LootDestroyedOrigFunc;
 extern FARPROC MineDestroyedOrigFunc;
 extern FARPROC GuidedDestroyedOrigFunc;
 extern FARPROC fpOldExplosionHit;
-extern FARPROC ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc;
+extern FARPROC ShipShieldDamageOrigFunc, ShipHullDamageOrigFunc, SolarHullDamageOrigFunc, ShipShieldDamageOrigFunc, ShipShieldExplosionDamageOrigFunc;
 
 extern EXPORT CDPClientProxy **g_cClientProxyArray;
 extern EXPORT void *pClient;

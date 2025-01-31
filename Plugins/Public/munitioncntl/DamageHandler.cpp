@@ -423,7 +423,7 @@ bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	return false;
 }
 
-void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg)
+void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg)
 {
 	uint clientId = iobj->cobj->ownerPlayer;
 	if (!clientId)
@@ -464,20 +464,6 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg)
 		shieldState.boostUntil = 0;
 		shieldState.damageReduction = 0;
 		shieldState.damageTaken = 0;
-	}
-}
-
-__declspec(naked) void ShipShieldDamageNaked()
-{
-	__asm {
-		push ecx
-		lea eax, [esp + 0xC]
-		push eax
-		push [esp + 0xC]
-		push ecx
-		call ShipShieldDamage
-		pop ecx
-		jmp[ShipShieldDamageOrigFunc]
 	}
 }
 

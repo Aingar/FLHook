@@ -2072,6 +2072,11 @@ static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* so
 {
 	try
 	{
+		int vecSize = solar->solararch()->dockInfo.size();
+		if (vecSize > launchComm.dockId)
+		{
+			return;
+		}
 		auto dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
 
 		std::string clearMessageIdBase;
@@ -2106,6 +2111,7 @@ static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* so
 	}
 	catch (...)
 	{
+		AddLog("BASEUNDOCKECEPTIONCATCH");
 		return;
 	}
 }

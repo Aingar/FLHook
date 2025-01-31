@@ -657,6 +657,13 @@ void __stdcall ShipDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		return;
 	}
 	float healedHP = healing.healingStatic + (healing.healingMultiplier * maxHP);
+
+	CEArmor* armor = (CEArmor*)cship->equip_manager.FindFirst(EquipmentClass::Armor);
+	if (armor)
+	{
+		healedHP /= armor->ArmorArch()->fHitPointsScale;
+	}
+
 	incDmg = -min(maxPossibleHealing, healedHP);
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

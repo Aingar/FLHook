@@ -358,11 +358,19 @@ namespace RepFixer
 		auto clientData = playerRepLimits.find(clientId);
 		if (clientData == playerRepLimits.end())
 		{
+			if (currRep < newRep)
+			{
+				newRep = ClampRep(newRep, -1.0f, 0.7f);
+			}
 			return;
 		}
 		auto repLimits = clientData->second.find(affiliation);
 		if(repLimits == clientData->second.end())
 		{
+			if (currRep < newRep)
+			{
+				newRep = ClampRep(newRep, -1.0f, 0.7f);
+			}
 			return;
 		}
 

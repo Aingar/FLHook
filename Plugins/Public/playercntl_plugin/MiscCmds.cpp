@@ -380,6 +380,8 @@ namespace MiscCmds
 			}
 		}
 
+		RepFixer::CheckReps(iClientID);
+
 		int count = 0;
 		for (map<string, uint>::iterator iter = factions.begin(); iter != factions.end(); iter++)
 		{

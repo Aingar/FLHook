@@ -316,6 +316,7 @@ struct CLIENT_INFO
 	bool		bUseServersideHitDetection; //used by AC Plugin
 	CShip*		cship;
 	uint		playerID;
+	ushort		playerIDSID;
 	float		fRadarRange;
 	bool		isDocking;
 	Vector		dockPosition;

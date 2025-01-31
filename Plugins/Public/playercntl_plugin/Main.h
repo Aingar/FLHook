@@ -222,6 +222,7 @@ namespace RepFixer
 	void BaseEnter(unsigned int iBaseID, unsigned int iClientID);
 	void ReloadFactionReps();
 	void SetReputation(uint& repVibe, const uint& affiliation, float& newRep);
+	void CheckReps(unsigned int iClientID);
 }
 
 namespace GiveCash

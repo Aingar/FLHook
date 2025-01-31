@@ -305,6 +305,24 @@ namespace HkIServerImpl
 			}
 		}
 
+		ClientInfo[iClientID].playerID = 0;
+		ClientInfo[iClientID].playerIDSID = 0;
+		for (auto& item : Players[iClientID].equipDescList.equip)
+		{
+			if (!item.bMounted)
+			{
+				continue;
+			}
+			Archetype::Equipment* equip = Archetype::GetEquipment(item.iArchID);
+			if (!equip || equip->get_class_type() != Archetype::AClassType::TRACTOR)
+			{
+				continue;
+			}
+			ClientInfo[iClientID].playerID = item.iArchID;
+			ClientInfo[iClientID].playerID = item.sID;
+			break;
+		}
+
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_PlayerLaunch, __stdcall, (unsigned int iShip, unsigned int iClientID), (iShip, iClientID));
 
 		HkIEngine::playerShips.insert(iShip);
@@ -330,14 +348,9 @@ namespace HkIServerImpl
 			return;
 		}
 		CEScanner* scanner = reinterpret_cast<CEScanner*>(playerCship->equip_manager.FindFirst(Scanner));
-		CETractor* playerID = reinterpret_cast<CETractor*>(playerCship->equip_manager.FindFirst(TractorBeam));
 		ClientInfo[iClientID].cship = playerCship;
 		ClientInfo[iClientID].fRadarRange = scanner->GetRadarRange();
 		ClientInfo[iClientID].fRadarRange *= ClientInfo[iClientID].fRadarRange;
-		if (playerID)
-		{
-			ClientInfo[iClientID].playerID = playerID->archetype->iArchID;
-		}
 		playerCship->Release();
 
 		ClientInfo[iClientID].undockPosition = playerCship->vPos;
@@ -545,6 +558,7 @@ namespace HkIServerImpl
 			LOG_CORE_TIMER_END
 
 		ClientInfo[iClientID].playerID = 0;
+		ClientInfo[iClientID].playerIDSID = 0;
 		for (auto& eq : Players[iClientID].equipDescList.equip)
 		{
 			if (!eq.bMounted)
@@ -564,6 +578,7 @@ namespace HkIServerImpl
 			if (equip->get_class_type() == Archetype::AClassType::TRACTOR)
 			{
 				ClientInfo[iClientID].playerID = eq.iArchID;
+				ClientInfo[iClientID].playerIDSID = eq.sID;
 				break;
 			}
 		}
@@ -1584,6 +1599,25 @@ namespace HkIServerImpl
 
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqAddItem_AFTER, __stdcall, (unsigned int goodId, char const * hardpoint, int count, float status, bool mounted, unsigned int clientId),
 			(goodId, hardpoint, count, status, mounted, clientId));
+
+		if (mounted && !ClientInfo[clientId].playerID)
+		{
+			uint archId = Good2Arch(goodId);
+			auto eqArch = Archetype::GetEquipment(archId);
+			if (eqArch && eqArch->get_class_type() == Archetype::AClassType::TRACTOR)
+			{
+				for (auto& equip : Players[clientId].equipDescList.equip)
+				{
+					if (equip.iArchID != archId)
+					{
+						continue;
+					}
+
+					ClientInfo[clientId].playerID = equip.iArchID;
+					ClientInfo[clientId].playerIDSID = equip.sID;
+				}
+			}
+		}
 	}
 
 	/**************************************************************************************************************
@@ -1660,7 +1694,7 @@ namespace HkIServerImpl
 	**************************************************************************************************************/
 
 
-	void __stdcall ReqModifyItem(unsigned short p1, char const *p2, int p3, float p4, bool p5, unsigned int iClientID)
+	void __stdcall ReqModifyItem(ushort sid, char const *hardpoint, int count, float hitPts, bool mounted, uint client)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(p1);
@@ -1670,28 +1704,61 @@ namespace HkIServerImpl
 		ISERVER_LOGARG_UI(p5);
 		ISERVER_LOGARG_UI(iClientID);
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqModifyItem, __stdcall, (unsigned short p1, char const *p2, int p3, float p4, bool p5, unsigned int iClientID), (p1, p2, p3, p4, p5, iClientID));
+		if (mounted && !ClientInfo[client].playerID)
+		{
+			for (auto& equip : Players[client].equipDescList.equip)
+			{
+				if (equip.sID != sid)
+				{
+					continue;
+				}
+				if (equip.bMounted)
+				{
+					break;
+				}
 
-		EXECUTE_SERVER_CALL(Server.ReqModifyItem(p1, p2, p3, p4, p5, iClientID));
+				auto eqArch = Archetype::GetEquipment(equip.iArchID);
+				if (eqArch && eqArch->get_class_type() == Archetype::AClassType::TRACTOR)
+				{
+					ClientInfo[client].playerIDSID = equip.sID;
+					ClientInfo[client].playerID = equip.iArchID;
+				}
+			}
+		}
+		else if(sid == ClientInfo[client].playerIDSID)
+		{
+			ClientInfo[client].playerIDSID = 0;
+			ClientInfo[client].playerID = 0;
+		}
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqModifyItem_AFTER, __stdcall, (unsigned short p1, char const *p2, int p3, float p4, bool p5, unsigned int iClientID), (p1, p2, p3, p4, p5, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqModifyItem, __stdcall, (ushort, char const*, int, float, bool, uint), (sid, hardpoint, count, hitPts, mounted, client));
+
+		EXECUTE_SERVER_CALL(Server.ReqModifyItem(sid, hardpoint, count, hitPts, mounted, client));
+
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqModifyItem_AFTER, __stdcall, (ushort, char const*, int, float, bool, uint), (sid, hardpoint, count, hitPts, mounted, client));
 	}
 
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 
-	void __stdcall ReqRemoveItem(unsigned short p1, int p2, unsigned int iClientID)
+	void __stdcall ReqRemoveItem(unsigned short sid, int count, unsigned int iClientID)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(p1);
 		ISERVER_LOGARG_I(p2);
 		ISERVER_LOGARG_UI(iClientID);
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqRemoveItem, __stdcall, (unsigned short p1, int p2, unsigned int iClientID), (p1, p2, iClientID));
+		if (sid == ClientInfo[iClientID].playerIDSID)
+		{
+			ClientInfo[iClientID].playerIDSID = 0;
+			ClientInfo[iClientID].playerID = 0;
+		}
 
-		EXECUTE_SERVER_CALL(Server.ReqRemoveItem(p1, p2, iClientID));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqRemoveItem, __stdcall, (unsigned short, int, unsigned int iClientID), (sid, count, iClientID));
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqRemoveItem_AFTER, __stdcall, (unsigned short p1, int p2, unsigned int iClientID), (p1, p2, iClientID));
+		EXECUTE_SERVER_CALL(Server.ReqRemoveItem(sid, count, iClientID));
+
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_ReqRemoveItem_AFTER, __stdcall, (unsigned short, int, unsigned int iClientID), (sid, count, iClientID));
 	}
 
 	/**************************************************************************************************************

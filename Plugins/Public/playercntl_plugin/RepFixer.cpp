@@ -273,7 +273,7 @@ namespace RepFixer
 
 	/// For the specified client ID check and reset any factions that have reputations
 	/// that are greater than the allowed value.
-	static void CheckReps(unsigned int iClientID)
+	void CheckReps(unsigned int iClientID)
 	{
 		auto playerVibe = Players[iClientID].iReputation;
 

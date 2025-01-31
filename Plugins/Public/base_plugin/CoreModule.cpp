@@ -384,6 +384,15 @@ bool CoreModule::Timer(uint time)
 		}
 
 		base->isCrewSupplied = passedFoodCheck;
+		base->fed_workers.clear();
+		if (passedFoodCheck)
+		{
+			for (auto crewitem : humanCargoList)
+			{
+				auto count = base->HasMarketItem(crewitem);
+				base->fed_workers[crewitem] = count;
+			}
+		}
 		
 	}
 

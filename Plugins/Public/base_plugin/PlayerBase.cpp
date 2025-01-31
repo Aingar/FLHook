@@ -271,6 +271,18 @@ void PlayerBase::SetupDefaults()
 	}
 
 	RecalculateCargoSpace();
+
+	if (isCrewSupplied)
+	{
+		for (auto worker : humanCargoList)
+		{
+			uint count = HasMarketItem(worker);
+			if (count)
+			{
+				fed_workers[worker] = count;
+			}
+		}
+	}
 }
 
 wstring PlayerBase::GetBaseHeaderText()
@@ -964,6 +976,16 @@ uint PlayerBase::HasMarketItem(uint good)
 	if (i != market_items.end())
 	{
 		return i->second.quantity;
+	}
+	return 0;
+}
+
+uint PlayerBase::HasFedWorkerItem(uint good)
+{
+	auto i = fed_workers.find(good);
+	if (i != fed_workers.end())
+	{
+		return i->second;
 	}
 	return 0;
 }

@@ -346,6 +346,7 @@ public:
 	int GetRemainingCargoSpace();
 	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
+	uint HasFedWorkerItem(uint good);
 
 	static string CreateBaseNickname(const string& basename);
 
@@ -422,6 +423,8 @@ public:
 
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
+
+	unordered_map<uint, uint> fed_workers;
 
 	unordered_set<uint> pinned_market_items;
 

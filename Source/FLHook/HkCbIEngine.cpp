@@ -75,11 +75,10 @@ namespace HkIEngine
 
 		float distanceSquared = distanceVector.x * distanceVector.x + distanceVector.y * distanceVector.y + distanceVector.z * distanceVector.z;
 
-		uint scannedClientID = scannedCObj->ownerPlayer;
 		float radarRange = ClientInfo[observer->clientId].fRadarRange;
 		float interference = scannedCObj->currentDamageZone ? scannedCObj->currentDamageZone->scannerInterference : 0.0f;
 		CShip* observerShip = ClientInfo[observer->clientId].cship;
-		if (observerShip && observerShip->currentDamageZone)
+		if (observerShip && observerShip->currentDamageZone && reinterpret_cast<uint>(observerShip->currentDamageZone) != 0xcdcdcdcd)
 		{
 			interference = max(interference, observerShip->currentDamageZone->scannerInterference);
 		}
@@ -89,6 +88,7 @@ namespace HkIEngine
 			radarRange *= interference * interference;
 		}
 
+		uint scannedClientID = scannedCObj->ownerPlayer;
 		if (scannedClientID)
 		{
 			auto scannedClientGroup = Players[scannedClientID].PlayerGroup;

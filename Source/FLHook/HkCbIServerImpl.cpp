@@ -319,7 +319,7 @@ namespace HkIServerImpl
 				continue;
 			}
 			ClientInfo[iClientID].playerID = item.iArchID;
-			ClientInfo[iClientID].playerID = item.sID;
+			ClientInfo[iClientID].playerIDSID = item.sID;
 			break;
 		}
 

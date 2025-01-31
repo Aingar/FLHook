@@ -110,12 +110,12 @@ void SCI::LoadSettings()
 			else if (ini.is_header("idrestrict"))
 			{
 				iddockinfo info;
-				uint id;
+				vector<uint> ids;
 				while (ini.read_value())
 				{
 					if (ini.is_value("name"))
 					{
-						id = CreateID(ini.get_value_string(0));
+						ids.push_back(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("type"))
 					{
@@ -150,7 +150,10 @@ void SCI::LoadSettings()
 						info.dockMessage = stows(ini.get_value_string());
 					}
 				}
-				iddock[id] = info;
+				for (uint id : ids)
+				{
+					iddock[id] = info;
+				}
 			}
 		}
 		ini.close();
@@ -449,7 +452,10 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 
 		if (!idData.iff.count(affiliation) && !idData.bases.count(csolar->dockTargetId))
 		{
-			PrintUserCmdText(iClientID, idData.dockMessage.c_str());
+			if (!idData.dockMessage.empty())
+			{
+				PrintUserCmdText(iClientID, idData.dockMessage.c_str());
+			}
 			return false;
 		}
 	}

@@ -2024,6 +2024,8 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	player_launch_base = nullptr;
+
 	if (set_plugin_debug > 1)
 		ConPrint(L"PlayerLaunch ship=%u client=%u\n", ship, client);
 
@@ -2066,40 +2068,46 @@ static uint GetShipMessageId(uint shipId)
 	return CreateID(msgIdPrefix);
 }
 
-static bool SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* solar)
+static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* solar)
 {
-	std::string clearMessageIdBase;
-	auto dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
-
-	switch (dockInfo.dockType)
+	try
 	{
-	case Archetype::DockType::Berth:
-	case Archetype::DockType::Jump:
-		clearMessageIdBase = "gcs_docklaunch_clear_berth_0";
-		break;
+		auto dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
 
-	case Archetype::DockType::MoorSmall:
-	case Archetype::DockType::MoorMedium:
-	case Archetype::DockType::MoorLarge:
-		clearMessageIdBase = "gcs_docklaunch_clear_moor_0";
-		break;
+		std::string clearMessageIdBase;
+		switch (dockInfo.dockType)
+		{
+		case Archetype::DockType::Berth:
+		case Archetype::DockType::Jump:
+			clearMessageIdBase = "gcs_docklaunch_clear_berth_0";
+			break;
 
-	case Archetype::DockType::Ring:
-		clearMessageIdBase = "gcs_docklaunch_clear_ring_0";
-		break;
+		case Archetype::DockType::MoorSmall:
+		case Archetype::DockType::MoorMedium:
+		case Archetype::DockType::MoorLarge:
+			clearMessageIdBase = "gcs_docklaunch_clear_moor_0";
+			break;
 
-	default:
-		return false;
+		case Archetype::DockType::Ring:
+			clearMessageIdBase = "gcs_docklaunch_clear_ring_0";
+			break;
+
+		default:
+			return;
+		}
+
+		std::vector<uint> lines = {
+			GetShipMessageId(shipId),
+			CreateID((clearMessageIdBase + std::to_string(GetRandom(1,2)) + "-").c_str()),
+			CreateID(("gcs_misc_wellwish_0" + std::to_string(GetRandom(1,2)) + "-").c_str())
+		};
+
+		pub::SpaceObj::SendComm(launchComm.solar->id, shipId, launchComm.solar->voiceId, &launchComm.solar->commCostume, 0, lines.data(), lines.size(), 19007 /* base comms type*/, 0.5f, false);
 	}
-
-	std::vector<uint> lines = {
-		GetShipMessageId(shipId),
-		CreateID((clearMessageIdBase + std::to_string(GetRandom(1,2)) + "-").c_str()),
-		CreateID(("gcs_misc_wellwish_0" + std::to_string(GetRandom(1,2)) + "-").c_str())
-	};
-
-	pub::SpaceObj::SendComm(launchComm.solar->id, shipId, launchComm.solar->voiceId, &launchComm.solar->commCostume, 0, lines.data(), lines.size(), 19007 /* base comms type*/, 0.5f, false);
-	return true;
+	catch (...)
+	{
+		return;
+	}
 }
 
 void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)

@@ -207,25 +207,6 @@ void HkTimer()
 	Rename::Timer();
 }
 
-/// Hook for ship distruction. It's easier to hook this than the PlayerDeath one.
-/// Drop a percentage of cargo + some loot representing ship bits.
-void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, uint& iClientIDKiller, DamageCause& dmgCause)
-{
-	returncode = NOFUNCTIONCALL;
-
-	CargoDrop::SendDeathMsg(wscMsg, iSystem, iClientIDVictim, iClientIDKiller);
-	Message::SendDeathMsg(wscMsg, iSystem, iClientIDVictim, iClientIDKiller);
-
-	const wchar_t *victim = (const wchar_t*)Players.GetActiveCharacterName(iClientIDVictim);
-	const wchar_t *killer = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
-	if (victim && killer)
-	{
-		auto systemInfo = Universe::get_system(iSystem);
-		AddLog("NOTICE: Death charname=%s killername=%s system=%s",
-			wstos(victim).c_str(), wstos(killer).c_str(), systemInfo->nickname);
-	}
-}
-
 static bool IsDockingAllowed(uint iShip, uint iDockTarget, uint iClientID)
 {
 	// If the player's rep is less/equal -0.55 to the owner of the station
@@ -1810,7 +1791,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimer, PLUGIN_HkTimerCheckKick, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SendDeathMsg, PLUGIN_SendDeathMsg, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::Startup, PLUGIN_HkIServerImpl_Startup, 10));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::Startup_AFTER, PLUGIN_HkIServerImpl_Startup_AFTER, 10));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkIServerImpl::Login, PLUGIN_HkIServerImpl_Login, 0));

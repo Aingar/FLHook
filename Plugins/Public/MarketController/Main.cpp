@@ -649,9 +649,9 @@ float __fastcall EquipDescListVolume(EquipDescList& eq)
 	return cargoUsed;
 }
 
-float EquipDescCommodityVolume(uint clientId)
+float EquipDescCommodityVolume(uint clientId, uint shipArch)
 {
-	Archetype::Ship* ship = Archetype::GetShip(Players[clientId].iShipArchetype);
+	Archetype::Ship* ship = Archetype::GetShip(shipArch);
 	if (!ship)
 	{
 		return 0.0f;
@@ -687,6 +687,12 @@ float EquipDescCommodityVolume(uint clientId)
 
 	return cargoUsed;
 }
+
+float EquipDescCommodityVolume(uint clientId)
+{
+	return EquipDescCommodityVolume(clientId, Players[clientId].iShipArchetype);
+}
+
 
 float GetShipCapacity(uint client)
 {
@@ -839,6 +845,28 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int client)
 		|| !AlleyMF::GFGoodBuy(gbi, client))
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+	}
+}
+
+void __stdcall GFGoodBuyAFTER(struct SGFGoodBuyInfo const& gbi, unsigned int client)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	const GoodInfo* gi = GoodList_get()->find_by_id(gbi.iGoodID);
+
+	if (!gi || gi->iType != GOODINFO_TYPE_SHIP)
+	{
+		return;
+	}
+	const GoodInfo* shipGoodInfo = GoodList_get()->find_by_id(gi->iHullGoodID);
+
+	auto shipArch = Archetype::GetShip(shipGoodInfo->iShipGoodID);
+	float usedCargoSpace = EquipDescCommodityVolume(client, shipArch->iArchID);
+	float missingCargoSpace = usedCargoSpace - shipArch->fHoldSize;
+	if (missingCargoSpace > 0.0f)
+	{
+		PrintUserCmdText(client, L"WARNING: Your new ship cannot fit all the cargo it currently holds. Sell it or you will be kicked upon undocking.");
+		PrintUserCmdText(client, L"Cargo hold is exceeded by %0.0f units", missingCargoSpace);
 	}
 }
 
@@ -1165,6 +1193,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Login, PLUGIN_HkIServerImpl_Login, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell, PLUGIN_HkIServerImpl_GFGoodSell, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy, PLUGIN_HkIServerImpl_GFGoodBuy, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuyAFTER, PLUGIN_HkIServerImpl_GFGoodBuy_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipColGrpDestroyed, PLUGIN_ShipColGrpDestroyed, 0));

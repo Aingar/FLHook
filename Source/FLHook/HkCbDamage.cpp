@@ -246,7 +246,7 @@ __declspec(naked) void ShipHullDamageNaked()
 }
 
 FARPROC ShipShieldDamageOrigFunc;
-void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float incDmg, DamageList* dmg)
+void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg)
 {
 	CALL_PLUGINS_V(PLUGIN_ShipShieldDmg, __stdcall, (IObjRW*, CEShield*, float& incDmg, DamageList*), (iobj, shield, incDmg, dmg));
 }
@@ -256,7 +256,8 @@ __declspec(naked) void ShipShieldDamageNaked()
 	__asm {
 		push ecx
 		push[esp + 0x10]
-		push[esp + 0x10]
+		lea eax, [esp+0x10]
+		push eax
 		push[esp + 0x10]
 		push ecx
 		call ShipShieldDamage

@@ -425,6 +425,8 @@ bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 
 void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg)
 {
+	returncode = DEFAULT_RETURNCODE;
+
 	uint clientId = iobj->cobj->ownerPlayer;
 	if (!clientId)
 	{
@@ -440,6 +442,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, D
 	{
 		return;
 	}
+
 	mstime currTime = timeInMS();
 	if (shieldState.boostUntil > currTime)
 	{

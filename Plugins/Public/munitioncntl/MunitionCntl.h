@@ -6,7 +6,6 @@
 #include <plugin.h>
 #include <PluginUtilities.h>
 
-void ShipShieldDamageNaked();
 void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
 void ShipColGrpDmgNaked();

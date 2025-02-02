@@ -443,11 +443,23 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		Reputation::Vibe::GetAffiliation(csolar->repVibe, affiliation, false);
 		if (csolar->isDynamic)
 		{
-			if (!idData.iff.count(affiliation))
+			if (idData.iff.count(affiliation))
+			{
+				return true;
+			}
+
+			POB_SRP_ACCESS_STRUCT data;
+			data.baseId = csolar->id;
+			data.clientId = iClientID;
+
+			Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_CHECK_POB_SRP_ACCESS, &data);
+
+			if (!data.dockAllowed)
 			{
 				PrintUserCmdText(iClientID, L"Your ID cannot dock on Modular Bases of this IFF");
 				return false;
 			}
+			return true;
 		}
 
 		if (!idData.iff.count(affiliation) && !idData.bases.count(csolar->dockTargetId))

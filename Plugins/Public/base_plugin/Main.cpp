@@ -2698,6 +2698,20 @@ void __stdcall SolarDamageHull(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	incDmg = damagedModule->SpaceObjDamaged(base->id, dmg->get_inflictor_id(), incDmg);
 }
 
+bool HasSRPAccess(uint client, uint baseId)
+{
+	auto base = player_bases.find(baseId);
+	if (base == player_bases.end())
+	{
+		return false;
+	}
+
+	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+	uint playeraff = GetAffliationFromClient(client);
+
+	return base->second->IsOnSRPList(charname, playeraff);
+}
+
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
@@ -3669,6 +3683,15 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		{
 			HkBeamById(*clientId, Players[*clientId].iLastBaseID);
 		}
+		returncode = SKIPPLUGINS;
+		return;
+	}
+	else if (msg == CUSTOM_CHECK_POB_SRP_ACCESS)
+	{
+		POB_SRP_ACCESS_STRUCT* info = reinterpret_cast<POB_SRP_ACCESS_STRUCT*>(data);
+
+		info->dockAllowed = HasSRPAccess(info->clientId, info->baseId);
+
 		returncode = SKIPPLUGINS;
 		return;
 	}

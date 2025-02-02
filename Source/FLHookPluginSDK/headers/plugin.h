@@ -290,6 +290,7 @@ enum PLUGIN_MESSAGE
 	CUSTOM_POPUP_INIT = 67,
 	CUSTOM_AUTOBUY_CART = 68,
 	CUSTOM_BEAM_LAST_BASE = 69,
+	CUSTOM_CHECK_POB_SRP_ACCESS = 70,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -525,6 +526,13 @@ struct CUSTOM_AUTOBUY_CARTITEMS
 	list<AUTOBUY_CARTITEM> cartItems;
 	uint clientId;
 	int remHoldSize;
+};
+
+struct POB_SRP_ACCESS_STRUCT
+{
+	uint baseId;
+	uint clientId;
+	bool dockAllowed = false;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

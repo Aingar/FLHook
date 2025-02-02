@@ -228,7 +228,7 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
 		&& dmg->damageCause != DamageCause::CruiseDisrupter
 		&& dmg->damageCause != DamageCause::Collision
-		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorID].PlayerGroup))
+		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorPlayerID].PlayerGroup))
 	{
 		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
 		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));
@@ -251,7 +251,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, D
 	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
 		&& dmg->damageCause != DamageCause::CruiseDisrupter
 		&& dmg->damageCause != DamageCause::Collision
-		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorID].PlayerGroup))
+		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorPlayerID].PlayerGroup))
 	{
 		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
 		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));

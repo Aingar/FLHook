@@ -83,9 +83,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
 		damageDeathLog = fopen("./flhook_logs/damage_death.log", "at");
+
+		HkLoadStringDLLs();
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		HkUnloadStringDLLs();
 		fclose(damageDeathLog);
 	}
 	return true;
@@ -224,7 +227,8 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	
 	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
 		&& dmg->damageCause != DamageCause::CruiseDisrupter
-		&& dmg->damageCause != DamageCause::Collision)
+		&& dmg->damageCause != DamageCause::Collision
+		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorID].PlayerGroup))
 	{
 		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
 		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));
@@ -246,13 +250,36 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, D
 
 	if (!damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked
 		&& dmg->damageCause != DamageCause::CruiseDisrupter
-		&& dmg->damageCause != DamageCause::Collision)
+		&& dmg->damageCause != DamageCause::Collision
+		&& (!Players[targetClient].PlayerGroup || Players[targetClient].PlayerGroup != Players[dmg->iInflictorID].PlayerGroup))
 	{
 		damageArray[targetClient][dmg->iInflictorPlayerID].hasAttacked = true;
 		string inflictor = wstos((const wchar_t*)Players.GetActiveCharacterName(dmg->iInflictorPlayerID));
 		string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
 
 		LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
+
+		bool firstEntry = true;
+		for (auto& equip : Players[targetClient].equipDescList.equip)
+		{
+			if (equip.bMounted)
+			{
+				continue;
+			}
+
+			bool isCommodity = false;
+			pub::IsCommodity(equip.iArchID, isCommodity);
+			if (isCommodity)
+			{
+				if (firstEntry)
+				{
+					firstEntry = false;
+					LogDeathDamage("cargo onboard:");
+				}
+				auto equipArch = Archetype::GetEquipment(equip.iArchID);
+				LogDeathDamage("- %dx %s", equip.iCount, wstos(HkGetWStringFromIDS(equipArch->iIdsName)).c_str());
+			}
+		}
 	}
 }
 

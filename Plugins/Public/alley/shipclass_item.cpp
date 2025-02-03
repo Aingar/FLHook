@@ -356,6 +356,7 @@ void SCI::UpdatePlayerID(unsigned int iClientID)
 
 	if (!iddock.count(clientId))
 	{
+		clientplayerid.erase(iClientID);
 		return;
 	}
 

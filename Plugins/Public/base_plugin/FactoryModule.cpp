@@ -446,15 +446,21 @@ bool FactoryModule::Timer(uint time)
 		int quantityNeeded = workers.second;
 
 		int currentlyFed = base->HasFedWorkerItem(good);
-		if ((currentlyFed - base->reservedCatalystMap[good]) < quantityNeeded)
+		int currentlyOnBase = base->HasMarketItem(good);
+
+		int effectiveCrewCount = min(currentlyFed, currentlyOnBase);
+		int availableWorkingCrew = (effectiveCrewCount - base->reservedCatalystMap[good]);
+		if (availableWorkingCrew >= quantityNeeded)
 		{
-			int availableToBeFed = base->HasMarketItem(good) - currentlyFed;
-			int missingAmount = -(currentlyFed - base->reservedCatalystMap[good] - quantityNeeded);
-			if (!(availableToBeFed >= missingAmount && base->FeedCrew(good, missingAmount)))
-			{
-				sufficientCatalysts = false;
-				return false;
-			}
+			continue;
+		}
+		
+		int availableToBeFed = currentlyOnBase - currentlyFed;
+		int missingAmount = -(availableWorkingCrew - quantityNeeded);
+		if (availableToBeFed < missingAmount || !base->FeedCrew(good, missingAmount))
+		{
+			sufficientCatalysts = false;
+			return false;
 		}
 	}
 

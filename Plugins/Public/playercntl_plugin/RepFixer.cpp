@@ -414,7 +414,7 @@ namespace RepFixer
 			return false;
 		}
 
-		auto loweredCaseName = ToLower(GetParam(wscParam, ' ', 0));
+		auto loweredCaseName = ToLower(GetParamToEnd(wscParam, ' ', 0));
 		uint searchedAffil = 0;
 		for (auto& faction : factionNameMap)
 		{

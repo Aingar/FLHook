@@ -223,6 +223,7 @@ namespace RepFixer
 	void ReloadFactionReps();
 	void SetReputation(uint& repVibe, const uint& affiliation, float& newRep);
 	void CheckReps(unsigned int iClientID);
+	bool UserCmd_SetIFF(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage);
 }
 
 namespace GiveCash

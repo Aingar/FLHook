@@ -1074,6 +1074,7 @@ USERCMD UserCmds[] =
 	{ L"/stuck",		MiscCmds::UserCmd_Stuck,		L"Usage: /stuck" },
 	{ L"/droprep",		MiscCmds::UserCmd_DropRep,		L"Usage: /droprep" },
 	{ L"/resetrep",		MiscCmds::UserCmd_ResetRep,		L"Usage: /resetrep" },
+	{ L"/setiff",		RepFixer::UserCmd_SetIFF,		L"Usage: /setiff factionName" },
 	{ L"/dice",			MiscCmds::UserCmd_Dice,			L"Usage: /dice 1d20 | 1d20+3 | etc."},
 	{ L"/roll",			MiscCmds::UserCmd_Dice,			L"Usage: /roll 1d20 | 1d20+3 | etc." },
 	{ L"/coin",			MiscCmds::UserCmd_Coin,			L"Usage: /coin" },

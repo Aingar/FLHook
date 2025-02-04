@@ -73,6 +73,8 @@ namespace RepFixer
 
 	static unordered_map<uint, unordered_map<uint, RepLimit>> playerRepLimits;
 
+	static unordered_map<uint, wstring> factionNameMap;
+
 	/// If true updates are logged to flhook.log
 	static bool set_bLogUpdates = false;
 
@@ -266,6 +268,33 @@ namespace RepFixer
 		// For each "ID/License" equipment item load the faction reputation list.
 		set_mapFactionReps.clear();
 
+		INI_Reader ini;
+
+		string factionpropfile = R"(..\data\initialworld.ini)";
+		if (ini.open(factionpropfile.c_str(), false))
+		{
+			while (ini.read_header())
+			{
+				if (ini.is_header("Group"))
+				{
+					uint nickname;
+					while (ini.read_value())
+					{
+						if (ini.is_value("nickname"))
+						{
+							nickname = MakeId(ini.get_value_string());
+						}
+						else if (ini.is_value("ids_name"))
+						{
+							factionNameMap[nickname] = HkGetWStringFromIDS(ini.get_value_int(0));
+						}
+
+					}
+				}
+			}
+			ini.close();
+		}
+
 		LoadFactionReps();
 
 		LoadTagRephacks();
@@ -375,5 +404,68 @@ namespace RepFixer
 		}
 
 		newRep = ClampRep(newRep, repLimits->second.minRep, repLimits->second.maxRep);
+	}
+
+	bool RepFixer::UserCmd_SetIFF(uint client, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+	{
+		if (!Players[client].iBaseID)
+		{
+			PrintUserCmdText(client, L"You must be docked on a base!");
+			return false;
+		}
+
+		auto loweredCaseName = ToLower(GetParam(wscParam, ' ', 0));
+		uint searchedAffil = 0;
+		for (auto& faction : factionNameMap)
+		{
+			if (ToLower(faction.second).find(loweredCaseName) != wstring::npos)
+			{
+				searchedAffil = faction.first;
+				break;
+			}
+		}
+
+		if (!searchedAffil)
+		{
+			PrintUserCmdText(client, L"Faction of this name not found!");
+			return false;
+		}
+
+		uint playerRep = Players[client].iReputation;
+		
+		uint currAff;
+		Reputation::Vibe::GetAffiliation(playerRep, currAff, false);
+
+		if (currAff == searchedAffil)
+		{
+			PrintUserCmdText(client, L"You already are of selected IFF!");
+			return false;
+		}
+
+		float currRep;
+		Reputation::Vibe::GetGroupFeelingsTowards(playerRep, searchedAffil, currRep);
+
+		const auto& targetFactionName = factionNameMap.find(searchedAffil)->second;
+
+		if (currRep < 0.8)
+		{
+			PrintUserCmdText(client, L"Insufficient reputation with %s", targetFactionName.c_str());
+			return false;
+		}
+
+		pub::Reputation::SetAffiliation(playerRep, searchedAffil);
+
+		if (currAff != -1)
+		{
+			auto currFactionName = factionNameMap.find(currAff)->second;
+			PrintUserCmdText(client, L"Your current IFF: %s", currFactionName.c_str());
+		}
+		else
+		{
+			PrintUserCmdText(client, L"Your current IFF: None");
+		}
+		PrintUserCmdText(client, L"Your new IFF: %s", targetFactionName.c_str());
+		
+		return true;
 	}
 }

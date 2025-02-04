@@ -347,6 +347,7 @@ public:
 	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
+	bool FeedCrew(uint crewId, uint count);
 
 	static string CreateBaseNickname(const string& basename);
 

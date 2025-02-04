@@ -324,76 +324,8 @@ bool CoreModule::Timer(uint time)
 	// the crew or kill 10 crew off and repeat this every 12 hours.
 	if (!dont_eat && time % set_crew_check_frequency == 0)
 	{
-		bool passedFoodCheck = true;
-
-		uint peopleToFeed = 0;
-		for (uint humanCargoType : humanCargoList)
-		{
-			peopleToFeed += base->HasMarketItem(humanCargoType);
-		}
-
-		for (uint item : set_base_crew_consumption_items)
-		{
-			// Use water and oxygen.
-			if (base->HasMarketItem(item) >= peopleToFeed)
-			{
-				base->RemoveMarketGood(item, peopleToFeed);
-			}
-			else
-			{
-				base->RemoveMarketGood(item, base->HasMarketItem(item));
-				passedFoodCheck = false;
-			}
-		}
-
-		// Humans use food but may eat one of a number of types.
-
-		if (base->preferred_food)
-		{
-			uint foodCount = base->HasMarketItem(base->preferred_food);
-			uint food_to_use = min(foodCount, peopleToFeed);
-			base->RemoveMarketGood(base->preferred_food, food_to_use);
-			peopleToFeed -= food_to_use;
-		}
-
-		for (uint item : set_base_crew_food_items)
-		{
-			if (!peopleToFeed)
-			{
-				break;
-			}
-
-			if (item == base->preferred_food)
-			{
-				continue;
-			}
-
-			uint food_available = base->HasMarketItem(item);
-			if (food_available)
-			{
-				uint food_to_use = min(food_available, peopleToFeed);
-				base->RemoveMarketGood(item, food_to_use);
-				peopleToFeed -= food_to_use;
-			}
-		}
-
-		// Insufficent food so fail check
-		if (peopleToFeed)
-		{
-			passedFoodCheck = false;
-		}
-
-		base->isCrewSupplied = passedFoodCheck;
 		base->fed_workers.clear();
-		if (passedFoodCheck)
-		{
-			for (auto crewitem : humanCargoList)
-			{
-				auto count = base->HasMarketItem(crewitem);
-				base->fed_workers[crewitem] = count;
-			}
-		}
-		
+		base->isCrewSupplied = base->FeedCrew(set_base_crew_type, base->base_level*200);
 	}
 
 	return false;

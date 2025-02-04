@@ -271,18 +271,6 @@ void PlayerBase::SetupDefaults()
 	}
 
 	RecalculateCargoSpace();
-
-	if (isCrewSupplied)
-	{
-		for (auto worker : humanCargoList)
-		{
-			uint count = HasMarketItem(worker);
-			if (count)
-			{
-				fed_workers[worker] = count;
-			}
-		}
-	}
 }
 
 wstring PlayerBase::GetBaseHeaderText()
@@ -659,6 +647,10 @@ void PlayerBase::Load()
 					{
 						isCrewSupplied = ini.get_value_bool(0);
 					}
+					else if (ini.is_value("crew_fed"))
+					{
+						fed_workers[ini.get_value_int(0)] = ini.get_value_int(1);
+					}
 				}
 				if (basetype.empty())
 				{
@@ -773,6 +765,10 @@ void PlayerBase::Save()
 		fprintf(file, "logic = %u\n", logic);
 		fprintf(file, "invulnerable = %u\n", invulnerable);
 		fprintf(file, "crew_supplied = %u\n", isCrewSupplied ? 1 : 0);
+		for (auto& workers : fed_workers)
+		{
+			fprintf(file, "crew_fed = %u, %u\n", workers.first, workers.second);
+		}
 		if (preferred_food)
 		{
 			fprintf(file, "preferred_food = %u\n", preferred_food);
@@ -1218,4 +1214,68 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	}
 
 	damageTakenMap[charname] += incoming_damage;
+}
+
+bool PlayerBase::FeedCrew(uint crewId, uint count)
+{
+	uint crewToFeed = count;
+	bool passedFoodCheck = true;
+	for (uint item : set_base_crew_consumption_items)
+	{
+		// Use water and oxygen.
+		uint itemCount = HasMarketItem(item);
+		if (itemCount >= crewToFeed)
+		{
+			RemoveMarketGood(item, crewToFeed);
+		}
+		else
+		{
+			RemoveMarketGood(item, itemCount);
+			passedFoodCheck = false;
+		}
+	}
+
+	// Humans use food but may eat one of a number of types.
+
+	if (preferred_food)
+	{
+		uint foodCount = HasMarketItem(preferred_food);
+		uint food_to_use = min(foodCount, crewToFeed);
+		RemoveMarketGood(preferred_food, food_to_use);
+		crewToFeed -= food_to_use;
+	}
+
+	for (uint item : set_base_crew_food_items)
+	{
+		if (!crewToFeed)
+		{
+			break;
+		}
+
+		if (item == preferred_food)
+		{
+			continue;
+		}
+
+		uint food_available = HasMarketItem(item);
+		if (food_available)
+		{
+			uint food_to_use = min(food_available, crewToFeed);
+			RemoveMarketGood(item, food_to_use);
+			crewToFeed -= food_to_use;
+		}
+	}
+
+	// Insufficent food so fail check
+	if (crewToFeed)
+	{
+		passedFoodCheck = false;
+	}
+
+	if (passedFoodCheck)
+	{
+		fed_workers[crewId] += count;
+	}
+
+	return passedFoodCheck;
 }

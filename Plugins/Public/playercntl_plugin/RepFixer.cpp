@@ -464,7 +464,7 @@ namespace RepFixer
 		{
 			PrintUserCmdText(client, L"Your current IFF: None");
 		}
-		PrintUserCmdText(client, L"Your new IFF: %s", targetFactionName.c_str());
+		PrintUserCmdText(client, L"Your new IFF: %s, launch to apply the change.", targetFactionName.c_str());
 		
 		return true;
 	}

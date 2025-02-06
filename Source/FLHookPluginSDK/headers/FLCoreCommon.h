@@ -2145,7 +2145,6 @@ public:
 	class CPhysControllerEquip & operator=(class CPhysControllerEquip const &);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
 };
 
 class IMPORT CAttachmentObj

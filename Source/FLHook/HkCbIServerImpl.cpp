@@ -609,7 +609,11 @@ namespace HkIServerImpl
 		ClientInfo[iClientID].isDocking = false;
 
 		LOG_CORE_TIMER_START
-		EXECUTE_SERVER_CALL(Server.BaseEnter(iBaseID, iClientID));
+		TRY_HOOK {
+			Server.BaseEnter(iBaseID, iClientID);
+		} CATCH_HOOK({ 
+			string playerName = wstos((const wchar_t*)Players.GetActiveCharacterName(iClientID));
+			AddLog("BaseEnterException: %x %s",iBaseID, playerName.c_str());  AddLog("ERROR: Exception in " __FUNCTION__ " on server call"); })
 		LOG_CORE_TIMER_END
 
 		TRY_HOOK {

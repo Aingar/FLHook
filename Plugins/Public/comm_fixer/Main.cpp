@@ -119,7 +119,7 @@ void __cdecl SendComm(uint sender, uint receiver, uint voiceId, const Costume* c
 			continue;
 		}
 
-		if (i + 4 < lineCount)
+		if (i + 4 > lineCount)
 		{
 			break;
 		}

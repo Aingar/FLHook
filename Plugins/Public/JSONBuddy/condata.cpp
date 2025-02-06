@@ -490,9 +490,9 @@ bool Condata::UserCmd_PingTarget(uint iClientID, const wstring &wscCmd, const ws
 	}
 
 	uint iClientIDTarget = HkGetClientIDByShip(iTarget);
-	if (!HkIsValidClientID(iClientIDTarget))
+	if (!iClientIDTarget || !HkIsValidClientID(iClientIDTarget))
 	{
-		PrintUserCmdText(iClientID, L"Error: Target is no player");
+		PrintUserCmdText(iClientID, L"Error: Target is not a player");
 		return true;
 	}
 

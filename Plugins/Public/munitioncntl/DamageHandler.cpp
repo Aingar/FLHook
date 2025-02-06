@@ -698,18 +698,25 @@ void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms)
 		return;
 	}
 
-	CEquipTraverser tr(EquipmentClass::Gun);
-	CELauncher* gun;
-	while (gun = reinterpret_cast<CELauncher*>(ship->equip_manager.Traverse(tr)))
+	__try
 	{
-		auto burstGunDataIter = burstGunData.find(gun->archetype->iArchID);
-		if (burstGunDataIter == burstGunData.end())
+		CEquipTraverser tr(EquipmentClass::Gun);
+		CELauncher* gun;
+		while (gun = reinterpret_cast<CELauncher*>(ship->equip_manager.Traverse(tr)))
 		{
-			continue;
-		}
+			auto burstGunDataIter = burstGunData.find(gun->archetype->iArchID);
+			if (burstGunDataIter == burstGunData.end())
+			{
+				continue;
+			}
 
-		shipGunData[ship->id][gun->iSubObjId] =
-		{ burstGunDataIter->second.magSize,burstGunDataIter->second.magSize, burstGunDataIter->second.reloadTime };
+			shipGunData[ship->id][gun->iSubObjId] =
+			{ burstGunDataIter->second.magSize,burstGunDataIter->second.magSize, burstGunDataIter->second.reloadTime };
+		}
+	}
+	__except (EXCEPTION_EXECUTE_HANDLER)
+	{
+		AddLog("CShipInitCrashPrevention %x %x %0.0f %0.0f %0.0f", ship->archetype->iArchID, ship->system, ship->vPos.x, ship->vPos.y, ship->vPos.z);
 	}
 }
 

@@ -2008,7 +2008,7 @@ PlayerBase* player_launch_base = nullptr;
 
 /// If the ship is launching from a player base record this so that
 /// override the launch location.
-bool __stdcall LaunchPosHook(uint space_obj, struct CEqObj &p1, Vector &pos, Matrix &rot, int dockId, uint client)
+bool __stdcall LaunchPosHook(uint space_obj, const CEqObj &p1, const Vector &pos, const Matrix &rot, int dockId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (player_launch_base)
@@ -2073,11 +2073,11 @@ static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* so
 	try
 	{
 		int vecSize = solar->solararch()->dockInfo.size();
-		if (vecSize > launchComm.dockId)
+		if (vecSize < launchComm.dockId)
 		{
 			return;
 		}
-		auto dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
+		auto& dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
 
 		std::string clearMessageIdBase;
 		switch (dockInfo.dockType)
@@ -3823,43 +3823,24 @@ int __cdecl Dock_Call_After(unsigned int const& ship, unsigned int const& dockTa
 	case DOCK_HOST_RESPONSE::PROCEED_DOCK:
 	{
 		std::string dockTypeMessageId;
-		switch (dockType)
-		{
-		case Archetype::DockType::Jump:
-		case Archetype::DockType::Berth:
-			dockTypeMessageId = "gcs_dockrequest_todock";
-			break;
-
-		case Archetype::DockType::MoorSmall:
-		case Archetype::DockType::MoorMedium:
-		case Archetype::DockType::MoorLarge:
-			dockTypeMessageId = "gcs_dockrequest_tomoor";
-			break;
-
-		case Archetype::DockType::Ring:
-			dockTypeMessageId = "gcs_dockrequest_toland";
-			break;
-
-		default:
-			dockTypeMessageId = "";
-			break;
-		}
-
 		std::string dockTargetMessageId;
 		switch (dockType)
 		{
 		case Archetype::DockType::Jump:
 		case Archetype::DockType::Berth:
+			dockTypeMessageId = "gcs_dockrequest_todock";
 			dockTargetMessageId = "gcs_dockrequest_todock_number";
 			break;
 
 		case Archetype::DockType::MoorSmall:
 		case Archetype::DockType::MoorMedium:
 		case Archetype::DockType::MoorLarge:
+			dockTypeMessageId = "gcs_dockrequest_tomoor";
 			dockTargetMessageId = "gcs_dockrequest_tomoor_number";
 			break;
 
 		case Archetype::DockType::Ring:
+			dockTypeMessageId = "gcs_dockrequest_toland";
 			dockTargetMessageId = "gcs_dockrequest_toland-";
 			break;
 

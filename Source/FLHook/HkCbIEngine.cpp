@@ -672,11 +672,12 @@ namespace HkIEngine
 
 	bool __stdcall LaunchPos(uint iSpaceID, struct CEqObj &p1, Vector &p2, Matrix &p3, int iDock, uint client)
 	{
+		CALL_PLUGINS(PLUGIN_LaunchPosHook, bool, __stdcall, (uint, const CEqObj&, const Vector&, const Matrix&, int, uint), (iSpaceID, p1, p2, p3, iDock, client));
 
-		CALL_PLUGINS(PLUGIN_LaunchPosHook, bool, __stdcall, (uint, CEqObj &, Vector &, Matrix &, int, uint), (iSpaceID, p1, p2, p3, iDock, client));
-
-		return p1.launch_pos(p2, p3, iDock);
-
+		TRY_HOOK
+		{
+			return p1.launch_pos(p2, p3, iDock);
+		} CATCH_HOOK({ AddLog("LAUNCHPOS EXCEPTION %x %u", p1.id, iDock); return true; })
 	}
 
 

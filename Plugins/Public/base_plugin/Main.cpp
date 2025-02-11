@@ -2068,16 +2068,16 @@ static uint GetShipMessageId(uint shipId)
 	return CreateID(msgIdPrefix);
 }
 
-static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* solar)
+static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm)
 {
 	try
 	{
-		int vecSize = solar->solararch()->dockInfo.size();
+		int vecSize = launchComm.solar->solararch()->dockInfo.size();
 		if (vecSize < launchComm.dockId)
 		{
 			return;
 		}
-		auto& dockInfo = solar->solararch()->dockInfo.at(launchComm.dockId);
+		auto& dockInfo = launchComm.solar->solararch()->dockInfo.at(launchComm.dockId);
 
 		std::string clearMessageIdBase;
 		switch (dockInfo.dockType)
@@ -2111,7 +2111,7 @@ static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm, CSolar* so
 	}
 	catch (...)
 	{
-		AddLog("BASEUNDOCKECEPTIONCATCH");
+		AddLog("BASEUNDOCKECEPTIONCATCH %x %u %u", launchComm.solar->id, launchComm.dockId, (uint)launchComm.solar->isDynamic);
 		return;
 	}
 }
@@ -2146,7 +2146,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		auto launchCommIter = unprocessedLaunchComms.find(client);
 		if (launchCommIter != unprocessedLaunchComms.end())
 		{
-			SendLaunchWellWishes(ship, launchCommIter->second, player_launch_base->baseCSolar);
+			SendLaunchWellWishes(ship, launchCommIter->second);
 			unprocessedLaunchComms.erase(client);
 		}
 

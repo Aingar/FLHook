@@ -349,6 +349,10 @@ void CCmds::CmdAddCargo(const wstring &wscCharname, const wstring &wscGood, uint
 {
 	RIGHT_CHECK(RIGHT_CARGO);
 
+	if (iCount == 0)
+	{
+		iCount = 1;
+	}
 	if (HKSUCCESS(HkAddCargo(wscCharname, wscGood, iCount, iMission ? true : false)))
 		Print(L"OK\n");
 	else

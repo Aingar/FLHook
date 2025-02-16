@@ -1220,19 +1220,34 @@ bool PlayerBase::FeedCrew(uint crewId, uint count)
 {
 	uint crewToFeed = count;
 	bool passedFoodCheck = true;
+
+	bool canFeedCrew = true;
+
 	for (uint item : set_base_crew_consumption_items)
 	{
 		// Use water and oxygen.
 		uint itemCount = HasMarketItem(item);
-		if (itemCount >= crewToFeed)
+		if (itemCount < crewToFeed)
 		{
-			RemoveMarketGood(item, crewToFeed);
+			return false;
 		}
-		else
-		{
-			RemoveMarketGood(item, itemCount);
-			passedFoodCheck = false;
-		}
+	}
+
+	uint foodItemCount = 0;
+	for (uint item : set_base_crew_food_items)
+	{
+		foodItemCount += HasMarketItem(item);
+	}
+
+	if (foodItemCount < crewToFeed)
+	{
+		return false;
+	}
+
+	for (uint item : set_base_crew_consumption_items)
+	{
+		// Use water and oxygen.
+		RemoveMarketGood(item, crewToFeed);
 	}
 
 	// Humans use food but may eat one of a number of types.
@@ -1266,16 +1281,7 @@ bool PlayerBase::FeedCrew(uint crewId, uint count)
 		}
 	}
 
-	// Insufficent food so fail check
-	if (crewToFeed)
-	{
-		passedFoodCheck = false;
-	}
+	fed_workers[crewId] += count;
 
-	if (passedFoodCheck)
-	{
-		fed_workers[crewId] += count;
-	}
-
-	return passedFoodCheck;
+	return true;
 }

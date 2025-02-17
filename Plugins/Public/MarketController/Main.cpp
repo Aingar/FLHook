@@ -806,6 +806,9 @@ void LoadSettings()
 	PatchCallAddr((char*)commonHandle, 0x3E292, (char*)VerifyTargetDetour);
 	PatchCallAddr((char*)commonHandle, 0x3DC6C, (char*)VerifyTargetDetour);
 
+	float** CLOOT_UNSEEN_RADIUS = (float**)0x6D64420;
+	**CLOOT_UNSEEN_RADIUS = 15000.f;
+
 	LoadMarketOverrides(nullptr);
 }
 

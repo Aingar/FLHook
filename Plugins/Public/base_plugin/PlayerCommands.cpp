@@ -2335,12 +2335,6 @@ namespace PlayerCommands
 			uint min_stock = ToUInt(GetParam(args, ' ', 3));
 			uint max_stock = ToUInt(GetParam(args, ' ', 4));
 
-			if (min_stock > max_stock)
-			{
-				PrintUserCmdText(client, L"ERR min stock cannot be bigger than max stock!");
-				return;
-			}
-
 			uint curr_item = 0;
 			if (item == 0 || item > base->market_items.size())
 			{

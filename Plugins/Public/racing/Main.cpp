@@ -11,24 +11,25 @@
 
 #include <FLHook.h>
 #include <plugin.h>
+#include <memory>
 #include <PluginUtilities.h>
 
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
 
-struct WaypointData
-{
-	Vector pos;
-	uint objId;
-	uint system;
-};
+static int raceInternalIdCounter = 0;
 
 struct RaceArch
 {
 	wstring raceName;
-	list<WaypointData> waypoints;
+	uint raceStartObj;
+	uint raceNum;
+	bool loopable = false;
+	PathEntry firstWaypoint;
+	list<PathEntry> waypoints;
 	uint startingSystem;
 	vector<Transform> startingPositions;
+	float waypointDistance = 70.f;
 };
 
 enum class RaceType
@@ -37,31 +38,49 @@ enum class RaceType
 	Race
 };
 
-unordered_map<uint, unordered_map<wstring, RaceArch>> raceObjMap;
+unordered_map<uint, unordered_map<uint, RaceArch>> raceObjMap;
+
+unordered_map<uint, unordered_map<uint, map<float, wstring>>> scoreboard;
+
+enum class Participant
+{
+	Racer,
+	Disqualified,
+	Spectator
+};
+
+struct Race;
+struct Racer
+{
+	wstring racerName;
+	uint clientId;
+	mstime newWaypointTimer;
+	list<PathEntry> waypoints;
+	int pool;
+	Participant participantType;
+	vector<mstime> completedWaypoints;
+	shared_ptr<Race> race;
+};
+
+unordered_map<uint, shared_ptr<Racer>> racersMap;
 
 struct Race
 {
 	uint hostId;
+	uint raceId;
 	int cashPool;
 	int loopCount = 1;
-	unordered_set<uint> participantSet;
-	vector<uint> participants;
-	RaceArch* race;
+	unordered_map<uint, shared_ptr<Racer>> participants;
+	RaceArch* raceArch;
 	bool started = false;
+	bool hasWinner = false;
+	int startCountdown = 0;
 	RaceType raceType = RaceType::Race;
+	RequestPathStruct loopWaypointCache;
 };
 
-unordered_map<uint, Race> raceHostMap;
-
-struct Racer
-{
-	mstime startTime;
-	list<WaypointData> waypoints;
-};
-
-unordered_map<uint, Racer> racersMap;
-
-unordered_map<uint, std::pair<Race*, int>> raceRegistration;
+list<shared_ptr<Race>> raceList;
+unordered_set<uint> racingEngines;
 
 void LoadSettings();
 
@@ -82,62 +101,432 @@ void SendCommand(uint client, const wstring& message)
 	HkFMsg(client, L"<TEXT>" + XMLText(message) + L"</TEXT>");
 }
 
-void FreezePlayer(uint client, float time)
+void FreezePlayer(uint client, float time, bool instantStop)
 {
 	wchar_t buf[30];
-	_snwprintf(buf, sizeof(buf), L" Freeze %f", time);
+	_snwprintf(buf, sizeof(buf), L" Freeze %0.1f %d", time, static_cast<int>(instantStop));
 	SendCommand(client, buf);
 }
 
 void UnfreezePlayer(uint client)
 {
-	SendCommand(client, L" Unfreeze");
+	SendCommand(client, L" Unfreeze cruise");
 }
 
-void BeamPlayers(const Race& race)
+void ToggleRaceMode(uint client, bool newState, float waypointDistance)
+{
+	wchar_t buf[50];
+	_snwprintf(buf, sizeof(buf), L" RaceMode %s %0.0f", newState ? L"on" : L"off", waypointDistance);
+	SendCommand(client, buf);
+}
+
+void NotifyPlayers(shared_ptr<Race> race, uint exceptionPlayer, wstring msg, ...)
+{
+	wchar_t wszBuf[1024 * 8] = L"";
+	va_list marker;
+	va_start(marker, msg);
+
+	_vsnwprintf(wszBuf, (sizeof(wszBuf) / 2) - 1, msg.c_str(), marker);
+
+	for (auto& participant : race->participants)
+	{
+		if (participant.first == exceptionPlayer)
+		{
+			continue;
+		}
+		if (participant.second->participantType == Participant::Disqualified)
+		{
+			continue;
+		}
+		PrintUserCmdText(participant.first, wszBuf);
+	}
+}
+
+float GetFinishTime(shared_ptr<Racer> racer, mstime currTime)
+{
+	float timeDiff = static_cast<float>(currTime - *racer->completedWaypoints.begin()) / 1000;
+
+	return timeDiff;
+}
+
+
+float GetLapTime(shared_ptr<Racer> racer, mstime currTime)
+{
+	uint lapSize = racer->race->raceArch->waypoints.size();
+	uint currentElem = racer->completedWaypoints.size();
+	mstime lapStartTime = racer->completedWaypoints.at(currentElem - lapSize);
+
+	float lapTime = static_cast<float>(currTime - lapStartTime) / 1000;
+
+	return lapTime;
+}
+
+void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
+{
+	if (isWinner)
+	{
+		PrintUserCmdText(racer->clientId, L"You've won the \"%s\" race, %d lap(s) with time of %0.3f!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
+		int cashPool = racer->race->cashPool;
+		if (cashPool)
+		{
+			pub::Player::AdjustCash(racer->clientId, racer->race->cashPool);
+			PrintUserCmdText(racer->clientId, L"Rewarded $%d credits!", racer->race->cashPool);
+		}
+
+		NotifyPlayers(racer->race, racer->clientId, L"%s has won the race with time of %0.3f!", racer->racerName.c_str(), GetFinishTime(racer, currTime));
+
+		return;
+	}
+	
+	PrintUserCmdText(racer->clientId, L"You've finished the \"%s\" race, %d lap(s) with time of %0.3f!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
+
+}
+
+void BeamPlayers(shared_ptr<Race> race, float freezeTime)
 {
 	uint positionIndex = 0;
-	auto positionIter = race.race->startingPositions;
-	for (auto player : race.participants)
+	auto& positionIter = race->raceArch->startingPositions;
+
+	for (auto& participant : race->participants)
 	{
-		if (Players[player].iSystemID != race.race->startingSystem)
+		if (participant.second->participantType != Participant::Racer)
+		{
+			continue;
+		}
+
+		uint player = participant.first;
+		if (Players[player].iSystemID != race->raceArch->startingSystem)
 		{
 			PrintUserCmdText(player, L"ERR You're in the wrong system! Unable to beam you into position");
 			continue;
 		}
-		if (race.race->startingPositions.size() < positionIndex)
+		if (race->raceArch->startingPositions.size() < positionIndex)
 		{
 			PrintUserCmdText(player, L"ERR Unable to find a starting position for you, contact admins/developers!");
 			continue;
 		}
-		auto& startPos = race.race->startingPositions.at(positionIndex++);
+		auto& startPos = race->raceArch->startingPositions.at(positionIndex++);
 		HkRelocateClient(player, startPos.pos, startPos.ori);
+
+
+
+		PrintUserCmdText(participant.first, L"Race beginning, beaming you into position!");
+
+		if (freezeTime)
+		{
+			FreezePlayer(player, freezeTime, true);
+		}
+
+		ToggleRaceMode(player, true, race->raceArch->waypointDistance);
+	}
+}
+
+shared_ptr<Racer> RegisterPlayer(shared_ptr<Race>& race, uint client, int initialPool, bool spectator)
+{
+	if (race->started && !spectator)
+	{
+		PrintUserCmdText(client, L"ERR this race is already underway, you can join as a spectator");
+		return nullptr;
+	}
+
+	initialPool = max(0, initialPool);
+
+	if (racersMap.count(client))
+	{
+		PrintUserCmdText(client, L"ERR You are already registered to a race");
+		return nullptr;
+	}
+
+	if (initialPool)
+	{
+		if (Players[client].iInspectCash < initialPool)
+		{
+			PrintUserCmdText(client, L"ERR You don't have that much cash!");
+			return nullptr;
+		}
+
+		PrintUserCmdText(client, L"Added %d to the race reward pool!", initialPool);
+		pub::Player::AdjustCash(client, -initialPool);
+	}
+
+	shared_ptr<Racer> racer = make_shared<Racer>();
+	racer->clientId = client;
+	racer->participantType = spectator ? Participant::Spectator : Participant::Racer;
+	racer->pool = initialPool;
+	race->cashPool += initialPool;
+	racer->racerName = (const wchar_t*)Players.GetActiveCharacterName(client);
+	racer->race = race;
+
+	race->participants[client] = racer;
+
+	if (!spectator)
+	{
+		PrintUserCmdText(client, L"Added to the race as racer!");
+	}
+	else
+	{
+		PrintUserCmdText(client, L"Added to the race as a spectator!");
+	}
+
+	racersMap[client] = racer;
+
+	return racer;
+}
+
+shared_ptr<Race> CreateRace(uint hostId, RaceArch& raceArch, int initialPool, int loopCount)
+{
+	if (loopCount == 0)
+	{
+		loopCount = 1;
+	}
+
+	Race race;
+
+	race.hostId = hostId;
+	race.raceId = ++raceInternalIdCounter;
+	race.raceArch = &raceArch;
+	race.loopCount = loopCount;
+	race.cashPool = 0;
+
+	shared_ptr<Race> racePtr = make_shared<Race>(race);
+	raceList.push_back(racePtr);
+	RegisterPlayer(racePtr, hostId, initialPool, false);
+
+	return racePtr;
+}
+
+void DisbandRace(shared_ptr<Race> race)
+{
+
+	for (auto& participant : race->participants)
+	{
+		if (participant.second->participantType == Participant::Disqualified)
+		{
+			continue;
+		}
+		int poolEntry = participant.second->pool;
+		if (poolEntry)
+		{
+			PrintUserCmdText(participant.first, L"Race disbanded, $%d credits refunded", poolEntry);
+			pub::Player::AdjustCash(participant.first, poolEntry);
+		}
+		else
+		{
+			PrintUserCmdText(participant.first, L"Race disbanded");
+		}
+		ToggleRaceMode(participant.first, false, 250.f);
+		racersMap.erase(participant.first);
+	}
+
+	for (auto& iter = raceList.begin(); iter != raceList.end(); ++iter)
+	{
+		if (iter->get()->raceId == race->raceId)
+		{
+			raceList.erase(iter);
+			break;
+		}
 	}
 }
 
 void DisqualifyPlayer(uint client)
 {
-	auto regIter = raceRegistration.find(client);
-	if (regIter == raceRegistration.end())
+	auto regIter = racersMap.find(client);
+	if (regIter == racersMap.end())
 	{
 		return;
 	}
 
-	raceRegistration.erase(client);
+	auto& racer = regIter->second;
+	racer->participantType = Participant::Disqualified;
+	if (!racer->race->started)
+	{
 
+		pub::Player::AdjustCash(client, racer->pool);
+		racer->race->cashPool -= racer->pool;
+
+		if (racer->pool)
+		{
+			NotifyPlayers(racer->race, racer->clientId, L"%s has withdrawn from the race, race credit pool reduced to %d", 0, racer->racerName.c_str(), racer->race->cashPool);
+		}
+		else
+		{
+			NotifyPlayers(racer->race, racer->clientId, L"%s has withdrawn from the race", racer->racerName.c_str());
+		}
+		
+	}
+
+	auto& race = racer->race;
+
+	ToggleRaceMode(client, false, 250.f);
+	racersMap.erase(client);
+
+	for (auto& participant : race->participants)
+	{
+		if (participant.second->participantType == Participant::Racer)
+		{
+			return;
+		}
+	}
+
+	DisbandRace(race);
 }
 
-void NotifyPlayers(Race* race, const wstring& msg)
+void SendFirstWaypoint(shared_ptr<Racer> racer)
 {
-	for (auto participant : race->participants)
+	racer->waypoints = { racer->race->raceArch->firstWaypoint };
+
+	static RequestPathStruct sendStruct;
+	sendStruct.noPathFound = false;
+	sendStruct.repId = Players[racer->clientId].iReputation;
+	sendStruct.waypointCount = 1;
+	sendStruct.pathEntries[0] = racer->race->raceArch->firstWaypoint;
+
+	try
 	{
-		PrintUserCmdText(participant, msg);
+		pub::Player::ReturnBestPath(racer->clientId,
+			(uchar*)&sendStruct, 12 + (sendStruct.waypointCount * 20));
+	}
+	catch (...)
+	{
+		ConPrint(L"DEBUG: %s %d %d %d %s\n", wstos(racer->racerName).c_str(), racer->clientId, racer->race->loopWaypointCache.waypointCount, 12 + (racer->race->loopWaypointCache.waypointCount * 20), racer->race->raceArch->raceName.c_str());
+	}
+}
+
+void SendLoopWaypoints(shared_ptr<Racer> racer)
+{
+	racer->waypoints = racer->race->raceArch->waypoints;
+	
+	static RequestPathStruct sendStruct = racer->race->loopWaypointCache;
+	sendStruct.repId = Players[racer->clientId].iReputation;
+	try
+	{
+		pub::Player::ReturnBestPath(racer->clientId,
+			(uchar*)&sendStruct, 12 + (sendStruct.waypointCount * 20));
+	}
+	catch (...)
+	{
+		ConPrint(L"DEBUG: %s %d %d %d %s\n", wstos(racer->racerName).c_str(), racer->clientId, racer->race->loopWaypointCache.waypointCount, 12 + (racer->race->loopWaypointCache.waypointCount * 20), racer->race->raceArch->raceName.c_str());
+	}
+}
+
+void BeginRace(shared_ptr<Race> race, int countdown)
+{
+	auto& waypoints = race->raceArch->waypoints;
+	auto& bestPath = race->loopWaypointCache;
+	bestPath.noPathFound = false;
+	bestPath.waypointCount = race->raceArch->waypoints.size();
+	auto iter = waypoints.begin();
+	for (int i = 0; i < static_cast<int>(waypoints.size()); ++i)
+	{
+		bestPath.pathEntries[i] = { *iter };
+		iter++;
+	}
+
+	for (auto& participant : race->participants)
+	{
+		SendFirstWaypoint(participant.second);
+	}
+	
+	BeamPlayers(race, static_cast<float>(countdown));
+	race->started = true;
+	race->startCountdown = countdown;
+}
+
+void CheckForHighscore(shared_ptr<Racer> racer, float time)
+{
+	auto& raceArch = racer->race->raceArch;
+	auto& trackScoreboard = scoreboard[raceArch->raceStartObj][raceArch->raceNum];
+
+	constexpr uint SIZE = 50;
+
+	if (trackScoreboard.size() < SIZE)
+	{
+		trackScoreboard[time] = racer->racerName;
+		wchar_t buf[150];
+		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard!", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str());
+		HkMsgS(Players[racer->clientId].iSystemID, buf);
+		return;
+	}
+	if (trackScoreboard.rbegin()->first > time)
+	{
+		trackScoreboard[time] = racer->racerName;
+		trackScoreboard.erase(std::prev(trackScoreboard.end()));
+		wchar_t buf[150];
+		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard!", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str());
+		HkMsgS(Players[racer->clientId].iSystemID, buf);
+		return;
 	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Loading Settings
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+void LoadRacingEngines()
+{
+	INI_Reader ini;
+
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	string currDir = string(szCurDir);
+	string scFreelancerIniFile = currDir + R"(\freelancer.ini)";
+
+	string gameDir = currDir.substr(0, currDir.length() - 4);
+	gameDir += string(R"(\DATA\)");
+
+	if (!ini.open(scFreelancerIniFile.c_str(), false))
+	{
+		return;
+	}
+
+	vector<string> equipFiles;
+
+	while (ini.read_header())
+	{
+		if (!ini.is_header("Data"))
+		{
+			continue;
+		}
+		while (ini.read_value())
+		{
+			if (ini.is_value("equipment"))
+			{
+				equipFiles.emplace_back(ini.get_value_string());
+			}
+		}
+	}
+
+	ini.close();
+
+	for (string equipFile : equipFiles)
+	{
+		equipFile = gameDir + equipFile;
+		if (!ini.open(equipFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname;
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Engine"))
+			{
+				continue;
+			}
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					currNickname = CreateID(ini.get_value_string());
+				}
+				else if (ini.is_value("racing_engine") && ini.get_value_bool(0))
+				{
+					racingEngines.insert(currNickname);
+				}
+			}
+		}
+		ini.close();
+	}
+}
 
 void LoadSettings()
 {
@@ -158,10 +547,10 @@ void LoadSettings()
 		if (ini.is_header("Race"))
 		{
 			uint startObj;
-			wstring raceName;
 			RaceArch race;
 			Vector startObjPos;
 			Matrix startObjRot;
+			bool firstWaypoint = true;
 			while (ini.read_value())
 			{
 				if (ini.is_value("start_object"))
@@ -179,7 +568,19 @@ void LoadSettings()
 				}
 				else if (ini.is_value("race_name"))
 				{
-					raceName = stows(ini.get_value_string(0));
+					race.raceName = stows(ini.get_value_string(0));
+				}
+				else if (ini.is_value("race_num"))
+				{
+					race.raceNum = ini.get_value_int(0);
+				}
+				else if (ini.is_value("waypoint_dist"))
+				{
+					race.waypointDistance = ini.get_value_float(0);
+				}
+				else if (ini.is_value("loopable"))
+				{
+					race.loopable = ini.get_value_bool(0);
 				}
 				else if (ini.is_value("waypoint_obj"))
 				{
@@ -191,6 +592,13 @@ void LoadSettings()
 						continue;
 					}
 					
+					if (firstWaypoint)
+					{
+						firstWaypoint = false;
+						race.firstWaypoint = { obj->cobj->vPos, objId, obj->cobj->system };
+						continue;
+					}
+
 					if (race.waypoints.empty())
 					{
 						race.startingSystem = obj->cobj->system;
@@ -202,6 +610,14 @@ void LoadSettings()
 				{
 					Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
 					uint system = CreateID(ini.get_value_string(0));
+
+					if (firstWaypoint)
+					{
+						firstWaypoint = false;
+						race.firstWaypoint = { pos, 0u, system };
+						continue;
+					}
+
 					if (race.waypoints.empty())
 					{
 						race.startingSystem = system;
@@ -221,15 +637,20 @@ void LoadSettings()
 			}
 			if (race.startingPositions.empty())
 			{
-				ConPrint(L"Race %s failed to load: Has no starting positions defined!", raceName.c_str());
+				ConPrint(L"Race %s failed to load: Has no starting positions defined!", race.raceName.c_str());
 				continue;
 			}
 			if (race.waypoints.empty())
 			{
-				ConPrint(L"Race %s failed to load: Has no waypoints defined!", raceName.c_str());
+				ConPrint(L"Race %s failed to load: Has no waypoints defined!", race.raceName.c_str());
 				continue;
 			}
-			raceObjMap[startObj][raceName] = race;
+
+			if (race.loopable)
+			{
+				race.waypoints.push_back(race.firstWaypoint);
+			}
+			raceObjMap[startObj][race.raceNum] = race;
 		}
 	}
 	ini.close();
@@ -241,69 +662,54 @@ void LoadSettings()
 
 bool UserCmd_RaceDisband(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
-	auto regIter = raceRegistration.find(clientID);
-	if (regIter == raceRegistration.end())
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
 		return false;
 	}
-	Race* race = regIter->second.first;
+	auto& race = regIter->second->race;
 	if (clientID != race->hostId)
 	{
 		PrintUserCmdText(clientID, L"ERR not a host of the race");
 		return false;
 	}
 
-	for (auto participant : race->participants)
+	if (race->started)
 	{
-		auto regIter2 = raceRegistration.find(participant);
-		if (regIter2 == raceRegistration.end())
-		{
-			continue;
-		}
-
-		int poolEntry = regIter2->second.second;
-		if (poolEntry)
-		{
-			PrintUserCmdText(clientID, L"Race disbanded, $%d credits refunded", regIter2->second.second);
-			pub::Player::AdjustCash(participant, regIter2->second.second);
-		}
-		else
-		{
-			PrintUserCmdText(clientID, L"Race disbanded");
-		}
-		raceRegistration.erase(participant);
-
+		PrintUserCmdText(clientID, L"ERR race is already underway!");
+		return false;
 	}
 
-	raceHostMap.erase(clientID);
+	DisbandRace(race);
 	return true;
 }
 
 bool UserCmd_RaceInfo(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
-	auto regIter = raceRegistration.find(clientID);
-	if (regIter == raceRegistration.end())
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
 		return false;
 	}
 
-
-	Race* race = regIter->second.first;
+	auto& race = regIter->second->race;
 	wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(race->hostId);
 	PrintUserCmdText(clientID, L"Host: %s", playerName.c_str());
 
-	PrintUserCmdText(clientID, L"Track: %s", race->race->raceName.c_str());
+	PrintUserCmdText(clientID, L"Track: %s", race->raceArch->raceName.c_str());
 	PrintUserCmdText(clientID, L"Laps: %d", race->loopCount);
 
-	PrintUserCmdText(clientID, L"Current pool: $%d credits", race->cashPool);
-	PrintUserCmdText(clientID, L"Your contribution: $%d credits", regIter->second.second);
+	//PrintUserCmdText(clientID, L"Current pool: $%d credits", race->cashPool);
+	PrintUserCmdText(clientID, L"Your contribution: $%d credits", regIter->second->pool);
 	PrintUserCmdText(clientID, L"Participants:");
 	for (auto& participant : race->participants)
 	{
-		wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(participant);
-		PrintUserCmdText(clientID, L"- %s", playerName.c_str());
+		if(participant.second->participantType == Participant::Racer)
+		{
+			PrintUserCmdText(clientID, L"- %s", participant.second->racerName.c_str());
+		}
 	}
 
 	return false;
@@ -311,56 +717,40 @@ bool UserCmd_RaceInfo(uint clientID, const wstring& cmd, const wstring& param, c
 
 bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
-	auto regIter = raceRegistration.find(clientID);
-	if (regIter == raceRegistration.end())
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
 		return false;
 	}
-	Race* race = regIter->second.first;
-	if (race->hostId == clientID)
-	{
-		PrintUserCmdText(clientID, L"ERR you can't withdraw from your own race, use /race cancel instead");
-		return true;
-	}
+	auto& racer = regIter->second;
+	auto& race = regIter->second->race;
 
 	wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(clientID);
-	if (!race->started)
+	if (!race->started && racer->pool)
 	{
-		for (uint index = 0; index < race->participants.size(); ++index)
-		{
-			if (race->participants[index] == clientID)
-			{
-				race->participants.erase(race->participants.begin() + index);
-				break;
-			}
-		}
-		if (regIter->second.second)
-		{
-			pub::Player::AdjustCash(clientID, regIter->second.second);
-			race->cashPool -= regIter->second.second;
-			race->participantSet.erase(clientID);
-			PrintUserCmdText(clientID, L"Withdrawn from the race, credits refunded");
-			static wchar_t buf[1024];
-			_snwprintf(buf, sizeof(buf), L"%s has withdrawn from the race, race credit pool reduced to %d", playerName.c_str(), race->cashPool);
+		pub::Player::AdjustCash(clientID, racer->pool);
+		race->cashPool -= racer->pool;
+		PrintUserCmdText(clientID, L"Withdrawn from the race, credits refunded");
 
-			NotifyPlayers(race, buf);
-		}
-		else
-		{
-			static wchar_t buf[1024];
-			_snwprintf(buf, sizeof(buf), L"%s has withdrawn from the race", playerName.c_str());
-
-			NotifyPlayers(race, buf);
-			PrintUserCmdText(clientID, L"Withdrawn from the race");
-		}
+		NotifyPlayers(race, clientID, L"%s has withdrawn from the race, race credit pool reduced to %d", playerName.c_str(), race->cashPool);
 	}
 	else
 	{
 		PrintUserCmdText(clientID, L"Withdrawn from the race");
-		NotifyPlayers(race, L"%s has withdrawn from the race");
+		NotifyPlayers(race, clientID, L"%s has withdrawn from the race", playerName.c_str());
 	}
-	raceRegistration.erase(regIter);
+
+	if (racer->participantType == Participant::Racer)
+	{
+		racer->participantType = Participant::Disqualified;
+	}
+	else if (racer->participantType == Participant::Spectator)
+	{
+		racer->race->participants.erase(racer->clientId);
+	}
+	ToggleRaceMode(clientID, false, 250.f);
+	racersMap.erase(regIter);
 
 
 	return true;
@@ -368,14 +758,14 @@ bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& para
 
 bool UserCmd_RaceAddPool(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
-	auto regIter = raceRegistration.find(clientID);
-	if (regIter == raceRegistration.end())
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
 		return false;
 	}
 
-	int pool = ToInt(GetParam(param, ' ', 1));
+	int pool = ToInt(GetParam(param, ' ', 0));
 	if (pool <= 0)
 	{
 		PrintUserCmdText(clientID, L"ERR: Invalid value!");
@@ -388,14 +778,13 @@ bool UserCmd_RaceAddPool(uint clientID, const wstring& cmd, const wstring& param
 		return false;
 	}
 
-	regIter->second.second += pool;
-	regIter->second.first->cashPool += pool;
+	auto& racer = regIter->second;
+	
+	racer->pool += pool;
+	racer->race->cashPool += pool;
 
 	wstring playerName = (const wchar_t*)Players.GetActiveCharacterName(clientID);
-	for (auto& player : regIter->second.first->participants)
-	{
-		PrintUserCmdText(clientID, L"Notice: %s has added %d credits into the race pool!", playerName.c_str(), pool);
-	}
+	NotifyPlayers(racer->race, 0, L"Notice: %s has added %d credits into the race pool, current total $%d!", playerName.c_str(), pool, racer->race->cashPool);
 
 	pub::Player::AdjustCash(clientID, -pool);
 
@@ -418,10 +807,10 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-	if (raceHostMap.count(clientID))
+	if (racersMap.count(clientID))
 	{
-		PrintUserCmdText(clientID, L"ERR You're already hosting a race!");
-		return true;
+		PrintUserCmdText(clientID, L"ERR You are already registered in a race");
+		return false;
 	}
 
 	auto raceObjIter = raceObjMap.find(target->get_id());
@@ -431,50 +820,106 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-	auto raceName = GetParam(param, ' ', 1);
-	auto raceIter = raceObjIter->second.find(raceName);
+	if (HkDistance3D(target->get_position(), cship->vPos) > 5000.f)
+	{
+		PrintUserCmdText(clientID, L"ERR Too far from the start object!");
+		return true;
+	}
+
+	auto raceNum = ToUInt(GetParam(param, ' ', 1));
+	auto raceIter = raceObjIter->second.find(raceNum);
 	if (raceIter == raceObjIter->second.end())
 	{
-		PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
-		for (auto& raceName : raceObjIter->second)
+		if (raceObjIter->second.size() == 1)
 		{
-			PrintUserCmdText(clientID, L"- %s", raceName.first.c_str());
+			raceIter = raceObjIter->second.begin();
 		}
-		return true;
+		else
+		{
+			PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+			for (auto& race : raceObjIter->second)
+			{
+				PrintUserCmdText(clientID, L"%d - %s", race.second.raceNum, race.second.raceName.c_str());
+			}
+			return true;
+		}
 	}
 
-	int initialPool = ToInt(GetParam(param, ' ', 2));
-	if (initialPool < 0)
-	{
-		initialPool = 0;
-	}
-	if (initialPool < Players[clientID].iInspectCash)
-	{
-		PrintUserCmdText(clientID, L"ERR You don't have enough cash!");
-		return true;
-	}
+	int initialPool = 0;// ToInt(GetParam(param, ' ', 2));
+	//if (initialPool < 0)
+	//{
+	//	initialPool = 0;
+	//}
+	//if (initialPool && initialPool > Players[clientID].iInspectCash)
+	//{
+	//	PrintUserCmdText(clientID, L"ERR You don't have enough cash!");
+	//	return true;
+	//}
 
-	Race pr;
-	pr.race = &raceIter->second;
-	pr.hostId = clientID;
-	pr.participants.push_back(clientID);
-	pr.participantSet.insert(clientID);
-	pr.cashPool = initialPool;
+	CreateRace(clientID, raceIter->second, initialPool, 1);
 
 	wstring hostName = (const wchar_t*)Players.GetActiveCharacterName(clientID);
 
 	static wchar_t buf[100];
-	_snwprintf(buf, sizeof(buf), L"New race: %s started by %s!", raceName.c_str(), hostName.c_str());
-	HkMsgS(pr.race->startingSystem, buf);
+	_snwprintf(buf, sizeof(buf), L"New race: %s started by %s!", raceIter->second.raceName.c_str(), hostName.c_str());
+	HkMsgS(raceIter->second.startingSystem, buf);
 
 	if (initialPool)
 	{
-		_snwprintf(buf, sizeof(buf), L"Initial prize pool: %d credits!", pr.cashPool);
-		HkMsgS(pr.race->startingSystem, buf);
+		_snwprintf(buf, sizeof(buf), L"Initial prize pool: %d credits!", initialPool);
+		HkMsgS(raceIter->second.startingSystem, buf);
 	}
 
-	raceHostMap[clientID] = pr;
-	raceRegistration[clientID] = { &pr, pr.cashPool };
+	return true;
+}
+
+bool UserCmd_RaceSetLaps(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+
+	auto cship = ClientInfo[clientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(clientID, L"ERR Not in space!");
+		return true;
+	}
+
+
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
+		return false;
+	}
+
+	auto& race = regIter->second->race;
+	if (race->hostId != clientID)
+	{
+		PrintUserCmdText(clientID, L"ERR You're not hosting a race!");
+		return true;
+	}
+
+	if (!race->raceArch->loopable)
+	{
+		PrintUserCmdText(clientID, L"ERR This race is not a loop, it cannot have laps set!");
+		return true;
+	}
+
+	int loops = ToInt(param);
+
+	if (loops <= 0)
+	{
+		PrintUserCmdText(clientID, L"ERR Invalid input!");
+		return true;
+	}
+
+	race->loopCount = loops;
+
+	NotifyPlayers(race, 0, L"Race loop count changed to %d!", loops);
+
+	if (loops > 69)
+	{
+		NotifyPlayers(race, 0, L"Are you SURE about that?");
+	}
 
 	return true;
 }
@@ -488,24 +933,26 @@ bool UserCmd_RaceStart(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-	auto pendingRace = raceHostMap.find(clientID);
-	if (pendingRace == raceHostMap.end(clientID))
+
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
+		return false;
+	}
+
+	if (regIter->second->race->hostId != clientID)
 	{
 		PrintUserCmdText(clientID, L"ERR You're not hosting a race!");
 		return true;
 	}
 
-	for (auto& participant : pendingRace->second.participants)
-	{
-		PrintUserCmdText(participant, L"Beaming you into position, best of luck!");
-		raceRegistration.erase(participant);
-	}
+	BeginRace(regIter->second->race, 10);
 
-	raceHostMap.erase(clientID);
 	return true;
 }
 
-bool UserCmd_StartRaceSolo(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+bool UserCmd_RaceSolo(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
 	auto cship = ClientInfo[clientID].cship;
 	if (!cship)
@@ -528,91 +975,266 @@ bool UserCmd_StartRaceSolo(uint clientID, const wstring& cmd, const wstring& par
 		return true;
 	}
 
-	auto raceName = GetParam(param, ' ', 0);
-	auto raceIter = raceObjIter->second.find(raceName);
-	if (raceIter == raceObjIter->second.end())
+	if (HkDistance3D(target->get_position(), cship->vPos) > 5000.f)
 	{
-		PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
-		for (auto& raceName : raceObjIter->second)
-		{
-			PrintUserCmdText(clientID, L"- %s", raceName.first.c_str());
-		}
+		PrintUserCmdText(clientID, L"ERR Too far from the start object!");
 		return true;
 	}
 
-	racersMap[clientID] = { 0, raceIter->second.waypoints };
-
-	RequestPathStruct bestPath;
-	bestPath.noPathFound = false;
-	bestPath.waypointCount = raceIter->second.waypoints.size();
-	bestPath.repId = Players[clientID].iReputation;
-	
-	auto waypointListIter = raceIter->second.waypoints.begin();
-	for (uint i = 0; i < raceIter->second.waypoints.size(); ++i)
+	auto raceNum = ToUInt(GetParam(param, ' ', 1));
+	auto& raceIter = raceObjIter->second.find(raceNum);
+	if (raceIter == raceObjIter->second.end())
 	{
-		bestPath.pathEntries[i] = { waypointListIter->pos, waypointListIter->objId, waypointListIter->system };
-		waypointListIter++;
+		if (raceObjIter->second.size() == 1)
+		{
+			raceIter = raceObjIter->second.begin();
+		}
+		else
+		{
+			PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+			for (auto& race : raceObjIter->second)
+			{
+				PrintUserCmdText(clientID, L"%d - %s", race.second.raceNum, race.second.raceName.c_str());
+			}
+			return true;
+		}
 	}
 
-	auto& racePos = raceIter->second.startingPositions.begin();
-	HkRelocateClient(clientID, racePos->pos, racePos->ori);
+	auto loopCount = ToUInt(GetParam(param, ' ', 0));
 
-	pub::Player::ReturnBestPath(clientID, (uchar*)&bestPath, 12 + (bestPath.waypointCount * 20));
+	if (loopCount == 0)
+	{
+		if (raceIter->second.loopable)
+		{
+			PrintUserCmdText(clientID, L"ERR Invalid loop count!");
+			PrintUserCmdText(clientID, usage);
+			return true;
+		}
+		loopCount = 1;
+	}
 
-	PrintUserCmdText(clientID, L"Race started!");
-	//TODO: Remove the test freeze
-	FreezePlayer(clientID, 5.0f);
+	if (racersMap.count(clientID))
+	{
+		PrintUserCmdText(clientID, L"ERR Already in a race!");
+		return true;
+	}
+
+	auto& race = CreateRace(clientID, raceIter->second, 0, loopCount);
+	BeginRace(race, 5);
 
 	return true;
 }
 
+bool UserCmd_RaceJoin(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+	int pool = ToInt(GetParam(param, ' ', 0));
+	wstring spectator = ToLower(GetParam(param, ' ', 1));
+	bool isSpectator = spectator.find(L"spec") == 0;
+
+	auto cship = ClientInfo[clientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(clientID, L"ERR Not in space!");
+		return true;
+	}
+
+	auto target = cship->get_target();
+	if (!target)
+	{
+		PrintUserCmdText(clientID, L"ERR No target!");
+		return true;
+	}
+
+	uint targetClientId = target->cobj->ownerPlayer;
+	if (!targetClientId)
+	{
+		PrintUserCmdText(clientID, L"ERR Target not a player!");
+		return true;
+	}
+
+	auto raceData = racersMap.find(target->cobj->ownerPlayer);
+	if (raceData == racersMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR Target not in a race!");
+		return true;
+	}
+
+	auto newRacer = RegisterPlayer(raceData->second->race, clientID, pool, isSpectator);
+
+	if (!newRacer)
+	{
+		return true;
+	}
+
+	static wchar_t buf[100];
+	if (isSpectator)
+	{
+		NotifyPlayers(raceData->second->race, clientID, L"%s is now spectating the race!", newRacer->racerName.c_str());
+	}
+	else
+	{
+		NotifyPlayers(raceData->second->race, clientID, L"%s has joined the race!", newRacer->racerName.c_str());
+	}
+
+	return true;
+}
+
+void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
+{
+	uint completedCount = racer->completedWaypoints.size() + 1;
+	if (completedCount % racer->race->raceArch->waypoints.size() == 1) // full loop
+	{
+		if (completedCount != 1)
+		{
+			float lapTime = GetLapTime(racer, currTime);
+			if (racer->race->raceArch->loopable && racer->race->loopCount > 1)
+			{
+				PrintUserCmdText(racer->clientId, L"Completed a lap! %d/%d, time %0.3fs", completedCount / racer->race->raceArch->waypoints.size(), racer->race->loopCount, lapTime);
+			}
+			CheckForHighscore(racer, lapTime);
+		}
+		racer->newWaypointTimer = currTime;
+	}
+
+	if (completedCount == (racer->race->loopCount * racer->race->raceArch->waypoints.size()) + 1)
+	{
+		float timeDiff = static_cast<float>(currTime - *racer->completedWaypoints.begin()) / 1000;
+
+		if (!racer->race->hasWinner)
+		{
+			ProcessWinner(racer, true, currTime);
+			racer->race->hasWinner = true;
+		}
+		else
+		{
+			ProcessWinner(racer, false, currTime);
+		}
+
+		ToggleRaceMode(racer->clientId, false, 250.f);
+		racersMap.erase(racer->clientId);
+		return;
+	}
+
+	racer->waypoints.erase(racer->waypoints.begin());
+	if (racer->completedWaypoints.empty())
+	{
+		PrintUserCmdText(racer->clientId, L"Time counting started");
+	}
+	else
+	{
+		float timeDiff = static_cast<float>(currTime - *racer->completedWaypoints.rbegin()) / 1000;
+		PrintUserCmdText(racer->clientId, L"Checkpoint #%d: %0.3fs (+%0.3fs)", racer->completedWaypoints.size(), GetFinishTime(racer, currTime), timeDiff);
+	}
+	racer->completedWaypoints.push_back(currTime);
+
+}
+
+void UpdateRacers()
+{
+
+	mstime currTime = timeInMS();
+	for (auto& racerData = racersMap.begin(); racerData != racersMap.end();racerData++)
+	{
+		auto cship = ClientInfo[racerData->first].cship;
+		if (!cship)
+		{
+			PrintUserCmdText(racerData->first, L"You died or docked and got disqualified!");
+			DisqualifyPlayer(racerData->first);
+			continue;
+		}
+
+		if (racerData->second->waypoints.empty())
+		{
+			if (racerData->second->newWaypointTimer + 1000 > currTime)
+			{
+				continue;
+			}
+			SendLoopWaypoints(racerData->second);
+		}
+	}
+}
+
+void UpdateRaces()
+{
+	for (auto& race : raceList)
+	{
+		if (!race->startCountdown)
+		{
+			continue;
+		}
+
+		--race->startCountdown;
+		if (race->startCountdown)
+		{
+
+			for (auto& participant : race->participants)
+			{
+				if (participant.second->participantType == Participant::Disqualified)
+				{
+					continue;
+				}
+				PrintUserCmdText(participant.first, L"%d...", race->startCountdown);
+			}
+			continue;
+		}
+
+		for (auto& participant : race->participants)
+		{
+			if (participant.second->participantType == Participant::Disqualified)
+			{
+				continue;
+			}
+			if (participant.second->participantType == Participant::Racer)
+			{
+				UnfreezePlayer(participant.first);
+			}
+			PrintUserCmdText(participant.first, L"GO GO GO!");
+		}
+
+		race->started = true;
+	}
+}
+
 int Update()
 {
+	returncode = DEFAULT_RETURNCODE;
 	static bool firstRun = true;
 	if (firstRun)
 	{
 		firstRun = false;
 		LoadSettings();
+		LoadRacingEngines();
 	}
-	for (auto& racer = racersMap.begin();racer!= racersMap.end();)
+	if (!racersMap.empty())
 	{
-		auto cship = ClientInfo[racer->first].cship;
-		if (!cship)
-		{
-			PrintUserCmdText(racer->first, L"You died or docked and got disqualified!");
-			racer = racersMap.erase(racer);
-			continue;
-		}
-
-		auto currWaypoint = racer->second.waypoints.begin();
-
-		if (cship->system == currWaypoint->system &&
-			HkDistance3D(cship->vPos, racer->second.waypoints.begin()->pos) < 50)
-		{
-			if (!racer->second.startTime)
-			{
-				racer->second.startTime = timeInMS();
-				PrintUserCmdText(racer->first, L"Timer start!");
-			}
-			else if (racer->second.waypoints.size() > 1)
-			{
-				racer->second.waypoints.erase(racer->second.waypoints.begin());
-				float timeDiff = static_cast<float>(timeInMS() - racer->second.startTime) / 1000;
-				PrintUserCmdText(racer->first, L"Passed a checkpoint! %0.3fs", timeDiff);
-			}
-			else
-			{
-				float timeDiff = static_cast<float>(timeInMS() - racer->second.startTime) / 1000;
-				PrintUserCmdText(racer->first, L"Race complete! Final time: %0.3fs", timeDiff);
-				racer = racersMap.erase(racer);
-				continue;
-			}
-		}
-		racer++;
+		UpdateRacers();
 	}
 
 	returncode = DEFAULT_RETURNCODE;
 	return 0;
+}
+
+void Timer()
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (!raceList.empty())
+	{
+		UpdateRaces();
+	}
+}
+
+bool UserCmd_RaceHelp(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+	PrintUserCmdText(clientID, L"/race solo <lapCount> [raceNum]");
+	PrintUserCmdText(clientID, L"/race host");
+	PrintUserCmdText(clientID, L"/race setlaps <lapCount>");
+	PrintUserCmdText(clientID, L"/race start");
+	PrintUserCmdText(clientID, L"/race disband");
+	PrintUserCmdText(clientID, L"/race withdraw");
+	PrintUserCmdText(clientID, L"/race info");
+
+	return true;
 }
 
 typedef bool(*_UserCmdProc)(uint, const wstring&, const wstring&, const wchar_t*);
@@ -626,13 +1248,16 @@ struct USERCMD
 
 USERCMD UserCmds[] =
 {
-	{ L"/race solo", UserCmd_StartRaceSolo, L"Usage: /race solo" },
+	{ L"/race solo", UserCmd_RaceSolo, L"Usage: /race solo <lapCount> [raceNum]" },
+	{ L"/race join", UserCmd_RaceJoin, L"Usage: /race join <poolCashAmount> [spectator]" },
+	{ L"/race setlaps", UserCmd_RaceSetLaps, L"Usage: /race setlaps <numberOfLaps>" },
 	{ L"/race host", UserCmd_RaceSetup, L"Usage: /race host" },
 	{ L"/race start", UserCmd_RaceStart, L"Usage: /race start" },
-	{ L"/race addpool", UserCmd_RaceAddPool, L"Usage: /race addpool <amount>" },
+	//{ L"/race addpool", UserCmd_RaceAddPool, L"Usage: /race addpool <amount>" },
 	{ L"/race withdraw", UserCmd_RaceWithdraw, L"Usage: /race withdraw" },
 	{ L"/race disband", UserCmd_RaceDisband, L"Usage: /race disband" },
-	//{ L"/startrace", UserCmd_StartRace, L"Usage: /startrace" },
+	{ L"/race info", UserCmd_RaceInfo, L"Usage: /race info" },
+	{ L"/race", UserCmd_RaceHelp, L"Usage: /race info" },
 };
 
 bool UserCmd_Process(uint iClientID, const wstring& wscCmd)
@@ -669,6 +1294,63 @@ bool UserCmd_Process(uint iClientID, const wstring& wscCmd)
 	return false;
 }
 
+void __stdcall CharacterSelect(struct CHARACTER_ID const& charId, unsigned int client)
+{
+	returncode = DEFAULT_RETURNCODE;
+	DisqualifyPlayer(client);
+}
+
+void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (ship->is_player())
+	{
+		DisqualifyPlayer(ship->cobj->ownerPlayer);
+	}
+}
+
+void __stdcall BaseEnter(unsigned int baseId, unsigned int client)
+{
+	returncode = DEFAULT_RETURNCODE;
+	DisqualifyPlayer(client);
+}
+
+void DelayedDisconnect(uint client, uint ship)
+{
+	returncode = DEFAULT_RETURNCODE;
+	DisqualifyPlayer(client);
+}
+
+void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
+{
+	returncode = DEFAULT_RETURNCODE;
+	
+	uint clientId = iobj->cobj->ownerPlayer;
+	if (!clientId || dmg->damageCause != DamageCause::CruiseDisrupter)
+	{
+		return;
+	}
+
+	auto& racer = racersMap.find(clientId);
+	if (racer != racersMap.end() && racer->second->race->started)
+	{
+		return;
+	}
+
+	CShip* cship = reinterpret_cast<CShip*>(iobj->cobj);
+
+	CEquip* engine = cship->equip_manager.FindFirst(EquipmentClass::Engine);
+	if (!engine)
+	{
+		return;
+	}
+
+	if (racingEngines.count(engine->archetype->iArchID))
+	{
+		FreezePlayer(clientId, 8.0f, false);
+	}
+}
+
 #define IS_CMD(a) !wscCmd.compare(L##a)
 bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 {
@@ -683,6 +1365,50 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 
 	return false;
 }
+
+void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReader, CHAT_ID cIdTo, int p2)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	const uint* rdlUint = reinterpret_cast<const uint*>(rdlReader);
+	if (!cId.iID || size != 16 || rdlUint[0] != 0x12AC3)
+	{
+		return;
+	}
+
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+	auto racerIter = racersMap.find(cId.iID);
+	if (racerIter == racersMap.end())
+	{
+		return;
+	}
+	auto& racer = racerIter->second;
+
+	CShip* cship = ClientInfo[racer->clientId].cship;
+	if (!cship)
+	{
+		return;
+	}
+
+	const float* rdlFloat = reinterpret_cast<const float*>(rdlReader);
+	Vector pos = { rdlFloat[1], rdlFloat[2], rdlFloat[3] };
+	auto currWaypoint = racer->waypoints.begin();
+
+	if (cship->system != currWaypoint->systemId || HkDistance3D(pos, cship->vPos) > 750)
+	{
+		PrintUserCmdText(racer->clientId, L"ERR Disqualified due to skipping a waypoint or position desync");
+		DisqualifyPlayer(racer->clientId);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return;
+	}
+
+	mstime currTime = timeInMS();
+	ProcessWaypoint(racer, currTime);
+
+	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Functions to hook
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -697,12 +1423,15 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->ePluginReturnCode = &returncode;
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Update, PLUGIN_HkIServerImpl_Update, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SubmitChat, PLUGIN_HkIServerImpl_SubmitChat, 5));
+	//p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DisconnectDelay, PLUGIN_DelayedDisconnect, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));
 
 	return p_PI;
 }

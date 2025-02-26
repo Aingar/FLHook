@@ -322,10 +322,18 @@ bool CoreModule::Timer(uint time)
 
 	// Humans use commodity_oxygen, commodity_water. Consume these for
 	// the crew or kill 10 crew off and repeat this every 12 hours.
-	if (!dont_eat && time % set_crew_check_frequency == 0)
+	if (time % set_crew_check_frequency == 0)
 	{
 		base->fed_workers.clear();
-		base->isCrewSupplied = base->FeedCrew(set_base_crew_type, base->base_level*200);
+		if (dont_eat)
+		{
+			base->isCrewSupplied = true;
+			base->fed_workers[set_base_crew_type] = base->base_level * 200;
+		}
+		else
+		{
+			base->isCrewSupplied = base->FeedCrew(set_base_crew_type, base->base_level * 200);
+		}
 	}
 
 	return false;

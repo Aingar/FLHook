@@ -35,7 +35,7 @@ static unordered_map<uint, float> notradelist;
 static uint PlayerMarkArray[MAX_CLIENT_ID+1];
 //Added this due to idiocy
 static list<uint> MarkUsageTimer;
-static map<uint, bool> reverseTrade;
+static unordered_map<uint, bool> reverseTrade;
 
 
 

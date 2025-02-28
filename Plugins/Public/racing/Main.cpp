@@ -378,9 +378,8 @@ void SendFirstWaypoint(shared_ptr<Racer> racer)
 	static RequestPathStruct sendStruct;
 	sendStruct.noPathFound = false;
 	sendStruct.repId = Players[racer->clientId].iReputation;
-	sendStruct.waypointCount = 2;
+	sendStruct.waypointCount = 1;
 	sendStruct.pathEntries[0] = racer->race->raceArch->firstWaypoint;
-	sendStruct.pathEntries[1] = racer->race->raceArch->firstWaypoint;
 
 	try
 	{
@@ -545,116 +544,114 @@ void LoadSettings()
 	}
 	while (ini.read_header())
 	{
-		if (!ini.is_header("Race"))
+		if (ini.is_header("Race"))
 		{
-			continue;
+			uint startObj;
+			RaceArch race;
+			Vector startObjPos;
+			Matrix startObjRot;
+			bool firstWaypoint = true;
+			while (ini.read_value())
+			{
+				if (ini.is_value("start_object"))
+				{
+					startObj = CreateID(ini.get_value_string());
+					auto iobj = HkGetInspectObj(startObj);
+					if (!iobj)
+					{
+						ConPrint(L"ERR Racing: Starting object %s does not exist!\n", stows(ini.get_value_string()).c_str());
+						break;
+					}
+
+					startObjRot = iobj->get_orientation();
+					startObjPos = iobj->get_position();
+				}
+				else if (ini.is_value("race_name"))
+				{
+					race.raceName = stows(ini.get_value_string(0));
+				}
+				else if (ini.is_value("race_num"))
+				{
+					race.raceNum = ini.get_value_int(0);
+				}
+				else if (ini.is_value("waypoint_dist"))
+				{
+					race.waypointDistance = ini.get_value_float(0);
+				}
+				else if (ini.is_value("loopable"))
+				{
+					race.loopable = ini.get_value_bool(0);
+				}
+				else if (ini.is_value("waypoint_obj"))
+				{
+					uint objId = CreateID(ini.get_value_string(0));
+					auto obj = HkGetInspectObj(objId);
+					if (!obj)
+					{
+						ConPrint(L"ERROR PARSING RACE CONFIG: %s\n", stows(ini.get_value_string(0)).c_str());
+						continue;
+					}
+					
+					if (firstWaypoint)
+					{
+						firstWaypoint = false;
+						race.firstWaypoint = { obj->cobj->vPos, objId, obj->cobj->system };
+						continue;
+					}
+
+					if (race.waypoints.empty())
+					{
+						race.startingSystem = obj->cobj->system;
+					}
+
+					race.waypoints.push_back({ obj->cobj->vPos, objId, obj->cobj->system });
+				}
+				else if (ini.is_value("waypoint_pos"))
+				{
+					Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
+					uint system = CreateID(ini.get_value_string(0));
+
+					if (firstWaypoint)
+					{
+						firstWaypoint = false;
+						race.firstWaypoint = { pos, 0u, system };
+						continue;
+					}
+
+					if (race.waypoints.empty())
+					{
+						race.startingSystem = system;
+					}
+					race.waypoints.push_back({ pos, 0u, system });
+				}
+				else if (ini.is_value("starting_pos"))
+				{
+					Vector startPos = startObjPos;
+					Vector relativePos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
+					TranslateX(startPos, startObjRot, relativePos.x);
+					TranslateY(startPos, startObjRot, relativePos.y);
+					TranslateZ(startPos, startObjRot, relativePos.z);
+					Transform startingPos = { startPos, startObjRot };
+					race.startingPositions.push_back(startingPos);
+				}
+			}
+			if (race.startingPositions.empty())
+			{
+				ConPrint(L"Race %s failed to load: Has no starting positions defined!", race.raceName.c_str());
+				continue;
+			}
+			if (race.waypoints.empty())
+			{
+				ConPrint(L"Race %s failed to load: Has no waypoints defined!", race.raceName.c_str());
+				continue;
+			}
+
+			if (race.loopable)
+			{
+				race.waypoints.push_back(race.firstWaypoint);
+			}
+			raceObjMap[startObj][race.raceNum] = race;
 		}
-
-		uint startObj;
-		RaceArch race;
-		Vector startObjPos;
-		Matrix startObjRot;
-		bool firstWaypoint = true;
-		while (ini.read_value())
-		{
-			if (ini.is_value("start_object"))
-			{
-				startObj = CreateID(ini.get_value_string());
-				auto iobj = HkGetInspectObj(startObj);
-				if (!iobj)
-				{
-					ConPrint(L"ERR Racing: Starting object %s does not exist!\n", stows(ini.get_value_string()).c_str());
-					break;
-				}
-
-				startObjRot = iobj->get_orientation();
-				startObjPos = iobj->get_position();
-			}
-			else if (ini.is_value("race_name"))
-			{
-				race.raceName = stows(ini.get_value_string(0));
-			}
-			else if (ini.is_value("race_num"))
-			{
-				race.raceNum = ini.get_value_int(0);
-			}
-			else if (ini.is_value("waypoint_dist"))
-			{
-				race.waypointDistance = ini.get_value_float(0);
-			}
-			else if (ini.is_value("loopable"))
-			{
-				race.loopable = ini.get_value_bool(0);
-			}
-			else if (ini.is_value("waypoint_obj"))
-			{
-				uint objId = CreateID(ini.get_value_string(0));
-				auto obj = HkGetInspectObj(objId);
-				if (!obj)
-				{
-					ConPrint(L"ERROR PARSING RACE CONFIG: %s\n", stows(ini.get_value_string(0)).c_str());
-					continue;
-				}
-				
-				if (firstWaypoint)
-				{
-					firstWaypoint = false;
-					race.firstWaypoint = { obj->cobj->vPos, objId, obj->cobj->system };
-					continue;
-				}
-
-				if (race.waypoints.empty())
-				{
-					race.startingSystem = obj->cobj->system;
-				}
-
-				race.waypoints.push_back({ obj->cobj->vPos, objId, obj->cobj->system });
-			}
-			else if (ini.is_value("waypoint_pos"))
-			{
-				Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
-				uint system = CreateID(ini.get_value_string(0));
-
-				if (firstWaypoint)
-				{
-					firstWaypoint = false;
-					race.firstWaypoint = { pos, 0u, system };
-					continue;
-				}
-
-				if (race.waypoints.empty())
-				{
-					race.startingSystem = system;
-				}
-				race.waypoints.push_back({ pos, 0u, system });
-			}
-			else if (ini.is_value("starting_pos"))
-			{
-				Vector startPos = startObjPos;
-				Vector relativePos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
-				TranslateX(startPos, startObjRot, relativePos.x);
-				TranslateY(startPos, startObjRot, relativePos.y);
-				TranslateZ(startPos, startObjRot, relativePos.z);
-				Transform startingPos = { startPos, startObjRot };
-				race.startingPositions.push_back(startingPos);
-			}
-		}
-		if (race.startingPositions.empty())
-		{
-			ConPrint(L"Race %s failed to load: Has no starting positions defined!", race.raceName.c_str());
-			continue;
-		}
-		if (race.waypoints.empty())
-		{
-			ConPrint(L"Race %s failed to load: Has no waypoints defined!", race.raceName.c_str());
-			continue;
-		}
-
-		if (race.loopable)
-		{
-			race.waypoints.push_back(race.firstWaypoint);
-		}
-		raceObjMap[startObj][race.raceNum] = race;
 	}
 	ini.close();
 }
@@ -1084,12 +1081,6 @@ bool UserCmd_RaceJoin(uint clientID, const wstring& cmd, const wstring& param, c
 
 void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 {
-	if (!racer->newWaypointTimer && racer->completedWaypoints.empty())
-	{
-		racer->newWaypointTimer = currTime;
-		return;
-	}
-
 	uint completedCount = racer->completedWaypoints.size() + 1;
 	if (completedCount % racer->race->raceArch->waypoints.size() == 1) // full loop
 	{
@@ -1343,7 +1334,6 @@ void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	auto& racer = racersMap.find(clientId);
 	if (racer != racersMap.end() && racer->second->race->started)
 	{
-		dmg->damageCause = DamageCause::MissileTorpedo;
 		return;
 	}
 

@@ -509,36 +509,36 @@ namespace GiveCash
 		{
 			PrintUserCmdText(iClientID, L"ERR Invalid parameters");
 			PrintUserCmdText(iClientID, usage);
-			return false;
+			return true;
 		}
 
 		CAccount *acc = HkGetAccountByCharname(wscTargetCharname);
 		if (acc == 0)
 		{
 			PrintUserCmdText(iClientID, L"ERR char does not exist");
-			return false;
+			return true;
 		}
 
 		string scFile;
 		if (!GetUserFilePath(scFile, wscTargetCharname, "-givecash.ini"))
-			return false;
+			return true;
 
 		wstring wscTargetCode = IniGetWS(scFile, "Settings", "Code", L"");
 		if (!wscTargetCode.length() || wscTargetCode != wscCode)
 		{
 			PrintUserCmdText(iClientID, L"ERR cash account access denied");
-			return false;
+			return true;
 		}
 
 		int iCash = 0;
 		if ((err = HkGetCash(wscTargetCharname, iCash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 
 		PrintUserCmdText(iClientID, L"OK Account " + wscTargetCharname + L" has " + ToMoneyStr(iCash) + L" credits");
-		return false;
+		return true;
 	}
 
 
@@ -563,54 +563,54 @@ namespace GiveCash
 		{
 			PrintUserCmdText(iClientID, L"ERR Invalid parameters");
 			PrintUserCmdText(iClientID, usage);
-			return false;
+			return true;
 		}
 
 		CAccount *iTargetAcc = HkGetAccountByCharname(wscTargetCharname);
 		if (iTargetAcc == 0)
 		{
 			PrintUserCmdText(iClientID, L"ERR char does not exist");
-			return false;
+			return true;
 		}
 
 		if (InBlockedSystem(wscCharname) || InBlockedSystem(wscTargetCharname) || IsBannedAccount(iTargetAcc))
 		{
 			PrintUserCmdText(iClientID, L"ERR cash transfer blocked");
-			return false;
+			return true;
 		}
 
 		if (ToLower(wscTargetCharname) == ToLower(wscCharname))
 		{
 			PrintUserCmdText(iClientID, L"ERR: You can't draw money from yourself!");
-			return false;
+			return true;
 		}
 
 		string scFile;
 		if (!GetUserFilePath(scFile, wscTargetCharname, "-givecash.ini"))
-			return false;
+			return true;
 
 		wstring wscTargetCode = IniGetWS(scFile, "Settings", "Code", L"");
 		if (!wscTargetCode.length() || wscTargetCode != wscCode)
 		{
 			PrintUserCmdText(iClientID, L"ERR cash account access denied");
-			return false;
+			return true;
 		}
 
 		if (cash < set_iMinTransfer || cash < 0) {
 			PrintUserCmdText(iClientID, L"ERR Transfer too small, minimum transfer " + ToMoneyStr(set_iMinTransfer) + L" credits");
-			return false;
+			return true;
 		}
 
 		int tCash = 0;
 		if ((err = HkGetCash(wscTargetCharname, tCash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 		if (tCash < cash)
 		{
 			PrintUserCmdText(iClientID, L"ERR Insufficient credits");
-			return false;
+			return true;
 		}
 
 		// Check the adding this cash to this player will not
@@ -619,12 +619,12 @@ namespace GiveCash
 		if ((err = HKGetShipValue(wscCharname, fTargetValue)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 		if ((fTargetValue + cash) > 2000000000.0f)
 		{
 			PrintUserCmdText(iClientID, L"ERR Transfer will exceed credit limit");
-			return false;
+			return true;
 		}
 
 		// Calculate the new cash
@@ -632,7 +632,7 @@ namespace GiveCash
 		if ((err = HkGetCash(wscCharname, iExpectedCash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 		iExpectedCash += cash;
 
@@ -644,7 +644,7 @@ namespace GiveCash
 				wstos(ToMoneyStr(cash)).c_str(),
 				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
 				wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str());
-			return false;
+			return true;
 		}
 		HkSaveChar(iClientID);
 
@@ -660,7 +660,7 @@ namespace GiveCash
 					wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
 					wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
 					iClientID, targetClientId);
-				return false;
+				return true;
 			}
 		}
 
@@ -668,7 +668,7 @@ namespace GiveCash
 		if ((err = HkAddCash(wscTargetCharname, 0 - cash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 
 		if (targetClientId != -1 && !HkIsInCharSelectMenu(targetClientId))
@@ -680,7 +680,7 @@ namespace GiveCash
 					wstos(ToMoneyStr(cash)).c_str(),
 					wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
 					wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str());
-				return false;
+				return true;
 			}
 			HkSaveChar(targetClientId);
 		}
@@ -689,7 +689,7 @@ namespace GiveCash
 		if ((err = HkAddCash(wscCharname, cash)) != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
-			return false;
+			return true;
 		}
 
 		if (HkAntiCheat(iClientID) != HKE_OK)
@@ -699,7 +699,7 @@ namespace GiveCash
 				wstos(ToMoneyStr(cash)).c_str(),
 				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
 				wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str());
-			return false;
+			return true;
 		}
 		HkSaveChar(iClientID);
 
@@ -739,6 +739,6 @@ namespace GiveCash
 		// A friendly message explaining the transfer.
 		msg = GetTimeString(set_bLocalTime) + L": You have drawn " + ToMoneyStr(cash) + L" credits from " + wscTargetCharname;
 		PrintUserCmdText(iClientID, L"%s", msg.c_str());
-		return false;
+		return true;
 	}
 }

@@ -13,6 +13,7 @@
 #include <plugin.h>
 #include <memory>
 #include <PluginUtilities.h>
+#include <sstream>
 
 /// A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
@@ -40,7 +41,7 @@ enum class RaceType
 
 unordered_map<uint, unordered_map<uint, RaceArch>> raceObjMap;
 
-unordered_map<uint, unordered_map<uint, map<float, wstring>>> scoreboard;
+unordered_map<uint, unordered_map<uint, map<float, string>>> scoreboard;
 
 enum class Participant
 {
@@ -60,6 +61,7 @@ struct Racer
 	Participant participantType;
 	vector<mstime> completedWaypoints;
 	shared_ptr<Race> race;
+	float bestLapTime;
 };
 
 unordered_map<uint, shared_ptr<Racer>> racersMap;
@@ -70,13 +72,13 @@ struct Race
 	uint raceId;
 	int cashPool;
 	int loopCount = 1;
+	uint highestWaypointCount = 0;
 	unordered_map<uint, shared_ptr<Racer>> participants;
 	RaceArch* raceArch;
 	bool started = false;
 	bool hasWinner = false;
 	int startCountdown = 0;
 	RaceType raceType = RaceType::Race;
-	RequestPathStruct loopWaypointCache;
 };
 
 list<shared_ptr<Race>> raceList;
@@ -94,6 +96,67 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 {
 	return returncode;
+}
+
+void LoadScoreboard()
+{
+	INI_Reader ini;
+
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	string path = string(szCurDir) + R"(\flhook_plugins\racingScoreboards.cfg)";
+	if (!ini.open(path.c_str(), false))
+	{
+		return;
+	}
+
+	while (ini.read_header())
+	{
+		if (!ini.is_header("scoreboard"))
+		{
+			continue;
+		}
+
+		while (ini.read_value())
+		{
+			if (!ini.is_value("score"))
+			{
+				continue;
+			}
+
+			uint obj = ini.get_value_int(0);
+			uint num = ini.get_value_int(1);
+			float time = ini.get_value_float(2);
+			string name = ini.get_value_string(3);
+
+			scoreboard[obj][num][time] = name;
+		}
+	}
+}
+
+void SaveScoreboard()
+{
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	string path = string(szCurDir) + R"(\flhook_plugins\racingScoreboards.cfg)";
+
+	FILE* file = fopen(path.c_str(), "w");
+	if (file)
+	{
+		fprintf(file, "[scoreboard]\n");
+		for (auto& startObj : scoreboard)
+		{
+			for (auto& race : startObj.second)
+			{
+				for (auto& entry : race.second)
+				{
+					fprintf(file, "score = %d, %d, %f, %s\n", startObj.first, race.first, entry.first, entry.second.c_str());
+				}
+			}
+		}
+	}
+
+	fclose(file);
 }
 
 void SendCommand(uint client, const wstring& message)
@@ -142,6 +205,88 @@ void NotifyPlayers(shared_ptr<Race> race, uint exceptionPlayer, wstring msg, ...
 	}
 }
 
+int GetLapCount(shared_ptr<Racer> racer)
+{
+	if (racer->completedWaypoints.empty())
+	{
+		return 0;
+	}
+	return (racer->completedWaypoints.size() - 1) / racer->race->raceArch->waypoints.size();
+}
+
+int GetCurrentLapCheckpoints(shared_ptr<Racer> racer)
+{
+	if (racer->completedWaypoints.empty())
+	{
+		return 0;
+	}
+	return (racer->completedWaypoints.size() - 1) % racer->race->raceArch->waypoints.size();
+}
+
+void PrintRaceStatus(shared_ptr<Race> race)
+{
+	map<int, shared_ptr<Racer>> racerSpeedMap;
+	float bestLapTime = FLT_MAX;
+
+	for (auto& racer : race->participants)
+	{
+		switch (racer.second->participantType)
+		{
+		case Participant::Racer:
+			racerSpeedMap[racer.second->completedWaypoints.size()] = racer.second;
+			if (racer.second->bestLapTime != 0.0f && racer.second->bestLapTime < bestLapTime) bestLapTime = racer.second->bestLapTime;
+			break;
+		case Participant::Disqualified:
+			racerSpeedMap[INT32_MIN + racer.second->completedWaypoints.size()] = racer.second;
+			if (racer.second->bestLapTime != 0.0f && racer.second->bestLapTime < bestLapTime) bestLapTime = racer.second->bestLapTime;
+			break;
+		default:;
+		}
+	}
+
+	int counter = 1;
+	for (auto& racerIter = racerSpeedMap.rbegin(); racerIter != racerSpeedMap.rend(); racerIter++)
+	{
+		const auto& racer = racerIter->second;
+		static wchar_t buf[200];
+		buf[0] = L'\x0';
+		int lapCount = GetLapCount(racer);
+
+		wstringstream str;
+
+		str << L"#" << counter++ << L" " << racer->racerName.c_str() << L" - ";
+
+		if (lapCount == race->loopCount)
+		{
+			str << L"FINISHED!";
+		}
+		else
+		{
+			str << lapCount << " laps, " << GetCurrentLapCheckpoints(racer) << L"/" << racer->race->raceArch->waypoints.size() << " checkpoints";
+		}
+		
+		if (lapCount)
+		{
+			str.setf(std::ios_base::fixed);
+			str.precision(3);
+			str << L" best lap time: " << racer->bestLapTime << "s";
+		}
+		
+		if (bestLapTime == racer->bestLapTime)
+		{
+			str << L"(best in race!)";
+		}
+
+		if (racer->participantType == Participant::Disqualified)
+		{
+			str << L" - DISQUALIFIED";
+		}
+
+		NotifyPlayers(race, 0, str.str());
+	}
+
+}
+
 float GetFinishTime(shared_ptr<Racer> racer, mstime currTime)
 {
 	float timeDiff = static_cast<float>(currTime - *racer->completedWaypoints.begin()) / 1000;
@@ -165,7 +310,7 @@ void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
 {
 	if (isWinner)
 	{
-		PrintUserCmdText(racer->clientId, L"You've won the \"%s\" race, %d lap(s) with time of %0.3f!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
+		PrintUserCmdText(racer->clientId, L"You've won the \"%s\" race, %d lap(s) with time of %0.3fs!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
 		int cashPool = racer->race->cashPool;
 		if (cashPool)
 		{
@@ -173,12 +318,12 @@ void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
 			PrintUserCmdText(racer->clientId, L"Rewarded $%d credits!", racer->race->cashPool);
 		}
 
-		NotifyPlayers(racer->race, racer->clientId, L"%s has won the race with time of %0.3f!", racer->racerName.c_str(), GetFinishTime(racer, currTime));
+		NotifyPlayers(racer->race, racer->clientId, L"%s has won the race with time of %0.3fs!", racer->racerName.c_str(), GetFinishTime(racer, currTime));
 
 		return;
 	}
 	
-	PrintUserCmdText(racer->clientId, L"You've finished the \"%s\" race, %d lap(s) with time of %0.3f!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
+	PrintUserCmdText(racer->clientId, L"You've finished the \"%s\" race, %d lap(s) with time of %0.3fs!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
 
 }
 
@@ -371,15 +516,38 @@ void DisqualifyPlayer(uint client)
 	DisbandRace(race);
 }
 
-void SendFirstWaypoint(shared_ptr<Racer> racer)
+void SendNextWaypoints(shared_ptr<Racer> racer, bool setupWaypoints)
 {
-	racer->waypoints = { racer->race->raceArch->firstWaypoint };
+	if (setupWaypoints)
+	{
+		racer->waypoints.push_back(racer->race->raceArch->firstWaypoint);
+		for (int i = 0; i<racer->race->loopCount;++i)
+		{
+			racer->waypoints.insert(racer->waypoints.end(), racer->race->raceArch->waypoints.begin(), racer->race->raceArch->waypoints.end());
+		}
+	}
+
+	if (racer->waypoints.empty())
+	{
+		return;
+	}
 
 	static RequestPathStruct sendStruct;
 	sendStruct.noPathFound = false;
 	sendStruct.repId = Players[racer->clientId].iReputation;
-	sendStruct.waypointCount = 1;
-	sendStruct.pathEntries[0] = racer->race->raceArch->firstWaypoint;
+	sendStruct.waypointCount = 2;
+
+	auto wpIter = racer->waypoints.begin();
+	if (racer->waypoints.size() == 1)
+	{
+		sendStruct.pathEntries[0] = *wpIter; // send the same waypoint twice to prevent it not being parented to the final ring properly, weird bug.
+		sendStruct.pathEntries[1] = *wpIter;
+	}
+	else
+	{
+		sendStruct.pathEntries[0] = *wpIter++;
+		sendStruct.pathEntries[1] = *wpIter;
+	}
 
 	try
 	{
@@ -388,43 +556,15 @@ void SendFirstWaypoint(shared_ptr<Racer> racer)
 	}
 	catch (...)
 	{
-		ConPrint(L"DEBUG: %s %d %d %d %s\n", wstos(racer->racerName).c_str(), racer->clientId, racer->race->loopWaypointCache.waypointCount, 12 + (racer->race->loopWaypointCache.waypointCount * 20), racer->race->raceArch->raceName.c_str());
-	}
-}
-
-void SendLoopWaypoints(shared_ptr<Racer> racer)
-{
-	racer->waypoints = racer->race->raceArch->waypoints;
-	
-	static RequestPathStruct sendStruct = racer->race->loopWaypointCache;
-	sendStruct.repId = Players[racer->clientId].iReputation;
-	try
-	{
-		pub::Player::ReturnBestPath(racer->clientId,
-			(uchar*)&sendStruct, 12 + (sendStruct.waypointCount * 20));
-	}
-	catch (...)
-	{
-		ConPrint(L"DEBUG: %s %d %d %d %s\n", wstos(racer->racerName).c_str(), racer->clientId, racer->race->loopWaypointCache.waypointCount, 12 + (racer->race->loopWaypointCache.waypointCount * 20), racer->race->raceArch->raceName.c_str());
+		ConPrint(L"DEBUG: %s %d %s\n", wstos(racer->racerName).c_str(), racer->clientId, racer->race->raceArch->raceName.c_str());
 	}
 }
 
 void BeginRace(shared_ptr<Race> race, int countdown)
 {
-	auto& waypoints = race->raceArch->waypoints;
-	auto& bestPath = race->loopWaypointCache;
-	bestPath.noPathFound = false;
-	bestPath.waypointCount = race->raceArch->waypoints.size();
-	auto iter = waypoints.begin();
-	for (int i = 0; i < static_cast<int>(waypoints.size()); ++i)
-	{
-		bestPath.pathEntries[i] = { *iter };
-		iter++;
-	}
-
 	for (auto& participant : race->participants)
 	{
-		SendFirstWaypoint(participant.second);
+		SendNextWaypoints(participant.second, true);
 	}
 	
 	BeamPlayers(race, static_cast<float>(countdown));
@@ -437,25 +577,23 @@ void CheckForHighscore(shared_ptr<Racer> racer, float time)
 	auto& raceArch = racer->race->raceArch;
 	auto& trackScoreboard = scoreboard[raceArch->raceStartObj][raceArch->raceNum];
 
-	constexpr uint SIZE = 50;
+	constexpr uint SIZE = 20;
 
-	if (trackScoreboard.size() < SIZE)
+	if (trackScoreboard.size() >= SIZE || trackScoreboard.rbegin()->first > time)
 	{
-		trackScoreboard[time] = racer->racerName;
+		trackScoreboard[time] = wstos(racer->racerName);
 		wchar_t buf[150];
-		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard!", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str());
+		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard: %0.3fs", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str(), time);
 		HkMsgS(Players[racer->clientId].iSystemID, buf);
-		return;
+
+		if (trackScoreboard.rbegin()->first > time)
+		{
+			trackScoreboard.erase(std::prev(trackScoreboard.end()));
+		}
+
+		SaveScoreboard();
 	}
-	if (trackScoreboard.rbegin()->first > time)
-	{
-		trackScoreboard[time] = racer->racerName;
-		trackScoreboard.erase(std::prev(trackScoreboard.end()));
-		wchar_t buf[150];
-		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard!", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str());
-		HkMsgS(Players[racer->clientId].iSystemID, buf);
-		return;
-	}
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -532,6 +670,8 @@ void LoadSettings()
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	LoadScoreboard();
+
 	INI_Reader ini;
 
 	char szCurDir[MAX_PATH];
@@ -544,114 +684,116 @@ void LoadSettings()
 	}
 	while (ini.read_header())
 	{
-		if (ini.is_header("Race"))
+		if (!ini.is_header("Race"))
 		{
-			uint startObj;
-			RaceArch race;
-			Vector startObjPos;
-			Matrix startObjRot;
-			bool firstWaypoint = true;
-			while (ini.read_value())
-			{
-				if (ini.is_value("start_object"))
-				{
-					startObj = CreateID(ini.get_value_string());
-					auto iobj = HkGetInspectObj(startObj);
-					if (!iobj)
-					{
-						ConPrint(L"ERR Racing: Starting object %s does not exist!\n", stows(ini.get_value_string()).c_str());
-						break;
-					}
-
-					startObjRot = iobj->get_orientation();
-					startObjPos = iobj->get_position();
-				}
-				else if (ini.is_value("race_name"))
-				{
-					race.raceName = stows(ini.get_value_string(0));
-				}
-				else if (ini.is_value("race_num"))
-				{
-					race.raceNum = ini.get_value_int(0);
-				}
-				else if (ini.is_value("waypoint_dist"))
-				{
-					race.waypointDistance = ini.get_value_float(0);
-				}
-				else if (ini.is_value("loopable"))
-				{
-					race.loopable = ini.get_value_bool(0);
-				}
-				else if (ini.is_value("waypoint_obj"))
-				{
-					uint objId = CreateID(ini.get_value_string(0));
-					auto obj = HkGetInspectObj(objId);
-					if (!obj)
-					{
-						ConPrint(L"ERROR PARSING RACE CONFIG: %s\n", stows(ini.get_value_string(0)).c_str());
-						continue;
-					}
-					
-					if (firstWaypoint)
-					{
-						firstWaypoint = false;
-						race.firstWaypoint = { obj->cobj->vPos, objId, obj->cobj->system };
-						continue;
-					}
-
-					if (race.waypoints.empty())
-					{
-						race.startingSystem = obj->cobj->system;
-					}
-
-					race.waypoints.push_back({ obj->cobj->vPos, objId, obj->cobj->system });
-				}
-				else if (ini.is_value("waypoint_pos"))
-				{
-					Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
-					uint system = CreateID(ini.get_value_string(0));
-
-					if (firstWaypoint)
-					{
-						firstWaypoint = false;
-						race.firstWaypoint = { pos, 0u, system };
-						continue;
-					}
-
-					if (race.waypoints.empty())
-					{
-						race.startingSystem = system;
-					}
-					race.waypoints.push_back({ pos, 0u, system });
-				}
-				else if (ini.is_value("starting_pos"))
-				{
-					Vector startPos = startObjPos;
-					Vector relativePos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
-					TranslateX(startPos, startObjRot, relativePos.x);
-					TranslateY(startPos, startObjRot, relativePos.y);
-					TranslateZ(startPos, startObjRot, relativePos.z);
-					Transform startingPos = { startPos, startObjRot };
-					race.startingPositions.push_back(startingPos);
-				}
-			}
-			if (race.startingPositions.empty())
-			{
-				ConPrint(L"Race %s failed to load: Has no starting positions defined!", race.raceName.c_str());
-				continue;
-			}
-			if (race.waypoints.empty())
-			{
-				ConPrint(L"Race %s failed to load: Has no waypoints defined!", race.raceName.c_str());
-				continue;
-			}
-
-			if (race.loopable)
-			{
-				race.waypoints.push_back(race.firstWaypoint);
-			}
-			raceObjMap[startObj][race.raceNum] = race;
+			continue;
 		}
+
+		uint startObj;
+		RaceArch race;
+		Vector startObjPos;
+		Matrix startObjRot;
+		bool firstWaypoint = true;
+		while (ini.read_value())
+		{
+			if (ini.is_value("start_object"))
+			{
+				startObj = CreateID(ini.get_value_string());
+				auto iobj = HkGetInspectObj(startObj);
+				if (!iobj)
+				{
+					ConPrint(L"ERR Racing: Starting object %s does not exist!\n", stows(ini.get_value_string()).c_str());
+					break;
+				}
+
+				startObjRot = iobj->get_orientation();
+				startObjPos = iobj->get_position();
+			}
+			else if (ini.is_value("race_name"))
+			{
+				race.raceName = stows(ini.get_value_string(0));
+			}
+			else if (ini.is_value("race_num"))
+			{
+				race.raceNum = ini.get_value_int(0);
+			}
+			else if (ini.is_value("waypoint_dist"))
+			{
+				race.waypointDistance = ini.get_value_float(0);
+			}
+			else if (ini.is_value("loopable"))
+			{
+				race.loopable = ini.get_value_bool(0);
+			}
+			else if (ini.is_value("waypoint_obj"))
+			{
+				uint objId = CreateID(ini.get_value_string(0));
+				auto obj = HkGetInspectObj(objId);
+				if (!obj)
+				{
+					ConPrint(L"ERROR PARSING RACE CONFIG: %s\n", stows(ini.get_value_string(0)).c_str());
+					continue;
+				}
+				
+				if (firstWaypoint)
+				{
+					firstWaypoint = false;
+					race.firstWaypoint = { obj->cobj->vPos, objId, obj->cobj->system };
+					continue;
+				}
+
+				if (race.waypoints.empty())
+				{
+					race.startingSystem = obj->cobj->system;
+				}
+
+				race.waypoints.push_back({ obj->cobj->vPos, objId, obj->cobj->system });
+			}
+			else if (ini.is_value("waypoint_pos"))
+			{
+				Vector pos = { ini.get_value_float(1), ini.get_value_float(2), ini.get_value_float(3) };
+				uint system = CreateID(ini.get_value_string(0));
+
+				if (firstWaypoint)
+				{
+					firstWaypoint = false;
+					race.firstWaypoint = { pos, 0u, system };
+					continue;
+				}
+
+				if (race.waypoints.empty())
+				{
+					race.startingSystem = system;
+				}
+				race.waypoints.push_back({ pos, 0u, system });
+			}
+			else if (ini.is_value("starting_pos"))
+			{
+				Vector startPos = startObjPos;
+				Vector relativePos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
+				TranslateX(startPos, startObjRot, relativePos.x);
+				TranslateY(startPos, startObjRot, relativePos.y);
+				TranslateZ(startPos, startObjRot, relativePos.z);
+				Transform startingPos = { startPos, startObjRot };
+				race.startingPositions.push_back(startingPos);
+			}
+		}
+		if (race.startingPositions.empty())
+		{
+			ConPrint(L"Race %s failed to load: Has no starting positions defined!", race.raceName.c_str());
+			continue;
+		}
+		if (race.waypoints.empty())
+		{
+			ConPrint(L"Race %s failed to load: Has no waypoints defined!", race.raceName.c_str());
+			continue;
+		}
+
+		if (race.loopable)
+		{
+			race.waypoints.push_back(race.firstWaypoint);
+		}
+		raceObjMap[startObj][race.raceNum] = race;
 	}
 	ini.close();
 }
@@ -666,22 +808,40 @@ bool UserCmd_RaceDisband(uint clientID, const wstring& cmd, const wstring& param
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
-		return false;
+		return true;
 	}
 	auto& race = regIter->second->race;
 	if (clientID != race->hostId)
 	{
 		PrintUserCmdText(clientID, L"ERR not a host of the race");
-		return false;
+		return true;
 	}
 
 	if (race->started)
 	{
 		PrintUserCmdText(clientID, L"ERR race is already underway!");
-		return false;
+		return true;
 	}
 
 	DisbandRace(race);
+	return true;
+}
+
+bool UserCmd_RaceStatus(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+	auto regIter = racersMap.find(clientID);
+	if (regIter == racersMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR not registered in a race");
+		return true;
+	}
+	if (!regIter->second->race->started)
+	{
+		PrintUserCmdText(clientID, L"ERR race hasn't started yet");
+		return true;
+	}
+	PrintRaceStatus(regIter->second->race);
+
 	return true;
 }
 
@@ -691,7 +851,7 @@ bool UserCmd_RaceInfo(uint clientID, const wstring& cmd, const wstring& param, c
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
-		return false;
+		return true;
 	}
 
 	auto& race = regIter->second->race;
@@ -712,7 +872,7 @@ bool UserCmd_RaceInfo(uint clientID, const wstring& cmd, const wstring& param, c
 		}
 	}
 
-	return false;
+	return true;
 }
 
 bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
@@ -721,7 +881,7 @@ bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& para
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR not registered in a race");
-		return false;
+		return true;
 	}
 	auto& racer = regIter->second;
 	auto& race = regIter->second->race;
@@ -888,7 +1048,7 @@ bool UserCmd_RaceSetLaps(uint clientID, const wstring& cmd, const wstring& param
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
-		return false;
+		return true;
 	}
 
 	auto& race = regIter->second->race;
@@ -938,7 +1098,7 @@ bool UserCmd_RaceStart(uint clientID, const wstring& cmd, const wstring& param, 
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
-		return false;
+		return true;
 	}
 
 	if (regIter->second->race->hostId != clientID)
@@ -1027,8 +1187,7 @@ bool UserCmd_RaceSolo(uint clientID, const wstring& cmd, const wstring& param, c
 
 bool UserCmd_RaceJoin(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
-	int pool = ToInt(GetParam(param, ' ', 0));
-	wstring spectator = ToLower(GetParam(param, ' ', 1));
+	wstring spectator = ToLower(GetParam(param, ' ', 0));
 	bool isSpectator = spectator.find(L"spec") == 0;
 
 	auto cship = ClientInfo[clientID].cship;
@@ -1059,7 +1218,7 @@ bool UserCmd_RaceJoin(uint clientID, const wstring& cmd, const wstring& param, c
 		return true;
 	}
 
-	auto newRacer = RegisterPlayer(raceData->second->race, clientID, pool, isSpectator);
+	auto newRacer = RegisterPlayer(raceData->second->race, clientID, 0, isSpectator);
 
 	if (!newRacer)
 	{
@@ -1081,19 +1240,39 @@ bool UserCmd_RaceJoin(uint clientID, const wstring& cmd, const wstring& param, c
 
 void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 {
-	uint completedCount = racer->completedWaypoints.size() + 1;
-	if (completedCount % racer->race->raceArch->waypoints.size() == 1) // full loop
+	racer->completedWaypoints.push_back(currTime);
+
+	uint completedCount = racer->completedWaypoints.size();
+
+	if (completedCount == 1)
 	{
-		if (completedCount != 1)
+		PrintUserCmdText(racer->clientId, L"Time counting started");
+	}
+	else if (completedCount % racer->race->raceArch->waypoints.size() == 1) // full loop
+	{
+		float lapTime = GetLapTime(racer, currTime);
+		if (racer->race->raceArch->loopable && racer->race->loopCount > 1)
 		{
-			float lapTime = GetLapTime(racer, currTime);
-			if (racer->race->raceArch->loopable && racer->race->loopCount > 1)
-			{
-				PrintUserCmdText(racer->clientId, L"Completed a lap! %d/%d, time %0.3fs", completedCount / racer->race->raceArch->waypoints.size(), racer->race->loopCount, lapTime);
-			}
-			CheckForHighscore(racer, lapTime);
+			float timeDiff = static_cast<float>(currTime - *(++racer->completedWaypoints.rbegin())) / 1000;
+			PrintUserCmdText(racer->clientId, L"Completed a lap! %d/%d, time %0.3fs(+%0.3f)", completedCount / racer->race->raceArch->waypoints.size(), racer->race->loopCount, lapTime, timeDiff);
 		}
-		racer->newWaypointTimer = currTime;
+		CheckForHighscore(racer, lapTime);
+
+		if (racer->bestLapTime == 0.0f || lapTime < racer->bestLapTime)
+		{
+			racer->bestLapTime = lapTime;
+		}
+
+		if (completedCount > racer->race->highestWaypointCount)
+		{
+			racer->race->highestWaypointCount = completedCount;
+			PrintRaceStatus(racer->race);
+		}
+	}
+	else
+	{
+		float timeDiff = static_cast<float>(currTime - *(++racer->completedWaypoints.rbegin())) / 1000;
+		PrintUserCmdText(racer->clientId, L"Checkpoint #%d: %0.3fs (+%0.3fs)", racer->completedWaypoints.size() - 1, GetFinishTime(racer, currTime), timeDiff);
 	}
 
 	if (completedCount == (racer->race->loopCount * racer->race->raceArch->waypoints.size()) + 1)
@@ -1116,16 +1295,8 @@ void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 	}
 
 	racer->waypoints.erase(racer->waypoints.begin());
-	if (racer->completedWaypoints.empty())
-	{
-		PrintUserCmdText(racer->clientId, L"Time counting started");
-	}
-	else
-	{
-		float timeDiff = static_cast<float>(currTime - *racer->completedWaypoints.rbegin()) / 1000;
-		PrintUserCmdText(racer->clientId, L"Checkpoint #%d: %0.3fs (+%0.3fs)", racer->completedWaypoints.size(), GetFinishTime(racer, currTime), timeDiff);
-	}
-	racer->completedWaypoints.push_back(currTime);
+
+	SendNextWaypoints(racer, false);
 
 }
 
@@ -1141,15 +1312,6 @@ void UpdateRacers()
 			PrintUserCmdText(racerData->first, L"You died or docked and got disqualified!");
 			DisqualifyPlayer(racerData->first);
 			continue;
-		}
-
-		if (racerData->second->waypoints.empty())
-		{
-			if (racerData->second->newWaypointTimer + 1000 > currTime)
-			{
-				continue;
-			}
-			SendLoopWaypoints(racerData->second);
 		}
 	}
 }
@@ -1249,7 +1411,7 @@ struct USERCMD
 USERCMD UserCmds[] =
 {
 	{ L"/race solo", UserCmd_RaceSolo, L"Usage: /race solo <lapCount> [raceNum]" },
-	{ L"/race join", UserCmd_RaceJoin, L"Usage: /race join <poolCashAmount> [spectator]" },
+	{ L"/race join", UserCmd_RaceJoin, L"Usage: /race join [spectator]" },
 	{ L"/race setlaps", UserCmd_RaceSetLaps, L"Usage: /race setlaps <numberOfLaps>" },
 	{ L"/race host", UserCmd_RaceSetup, L"Usage: /race host" },
 	{ L"/race start", UserCmd_RaceStart, L"Usage: /race start" },
@@ -1257,6 +1419,7 @@ USERCMD UserCmds[] =
 	{ L"/race withdraw", UserCmd_RaceWithdraw, L"Usage: /race withdraw" },
 	{ L"/race disband", UserCmd_RaceDisband, L"Usage: /race disband" },
 	{ L"/race info", UserCmd_RaceInfo, L"Usage: /race info" },
+	{ L"/race status", UserCmd_RaceStatus, L"Usage: /race status" },
 	{ L"/race", UserCmd_RaceHelp, L"Usage: /race info" },
 };
 
@@ -1334,6 +1497,7 @@ void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	auto& racer = racersMap.find(clientId);
 	if (racer != racersMap.end() && racer->second->race->started)
 	{
+		dmg->damageCause = DamageCause::MissileTorpedo;
 		return;
 	}
 
@@ -1395,7 +1559,8 @@ void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReade
 	Vector pos = { rdlFloat[1], rdlFloat[2], rdlFloat[3] };
 	auto currWaypoint = racer->waypoints.begin();
 
-	if (cship->system != currWaypoint->systemId || HkDistance3D(pos, cship->vPos) > 750)
+	if (cship->system != currWaypoint->systemId 
+		|| HkDistance3D(pos, currWaypoint->pos) > racer->race->raceArch->waypointDistance)
 	{
 		PrintUserCmdText(racer->clientId, L"ERR Disqualified due to skipping a waypoint or position desync");
 		DisqualifyPlayer(racer->clientId);

@@ -1497,6 +1497,8 @@ namespace Message
 					|| wscCmd == L"/g" || wscCmd == L"/group"
 					|| wscCmd == L"/t" || wscCmd == L"/target"
 					|| wscCmd == L"/r" || wscCmd == L"/reply"
+					|| wscCmd == L"/drawcash" || wscCmd == L"/drc"
+					|| wscCmd == L"/showcash" || wscCmd == L"/shc"
 					|| wscCmd.find(L"//") == 0 || wscCmd.find(L"*") == (wscCmd.length() - 1)))
 				{
 					wstring wscXML = L"<TRA data=\"" + set_wscCmdEchoStyle + L"\" mask=\"-1\"/><TEXT>" + XMLText(wscCmdLineLower) + L"</TEXT>";

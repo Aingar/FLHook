@@ -2720,12 +2720,14 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 	if (args.find(L"setdebugspecial") == 0)
 	{
+		RIGHT_CHECK(RIGHT_BASES)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		set_plugin_debug_special = cmd->ArgInt(1);
 		return true;
 	}
 	else if (args.find(L"setunchartedkill") == 0)
 	{
+		RIGHT_CHECK(RIGHT_BASES)
 		set_SkipUnchartedKill = !set_SkipUnchartedKill;
 		cmd->Print(L"skip unch kill %u\n", (uint)set_SkipUnchartedKill);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;

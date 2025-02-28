@@ -20,6 +20,8 @@ PLUGIN_RETURNCODE returncode;
 
 static int raceInternalIdCounter = 0;
 
+bool disruptorSuppressionPrevention = false;
+
 struct RaceArch
 {
 	wstring raceName;
@@ -150,7 +152,7 @@ void SaveScoreboard()
 			{
 				for (auto& entry : race.second)
 				{
-					fprintf(file, "score = %d, %d, %f, %s\n", startObj.first, race.first, entry.first, entry.second.c_str());
+					fprintf(file, "score = %u, %u, %f, %s\n", startObj.first, race.first, entry.first, entry.second.c_str());
 				}
 			}
 		}
@@ -299,7 +301,7 @@ float GetLapTime(shared_ptr<Racer> racer, mstime currTime)
 {
 	uint lapSize = racer->race->raceArch->waypoints.size();
 	uint currentElem = racer->completedWaypoints.size();
-	mstime lapStartTime = racer->completedWaypoints.at(currentElem - lapSize);
+	mstime lapStartTime = racer->completedWaypoints.at(currentElem - lapSize - 1);
 
 	float lapTime = static_cast<float>(currTime - lapStartTime) / 1000;
 
@@ -1390,10 +1392,12 @@ bool UserCmd_RaceHelp(uint clientID, const wstring& cmd, const wstring& param, c
 {
 	PrintUserCmdText(clientID, L"/race solo <lapCount> [raceNum]");
 	PrintUserCmdText(clientID, L"/race host");
+	PrintUserCmdText(clientID, L"/race join");
 	PrintUserCmdText(clientID, L"/race setlaps <lapCount>");
 	PrintUserCmdText(clientID, L"/race start");
 	PrintUserCmdText(clientID, L"/race disband");
 	PrintUserCmdText(clientID, L"/race withdraw");
+	PrintUserCmdText(clientID, L"/race status");
 	PrintUserCmdText(clientID, L"/race info");
 
 	return true;
@@ -1488,14 +1492,19 @@ void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 {
 	returncode = DEFAULT_RETURNCODE;
 	
+	if (disruptorSuppressionPrevention)
+	{
+		return;
+	}
+
 	uint clientId = iobj->cobj->ownerPlayer;
-	if (!clientId || dmg->damageCause != DamageCause::CruiseDisrupter)
+	if (!clientId || dmg->damageCause != DamageCause::CruiseDisrupter || !dmg->iInflictorPlayerID)
 	{
 		return;
 	}
 
 	auto& racer = racersMap.find(clientId);
-	if (racer != racersMap.end() && racer->second->race->started)
+	if (racer != racersMap.end() && racer->second->race->started && racersMap.count(dmg->iInflictorPlayerID))
 	{
 		dmg->damageCause = DamageCause::MissileTorpedo;
 		return;
@@ -1516,16 +1525,28 @@ void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 }
 
 #define IS_CMD(a) !wscCmd.compare(L##a)
-bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
+#define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
+bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& wscCmd)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	//if (IS_CMD("av"))
-	//{
-	//	AdminVoice(cmds, wscCmd);
-	//	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-	//	return true;
-	//}
+	if (IS_CMD("racingcd"))
+	{
+		RIGHT_CHECK(RIGHT_SUPERADMIN)
+		disruptorSuppressionPrevention = !disruptorSuppressionPrevention;
+
+		if (disruptorSuppressionPrevention)
+		{
+			cmd->Print(L"racing cd freeze off\n");
+		}
+		else
+		{
+			cmd->Print(L"racing cd freeze on\n");
+		}
+
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
 
 	return false;
 }
@@ -1591,7 +1612,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Timer, PLUGIN_HkTimerCheckKick, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SubmitChat, PLUGIN_HkIServerImpl_SubmitChat, 5));
-	//p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));

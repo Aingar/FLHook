@@ -990,20 +990,20 @@ bool UserCmd_RaceAddPool(uint clientID, const wstring& cmd, const wstring& param
 	if (regIter == racersMap.end())
 	{
 		PrintUserCmdText(clientID, L"ERR: Not registered to a race!");
-		return false;
+		return true;
 	}
 
 	int pool = ToInt(GetParam(param, ' ', 0));
 	if (pool <= 0)
 	{
 		PrintUserCmdText(clientID, L"ERR: Invalid value!");
-		return false;
+		return true;
 	}
 
 	if (pool > Players[clientID].iInspectCash)
 	{
 		PrintUserCmdText(clientID, L"ERR: You don't have that much money!");
-		return false;
+		return true;
 	}
 
 	auto& racer = regIter->second;
@@ -1016,7 +1016,7 @@ bool UserCmd_RaceAddPool(uint clientID, const wstring& cmd, const wstring& param
 
 	pub::Player::AdjustCash(clientID, -pool);
 
-	return false;
+	return true;
 }
 
 bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
@@ -1038,7 +1038,7 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 	if (racersMap.count(clientID))
 	{
 		PrintUserCmdText(clientID, L"ERR You are already registered in a race");
-		return false;
+		return true;
 	}
 
 	auto raceObjIter = raceObjMap.find(target->get_id());

@@ -308,8 +308,33 @@ float GetLapTime(shared_ptr<Racer> racer, mstime currTime)
 	return lapTime;
 }
 
+void CheckForHighscore(shared_ptr<Racer> racer, float time)
+{
+	auto& raceArch = racer->race->raceArch;
+	auto& trackScoreboard = scoreboard[raceArch->raceStartObj][raceArch->raceNum];
+
+	constexpr uint SIZE = 20;
+
+	if (trackScoreboard.size() >= SIZE || trackScoreboard.rbegin()->first > time)
+	{
+		trackScoreboard[time] = wstos(racer->racerName);
+		wchar_t buf[150];
+		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard: %0.3fs", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str(), time);
+		HkMsgS(Players[racer->clientId].iSystemID, buf);
+
+		if (trackScoreboard.rbegin()->first > time)
+		{
+			trackScoreboard.erase(std::prev(trackScoreboard.end()));
+		}
+
+		SaveScoreboard();
+	}
+
+}
+
 void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
 {
+	CheckForHighscore(racer, GetLapTime(racer, currTime));
 	if (isWinner)
 	{
 		PrintUserCmdText(racer->clientId, L"You've won the \"%s\" race, %d lap(s) with time of %0.3fs!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
@@ -420,7 +445,7 @@ shared_ptr<Racer> RegisterPlayer(shared_ptr<Race>& race, uint client, int initia
 	return racer;
 }
 
-shared_ptr<Race> CreateRace(uint hostId, RaceArch& raceArch, int initialPool, int loopCount)
+shared_ptr<Race> CreateRace(uint hostId, RaceArch& raceArch, int initialPool, int loopCount, bool spectate)
 {
 	if (loopCount == 0)
 	{
@@ -437,7 +462,7 @@ shared_ptr<Race> CreateRace(uint hostId, RaceArch& raceArch, int initialPool, in
 
 	shared_ptr<Race> racePtr = make_shared<Race>(race);
 	raceList.push_back(racePtr);
-	RegisterPlayer(racePtr, hostId, initialPool, false);
+	RegisterPlayer(racePtr, hostId, initialPool, spectate);
 
 	return racePtr;
 }
@@ -574,30 +599,6 @@ void BeginRace(shared_ptr<Race> race, int countdown)
 	race->startCountdown = countdown;
 }
 
-void CheckForHighscore(shared_ptr<Racer> racer, float time)
-{
-	auto& raceArch = racer->race->raceArch;
-	auto& trackScoreboard = scoreboard[raceArch->raceStartObj][raceArch->raceNum];
-
-	constexpr uint SIZE = 20;
-
-	if (trackScoreboard.size() >= SIZE || trackScoreboard.rbegin()->first > time)
-	{
-		trackScoreboard[time] = wstos(racer->racerName);
-		wchar_t buf[150];
-		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard: %0.3fs", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str(), time);
-		HkMsgS(Players[racer->clientId].iSystemID, buf);
-
-		if (trackScoreboard.rbegin()->first > time)
-		{
-			trackScoreboard.erase(std::prev(trackScoreboard.end()));
-		}
-
-		SaveScoreboard();
-	}
-
-}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Loading Settings
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -693,7 +694,6 @@ void LoadSettings()
 
 		uint startObj;
 		RaceArch race;
-		Vector startObjPos;
 		Matrix startObjRot;
 		bool firstWaypoint = true;
 		while (ini.read_value())
@@ -707,9 +707,9 @@ void LoadSettings()
 					ConPrint(L"ERR Racing: Starting object %s does not exist!\n", stows(ini.get_value_string()).c_str());
 					break;
 				}
-
 				startObjRot = iobj->get_orientation();
-				startObjPos = iobj->get_position();
+
+				race.raceStartObj = startObj;
 			}
 			else if (ini.is_value("race_name"))
 			{
@@ -771,7 +771,7 @@ void LoadSettings()
 			}
 			else if (ini.is_value("starting_pos"))
 			{
-				Vector startPos = startObjPos;
+				Vector startPos = race.firstWaypoint.pos;
 				Vector relativePos = { ini.get_value_float(0), ini.get_value_float(1), ini.get_value_float(2) };
 				TranslateX(startPos, startObjRot, relativePos.x);
 				TranslateY(startPos, startObjRot, relativePos.y);
@@ -826,6 +826,72 @@ bool UserCmd_RaceDisband(uint clientID, const wstring& cmd, const wstring& param
 	}
 
 	DisbandRace(race);
+	return true;
+}
+
+bool UserCmd_RaceScoreboard(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
+{
+
+	auto cship = ClientInfo[clientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(clientID, L"ERR Not in space!");
+		return true;
+	}
+
+	auto target = cship->get_target();
+	if (!target)
+	{
+		PrintUserCmdText(clientID, L"ERR No target!");
+		return true;
+	}
+
+	auto raceObjIter = raceObjMap.find(target->get_id());
+	if (raceObjIter == raceObjMap.end())
+	{
+		PrintUserCmdText(clientID, L"ERR Invalid start point object selected!");
+		return true;
+	}
+
+	auto raceNum = ToUInt(GetParam(param, ' ', 1));
+	auto& raceIter = raceObjIter->second.find(raceNum);
+	if (raceIter == raceObjIter->second.end())
+	{
+		if (raceObjIter->second.size() == 1)
+		{
+			raceIter = raceObjIter->second.begin();
+		}
+		else
+		{
+			PrintUserCmdText(clientID, L"ERR Invalid race number for selected start! Available races:");
+			for (auto& race : raceObjIter->second)
+			{
+				PrintUserCmdText(clientID, L"%d - %s", race.second.raceNum, race.second.raceName.c_str());
+			}
+			return true;
+		}
+	}
+
+	auto scoreboardIter = scoreboard.find(target->get_id());
+	if(scoreboardIter == scoreboard.end())
+	{
+		PrintUserCmdText(clientID, L"Scoreboard for this race is empty!");
+		return true;
+	}
+
+	auto raceScoreIter = scoreboardIter->second.find(raceIter->second.raceNum);
+	if (raceScoreIter == scoreboardIter->second.end())
+	{
+		PrintUserCmdText(clientID, L"Scoreboard for this race is empty!");
+		return true;
+	}
+
+	uint counter = 0;
+	PrintUserCmdText(clientID, L"Scoreboard for %s:", raceIter->second.raceName.c_str());
+	for (auto& entry : raceScoreIter->second)
+	{
+		PrintUserCmdText(clientID, L"#%u %0.3fs - %s", ++counter, entry.first, stows(entry.second).c_str());
+	}
 	return true;
 }
 
@@ -998,7 +1064,7 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 		}
 		else
 		{
-			PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+			PrintUserCmdText(clientID, L"ERR Invalid race number for selected start! Available races:");
 			for (auto& race : raceObjIter->second)
 			{
 				PrintUserCmdText(clientID, L"%d - %s", race.second.raceNum, race.second.raceName.c_str());
@@ -1018,7 +1084,9 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 	//	return true;
 	//}
 
-	CreateRace(clientID, raceIter->second, initialPool, 1);
+	bool spectate = ToLower(GetParam(param, ' ', 2)).find(L"spec") == 0;
+
+	CreateRace(clientID, raceIter->second, initialPool, 1, spectate);
 
 	wstring hostName = (const wchar_t*)Players.GetActiveCharacterName(clientID);
 
@@ -1095,7 +1163,6 @@ bool UserCmd_RaceStart(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-
 	auto regIter = racersMap.find(clientID);
 	if (regIter == racersMap.end())
 	{
@@ -1109,7 +1176,16 @@ bool UserCmd_RaceStart(uint clientID, const wstring& cmd, const wstring& param, 
 		return true;
 	}
 
-	BeginRace(regIter->second->race, 10);
+	for (auto& racer : regIter->second->race->participants)
+	{
+		if (racer.second->participantType == Participant::Racer)
+		{
+			BeginRace(regIter->second->race, 10);
+			return true;
+		}
+	}
+
+	PrintUserCmdText(clientID, L"ERR no racer participants in race!");
 
 	return true;
 }
@@ -1153,7 +1229,7 @@ bool UserCmd_RaceSolo(uint clientID, const wstring& cmd, const wstring& param, c
 		}
 		else
 		{
-			PrintUserCmdText(clientID, L"ERR Invalid race name for selected start! Available races:");
+			PrintUserCmdText(clientID, L"ERR Invalid race number for selected start! Available races:");
 			for (auto& race : raceObjIter->second)
 			{
 				PrintUserCmdText(clientID, L"%d - %s", race.second.raceNum, race.second.raceName.c_str());
@@ -1181,7 +1257,7 @@ bool UserCmd_RaceSolo(uint clientID, const wstring& cmd, const wstring& param, c
 		return true;
 	}
 
-	auto& race = CreateRace(clientID, raceIter->second, 0, loopCount);
+	auto& race = CreateRace(clientID, raceIter->second, 0, loopCount, false);
 	BeginRace(race, 5);
 
 	return true;
@@ -1391,8 +1467,8 @@ void Timer()
 bool UserCmd_RaceHelp(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
 {
 	PrintUserCmdText(clientID, L"/race solo <lapCount> [raceNum]");
-	PrintUserCmdText(clientID, L"/race host");
-	PrintUserCmdText(clientID, L"/race join");
+	PrintUserCmdText(clientID, L"/race host [spectator]");
+	PrintUserCmdText(clientID, L"/race join [spectator]");
 	PrintUserCmdText(clientID, L"/race setlaps <lapCount>");
 	PrintUserCmdText(clientID, L"/race start");
 	PrintUserCmdText(clientID, L"/race disband");
@@ -1424,6 +1500,7 @@ USERCMD UserCmds[] =
 	{ L"/race disband", UserCmd_RaceDisband, L"Usage: /race disband" },
 	{ L"/race info", UserCmd_RaceInfo, L"Usage: /race info" },
 	{ L"/race status", UserCmd_RaceStatus, L"Usage: /race status" },
+	{ L"/race scoreboard", UserCmd_RaceScoreboard, L"Usage: /race scoreboard [raceNum]" },
 	{ L"/race", UserCmd_RaceHelp, L"Usage: /race info" },
 };
 

@@ -117,8 +117,6 @@ void AlleyMF::LoadSettings()
 		ini.close();
 	}
 
-	ConPrint(L"MARKETFUCKER: Loaded %u ships for %u bases \n", shipamount2, shipamount1);
-	ConPrint(L"MARKETFUCKER: Loaded %u items for %u bases \n", commodamount2, commodamount1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

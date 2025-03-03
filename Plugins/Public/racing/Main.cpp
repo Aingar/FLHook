@@ -315,26 +315,54 @@ void CheckForHighscore(shared_ptr<Racer> racer, float time)
 
 	constexpr uint SIZE = 20;
 
-	if (trackScoreboard.size() >= SIZE || trackScoreboard.rbegin()->first > time)
-	{
-		trackScoreboard[time] = wstos(racer->racerName);
-		wchar_t buf[150];
-		_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard: %0.3fs", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str(), time);
-		HkMsgS(Players[racer->clientId].iSystemID, buf);
 
-		if (trackScoreboard.rbegin()->first > time)
+	if (!(trackScoreboard.size() < SIZE || trackScoreboard.rbegin()->first > time))
+	{
+		return;
+	}
+
+	string racerStr = wstos(racer->racerName);
+	auto& iter = trackScoreboard.begin();
+	for (; iter != trackScoreboard.end(); iter++)
+	{
+		if (iter->second != racerStr)
+		{
+			continue;
+		}
+
+		if (iter->first > time)
+		{
+			trackScoreboard.erase(iter);
+			trackScoreboard[time] = racerStr;
+			iter = trackScoreboard.begin();
+			break;
+		}
+		return;
+	}
+	
+	if (iter == trackScoreboard.end())
+	{
+		if (trackScoreboard.size() == SIZE)
 		{
 			trackScoreboard.erase(std::prev(trackScoreboard.end()));
 		}
 
-		SaveScoreboard();
+		trackScoreboard[time] = wstos(racer->racerName);
 	}
 
+	SaveScoreboard();
+
+	auto distance = std::distance(trackScoreboard.begin(), trackScoreboard.find(time));
+
+	wchar_t buf[150];
+	_snwprintf(buf, sizeof(buf), L"%s has scored a new highscore on %s leaderboard: #%d - %0.3fs", racer->racerName.c_str(), racer->race->raceArch->raceName.c_str(), distance+1, time);
+	HkMsgS(Players[racer->clientId].iSystemID, buf);
+	
 }
 
 void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
 {
-	CheckForHighscore(racer, GetLapTime(racer, currTime));
+	racer->waypoints.clear();
 	if (isWinner)
 	{
 		PrintUserCmdText(racer->clientId, L"You've won the \"%s\" race, %d lap(s) with time of %0.3fs!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
@@ -351,7 +379,6 @@ void ProcessWinner(shared_ptr<Racer> racer, bool isWinner, mstime currTime)
 	}
 	
 	PrintUserCmdText(racer->clientId, L"You've finished the \"%s\" race, %d lap(s) with time of %0.3fs!", racer->race->raceArch->raceName.c_str(), racer->race->loopCount, GetFinishTime(racer, currTime));
-
 }
 
 void BeamPlayers(shared_ptr<Race> race, float freezeTime)
@@ -372,7 +399,7 @@ void BeamPlayers(shared_ptr<Race> race, float freezeTime)
 			PrintUserCmdText(player, L"ERR You're in the wrong system! Unable to beam you into position");
 			continue;
 		}
-		if (race->raceArch->startingPositions.size() < positionIndex)
+		if (race->raceArch->startingPositions.size() == positionIndex)
 		{
 			PrintUserCmdText(player, L"ERR Unable to find a starting position for you, contact admins/developers!");
 			continue;
@@ -467,27 +494,25 @@ shared_ptr<Race> CreateRace(uint hostId, RaceArch& raceArch, int initialPool, in
 	return racePtr;
 }
 
-void DisbandRace(shared_ptr<Race> race)
+void DisbandRace(shared_ptr<Race> race, bool abruptEnd)
 {
-
-	for (auto& participant : race->participants)
+	if (abruptEnd && !race->started)
 	{
-		if (participant.second->participantType == Participant::Disqualified)
+		for (auto& participant : race->participants)
 		{
-			continue;
+			if (participant.second->participantType == Participant::Disqualified)
+			{
+				continue;
+			}
+			int poolEntry = participant.second->pool;
+			if (poolEntry)
+			{
+				PrintUserCmdText(participant.first, L"Race disbanded, $%d credits refunded", poolEntry);
+				pub::Player::AdjustCash(participant.first, poolEntry);
+			}
+			ToggleRaceMode(participant.first, false, 300.f);
+			racersMap.erase(participant.first);
 		}
-		int poolEntry = participant.second->pool;
-		if (poolEntry)
-		{
-			PrintUserCmdText(participant.first, L"Race disbanded, $%d credits refunded", poolEntry);
-			pub::Player::AdjustCash(participant.first, poolEntry);
-		}
-		else
-		{
-			PrintUserCmdText(participant.first, L"Race disbanded");
-		}
-		ToggleRaceMode(participant.first, false, 250.f);
-		racersMap.erase(participant.first);
 	}
 
 	for (auto& iter = raceList.begin(); iter != raceList.end(); ++iter)
@@ -529,7 +554,7 @@ void DisqualifyPlayer(uint client)
 
 	auto& race = racer->race;
 
-	ToggleRaceMode(client, false, 250.f);
+	ToggleRaceMode(client, false, 300.f);
 	racersMap.erase(client);
 
 	for (auto& participant : race->participants)
@@ -540,7 +565,7 @@ void DisqualifyPlayer(uint client)
 		}
 	}
 
-	DisbandRace(race);
+	DisbandRace(race, true);
 }
 
 void SendNextWaypoints(shared_ptr<Racer> racer, bool setupWaypoints)
@@ -825,7 +850,7 @@ bool UserCmd_RaceDisband(uint clientID, const wstring& cmd, const wstring& param
 		return true;
 	}
 
-	DisbandRace(race);
+	DisbandRace(race, true);
 	return true;
 }
 
@@ -977,7 +1002,7 @@ bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& para
 	{
 		racer->race->participants.erase(racer->clientId);
 	}
-	ToggleRaceMode(clientID, false, 250.f);
+	ToggleRaceMode(clientID, false, 300.f);
 	racersMap.erase(regIter);
 
 
@@ -1084,7 +1109,7 @@ bool UserCmd_RaceSetup(uint clientID, const wstring& cmd, const wstring& param, 
 	//	return true;
 	//}
 
-	bool spectate = ToLower(GetParam(param, ' ', 2)).find(L"spec") == 0;
+	bool spectate = ToLower(GetParam(param, ' ', 0)).find(L"spec") == 0;
 
 	CreateRace(clientID, raceIter->second, initialPool, 1, spectate);
 
@@ -1367,8 +1392,7 @@ void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 			ProcessWinner(racer, false, currTime);
 		}
 
-		ToggleRaceMode(racer->clientId, false, 250.f);
-		racersMap.erase(racer->clientId);
+		ToggleRaceMode(racer->clientId, false, 300.f);
 		return;
 	}
 
@@ -1384,6 +1408,11 @@ void UpdateRacers()
 	mstime currTime = timeInMS();
 	for (auto& racerData = racersMap.begin(); racerData != racersMap.end();racerData++)
 	{
+		if (racerData->second->participantType == Participant::Spectator)
+		{
+			continue;
+		}
+
 		auto cship = ClientInfo[racerData->first].cship;
 		if (!cship)
 		{
@@ -1394,10 +1423,39 @@ void UpdateRacers()
 	}
 }
 
+bool CheckIfRaceFinished(shared_ptr<Race> race)
+{
+	if (!race->started)
+	{
+		return true;
+	}
+
+	uint waypointCount = (race->loopCount * race->raceArch->waypoints.size()) + 1;
+	for (auto& participant : race->participants)
+	{
+		if (participant.second->participantType != Participant::Racer)
+		{
+			continue;
+		}
+		if (participant.second->completedWaypoints.size() != waypointCount)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 void UpdateRaces()
 {
 	for (auto& race : raceList)
 	{
+		if (!CheckIfRaceFinished(race))
+		{
+			DisbandRace(race, false);
+			return;
+		}
+
 		if (!race->startCountdown)
 		{
 			continue;
@@ -1641,7 +1699,7 @@ void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReade
 	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
 	auto racerIter = racersMap.find(cId.iID);
-	if (racerIter == racersMap.end())
+	if (racerIter == racersMap.end() || racerIter->second->waypoints.empty())
 	{
 		return;
 	}
@@ -1653,14 +1711,20 @@ void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReade
 		return;
 	}
 
+
 	const float* rdlFloat = reinterpret_cast<const float*>(rdlReader);
 	Vector pos = { rdlFloat[1], rdlFloat[2], rdlFloat[3] };
 	auto currWaypoint = racer->waypoints.begin();
 
 	if (cship->system != currWaypoint->systemId 
-		|| HkDistance3D(pos, currWaypoint->pos) > racer->race->raceArch->waypointDistance)
+		|| HkDistance3D(pos, currWaypoint->pos) > racer->race->raceArch->waypointDistance * 1.5f)
 	{
 		PrintUserCmdText(racer->clientId, L"ERR Disqualified due to skipping a waypoint or position desync");
+		ConPrint(L"desync %f,%f,%f-%f,%f,%f, %x-%x ... %d %d\n", 
+			pos.x, pos.y, pos.z, 
+			currWaypoint->pos.x, currWaypoint->pos.y, currWaypoint->pos.z, 
+			cship->system, currWaypoint->systemId, 
+			racer->waypoints.size(), racer->completedWaypoints.size());
 		DisqualifyPlayer(racer->clientId);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
@@ -1670,6 +1734,13 @@ void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReade
 	ProcessWaypoint(racer, currTime);
 
 	returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+}
+
+void __stdcall PlayerLaunch(unsigned int iShip, unsigned int client)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	ToggleRaceMode(client, false, 300.f);
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1690,6 +1761,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SubmitChat, PLUGIN_HkIServerImpl_SubmitChat, 5));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipExplosionHit, PLUGIN_ExplosionHit, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));

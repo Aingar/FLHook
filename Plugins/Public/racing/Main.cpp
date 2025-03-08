@@ -21,6 +21,7 @@ PLUGIN_RETURNCODE returncode;
 static int raceInternalIdCounter = 0;
 
 bool disruptorSuppressionPrevention = false;
+unordered_map<uint, uint> clientsToPatch;
 
 struct RaceArch
 {
@@ -447,6 +448,8 @@ shared_ptr<Racer> RegisterPlayer(shared_ptr<Race>& race, uint client, int initia
 		PrintUserCmdText(client, L"Added %d to the race reward pool!", initialPool);
 		pub::Player::AdjustCash(client, -initialPool);
 	}
+
+	clientsToPatch.erase(client);
 
 	shared_ptr<Racer> racer = make_shared<Racer>();
 	racer->clientId = client;
@@ -1520,6 +1523,20 @@ void Timer()
 	{
 		UpdateRaces();
 	}
+
+	if (!clientsToPatch.empty())
+	{
+		for (auto& client = clientsToPatch.begin(); client != clientsToPatch.end();)
+		{
+			if (--client->second)
+			{
+				ToggleRaceMode(client->first, false, 300.0f);
+				client++;
+				continue;
+			}
+			client = clientsToPatch.erase(client);
+		}
+	}
 }
 
 bool UserCmd_RaceHelp(uint clientID, const wstring& cmd, const wstring& param, const wchar_t* usage)
@@ -1720,11 +1737,6 @@ void __stdcall SubmitChat(CHAT_ID cId, unsigned long size, const DWORD* rdlReade
 		|| HkDistance3D(pos, currWaypoint->pos) > racer->race->raceArch->waypointDistance * 1.5f)
 	{
 		PrintUserCmdText(racer->clientId, L"ERR Disqualified due to skipping a waypoint or position desync");
-		ConPrint(L"desync %f,%f,%f-%f,%f,%f, %x-%x ... %d %d\n", 
-			pos.x, pos.y, pos.z, 
-			currWaypoint->pos.x, currWaypoint->pos.y, currWaypoint->pos.z, 
-			cship->system, currWaypoint->systemId, 
-			racer->waypoints.size(), racer->completedWaypoints.size());
 		DisqualifyPlayer(racer->clientId);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return;
@@ -1740,7 +1752,7 @@ void __stdcall PlayerLaunch(unsigned int iShip, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	ToggleRaceMode(client, false, 300.f);
+	clientsToPatch[client] = 30;
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

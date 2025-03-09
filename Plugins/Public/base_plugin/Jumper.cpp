@@ -183,6 +183,18 @@ void HyperJump::InitJumpHoleConfig()
 	}
 }
 
+struct DeepRegion
+{
+	string name;
+	uint cooldown = 0;
+	uint openCount = 0;
+	string openArch;
+	string openLoadout;
+	string closeArch;
+	string closeLoadout;
+	vector<uint> entriesToRandomize;
+};
+
 void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 {
 
@@ -197,7 +209,9 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	uint lastJumpholeRandomization = 0;
 	uint randomizationCooldown = 3600 * 23;
 	uint randomizationCooldownOffset = 3600 * 9;
+	vector<DeepRegion> deepRegionVector;
 	INI_Reader ini;
+	map<string, time_t> deepRegionTimerMap;
 
 	if (ini.open(cfg_filehyperspaceHubTimer.c_str(), false))
 	{
@@ -226,6 +240,10 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					{
 						set_unchartedDeathGracePeriod = ini.get_value_int(0);
 					}
+					else
+					{
+						deepRegionTimerMap[ini.get_name_ptr()] = ini.get_value_int(0);
+					}
 				}
 			}
 			else if (ini.is_header("uncharted_systems"))
@@ -244,11 +262,6 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	}
 
 	time_t currTime = time(0);
-	if (lastJumpholeRandomization + randomizationCooldown > currTime)
-	{
-		ConPrint(L"HYPERSPACE HUB: insufficient time passed, aborting randomization\n");
-		return;
-	}
 
 	ConPrint(L"HYPERSPACE HUB: Randomizing hub jump holes\n");
 
@@ -281,7 +294,47 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	{
 		while (ini.read_header())
 		{
-			if (ini.is_header("return_system_data"))
+			if (ini.is_header("deep_region_group"))
+			{
+				DeepRegion dr;
+				while (ini.read_value())
+				{
+					if (ini.is_value("name"))
+					{
+						dr.name = ini.get_value_string();
+					}
+					else if (ini.is_value("cooldown"))
+					{
+						dr.cooldown = ini.get_value_int(0);
+					}
+					else if (ini.is_value("opencount"))
+					{
+						dr.openCount = ini.get_value_int(0);
+					}
+					else if (ini.is_value("openarch"))
+					{
+						dr.openArch = ini.get_value_string();
+					}
+					else if (ini.is_value("openloadout"))
+					{
+						dr.openLoadout = ini.get_value_string();
+					}
+					else if (ini.is_value("closedarch"))
+					{
+						dr.closeArch = ini.get_value_string();
+					}
+					else if (ini.is_value("closedloadout"))
+					{
+						dr.closeLoadout = ini.get_value_string();
+					}
+					else if (ini.is_value("entrance"))
+					{
+						dr.entriesToRandomize.push_back(CreateID(ini.get_value_string()));
+					}
+				}
+				deepRegionVector.push_back(dr);
+			}
+			else if (ini.is_header("return_system_data"))
 			{
 				while (ini.read_value())
 				{
@@ -358,78 +411,141 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 		return;
 	}
 
-	for (uint returnJH : returnJumpHoles)
+	if (lastJumpholeRandomization + randomizationCooldown < currTime)
 	{
-
-		PlayerBase* pb = player_bases[returnJH];
-		uint index = GetRandom() % legalReturnSystems.size();
-		if (mapSystemJumps.count(legalReturnSystems.at(index)) == 0)
+		ConPrint(L"HYPERSPACE HUB: randomizing connections\n");
+		for (uint returnJH : returnJumpHoles)
 		{
-			ConPrint(L"HYPERSPACE HUB: Jump Point data for return system not found, aborting randomization!\n");
-			continue;
+
+			PlayerBase* pb = player_bases[returnJH];
+			uint index = GetRandom() % legalReturnSystems.size();
+			if (mapSystemJumps.count(legalReturnSystems.at(index)) == 0)
+			{
+				ConPrint(L"HYPERSPACE HUB: Jump Point data for return system not found, aborting randomization!\n");
+				continue;
+			}
+			const auto& coordsList = mapSystemJumps[legalReturnSystems.at(index)];
+			const auto& coords = coordsList.at(GetRandom() % coordsList.size());
+
+			pb->destSystem = coords.system;
+			pb->destPos = coords.pos;
+			pb->destOri = coords.ornt;
+
+			const auto& systemInfo = Universe::get_system(coords.system);
+			pb->basename = HkGetWStringFromIDS(systemInfo->strid_name) + L" Jump Hole";
+			legalReturnSystems.erase(legalReturnSystems.begin() + index);
+
+			pb->Save();
+			RespawnBase(pb);
 		}
-		const auto& coordsList = mapSystemJumps[legalReturnSystems.at(index)];
-		const auto& coords = coordsList.at(GetRandom() % coordsList.size());
 
-		pb->destSystem = coords.system;
-		pb->destPos = coords.pos;
-		pb->destOri = coords.ornt;
+		bool isFirst = true;
+		for (uint unchartedJH : hubToUnchartedJumpHoles)
+		{
+			PlayerBase* originJumpHole = player_bases[unchartedJH];
+			uint randomizedIndex = GetRandom() % unchartedToHubJumpHoles.size();
+			uint randomizedTarget = unchartedToHubJumpHoles.at(randomizedIndex);
+			auto targetJumpHole = player_bases.at(randomizedTarget);
 
-		const auto& systemInfo = Universe::get_system(coords.system);
-		pb->basename = HkGetWStringFromIDS(systemInfo->strid_name) + L" Jump Hole";
-		legalReturnSystems.erase(legalReturnSystems.begin() + index);
+			originJumpHole->destObject = CreateID(targetJumpHole->nickname.c_str());
+			originJumpHole->destObjectName = targetJumpHole->nickname;
+			originJumpHole->destSystem = targetJumpHole->system;
 
-		pb->Save();
-		RespawnBase(pb);
+			auto unchartedSystemInfo = Universe::get_system(targetJumpHole->system);
+			originJumpHole->basename = L"Unstable " + HkGetWStringFromIDS(unchartedSystemInfo->strid_name) + L" Jump Hole";
+
+			targetJumpHole->destObject = CreateID(originJumpHole->nickname.c_str());
+			targetJumpHole->destObjectName = originJumpHole->nickname;
+			targetJumpHole->destSystem = originJumpHole->system;
+
+			auto& selectedSystemCoordList = mapSystemJumps[targetJumpHole->system];
+			if (selectedSystemCoordList.empty())
+			{
+				AddLog("Exception: Unable to form a JH to %u system\n", targetJumpHole->system);
+				continue;
+			}
+			auto& coords = selectedSystemCoordList.at(GetRandom() % selectedSystemCoordList.size());
+			targetJumpHole->position = coords.pos;
+			targetJumpHole->rotation = coords.ornt;
+
+			auto originSystemInfo = Universe::get_system(originJumpHole->system);
+			targetJumpHole->basename = L"Unstable " + HkGetWStringFromIDS(originSystemInfo->strid_name) + L" Jump Hole";
+
+
+			unchartedToHubJumpHoles.erase(unchartedToHubJumpHoles.begin() + randomizedIndex);
+
+			originJumpHole->Save();
+			targetJumpHole->Save();
+			RespawnBase(originJumpHole);
+			RespawnBase(targetJumpHole);
+
+			if (isFirst)
+			{
+				isFirst = false;
+				auto systemInfo = Universe::get_system(originJumpHole->destSystem);
+				WritePrivateProfileStringA("Timer", "systemToExclude", systemInfo->nickname, cfg_filehyperspaceHubTimer.c_str());
+			}
+		}
+		WritePrivateProfileStringA("Timer", "lastRandomization", itos((int)(currTime - (currTime % randomizationCooldown) + randomizationCooldownOffset)).c_str(), cfg_filehyperspaceHubTimer.c_str());
 	}
 
-	bool isFirst = true;
-	for (uint unchartedJH : hubToUnchartedJumpHoles)
+	for (DeepRegion& dr : deepRegionVector)
 	{
-		PlayerBase* originJumpHole = player_bases[unchartedJH];
-		uint randomizedIndex = GetRandom() % unchartedToHubJumpHoles.size();
-		uint randomizedTarget = unchartedToHubJumpHoles.at(randomizedIndex);
-		auto targetJumpHole = player_bases.at(randomizedTarget);
-
-		originJumpHole->destObject = CreateID(targetJumpHole->nickname.c_str());
-		originJumpHole->destObjectName = targetJumpHole->nickname;
-		originJumpHole->destSystem = targetJumpHole->system;
-
-		auto unchartedSystemInfo = Universe::get_system(targetJumpHole->system);
-		originJumpHole->basename = L"Unstable " + HkGetWStringFromIDS(unchartedSystemInfo->strid_name) + L" Jump Hole";
-
-		targetJumpHole->destObject = CreateID(originJumpHole->nickname.c_str());
-		targetJumpHole->destObjectName = originJumpHole->nickname;
-		targetJumpHole->destSystem = originJumpHole->system;
-
-		auto& selectedSystemCoordList = mapSystemJumps[targetJumpHole->system];
-		if (selectedSystemCoordList.empty())
+		auto timerIter = deepRegionTimerMap.find(dr.name);
+		if (timerIter != deepRegionTimerMap.end() && currTime < timerIter->second + dr.cooldown)
 		{
-			AddLog("Exception: Unable to form a JH to %u system\n", targetJumpHole->system);
 			continue;
 		}
-		auto& coords = selectedSystemCoordList.at(GetRandom() % selectedSystemCoordList.size());
-		targetJumpHole->position = coords.pos;
-		targetJumpHole->rotation = coords.ornt;
-
-		auto originSystemInfo = Universe::get_system(originJumpHole->system);
-		targetJumpHole->basename = L"Unstable " + HkGetWStringFromIDS(originSystemInfo->strid_name) + L" Jump Hole";
-
-
-		unchartedToHubJumpHoles.erase(unchartedToHubJumpHoles.begin() + randomizedIndex);
-
-		originJumpHole->Save();
-		targetJumpHole->Save();
-		RespawnBase(originJumpHole);
-		RespawnBase(targetJumpHole);
-
-		if (isFirst)
+		
+		int entry = GetRandom() % dr.entriesToRandomize.size();
+		int counter = -1;
+		for (uint baseID : dr.entriesToRandomize)
 		{
-			isFirst = false;
-			auto systemInfo = Universe::get_system(originJumpHole->destSystem);
-			WritePrivateProfileStringA("Timer", "systemToExclude", systemInfo->nickname, cfg_filehyperspaceHubTimer.c_str());
+			counter++;
+			auto baseIter = player_bases.find(baseID);
+			if (baseIter == player_bases.end())
+			{
+				ConPrint(L"HYPERSPACE HUB: Deep Region %s entrance of %x not found!\n", dr.name.c_str(), baseID);
+				continue;
+			}
+
+			PlayerBase* base = baseIter->second;
+			auto connectedBaseIter = player_bases.find(base->destObject);
+			if (connectedBaseIter == player_bases.end())
+			{
+				ConPrint(L"HYPERSPACE HUB: Deep Region %s exitpoint of %s not found!\n", dr.name.c_str(), base->basename.c_str());
+				continue;
+			}
+
+			auto entrySysInfo = Universe::get_system(base->system);
+			auto exitSysInfo = Universe::get_system(connectedBaseIter->second->system);
+
+			auto entrySysInfoName = HkGetWStringFromIDS(entrySysInfo->strid_name);
+			auto exitSysInfoName = HkGetWStringFromIDS(exitSysInfo->strid_name);
+			if (counter == entry)
+			{
+				base->basesolar = dr.openArch;
+				base->baseloadout = dr.openLoadout;
+				base->basename = exitSysInfoName + L" Jump Hole";
+				connectedBaseIter->second->basesolar = dr.openArch;
+				connectedBaseIter->second->baseloadout = dr.openLoadout;
+				connectedBaseIter->second->basename = entrySysInfoName + L" Jump Hole";
+			}
+			else
+			{
+				base->basesolar = dr.closeArch;
+				base->baseloadout = dr.closeLoadout;
+				base->basename = L"Unaligned " + exitSysInfoName + L" Jump Hole";
+				connectedBaseIter->second->basesolar = dr.closeArch;
+				connectedBaseIter->second->baseloadout = dr.closeLoadout;
+				connectedBaseIter->second->basename = L"Unaligned " + entrySysInfoName + L" Jump Hole";
+			}
+			base->Save();
+			connectedBaseIter->second->Save();
+			RespawnBase(base);
+			RespawnBase(connectedBaseIter->second);
+
+			WritePrivateProfileStringA("Timer", dr.name.c_str(), itos((int)currTime).c_str(), cfg_filehyperspaceHubTimer.c_str());
 		}
 	}
-
-	WritePrivateProfileString("Timer", "lastRandomization", itos((int)(currTime - (currTime % randomizationCooldown) + randomizationCooldownOffset)).c_str(), cfg_filehyperspaceHubTimer.c_str());
 }

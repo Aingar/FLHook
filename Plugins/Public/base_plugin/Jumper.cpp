@@ -171,16 +171,7 @@ void HyperJump::InitJumpHoleConfig()
 		if (!completedLoad)
 		{
 			invalidJumpHoles.emplace_back(pbase);
-			continue;
 		}
-
-		uint systemId;
-		pub::SpaceObj::GetSystem(pbase->destObject, systemId);
-		pbase->destSystem = systemId;
-
-		pbase->Save();
-
-		InitJumpHole(base.first, pbase->destSystem, pbase->destObject);
 	}
 
 	for (auto pbase : invalidJumpHoles)

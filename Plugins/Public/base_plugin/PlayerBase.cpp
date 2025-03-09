@@ -79,6 +79,20 @@ void PlayerBase::Spawn()
 	}
 
 	SyncReputationForBase();
+
+	if (archetype && archetype->isjump)
+	{
+		if (destObject)
+		{
+			auto obj = HkGetInspectObj(destObject);
+			if (obj)
+			{
+				destSystem = obj->cobj->system;
+			}
+		}
+
+		HyperJump::InitJumpHole(base, destSystem, destObject);
+	}
 }
 
 bool IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, int timeOfDay)

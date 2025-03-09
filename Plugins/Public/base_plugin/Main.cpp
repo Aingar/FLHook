@@ -2878,7 +2878,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		if (!base)
 		{
-			cmd->Print(L"ERR Base doesn't exist");
+			cmd->Print(L"ERR Base doesn't exist\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
@@ -2907,7 +2907,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		if (!base)
 		{
-			cmd->Print(L"ERR Base doesn't exist");
+			cmd->Print(L"ERR Base doesn't exist\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
@@ -2996,7 +2996,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		if (!base)
 		{
-			cmd->Print(L"ERR Base doesn't exist");
+			cmd->Print(L"ERR Base doesn't exist\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}

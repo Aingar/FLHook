@@ -14,6 +14,7 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg);
+void ShipEquipmentDestroyedNaked();
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);
 void FindAndDisableEquip(uint client, const string& hardpoint);
@@ -157,6 +158,7 @@ extern FARPROC SolarExplosionHitOrigFunc;
 extern FARPROC ShipMunitionHitOrigFunc;
 extern FARPROC ShipColGrpDmgFunc;
 extern FARPROC ShipFuseLightFunc;
+extern FARPROC ShipEquipDestroyedFunc;
 
 extern vector<float> armorReductionVector;
 extern int shipArmorRating;

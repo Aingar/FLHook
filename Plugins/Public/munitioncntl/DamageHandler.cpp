@@ -759,3 +759,37 @@ FireResult __fastcall CELauncherFire(CELauncher* gun, void* edx, const Vector& p
 
 	return fireResult;
 }
+
+void __stdcall ShipEquipmentDestroyed(IObjRW* ship, CEquip* eq, DamageEntry::SubObjFate fate, DamageList* dmgList)
+{
+	if (eq->CEquipType != EquipmentClass::ShieldGenerator)
+	{
+		return;
+	}
+
+	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(EquipmentClass::Shield));
+	if (!shield)
+	{
+		return;
+	}
+
+	if (shield->linkedShieldGen.size() == 1)
+	{
+		ship->cequip_death(shield, fate, dmgList);
+	}
+}
+
+__declspec(naked) void ShipEquipmentDestroyedNaked()
+{
+	__asm {
+		push ecx
+		push[esp + 0x10]
+		push[esp + 0x10]
+		push[esp + 0x10]
+		push ecx
+		call ShipEquipmentDestroyed
+		pop ecx
+		jmp[ShipEquipDestroyedFunc]
+	}
+}

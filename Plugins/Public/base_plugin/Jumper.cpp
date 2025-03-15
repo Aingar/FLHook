@@ -505,7 +505,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			auto baseIter = player_bases.find(baseID);
 			if (baseIter == player_bases.end())
 			{
-				ConPrint(L"HYPERSPACE HUB: Deep Region %s entrance of %x not found!\n", dr.name.c_str(), baseID);
+				ConPrint(L"HYPERSPACE HUB: Deep Region %s entrance of %x not found!\n", stows(dr.name).c_str(), baseID);
 				continue;
 			}
 
@@ -513,7 +513,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			auto connectedBaseIter = player_bases.find(base->destObject);
 			if (connectedBaseIter == player_bases.end())
 			{
-				ConPrint(L"HYPERSPACE HUB: Deep Region %s exitpoint of %s not found!\n", dr.name.c_str(), base->basename.c_str());
+				ConPrint(L"HYPERSPACE HUB: Deep Region %s exitpoint of %s not found!\n", stows(dr.name).c_str(), base->basename.c_str());
 				continue;
 			}
 

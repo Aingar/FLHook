@@ -148,15 +148,20 @@ void CoreModule::Spawn()
 		}
 		
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
+		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 
 		if (!base->archetype->isjump)
 		{
-			base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 			if (base->baseCSolar)
 			{
 				POBSolarsBySystemMap[base->system].insert(base->baseCSolar);
 				base->baseCSolar->Release();
 			}
+		}
+		else
+		{
+			base->baseCSolar->jumpDestObj = base->destObject;
+			base->baseCSolar->jumpDestSystem = base->destSystem;
 		}
 
 		struct PlayerData* pd = 0;

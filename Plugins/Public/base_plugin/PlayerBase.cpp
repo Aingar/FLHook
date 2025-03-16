@@ -88,10 +88,9 @@ void PlayerBase::Spawn()
 			if (obj)
 			{
 				destSystem = obj->cobj->system;
+				HyperJump::InitJumpHole(base, destSystem, destObject);
 			}
 		}
-
-		HyperJump::InitJumpHole(base, destSystem, destObject);
 	}
 }
 

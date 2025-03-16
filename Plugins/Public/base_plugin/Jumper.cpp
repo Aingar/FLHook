@@ -134,6 +134,9 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	solar->jumpDestSystem = pb->destSystem;
 	solar->jumpDestObj = pb->destObject;
 
+	pb->baseCSolar->jumpDestSystem = solar->system;
+	pb->baseCSolar->jumpDestObj = solar->id;
+
 	customSolarList.insert(info.iSpaceObjId);
 	return true;
 }
@@ -166,6 +169,7 @@ void HyperJump::InitJumpHoleConfig()
 		else if (pub::SpaceObj::ExistsAndAlive(pbase->destObject) == 0) // method returns 0 for alive, -2 otherwise
 		{
 			completedLoad = true;
+			InitJumpHole(base.first, pbase->destSystem, pbase->destObject);
 		}
 		
 		if (!completedLoad)

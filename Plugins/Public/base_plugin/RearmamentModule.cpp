@@ -80,7 +80,7 @@ void RearmamentModule::Rearm(uint clientId)
         }
     }
 
-    if (creditCount < actualToPay)
+    if (creditCount < sumToPay)
     {
         PrintUserCmdText(clientId, L"ERR Insufficient munition supplies!");
         return;

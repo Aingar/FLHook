@@ -22,6 +22,7 @@ static int raceInternalIdCounter = 0;
 
 bool disruptorSuppressionPrevention = false;
 unordered_map<uint, uint> clientsToPatch;
+unordered_set<uint> bannedShips;
 
 struct RaceArch
 {
@@ -316,6 +317,10 @@ void CheckForHighscore(shared_ptr<Racer> racer, float time)
 
 	constexpr uint SIZE = 20;
 
+	if (bannedShips.count(Players[racer->clientId].iShipArchetype))
+	{
+		return;
+	}
 
 	if (!(trackScoreboard.size() < SIZE || trackScoreboard.rbegin()->first > time))
 	{
@@ -408,9 +413,12 @@ void BeamPlayers(shared_ptr<Race> race, float freezeTime)
 		auto& startPos = race->raceArch->startingPositions.at(positionIndex++);
 		HkRelocateClient(player, startPos.pos, startPos.ori);
 
+		PrintUserCmdText(player, L"Race beginning, beaming you into position!");
 
-
-		PrintUserCmdText(participant.first, L"Race beginning, beaming you into position!");
+		if (bannedShips.count(Players[player].iShipArchetype))
+		{
+			PrintUserCmdText(player, L"Notice: Your ship is banned from being placed on the scoreboard!");
+		}
 
 		if (freezeTime)
 		{
@@ -715,7 +723,18 @@ void LoadSettings()
 	}
 	while (ini.read_header())
 	{
-		if (!ini.is_header("Race"))
+		if (ini.is_header("BannedShips"))
+		{
+			while (ini.read_value())
+			{
+				if (ini.is_value("ship"))
+				{
+					bannedShips.insert(CreateID(ini.get_value_string()));
+				}
+			}
+			continue;
+		}
+		else if (!ini.is_header("Race"))
 		{
 			continue;
 		}

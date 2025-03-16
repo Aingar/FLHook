@@ -1,7 +1,8 @@
 #include "hook.h"
 
 EXPORT uint iDmgMunitionID = 0;
-DamageList	LastDmgList;
+
+EXPORT unordered_map<uint, uint> npcToDropLoot;
 
 bool g_gNonGunHitsBase = false;
 float g_LastHitPts;
@@ -217,6 +218,12 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	{
 		return;
 	}
+
+	if (!simple->ownerPlayer && dmg->iInflictorPlayerID)
+	{
+		npcToDropLoot[simple->id] = dmg->iInflictorPlayerID;
+	}
+
 	CALL_PLUGINS_V(PLUGIN_ShipHullDmg, __stdcall, (IObjRW * iobj, float& incDmg, DamageList * dmg), (iobj, incDmg, dmg));
 	if (simple->ownerPlayer)
 	{

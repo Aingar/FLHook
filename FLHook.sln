@@ -127,6 +127,9 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Racing", "Plugins\Public\racing\racing.vcxproj", "{29DD7FEC-ECCB-42F1-A32B-E8913D826E38}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CommFixer", "Plugins\Public\comm_fixer\CommFixer.vcxproj", "{5F5B6544-16BA-4F89-991D-8CABEBA2613D}"
+	ProjectSection(ProjectDependencies) = postProject
+		{81D33B95-1DDD-4F58-A24C-E2EC4A143DD0} = {81D33B95-1DDD-4F58-A24C-E2EC4A143DD0}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

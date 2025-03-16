@@ -892,19 +892,15 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 	returncode = DEFAULT_RETURNCODE;
 
 	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
-	uint killerClientId = HkGetClientIDByShip(killerId);
-	if (killerId && !killerClientId && !cship->ownerPlayer)
-	{
-		cship->clear_equip_and_cargo();
-		return;
-	}
-
-
-	auto goodList = GoodList_get();
-
 	if (!cship->ownerPlayer)
 	{
-		PlayerData& killerData = Players[killerClientId];
+		auto npcKillerData = npcToDropLoot.find(ship->cobj->id);
+		if (npcKillerData == npcToDropLoot.end())
+		{
+			cship->clear_equip_and_cargo();
+			return;
+		}
+		PlayerData& killerData = Players[npcKillerData->second];
 		uint targetAffiliation;
 		float attitude;
 		Reputation::Vibe::GetAffiliation(cship->repVibe, targetAffiliation, false);

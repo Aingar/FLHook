@@ -896,6 +896,7 @@ struct ZoneSpecialData
 	float energyMult;
 };
 extern unordered_map<uint, ZoneSpecialData> zoneSpecialData;
+extern EXPORT unordered_map<uint, uint> npcToDropLoot;
 
 // HkCbCallbacks
 void _SendMessageHook();

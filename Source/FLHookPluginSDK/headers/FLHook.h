@@ -766,6 +766,7 @@ extern IMPORT HkIClientImpl* HookClient;
 extern IMPORT char* OldClient;
 
 extern IMPORT uint iDmgMunitionID;
+extern IMPORT unordered_map<uint, uint> npcToDropLoot;
 
 extern IMPORT bool g_bMsg;
 extern IMPORT bool g_bMsgS;

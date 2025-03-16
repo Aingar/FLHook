@@ -144,12 +144,14 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	if (!isKill)
 	{
 		ClientInfo[client].isDocking = true;
+		npcToDropLoot.erase(iobj->get_id());
 		return;
 	}
 	LOG_CORE_TIMER_START
 	TRY_HOOK {
 		CALL_PLUGINS_V(PLUGIN_ShipDestroyed, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
 
+		npcToDropLoot.erase(iobj->get_id());
 
 		if (client) { // a player was killed
 

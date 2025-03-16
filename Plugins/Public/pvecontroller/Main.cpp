@@ -363,18 +363,16 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!killerId)
+	CShip* cship = (CShip*)iobj->cobj;
+	auto killerData = npcToDropLoot.find(cship->id);
+	if (killerData == npcToDropLoot.end())
 	{
 		return;
 	}
 
-	CShip* cship = (CShip*)iobj->cobj;
-	if (cship->ownerPlayer)
-		return;
-
 	uint iVictimShipId = cship->id;
 
-	uint iKillerClientId = HkGetClientIDByShip(killerId);
+	uint iKillerClientId = killerData->second;
 
 	if (!iVictimShipId || !iKillerClientId)
 		return;

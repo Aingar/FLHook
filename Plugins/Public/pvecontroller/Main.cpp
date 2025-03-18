@@ -370,11 +370,9 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		return;
 	}
 
-	uint iVictimShipId = cship->id;
-
 	uint iKillerClientId = killerData->second;
 
-	if (!iVictimShipId || !iKillerClientId)
+	if (!iKillerClientId)
 		return;
 
 	if (cship->id == lastProcessedId)
@@ -497,9 +495,7 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		float roll = static_cast<float>(rand()) / RAND_MAX;
 		if (roll < dropData.fChance)
 		{
-			Vector vLoc;
-			Matrix mRot;
-			pub::SpaceObj::GetLocation(iVictimShipId, vLoc, mRot);
+			Vector vLoc = cship->vPos;
 			Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
 			vLoc.x += randomVector.x;
 			vLoc.y += randomVector.y;

@@ -1204,7 +1204,7 @@ void LoadSettingsActual()
 void RebuildCSolarSystemList()
 {
 	POBSolarsBySystemMap.clear();
-	for (auto base : player_bases)
+	for (auto& base : player_bases)
 	{
 		if (!base.second->baseCSolar)
 		{
@@ -1220,6 +1220,11 @@ void RebuildCSolarSystemList()
 			if (csolar != base.second->baseCSolar)
 			{
 				base.second->baseCSolar = csolar;
+				if (base.second->archetype && base.second->archetype->isjump)
+				{
+					base.second->baseCSolar->jumpDestSystem = base.second->destSystem;
+					base.second->baseCSolar->jumpDestObj = CreateID(base.second->destObjectName.c_str());
+				}
 				ConPrint(L"Base solar changed! %ls\n", base.second->basename.c_str());
 				AddLog("Base solar changed! %s", wstos(base.second->basename).c_str());
 			}

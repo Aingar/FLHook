@@ -267,8 +267,6 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 
 	time_t currTime = time(0);
 
-	ConPrint(L"HYPERSPACE HUB: Randomizing hub jump holes\n");
-
 	if (ini.open(cfg_filejumpMap.c_str(), false))
 	{
 		while (ini.read_header())

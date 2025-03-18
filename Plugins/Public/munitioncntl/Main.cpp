@@ -1283,7 +1283,7 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	{
 		auto cship = iobj->cobj;
 		auto invulIter = invulMap.find(cship->id);
-		if (invulIter == invulMap.end())
+		if (invulIter == invulMap.end() || invulIter->second.invulType == InvulType::EQUIPONLY)
 		{
 			return;
 		}
@@ -1496,15 +1496,27 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		}
 
 		auto equipDmgStr = ToLower(cmd->ArgStr(2));
-		if (equipDmgStr != L"yes" && equipDmgStr != L"no")
+
+		InvulType invulType;
+		if (equipDmgStr == L"all")
 		{
-			cmd->Print(L"ERR equipment damage variable must be 'yes' or 'no'\n");
-			cmd->Print(L"Syntax: .setinvul <target> <yes/no> <min HP percentage>\n");
+			invulType = InvulType::ALL;
+		}
+		else if (equipDmgStr == L"hull")
+		{
+			invulType = InvulType::HULLONLY;
+		}
+		else if (equipDmgStr == L"equip")
+		{
+			invulType = InvulType::EQUIPONLY;
+		}
+		else
+		{
+			cmd->Print(L"ERR invulnerability type variable must be 'all', 'hull' or 'equip'\n");
+			cmd->Print(L"Syntax: .setinvul <target> <invulType> <min HP percentage>\n");
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
-
-		bool equipDmg = ToLower(cmd->ArgStr(2)) == L"yes";
 
 		auto percentage = cmd->ArgInt(3);
 		float floatPerc = 0.01f * (float)percentage;
@@ -1512,24 +1524,38 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		if (floatPerc == 0.0f)
 		{
 			invulMap.erase(targetPlyr.iShip);
-			cmd->Print(L"Invul off");
+			cmd->Print(L"Invul off\n");
 		}
 		else if (floatPerc == 1.0f)
 		{
-			invulMap[targetPlyr.iShip] = { floatPerc, equipDmg };
-			cmd->Print(L"Full invul set");
+			invulMap[targetPlyr.iShip] = { floatPerc, invulType };
+			switch (invulType)
+			{
+			case InvulType::ALL:
+				cmd->Print(L"Full invul set\n");
+				break;
+			case InvulType::HULLONLY:
+				cmd->Print(L"Full hull-only invul set\n");
+				break;
+			case InvulType::EQUIPONLY:
+				cmd->Print(L"Full equip-only invul set\n");
+				break;
+			}
 		}
 		else
 		{
-			invulMap[targetPlyr.iShip] = { floatPerc, equipDmg };
-			cmd->Print(L"Invul set, can't go below %d%% HP", percentage);
-			if (equipDmg)
+			invulMap[targetPlyr.iShip] = { floatPerc, invulType };
+			switch (invulType)
 			{
-				cmd->Print(L"Equip Damage Unlimited");
-			}
-			else
-			{
-				cmd->Print(L"Equip Damage limited to same percentage");
+			case InvulType::ALL:
+				cmd->Print(L"Invul set, can't go below %d%% HP\n", percentage);
+				break;
+			case InvulType::HULLONLY:
+				cmd->Print(L"Hull-only invul set, can't go below %d%% HP\n", percentage);
+				break;
+			case InvulType::EQUIPONLY:
+				cmd->Print(L"Equip-only invul set, can't go below %d%% HP\n", percentage);
+				break;
 			}
 		}
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;

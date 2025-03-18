@@ -133,10 +133,17 @@ struct NewMissileUpdater
 	double timer = 0;
 };
 
+enum class InvulType
+{
+	ALL,
+	HULLONLY,
+	EQUIPONLY,
+};
+
 struct InvulData
 {
 	float minHpPerc;
-	bool hullOnlyInvul;
+	InvulType invulType;
 };
 
 enum TRACKING_STATE {

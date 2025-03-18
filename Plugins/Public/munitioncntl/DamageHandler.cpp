@@ -668,7 +668,7 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 
 	auto cship = iobj->cobj;
 	auto invulData = invulMap.find(cship->id);
-	if (invulData == invulMap.end() || invulData->second.hullOnlyInvul)
+	if (invulData == invulMap.end() || invulData->second.invulType == InvulType::HULLONLY)
 	{
 		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 		return;
@@ -676,14 +676,16 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 	float minHpAllowed = invulData->second.minHpPerc * equip->archetype->fHitPoints;
 	if (equip->hitPts <= minHpAllowed)
 	{
-		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 		return;
 	}
 
 	float hpPercPostDamage = equip->hitPts - incDmg;
 	incDmg = min(incDmg, equip->hitPts - minHpAllowed);
 
-	ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
+	if (incDmg > 0.0f)
+	{
+		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
+	}
 }
 
 void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms)

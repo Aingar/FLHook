@@ -493,6 +493,14 @@ namespace Archetype
 		/* 27x4 */ uint bLootable;
 	};
 
+	struct FuseEntry
+	{
+		uint fuseId;
+		float delay;
+		float healthThreshold;
+		uint unknown;
+	};
+
 	struct IMPORT EqObj : Root
 	{
 		EqObj(struct EqObj const &);
@@ -521,9 +529,7 @@ namespace Archetype
 		/* 26 */ uint iDunno3;
 		/* 27 */ uint iDunno4;
 		/* 28 */ uint iDunno5;
-		/* 29 */ uint iDunno6;
-		/* 30 */ uint fuseList;
-		/* 31 */ uint sizeOfFuseList;
+		/* 29 */ st6::list<FuseEntry> fuseList;
 		/* 32 */ bool b128;
 		bool bDockingCamera;
 		st6::vector<DockHardpointInfo> dockInfo;
@@ -4361,7 +4367,9 @@ protected:
 	bool ReadFuseValues(class INI_Reader &);
 
 public:
-	unsigned char data[OBJECT_DATA_SIZE];
+	uint fuseId;
+	float lifetime;
+	bool isDeathFuse;
 };
 
 class IMPORT FuseAction

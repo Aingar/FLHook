@@ -48,14 +48,29 @@ void __stdcall SetDamageToOne(IObjRW* ship, DamageList* dmg, uint source)
 	{
 		return;
 	}
+
 	for (auto& dmgEntry : dmg->damageentries)
 	{
-		if (dmgEntry.subobj == 1 && dmgEntry.health <= 0.0f)
+		if (dmgEntry.subobj != 1 || dmgEntry.health > 0.0f)
 		{
-			dmgEntry.health = 0.1f;
-			CShip* cship = (CShip*)ship->cobj;
-			cship->isUndergoingDeathFuse = true;
+			continue;
 		}
+		
+		static FlMap<uint, Fuse*>* fuseMap = reinterpret_cast<FlMap<uint, Fuse*>*>(0x6D8D870);
+		auto shipArch = reinterpret_cast<CShip*>(ship->cobj)->shiparch();
+		for (const Archetype::FuseEntry& fuseEntry : shipArch->fuseList)
+		{
+			auto iter = fuseMap->find(fuseEntry.fuseId);
+			auto fuse = iter.value();
+			if ((*fuse)->isDeathFuse)
+			{
+				dmgEntry.health = 0.1f;
+				CShip* cship = (CShip*)ship->cobj;
+				cship->isUndergoingDeathFuse = true;
+				break;
+			}
+		}
+		break;
 	}
 }
 

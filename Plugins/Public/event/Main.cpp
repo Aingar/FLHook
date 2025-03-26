@@ -71,6 +71,14 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 	return returncode;
 }
 
+struct DropData
+{
+	float dropChance;
+	uint itemArch;
+	uint min;
+	uint max;
+};
+
 struct TRADE_EVENT {
 	uint uHashID;
 	string sEventName;
@@ -104,6 +112,7 @@ struct COMBAT_EVENT {
 	unordered_set<uint> lTargetIDs;
 	unordered_set<uint> lSystems;
 	unordered_set<uint> lNPCTargetReputation;
+	multimap<uint, DropData> eventNPCDropData;
 	//Rewards
 	int bonusnpc;
 	int bonusplayer;
@@ -435,6 +444,33 @@ void LoadSettings()
 							break;
 						}
 						ce.lSystems.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("npcdrop"))
+					{
+						uint shipArch = CreateID(ini.get_value_string(0));
+						if (!Archetype::GetShip(shipArch))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(0);
+							break;
+						}
+						DropData dd;
+						dd.itemArch = CreateID(ini.get_value_string(1));
+						if (!Archetype::GetEquipment(dd.itemArch))
+						{
+							invalidData = true;
+							invalidDataReason = ini.get_value_string(1);
+							break;
+						}
+
+						dd.min = ini.get_value_int(2);
+						dd.max = ini.get_value_int(3);
+						dd.dropChance = ini.get_value_float(4);
+						if (!dd.dropChance)
+						{
+							dd.dropChance = 1.0f;
+						}
+						ce.eventNPCDropData.insert(make_pair(shipArch, dd));
 					}
 					//Bonus values
 					else if (ini.is_value("bonusnpc"))
@@ -1449,6 +1485,40 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		{
 			PrintUserCmdText(killerPlayerId, L"%u points awarded.", event.iObjectiveNPCReward);
 			event.iObjectiveCurrent += event.iObjectiveNPCReward;
+
+			auto& iter = event.eventNPCDropData.lower_bound(cship->archetype->iArchID);
+			if (iter == event.eventNPCDropData.end())
+			{
+				return;
+			}
+
+			const auto& iterEnd = event.eventNPCDropData.upper_bound(cship->archetype->iArchID);
+			while (iter != iterEnd)
+			{
+				const auto& dropData = iter->second;
+				float roll = static_cast<float>(rand()) / RAND_MAX;
+				if (roll < dropData.dropChance)
+				{
+					Vector vLoc = cship->vPos;
+					Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
+					vLoc.x += randomVector.x;
+					vLoc.y += randomVector.y;
+					vLoc.z += randomVector.z;
+
+					uint finalAmount;
+					if (dropData.max)
+					{
+						finalAmount = dropData.min + (rand() % (dropData.max - dropData.min + 1));
+					}
+					else
+					{
+						finalAmount = dropData.min;
+					}
+					CreateLootSimple(cship->system, cship->id, dropData.itemArch, finalAmount, vLoc, false);
+
+				}
+				iter++;
+			}
 		}
 
 		wstring charname = (const wchar_t*)Players.GetActiveCharacterName(killerPlayerId);

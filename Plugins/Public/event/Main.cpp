@@ -612,6 +612,7 @@ void LoadSettings()
 		ini.close();
 	}
 
+	ChangeINITerminator('\x8');
 	if (ini.open(File_FLHookTracker.c_str(), false))
 	{
 		while (ini.read_header())
@@ -662,6 +663,7 @@ void LoadSettings()
 		}
 		ini.close();
 	}
+	ChangeINITerminator(';');
 
 	if (ini.open(File_FLHookSuhl.c_str(), false))
 	{

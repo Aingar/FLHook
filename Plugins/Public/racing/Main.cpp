@@ -113,7 +113,8 @@ void LoadScoreboard()
 	{
 		return;
 	}
-
+	
+	ChangeINITerminator('\x8');
 	while (ini.read_header())
 	{
 		if (!ini.is_header("scoreboard"))
@@ -136,6 +137,8 @@ void LoadScoreboard()
 			scoreboard[obj][num][time] = name;
 		}
 	}
+	ini.close();
+	ChangeINITerminator(';');
 }
 
 void SaveScoreboard()

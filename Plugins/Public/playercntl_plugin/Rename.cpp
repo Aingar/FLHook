@@ -1091,6 +1091,7 @@ void Rename::ReloadLockedShips()
 
 	MapLockedShips.clear();
 
+	ChangeINITerminator('\x8');
 	INI_Reader ini;
 	if (ini.open(scPluginCfgFile.c_str(), false))
 	{
@@ -1121,6 +1122,7 @@ void Rename::ReloadLockedShips()
 		}
 	}
 	ini.close();
+	ChangeINITerminator(';');
 
 	return;
 }

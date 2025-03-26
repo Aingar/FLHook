@@ -1327,3 +1327,10 @@ __declspec(naked) void __stdcall HkUnLightFuse(IObjRW *ship, uint iFuseID, float
 		ret 12
 	}
 }
+
+void ChangeINITerminator(char newTerminator)
+{
+	WriteProcMem((void*)0x630F560, &newTerminator, 1);
+	WriteProcMem((void*)0x630F58F, &newTerminator, 1);
+	WriteProcMem((void*)0x630F5E3, &newTerminator, 1);
+}

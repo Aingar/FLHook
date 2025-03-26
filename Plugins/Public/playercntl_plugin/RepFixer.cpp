@@ -203,6 +203,7 @@ namespace RepFixer
 			return;
 		}
 
+		ChangeINITerminator('\x8');
 		while (ini.read_header())
 		{
 			if (ini.is_header("tag"))
@@ -250,6 +251,7 @@ namespace RepFixer
 		}
 		ini.close();
 
+		ChangeINITerminator(';');
 	}
 
 	void ReloadFactionReps()

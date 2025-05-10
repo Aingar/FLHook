@@ -1193,7 +1193,7 @@ void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjF
 
     uint minedAmount = GetAsteroidMiningYield(node, dmg->iInflictorPlayerID, true);
 
-    CreateLootSimple(iobj->cobj->system, dmg->iInflictorID, node.itemArchId, minedAmount, iobj->cobj->vPos, false);
+    CreateLootSimple(iobj->cobj->system, dmg->iInflictorID, node.itemArchId, minedAmount, colGrpCenter, false);
 
 }
 

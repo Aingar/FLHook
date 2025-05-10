@@ -51,25 +51,49 @@ void __stdcall SetDamageToOne(IObjRW* ship, DamageList* dmg, uint source)
 
 	for (auto& dmgEntry : dmg->damageentries)
 	{
-		if (dmgEntry.subobj != 1 || dmgEntry.health > 0.0f)
+		if (dmgEntry.subobj != 1)
 		{
 			continue;
 		}
-		
-		static FlMap<uint, Fuse*>* fuseMap = reinterpret_cast<FlMap<uint, Fuse*>*>(0x6D8D870);
-		auto shipArch = reinterpret_cast<CShip*>(ship->cobj)->shiparch();
-		for (const Archetype::FuseEntry& fuseEntry : shipArch->fuseList)
+
+		if(dmgEntry.health > 0.0f)
 		{
-			auto iter = fuseMap->find(fuseEntry.fuseId);
-			auto fuse = iter.value();
-			if ((*fuse)->isDeathFuse)
+			float currHp = 0;
+			CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
+
+			if (dmgEntry.subobj == 1)
 			{
-				dmgEntry.health = 0.1f;
-				CShip* cship = (CShip*)ship->cobj;
-				cship->isUndergoingDeathFuse = true;
-				break;
+				currHp = cship->hitPoints;
+			}
+			else if (dmgEntry.subobj > 3 && dmgEntry.subobj < 33)
+			{
+				currHp = cship->archGroupManager.FindByID(dmgEntry.subobj)->hitPts;
+			}
+
+			CEArmor* armor = reinterpret_cast<CEArmor*>(cship->equip_manager.FindFirst(EquipmentClass::Armor));
+			if (currHp && armor)
+			{
+				dmgEntry.health = max(0.0f, currHp - ((currHp - dmgEntry.health) * armor->ArmorArch()->fHitPointsScale));
 			}
 		}
+
+		if (dmgEntry.health == 0.0f)
+		{
+			static FlMap<uint, Fuse*>* fuseMap = reinterpret_cast<FlMap<uint, Fuse*>*>(0x6D8D870);
+			auto shipArch = reinterpret_cast<CShip*>(ship->cobj)->shiparch();
+			for (const Archetype::FuseEntry& fuseEntry : shipArch->fuseList)
+			{
+				auto iter = fuseMap->find(fuseEntry.fuseId);
+				auto fuse = iter.value();
+				if ((*fuse)->isDeathFuse)
+				{
+					dmgEntry.health = 0.1f;
+					CShip* cship = (CShip*)ship->cobj;
+					cship->isUndergoingDeathFuse = true;
+				}
+			}
+		}
+		
 		break;
 	}
 }

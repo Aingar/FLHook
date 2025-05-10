@@ -19,6 +19,7 @@ CAccount* HkGetAccountByClientID(uint iClientID);
 float HkDistance3D(Vector v1, Vector v2);
 float HkDistance3DByShip(uint iShip1, uint iShip2);
 
+wstring GetAnticheatError(HK_ERROR);
 int GetPlayerWorth(uint clientId);
 void ResetPlayerWorth(uint clientId);
 

@@ -383,13 +383,15 @@ namespace GiveCash
 
 		// Remove cash from current character and save it checking that the
 		// save completes before allowing the cash to be added to the target ship.
-		if (HkAntiCheat(iClientID) != HKE_OK)
+		HK_ERROR anticheatState = HkAntiCheat(iClientID);
+		if (anticheatState != HKE_OK)
 		{
 			PrintUserCmdText(iClientID, L"ERR: Transfer failed");
-			AddLog("NOTICE: Possible cheating(2) when sending %s credits from %s (%s) to %s (%s)",
+			AddLog("NOTICE: Possible cheating(2) when sending %s credits from %s (%s) to %s (%s), AC %s",
 				wstos(ToMoneyStr(cash)).c_str(),
 				wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
-				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str());
+				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
+				GetAnticheatError(anticheatState).c_str());
 			return true;
 		}
 		pub::Player::AdjustCash(iClientID, -cash);

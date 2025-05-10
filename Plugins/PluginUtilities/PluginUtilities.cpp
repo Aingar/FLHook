@@ -249,7 +249,7 @@ HK_ERROR HkAntiCheat(uint iClientID)
 	if (cRes != 0)
 	{ // kick
 		HkKick(ARG_CLIENTID(iClientID));
-		return HKE_UNKNOWN_ERROR;
+		return HKE_ANTICHEAT1;
 	}
 
 	////////////////////////// 2
@@ -263,7 +263,7 @@ HK_ERROR HkAntiCheat(uint iClientID)
 	if (cRes != 0)
 	{ // kick
 		HkKick(ARG_CLIENTID(iClientID));
-		return HKE_UNKNOWN_ERROR;
+		return HKE_ANTICHEAT2;
 	}
 
 	////////////////////////// 3
@@ -281,7 +281,7 @@ HK_ERROR HkAntiCheat(uint iClientID)
 	if (lRet > lCompare)
 	{ // kick
 		HkKick(ARG_CLIENTID(iClientID));
-		return HKE_UNKNOWN_ERROR;
+		return HKE_ANTICHEAT3;
 	}
 
 	////////////////////////// 4
@@ -295,10 +295,26 @@ HK_ERROR HkAntiCheat(uint iClientID)
 	if (cRes != 0)
 	{ // kick
 		HkKick(ARG_CLIENTID(iClientID));
-		return HKE_UNKNOWN_ERROR;
+		return HKE_ANTICHEAT4;
 	}
 
 	return HKE_OK;
+}
+
+wstring GetAnticheatError(HK_ERROR err)
+{
+	switch (err)
+	{
+	case HKE_ANTICHEAT1:
+		return L"Anticheat1";
+	case HKE_ANTICHEAT2:
+		return L"Anticheat2";
+	case HKE_ANTICHEAT3:
+		return L"Anticheat3";
+	case HKE_ANTICHEAT4:
+		return L"Anticheat4";
+	}
+	return L"Unknown AC Error";
 }
 
 typedef int(__fastcall* CalculatePlayerWorth)(PlayerData* clientId);

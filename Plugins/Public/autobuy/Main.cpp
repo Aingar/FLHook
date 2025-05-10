@@ -814,6 +814,7 @@ void PlayerAutorepair(uint iClientID)
 	if (repairCost)
 	{
 		PrintUserCmdText(iClientID, L"Auto-Buy(Repair): Cost %s$", ToMoneyStr(repairCost).c_str());
+		ResetPlayerWorth(iClientID);
 	}
 
 	return;

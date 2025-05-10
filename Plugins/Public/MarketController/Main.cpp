@@ -585,6 +585,30 @@ __declspec(naked) int __fastcall CallOriginalGetSpaceForCargoType(CShip* ship, v
 	}
 }
 
+float GetVolumeForShipArch(uint shipArch, uint equipArch)
+{
+	auto equip = Archetype::GetEquipment(equipArch);
+	if (!equip)
+	{
+		return 0;
+	}
+
+	auto ship = Archetype::GetShip(shipArch);
+	float volume = equip->fVolume;
+
+	auto iter = cargoVolumeOverrideMap.find(ship->iShipClass);
+	if (iter != cargoVolumeOverrideMap.end())
+	{
+		auto iter2 = iter->second.find(equip->iArchID);
+		if (iter2 != iter->second.end())
+		{
+			volume = iter2->second;
+		}
+	}
+
+	return volume;
+}
+
 int __fastcall CShipGetSpaceForCargoType(CShip* ship, void* edx, Archetype::Equipment* equipArch)
 {
 	if (equipArch->fVolume <= 0.0f || equipArch->get_class_type() != Archetype::COMMODITY)
@@ -1159,6 +1183,15 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		returncode = SKIPPLUGINS;
 		map<uint, market_map_t>* info = reinterpret_cast<map<uint, market_map_t>*>(data);
 		LoadMarketOverrides(info);
+		return;
+	}
+	else if (msg == CUSTOM_CHECK_EQUIP_VOLUME)
+	{
+		returncode = SKIPPLUGINS;
+
+		EQUIP_VOLUME_STRUCT* volumeRequest = (EQUIP_VOLUME_STRUCT*)data;
+		volumeRequest->volume = GetVolumeForShipArch(volumeRequest->shipArch, volumeRequest->equipArch);
+		return;
 	}
 }
 

@@ -435,8 +435,22 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 		return true;
 	}
 
-	uint targetShip = target->get_id();
-	uint iClientIDTarget = ((CShip*)target->cobj)->ownerPlayer;
+	if (!target->is_player())
+	{
+		PrintUserCmdText(iClientID, L"ERR Target not a player");
+		return true;
+	}
+
+	CShip* targetCShip = (CShip*)target->cobj;
+
+	if (targetCShip->cloakPercentage)
+	{
+		PrintUserCmdText(iClientID, L"ERR Unable to lock on, cloaking signature detected");
+		return true;
+	}
+
+	uint targetShip = targetCShip->id;
+	uint iClientIDTarget = targetCShip->ownerPlayer;
 
 	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 	wstring wscTargetCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
@@ -879,16 +893,18 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	if (msg == CLIENT_CLOAK_INFO)
 	{
 		CLIENT_CLOAK_STRUCT* info = reinterpret_cast<CLIENT_CLOAK_STRUCT*>(data);
-		if (info->isCloaked)
+		if (!info->isCloaked)
 		{
-			uint shipId = Players[info->iClientID].iShipID;
-			for (int i = 1; i<250 ; ++i)
+			return;
+		}
+		uint shipId = Players[info->iClientID].iShipID;
+
+		for (int i = 1; i<250 ; ++i)
+		{
+			if (shipId == PlayerMarkArray[i])
 			{
-				if (shipId == PlayerMarkArray[i])
-				{
-					pub::Player::MarkObj(i, shipId, 0);
-					PlayerMarkArray[i] = 0;
-				}
+				pub::Player::MarkObj(i, shipId, 0);
+				PlayerMarkArray[i] = 0;
 			}
 		}
 	}

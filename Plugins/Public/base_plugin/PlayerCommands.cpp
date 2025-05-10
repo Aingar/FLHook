@@ -1305,17 +1305,18 @@ namespace PlayerCommands
 		}
 
 		wstring wscMode = GetParam(args, ' ', 2);
+		PlayerBase::DEFENSE_MODE targetMode;
 		if (wscMode == L"1")
 		{
-			base->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
+			targetMode = PlayerBase::DEFENSE_MODE::IFF;
 		}
 		else if (wscMode == L"2")
 		{
-			base->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
+			targetMode = PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL;
 		}
 		else if (wscMode == L"3")
 		{
-			base->defense_mode = PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE;
+			targetMode = PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE;
 		}
 		else
 		{
@@ -1325,6 +1326,17 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"|  <mode> = 3 - Logic: Whitelist > Hostile. | Docking Rights: Whitelisted ships only.");
 			PrintUserCmdText(client, L"defensemode = %u", base->defense_mode);
 			return;
+		}
+
+		if (targetMode == PlayerBase::DEFENSE_MODE::NODOCK_NEUTRAL || targetMode == PlayerBase::DEFENSE_MODE::NODOCK_HOSTILE)
+		{
+			wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+			uint affil = GetAffliationFromClient(client);
+			if (!base->IsOnSRPList(charname, affil) && !base->IsOnAllyList(charname, affil))
+			{
+				PrintUserCmdText(client, L"ERR: This action would lock you out of the base. Add your name/tag to the whitelist first via '/access' command");
+				return;
+			}
 		}
 
 		PrintUserCmdText(client, L"OK defensemode = %u", base->defense_mode);

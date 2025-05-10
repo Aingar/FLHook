@@ -3961,6 +3961,18 @@ int __cdecl Dock_Call_After(unsigned int const& ship, unsigned int const& dockTa
 	return 0;
 }
 
+void ServerCrash()
+{
+	for (auto& pb : player_bases)
+	{
+		auto base = pb.second;
+		if (base->archetype && (base->archetype->logic || !base->archetype->invulnerable))
+		{
+			base->Save();
+		}
+	}
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -4014,6 +4026,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&SolarDamageHull, PLUGIN_SolarHullDmg, 15));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 11));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&PopUpDialogue, PLUGIN_HKIServerImpl_PopUpDialog, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ServerCrash, PLUGIN_ServerCrash, 0));
 	return p_PI;
 }
 

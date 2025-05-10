@@ -191,6 +191,8 @@ LONG WINAPI FLHookTopLevelFilter(struct _EXCEPTION_POINTERS *pExceptionInfo)
 	SEHException ex(0, pExceptionInfo);
 	WriteMiniDump(&ex, true);
 	DumpOnlinePlayers();
+
+	CALL_PLUGINS_NORET(PLUGIN_ServerCrash, , , );
 	return EXCEPTION_EXECUTE_HANDLER; 	// EXCEPTION_CONTINUE_SEARCH;
 }
 

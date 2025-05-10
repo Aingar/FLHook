@@ -123,7 +123,7 @@ struct Costume
         uint body = 0;
         uint leftHand = 0;
         uint rightHand = 0;
-        UINT accessory[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
+        uint accessory[8] = { 0, 0, 0, 0, 0, 0, 0, 0 };
         int accessories = 0;
 };
 
@@ -1412,7 +1412,7 @@ struct IMPORT DamageEntry
 	static char const *  FateToString(enum SubObjFate);
 
 public:
-	USHORT subobj;
+	ushort subobj;
 	float health;
 	SubObjFate fate;
 };
@@ -4457,12 +4457,12 @@ public:
 	/* 100 */ float fBadSellPrice;
 	/* 104 */ float fGoodBuyPrice;
 	/* 108 */ uint iJumpDist;
-	/* 112 */ float iDunno2;
-	/* 116 */ float iDunno3;
-	/* 120 */ float iDunno4;
-	/* 124 */ float iDunno5;
-	/* 128 */ float iDunno6;
-	/* 132 */ float iDunno7;
+	/* 112 */ bool combinable;
+	/* 116 */ char* modelPath1;
+	/* 120 */ char* modelPath2;
+	/* 124 */ char* modelPath3;
+	/* 128 */ char* modelPath4;
+	/* 132 */ char* modelPath5;
 	/* 136 */ uint iIDSName;
 	/* 140 */ uint iIDS;
 	/* 144 */ uint iHullGoodID; // if type = GOODINFO_TYPE_SHIP

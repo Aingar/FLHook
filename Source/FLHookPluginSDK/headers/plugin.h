@@ -227,6 +227,7 @@ enum PLUGIN_CALLBACKS
 	PLUGIN_HkIEngine_SetReputation,
 	PLUGIN_HkIEngine_SendComm,
 	PLUGIN_ShipShieldDmg,
+	PLUGIN_ServerCrash,
 	PLUGIN_CALLBACKS_AMOUNT,
 };
 
@@ -291,6 +292,7 @@ enum PLUGIN_MESSAGE
 	CUSTOM_AUTOBUY_CART = 68,
 	CUSTOM_BEAM_LAST_BASE = 69,
 	CUSTOM_CHECK_POB_SRP_ACCESS = 70,
+	CUSTOM_CHECK_EQUIP_VOLUME = 71,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -533,6 +535,13 @@ struct POB_SRP_ACCESS_STRUCT
 	uint baseId;
 	uint clientId;
 	bool dockAllowed = false;
+};
+
+struct EQUIP_VOLUME_STRUCT
+{
+	uint shipArch = 0;
+	uint equipArch = 0;
+	float volume;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

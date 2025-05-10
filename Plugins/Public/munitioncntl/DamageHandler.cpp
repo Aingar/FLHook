@@ -308,10 +308,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		break;
 	}
 
-	if (rootDistance == FLT_MAX)
-	{
-		rootDistance = SquaredDistance3D(iobj->cobj->vPos, explosion->explosionPosition, 0);
-	}
+	rootDistance = min(rootDistance, SquaredDistance3D(iobj->cobj->vPos, explosion->explosionPosition, 0));
 
 	float detDist = explData ? explData->detDist : 0.0f;
 	rootDistance -= detDist * detDist;

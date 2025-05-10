@@ -914,7 +914,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		while (shield = reinterpret_cast<CEShieldGenerator*>(cship->equip_manager.Traverse(tr)))
 		{
 			auto shieldGenArch = shield->ShieldGenArch();
-			if (shieldGenArch->fRebuildPowerDraw <= 0.0f && shieldGenArch->fConstantPowerDraw <= 0.0f)
+			if (shieldGenArch->fRebuildPowerDraw <= 0.0f && shieldGenArch->fConstantPowerDraw <= 0.0f && shieldGenArch->fRegenerationRate == 0.0f)
 			{
 				continue;
 			}

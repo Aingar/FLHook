@@ -79,34 +79,34 @@ struct DropData
 	uint max;
 };
 
-struct TRADE_EVENT {
-	uint uHashID;
+struct EVENT
+{
 	string sEventName;
 	string sURL;
+	uint announcementCooldown = 0;
+	wstring announcement = L"";
+	int iObjectiveMax = INT32_MAX;
+	int iObjectiveCurrent = 0; // Always 0 to prevent having no data
+	bool isActive = true;
+	time_t startTime = 0;
+	time_t endTime = 0;
+	wstring startMessage = L"";
+	wstring endMessage = L"";
+};
+
+struct TRADE_EVENT : public EVENT {
 	int iBonusCash;
 	unordered_set<uint> uStartBase;
 	unordered_set<uint> pobStartBase;
 	unordered_set<uint> uEndBase;
 	unordered_set<uint> pobEndBase;
-	int iObjectiveMax = INT32_MAX;
-	int iObjectiveCurrent = 0; // Always 0 to prevent having no data
 	uint uCommodityID;
 	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
 	unordered_set<uint> lAllowedIDs;
-	time_t startTime = 0;
-	time_t endTime = 0;
 	map<uint, market_map_t> eventEconOverride;
-	bool isActive = true;
-	wstring startMessage = L"";
-	wstring endMessage = L"";
 };
 
-struct COMBAT_EVENT {
-	//Basic event settings
-	string sEventName;
-	string sURL;
-	int iObjectiveMax = INT32_MAX;
-	int iObjectiveCurrent = 0; // Always 0 to prevent having no data	
+struct COMBAT_EVENT : public EVENT {
 	//Combat event data
 	unordered_set<uint> lAllowedIDs;
 	unordered_set<uint> lTargetIDs;
@@ -121,11 +121,6 @@ struct COMBAT_EVENT {
 	//Optional commodity reward data
 	bool bCommodityReward = false; // assume false
 	uint uCommodityID;
-	time_t startTime = 0;
-	time_t endTime = 0;
-	bool isActive = true;
-	wstring startMessage = L"";
-	wstring endMessage = L"";
 };
 
 struct EVENT_TRACKER
@@ -251,7 +246,6 @@ void LoadSettings()
 					if (ini.is_value("id"))
 					{
 						id = ini.get_value_string(0);
-						te.uHashID = CreateID(ini.get_value_string(0));
 					}
 					else if (ini.is_value("name"))
 					{
@@ -260,6 +254,14 @@ void LoadSettings()
 					else if (ini.is_value("url"))
 					{
 						te.sURL = ini.get_value_string(0);
+					}
+					else if (ini.is_value("announcement_cooldown"))
+					{
+						te.announcementCooldown = ini.get_value_int(0) * 60;
+					}
+					else if (ini.is_value("announcement"))
+					{
+						te.announcement = stows(ini.get_value_string());
 					}
 					else if (ini.is_value("startbase"))
 					{
@@ -355,9 +357,17 @@ void LoadSettings()
 					{
 						uint baseId = CreateID(ini.get_value_string(0));
 						uint iGoodID = CreateID(ini.get_value_string(1));
-						uint iSellPrice = ini.get_value_int(2);
+						int iSellPrice = ini.get_value_int(2);
 						float fPrice = ini.get_value_float(3);
 						bool bBaseBuys = (ini.get_value_int(4) == 1);
+
+						if (iSellPrice > static_cast<int>(fPrice))
+						{
+							ConPrint(L"ERROR: Event %s has invalid pricing for base %s commmodity %s allowing infinite money printing: %d %d\n", 
+								stows(te.sEventName).c_str(), stows(ini.get_value_string(0)).c_str(), stows(ini.get_value_string(1)).c_str(), iSellPrice, static_cast<int>(fPrice));
+							ConPrint(L"Increasing right-side price to match the left: %u\n", iSellPrice);
+							fPrice = static_cast<float>(iSellPrice);
+						}
 
 						auto& MarketGoodEntry = te.eventEconOverride[baseId][iGoodID];
 						MarketGoodEntry.iGoodID = iGoodID;
@@ -407,6 +417,14 @@ void LoadSettings()
 					else if (ini.is_value("objectivemax"))
 					{
 						ce.iObjectiveMax = ini.get_value_int(0);
+					}
+					else if (ini.is_value("announcement_cooldown"))
+					{
+						ce.announcementCooldown = ini.get_value_int(0) * 60;
+					}
+					else if (ini.is_value("announcement"))
+					{
+						ce.announcement = stows(ini.get_value_string());
 					}
 					//Combat settings
 					else if (ini.is_value("allowedid"))
@@ -869,7 +887,15 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 		HookExt::IniSetI(iClientID, "event.quantity", playerData[iClientID].quantity);
 
 		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-		PrintUserCmdText(iClientID, L"You have entered the event: %s, you will be paid %d extra credits for every unit you deliver.", stows(i->second.sEventName).c_str(), i->second.iBonusCash);
+		if (i->second.iBonusCash)
+		{
+			PrintUserCmdText(iClientID, L"You have entered the event: %s, you will be paid %d extra credits for every unit you deliver.", stows(i->second.sEventName).c_str(), i->second.iBonusCash);
+		}
+		else
+		{
+			PrintUserCmdText(iClientID, L"You have entered the event: %s", stows(i->second.sEventName).c_str());
+
+		}
 		PrintUserCmdText(iClientID, L"Amount of registered cargo: %u", playerData[iClientID].quantity);
 		Notify_TradeEvent_Start(iClientID, i->second.sEventName);
 
@@ -932,7 +958,7 @@ void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int 
 	int bonus = 0;
 
 	pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-	PrintUserCmdText(iClientID, L"You have finished the event: %s", stows(i->second.sEventName).c_str());
+	PrintUserCmdText(iClientID, L"You have finished the event: %s, delivery of %d units of cargo recorded", stows(i->second.sEventName).c_str(), iInitialCount);
 
 	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 
@@ -960,12 +986,14 @@ void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int 
 		mapEventTracking[i->first].PlayerEventData[wscCharname] += iInitialCount;
 	}
 
+	PrintUserCmdText(iClientID, L"You have delivered %d units so far", mapEventTracking[i->first].PlayerEventData[wscCharname]);
+
 	if (bonus)
 	{
 		pub::Player::AdjustCash(iClientID, bonus);
+		PrintUserCmdText(iClientID, L"You receive a bonus of: $%d credits", bonus);
 	}
 
-	PrintUserCmdText(iClientID, L"You receive a bonus of: %d credits", bonus);
 	Notify_TradeEvent_Completed(iClientID, i->second.sEventName, gsi.iCount, bonus);
 }
 
@@ -1245,6 +1273,13 @@ void CheckActiveEvent()
 				{
 					HkMsgU(ce.endMessage);
 				}
+
+				continue;
+			}
+
+			if (ce.announcementCooldown && currTime % ce.announcementCooldown == 0)
+			{
+				HkMsgU(ce.announcement);
 			}
 		}
 		else
@@ -1278,6 +1313,13 @@ void CheckActiveEvent()
 				{
 					SendEconOverride();
 				}
+
+				continue;
+			}
+
+			if (te.announcementCooldown && currTime % te.announcementCooldown == 0)
+			{
+				HkMsgU(te.announcement);
 			}
 		}
 		else
@@ -1489,37 +1531,35 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			event.iObjectiveCurrent += event.iObjectiveNPCReward;
 
 			auto& iter = event.eventNPCDropData.lower_bound(cship->archetype->iArchID);
-			if (iter == event.eventNPCDropData.end())
+			if (iter != event.eventNPCDropData.end())
 			{
-				return;
-			}
-
-			const auto& iterEnd = event.eventNPCDropData.upper_bound(cship->archetype->iArchID);
-			while (iter != iterEnd)
-			{
-				const auto& dropData = iter->second;
-				float roll = static_cast<float>(rand()) / RAND_MAX;
-				if (roll < dropData.dropChance)
+				const auto& iterEnd = event.eventNPCDropData.upper_bound(cship->archetype->iArchID);
+				while (iter != iterEnd)
 				{
-					Vector vLoc = cship->vPos;
-					Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
-					vLoc.x += randomVector.x;
-					vLoc.y += randomVector.y;
-					vLoc.z += randomVector.z;
-
-					uint finalAmount;
-					if (dropData.max)
+					const auto& dropData = iter->second;
+					float roll = static_cast<float>(rand()) / RAND_MAX;
+					if (roll < dropData.dropChance)
 					{
-						finalAmount = dropData.min + (rand() % (dropData.max - dropData.min + 1));
-					}
-					else
-					{
-						finalAmount = dropData.min;
-					}
-					CreateLootSimple(cship->system, cship->id, dropData.itemArch, finalAmount, vLoc, false);
+						Vector vLoc = cship->vPos;
+						Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.f);
+						vLoc.x += randomVector.x;
+						vLoc.y += randomVector.y;
+						vLoc.z += randomVector.z;
 
+						uint finalAmount;
+						if (dropData.max)
+						{
+							finalAmount = dropData.min + (rand() % (dropData.max - dropData.min + 1));
+						}
+						else
+						{
+							finalAmount = dropData.min;
+						}
+						CreateLootSimple(cship->system, cship->id, dropData.itemArch, finalAmount, vLoc, false);
+
+					}
+					iter++;
 				}
-				iter++;
 			}
 		}
 

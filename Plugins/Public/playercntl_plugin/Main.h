@@ -65,6 +65,8 @@ namespace Rename
 	void AdminCmd_DropTag(CCmds* cmds, const wstring &wscTag);
 	void AdminCmd_ChangeTag(CCmds* cmds, const wstring& tag, const wstring& newPassword);
 
+	bool UserCmd_Unlock(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
+	bool UserCmd_Lock(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_DropTag(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_MakeTag(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_SetTagPass(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);

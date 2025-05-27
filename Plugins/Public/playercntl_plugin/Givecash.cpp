@@ -391,7 +391,7 @@ namespace GiveCash
 				wstos(ToMoneyStr(cash)).c_str(),
 				wstos(wscCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscCharname))).c_str(),
 				wstos(wscTargetCharname).c_str(), wstos(HkGetAccountID(HkGetAccountByCharname(wscTargetCharname))).c_str(),
-				GetAnticheatError(anticheatState).c_str());
+				wstos(GetAnticheatError(anticheatState)).c_str());
 			return true;
 		}
 		pub::Player::AdjustCash(iClientID, -cash);

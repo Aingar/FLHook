@@ -60,7 +60,9 @@ namespace Rename
 	struct LockedShipsStruct
 	{
 		wstring AccountName;
+		wstring password;
 		int LockLevel;
+		bool isLocked = true;
 	};
 
 	map<wstring, LockedShipsStruct> MapLockedShips;
@@ -197,6 +199,48 @@ namespace Rename
 				}
 			}
 		}
+	}
+
+	bool UserCmd_Unlock(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+	{
+		wstring charname = ToLower((const wchar_t*)Players.GetActiveCharacterName(iClientID));
+		auto iter = MapLockedShips.find(charname);
+		if (iter == MapLockedShips.end())
+		{
+			PrintUserCmdText(iClientID, L"ERR Ship is not locked");
+			return true;
+		}
+
+		if (iter->second.password.empty())
+		{
+			PrintUserCmdText(iClientID, L"ERR No password set");
+			return true;
+		}
+
+		if (iter->second.password != wscParam)
+		{
+			PrintUserCmdText(iClientID, L"ERR Incorrect unlock password");
+			return true;
+		}
+
+		iter->second.isLocked = false;
+		PrintUserCmdText(iClientID, L"OK Ship unlocked");
+	}
+
+
+	bool UserCmd_Lock(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+	{
+		wstring charname = ToLower((const wchar_t*)Players.GetActiveCharacterName(iClientID));
+		auto iter = MapLockedShips.find(charname);
+		if (iter == MapLockedShips.end())
+		{
+			PrintUserCmdText(iClientID, L"ERR Ship is not locked");
+			return true;
+		}
+
+		PrintUserCmdText(iClientID, L"OK Ship locked");
+		iter->second.isLocked = true;
+		return true;
 	}
 
 	bool UserCmd_MakeTag(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
@@ -1112,6 +1156,8 @@ void Rename::ReloadLockedShips()
 
 						info.AccountName = filename + L".fl";
 						info.LockLevel = ini.get_value_int(1);
+						info.password = stows(ini.get_value_string(2));
+						info.isLocked = true;
 
 						MapLockedShips[ToLower(ship)] = info;
 						++numberoflockedships;
@@ -1158,9 +1204,10 @@ bool Rename::DestroyCharacter(struct CHARACTER_ID const &cId, unsigned int iClie
 bool Rename::IsLockedShip(uint iClientID, int PermissionLevel)
 {
 	wstring wsccharname = ToLower((const wchar_t*)Players.GetActiveCharacterName(iClientID));
-	if (MapLockedShips.find(wsccharname) != MapLockedShips.end())
+	auto iter = MapLockedShips.find(wsccharname);
+	if (iter != MapLockedShips.end())
 	{
-		if (MapLockedShips[wsccharname].LockLevel >= PermissionLevel)
+		if (iter->second.isLocked && iter->second.LockLevel >= PermissionLevel)
 		{
 			return true;
 		}

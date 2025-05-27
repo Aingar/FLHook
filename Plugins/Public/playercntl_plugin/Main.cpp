@@ -781,6 +781,7 @@ namespace HkIServerImpl
 						HkDelayedKick(iClientID, 1);
 						returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 					}
+					break;
 				}
 			}
 		}
@@ -832,35 +833,6 @@ namespace HkIServerImpl
 
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		}
-		/*
-		if (Rename::IsLockedShip(iClientID, 2))
-		{
-			for (EquipDescListItem *item = Players[iClientID].lShadowEquipDescList.pFirst->next;
-				item != Players[iClientID].lShadowEquipDescList.pFirst; item = item->next)
-			{
-					if (string(item->equip.szHardPoint.value) == "BAY")
-					{
-						PrintUserCmdText(iClientID, L"Triggered on cargo item");
-						//PrintUserCmdText(iClientID, L"I like %d", item->equip.get_count());
-					}
-					else
-					{
-						PrintUserCmdText(iClientID, L"Triggered on equip item");
-					}
-			}
-
-			//PrintUserCmdText(iClientID, L"Modifying equipment is not allowed on a locked ship. You will now be kicked.");
-
-			//wstring wsccharname = Players.GetActiveCharacterName(iClientID);
-			//wstring spurdoip;
-			//HkGetPlayerIP(iClientID, spurdoip);
-			//AddLog("SHIPLOCK: Attempt to modify item on locked ship %s from IP %s", wstos(wsccharname).c_str(), wstos(spurdoip).c_str());
-			//ConPrint(L"SHIPLOCK: Attempt to modify item on locked ship %s from IP %s\n", wsccharname.c_str(), spurdoip.c_str());
-
-			//HkDelayedKick(iClientID, 1);
-			//returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		}
-		*/
 
 		if (PurchaseRestrictions::ReqEquipment(eqDesc, iClientID))
 		{
@@ -1207,7 +1179,9 @@ USERCMD UserCmds[] =
 	{ L"/net",			SystemSensor::UserCmd_Net, L"Usage: /net [all|jumponly|off]"},
 	{ L"/maketag",		Rename::UserCmd_MakeTag, L"Usage: /maketag <tag> <master password> <description>"},
 	{ L"/droptag",		Rename::UserCmd_DropTag, L"Usage: /droptag <tag> <master password>"},
-	{ L"/settagpass",	Rename::UserCmd_SetTagPass, L"Usage: /settagpass <tag> <master password> <rename password>"}
+	{ L"/settagpass",	Rename::UserCmd_SetTagPass, L"Usage: /settagpass <tag> <master password> <rename password>"},
+	{ L"/shipunlock",	Rename::UserCmd_Unlock, L"Usage: /unlock <password>"},
+	{ L"/shiplock",		Rename::UserCmd_Lock, L"Usage: /lock"},
 };
 
 /**

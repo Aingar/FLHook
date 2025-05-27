@@ -451,12 +451,13 @@ struct PathEntry
 	uint systemId;
 };
 
+template<uint count>
 struct RequestPathStruct
 {
 	int repId;
 	uint waypointCount;
 	bool noPathFound = false;
-	PathEntry pathEntries[100];
+	PathEntry pathEntries[count];
 };
 
 // plugin

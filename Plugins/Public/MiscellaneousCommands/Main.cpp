@@ -238,7 +238,7 @@ bool UserCmd_WayPointRally(uint iClientID, const wstring& wscCmd, const wstring&
 		return false;
 	}
 
-	RequestPathStruct requestPathStruct;
+	RequestPathStruct<2> requestPathStruct;
 	requestPathStruct.pathEntries[1].pos = ClientInfo[iClientID].cship->vPos;
 	requestPathStruct.pathEntries[1].systemId = Players[iClientID].iSystemID;
 
@@ -282,7 +282,7 @@ bool UserCmd_WayPoint(uint iClientID, const wstring& wscCmd, const wstring& wscP
 
 	Vector pos = { ToFloat(GetParam(wscParam, ' ', 0)),ToFloat(GetParam(wscParam, ' ', 1)),ToFloat(GetParam(wscParam, ' ', 2)) };
 
-	RequestPathStruct bestPathStruct;
+	RequestPathStruct<2> bestPathStruct;
 	bestPathStruct.repId = Players[iClientID].iReputation;
 	bestPathStruct.waypointCount = 2;
 	bestPathStruct.noPathFound = false;
@@ -354,7 +354,7 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 
 	PrintUserCmdText(iClientID, L"Plotting waypoint to: %ls", memberName.c_str());
 
-	RequestPathStruct bestPathStruct;
+	RequestPathStruct<2> bestPathStruct;
 	bestPathStruct.repId = Players[iClientID].iReputation;
 	bestPathStruct.waypointCount = 2;
 	bestPathStruct.noPathFound = false;

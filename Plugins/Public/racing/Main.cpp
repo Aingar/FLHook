@@ -598,7 +598,7 @@ void SendNextWaypoints(shared_ptr<Racer> racer, bool setupWaypoints)
 		return;
 	}
 
-	static RequestPathStruct sendStruct;
+	static RequestPathStruct<2> sendStruct;
 	sendStruct.noPathFound = false;
 	sendStruct.repId = Players[racer->clientId].iReputation;
 	sendStruct.waypointCount = 2;

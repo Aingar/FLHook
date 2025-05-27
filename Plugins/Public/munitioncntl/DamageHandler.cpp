@@ -289,10 +289,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
 {
-	CEqObj* cship = reinterpret_cast<CEqObj*>(iobj->cobj);
+	CEqObj* ceqobj = reinterpret_cast<CEqObj*>(iobj->cobj);
 
 	PhySys::RayHit rayHits[20];
-	int collisionCount = FindRayCollisions(cship->system, explosion->explosionPosition, iobj->cobj->vPos, rayHits, 20);
+	int collisionCount = FindRayCollisions(ceqobj->system, explosion->explosionPosition, iobj->cobj->vPos, rayHits, 20);
 
 	for (int i = 0; i < collisionCount; i++)
 	{
@@ -314,7 +314,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	rootDistance -= detDist * detDist;
 	rootDistance = max(rootDistance, 0.1f);
 
-	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(Shield));
+	CEShield* shield = reinterpret_cast<CEShield*>(ceqobj->equip_manager.FindFirst(Shield));
 	if (!shield || !shield->IsFunctioning())
 	{
 		return false;
@@ -353,6 +353,10 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	else if (rootDistance < threeThirds)
 	{
 		dmgMult = 0.3333f;
+	}
+	else if (ceqobj->type == ObjectType::TradelaneRing && rootDistance < 400)
+	{
+		dmgMult = 1.0f;
 	}
 	else
 	{

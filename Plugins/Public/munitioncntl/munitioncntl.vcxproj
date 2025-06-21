@@ -107,7 +107,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
       <EnableCOMDATFolding>true</EnableCOMDATFolding>
-      <LinkTimeCodeGeneration>UseLinkTimeCodeGeneration</LinkTimeCodeGeneration>
+      <LinkTimeCodeGeneration>Default</LinkTimeCodeGeneration>
       <RandomizedBaseAddress>false</RandomizedBaseAddress>
       <TargetMachine>MachineX86</TargetMachine>
       <AdditionalDependencies>$(SolutionDir)/Plugins/Public/hookext_plugin/release/ahookext.lib;%(AdditionalDependencies)</AdditionalDependencies>
@@ -119,6 +119,9 @@ copy /Y $(OutDir)$(TargetName).dll  $(DISCOHOOK_COPY_PATH)flhook_plugins\
 copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
       </Command>
     </PostBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="DamageHandler.cpp" />

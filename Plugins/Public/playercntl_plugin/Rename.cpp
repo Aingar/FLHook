@@ -225,6 +225,8 @@ namespace Rename
 
 		iter->second.isLocked = false;
 		PrintUserCmdText(iClientID, L"OK Ship unlocked");
+
+		return true;
 	}
 
 

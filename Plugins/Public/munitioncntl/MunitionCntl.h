@@ -20,6 +20,7 @@ float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType
 void FindAndDisableEquip(uint client, const string& hardpoint);
 FireResult __fastcall CELauncherFire(CELauncher* gun, void* edx, const Vector& pos);
 void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms);
+void FetchShipArmor(uint shipHash);
 
 typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
 static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
@@ -175,6 +176,7 @@ extern uint weaponArmorPenArch;
 extern bool armorEnabled;
 
 extern unordered_map<uint, int> munitionArmorPenMap;
-extern unordered_map<uint, int> shipArmorMap;
+extern unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;
+extern unordered_map<uint, unordered_map<ushort, int>>::iterator shipArmorIter;
 extern unordered_map<uint, unordered_map<ushort, BurstFireGunData>> shipGunData;
 extern unordered_map<uint, BurstFireData> burstGunData;

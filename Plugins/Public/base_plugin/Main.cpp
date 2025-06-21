@@ -3393,7 +3393,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 
-		RIGHT_CHECK(RIGHT_SUPERADMIN);
+		RIGHT_CHECK(RIGHT_CARGO);
 
 		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		if (client == -1)
@@ -3429,8 +3429,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		base->AddMarketGood(goodId, amount);
 		base->Save();
 
+		BaseLogging("%s added %s x%u to %s", wstos(cmd->GetAdminName()).c_str(), wstos(cmd->ArgStr(1)).c_str(), amount, wstos(base->basename).c_str());
+
 		return true;
-		}
+	}
 	else if (args.find(L"basecheckpos") == 0)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -3821,6 +3823,7 @@ int __cdecl Dock_Call_After(unsigned int const& ship, unsigned int const& dockTa
 	}
 	catch (const std::out_of_range& e)
 	{
+		AddLog("Dock Call error: %s", e.what());
 		return 0;
 	}
 

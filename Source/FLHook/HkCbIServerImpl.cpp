@@ -604,6 +604,9 @@ namespace HkIServerImpl
 		}
 		ClientInfo[iClientID].cship = nullptr;
 
+		//Resync shadow equip desc to avoid deallocation issues.
+		Players[iClientID].lShadowEquipDescList = Players[iClientID].equipDescList;
+
 		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_BaseEnter, __stdcall, (unsigned int iBaseID, unsigned int iClientID), (iBaseID, iClientID));
 
 		ClientInfo[iClientID].isDocking = false;
@@ -746,6 +749,13 @@ namespace HkIServerImpl
 		ISERVER_LOGARG_UI(p2);
 
 		connectingPlayerIPs.erase(ClientInfo[iClientID].IP);
+
+		if (Players[iClientID].iMissionID)
+		{
+			Server.AbortMission(iClientID, 0);
+			Players[iClientID].iMissionID = 0;
+			Players[iClientID].iMissionSetBy = 0;
+		}
 
 		wstring wscCharname;
 		TRY_HOOK
@@ -992,6 +1002,13 @@ namespace HkIServerImpl
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iClientID);
 		ISERVER_LOGARG_UI(p2);
+
+		if (Players[iClientID].iMissionID)
+		{
+			Server.AbortMission(iClientID, 0);
+			Players[iClientID].iMissionID = 0;
+			Players[iClientID].iMissionSetBy = 0;
+		}
 
 		CHECK_FOR_DISCONNECT
 

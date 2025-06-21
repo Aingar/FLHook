@@ -1415,6 +1415,18 @@ namespace HyperJump
 
 	void HyperJump::ClearClientInfo(const uint iClientID)
 	{
+		for (auto& iter : mapPlayerBeaconMatrix)
+		{
+			for (auto iter2 = iter.second.incomingClientIDs.begin(); iter2 != iter.second.incomingClientIDs.end(); iter2++)
+			{
+				if (*iter2 == iClientID)
+				{
+					iter.second.incomingClientIDs.erase(iter2);
+					break;
+				}
+			}
+		}
+
 		const auto& beaconInfo = mapPlayerBeaconMatrix.find(iClientID);
 		if (beaconInfo != mapPlayerBeaconMatrix.end())
 		{

@@ -223,7 +223,7 @@ void MoveClient(unsigned int client, unsigned int targetBase)
                 PrintUserCmdText(client, L"Return impossible, contact staff");
                 return;
             }
-            string scProxyBase = (string)((const char*)sysInfo->nickname) + "_proxy_base";
+            string scProxyBase = (string)((const char*)sysInfo->nickname.value) + "_proxy_base";
             uint proxyBaseID;
             if (pub::GetBaseID(proxyBaseID, scProxyBase.c_str()) == -4)
             {

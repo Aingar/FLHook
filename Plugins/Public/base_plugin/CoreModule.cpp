@@ -330,7 +330,7 @@ bool CoreModule::Timer(uint time)
 	if (time % set_crew_check_frequency == 0)
 	{
 		base->fed_workers.clear();
-		if (dont_eat)
+		if (dont_eat	)
 		{
 			base->isCrewSupplied = true;
 			base->fed_workers[set_base_crew_type] = base->base_level * 200;

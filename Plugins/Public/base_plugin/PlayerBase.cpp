@@ -597,13 +597,19 @@ void PlayerBase::Load()
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						srp_tags.emplace_back(tag);
+						if (!tag.empty())
+						{
+							srp_tags.emplace_back(tag);
+						}
 					}
 					else if (ini.is_value("srp_name"))
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						srp_names.insert(tag);
+						if (!tag.empty())
+						{
+							srp_names.insert(tag);
+						}
 					}
 					else if (ini.is_value("faction_srp_tag"))
 					{
@@ -613,13 +619,19 @@ void PlayerBase::Load()
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						ally_tags.emplace_back(tag);
+						if (!tag.empty())
+						{
+							ally_tags.emplace_back(tag);
+						}
 					}
 					else if (ini.is_value("ally_name"))
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						ally_names.insert(tag);
+						if (!tag.empty())
+						{
+							ally_names.insert(tag);
+						}
 					}
 					else if (ini.is_value("faction_ally_tag"))
 					{
@@ -629,13 +641,19 @@ void PlayerBase::Load()
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						hostile_tags.push_back(tag);
+						if (!tag.empty())
+						{
+							hostile_tags.push_back(tag);
+						}
 					}
 					else if (ini.is_value("hostile_name"))
 					{
 						wstring tag;
 						ini_get_wstring(ini, tag);
-						hostile_names.insert(tag);
+						if (!tag.empty())
+						{
+							hostile_names.insert(tag);
+						}
 					}
 					else if (ini.is_value("faction_hostile_tag"))
 					{
@@ -797,7 +815,7 @@ void PlayerBase::Save()
 
 		fprintf(file, "money = %I64d\n", money);
 		auto sysInfo = Universe::get_system(system);
-		fprintf(file, "system = %s\n", sysInfo->nickname);
+		fprintf(file, "system = %s\n", sysInfo->nickname.value);
 		fprintf(file, "pos = %0.0f, %0.0f, %0.0f\n", position.x, position.y, position.z);
 
 		Vector vRot = MatrixToEuler(rotation);
@@ -805,7 +823,7 @@ void PlayerBase::Save()
 		if (archetype && archetype->ishubreturn)
 		{
 			const auto& destSystemInfo = Universe::get_system(destSystem);
-			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname);
+			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname.value);
 
 			fprintf(file, "destpos = %0.0f, %0.0f, %0.0f\n", destPos.x, destPos.y, destPos.z);
 
@@ -817,7 +835,7 @@ void PlayerBase::Save()
 			uint destSystemId;
 			pub::SpaceObj::GetSystem(destObject, destSystemId);
 			const auto& destSystemInfo = Universe::get_system(destSystemId);
-			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname);
+			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname.value);
 			fprintf(file, "destobject = %s\n", destObjectName.c_str());
 		}
 
@@ -1189,7 +1207,7 @@ void ReportAttack(wstring basename, wstring charname, uint system, wstring alert
 	wscMsg = ReplaceStr(wscMsg, L"%s", alert_phrase);
 
 	const Universe::ISystem* iSys = Universe::get_system(system);
-	wstring sysname = stows(iSys->nickname);
+	wstring sysname = stows(iSys->nickname.value);
 
 	HkMsgS(sysname.c_str(), wscMsg.c_str());
 

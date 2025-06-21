@@ -1174,7 +1174,7 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 	while (system)
 	{
 		pub::System::LoadSystem(system->id);
-		LoadZoneDamageData((const char*)system->file);
+		LoadZoneDamageData(system->file.value);
 		system = Universe::GetNextSystem();
 	}
 

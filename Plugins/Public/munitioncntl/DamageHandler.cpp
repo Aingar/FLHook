@@ -2,6 +2,25 @@
 
 static FlMap<uint, FlMap<uint, float>>* shieldResistMap = (FlMap<uint, FlMap<uint, float>>*)(0x658A9C0);
 
+void FetchShipArmor(uint shipHash)
+{
+	if (shipArmorArch == shipHash)
+	{
+		return;
+	}
+
+	shipArmorIter = shipArmorMap.find(shipHash);
+	shipArmorArch = shipHash;
+	if (shipArmorIter == shipArmorMap.end())
+	{
+		shipArmorRating = 0;
+	}
+	else
+	{
+		shipArmorRating = shipArmorIter->second[1];
+	}
+}
+
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
 {
 	if (!weaponType || !shield || !shield->highestToughnessShieldGenArch)
@@ -577,23 +596,27 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 {
 	if (armorEnabled)
 	{
-		if (shipArmorArch != iobj->cobj->archetype->iArchID)
+		int colGrpArmor = 0;
+		static auto shipIter = shipArmorMap.end();
+
+		FetchShipArmor(iobj->cobj->archetype->iArchID);
+
+		if (shipArmorIter != shipArmorMap.end())
 		{
-			shipArmorArch = iobj->cobj->archetype->iArchID;
-			const auto shipIter = shipArmorMap.find(shipArmorArch);
-			if (shipIter == shipArmorMap.end())
+			auto colGrpIter = shipArmorIter->second.find(colGrp->colGrp->id);
+			if (colGrpIter != shipArmorIter->second.end())
 			{
-				shipArmorRating = 0;
+				colGrpArmor = colGrpIter->second;
 			}
 			else
 			{
-				shipArmorRating = shipIter->second;
+				colGrpArmor = shipArmorRating;
 			}
-		}
 
-		if (shipArmorRating && shipArmorRating > weaponArmorPenValue)
-		{
-			incDmg *= armorReductionVector.at(shipArmorRating - weaponArmorPenValue);
+			if (colGrpArmor && colGrpArmor > weaponArmorPenValue)
+			{
+				incDmg *= armorReductionVector.at(colGrpArmor - weaponArmorPenValue);
+			}
 		}
 
 		armorEnabled = false;

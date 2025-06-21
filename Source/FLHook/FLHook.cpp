@@ -799,7 +799,7 @@ void SendChatEvent(uint iClientID, uint iToID, wstring &wscMsg) {
 	else if (iToID & 0x00010000)
 	{
 		wscEvent += L"system";
-		to = Universe::get_system(Players[iClientID].iSystemID)->nickname;
+		to = Universe::get_system(Players[iClientID].iSystemID)->nickname.value;
 	}
 	else {
 		wscEvent += L"player";

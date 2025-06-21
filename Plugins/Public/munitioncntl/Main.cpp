@@ -22,7 +22,8 @@ unordered_map<uint, ShieldBoostData> shieldBoostMap;
 unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageData> explosionTypeMap;
-unordered_map<uint, int> shipArmorMap;
+unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;
+unordered_map<uint, unordered_map<ushort, int>>::iterator shipArmorIter;
 unordered_map<uint, int> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 vector<float> armorReductionVector;
@@ -145,7 +146,7 @@ void ReadMunitionDataFromInis()
 					else if (ini.is_value("armor"))
 					{
 						int armorValue = ini.get_value_int(0);
-						shipArmorMap[currNickname] = armorValue;
+						shipArmorMap[currNickname][1] = armorValue;
 						maxArmorValue = max(maxArmorValue, armorValue);
 						break;
 					}
@@ -173,6 +174,13 @@ void ReadMunitionDataFromInis()
 							}
 							shipDataMap[currNickname].fuseHpMap[fuseHash].push_back(HpName);
 						}
+					}
+					else if (ini.is_value("armor"))
+					{
+						int armorValue = ini.get_value_int(0);
+						shipArmorMap[currNickname][currSID] = armorValue;
+						maxArmorValue = max(maxArmorValue, armorValue);
+						break;
 					}
 				}
 			}
@@ -1257,19 +1265,7 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 
 	if (armorEnabled)
 	{
-		if (shipArmorArch != iobj->cobj->archetype->iArchID)
-		{
-			shipArmorArch = iobj->cobj->archetype->iArchID;
-			const auto shipIter = shipArmorMap.find(shipArmorArch);
-			if (shipIter == shipArmorMap.end())
-			{
-				shipArmorRating = 0;
-			}
-			else
-			{
-				shipArmorRating = shipIter->second;
-			}
-		}
+		FetchShipArmor(iobj->cobj->archetype->iArchID);
 
 		if (shipArmorRating && (shipArmorRating > weaponArmorPenValue))
 		{

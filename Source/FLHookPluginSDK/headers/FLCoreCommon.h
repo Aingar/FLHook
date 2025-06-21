@@ -1608,26 +1608,6 @@ namespace Universe
 		uint terrainDynamic2;
 		bool autosaveForbidden;
 	};
-	struct IMPORT ISystem
-	{
-		LPVOID pvtable;
-		LPVOID pvftable;		// CommReferrable
-		size_t msgidprefix_len;	// TString<64>
-		char   msgidprefix_str[64];
-
-		UINT   id;				// ID_String
-		LPCSTR nickname;		// CacheString
-		LPVOID connections[4];	// std::vector
-		BYTE   visit;
-		UINT   strid_name;
-		UINT   ids_info;
-		LPCSTR file;			// CacheString
-		class Vector NavMapPos;
-		LPVOID zones[3];		// std::list
-		ISpatialPartition* spatial;
-		float  NavMapScale;
-		UINT   spacemusic;
-	};
 	struct IMPORT IZone
 	{
 		struct FactionSpawn
@@ -1655,7 +1635,7 @@ namespace Universe
 		char* spacedustName;
 		uint spacedustMaxParticles;
 		Vector dunnoV;
-		CmnAsteroid::LootableZone *lootableZone;
+		CmnAsteroid::LootableZone* lootableZone;
 		uint iStartFaction; // & 0xFF, always zero
 		uint iCountMaxFaction; // & 0xFF, appears related to the max number of factions in a given encounter line
 		FactionSpawn* startFactionArray;
@@ -1665,6 +1645,27 @@ namespace Universe
 		uint idsName;
 		uint idsInfo;
 		uint iDunno6[2];
+	};
+	struct IMPORT ISystem
+	{
+
+		void* pvftable;		// CommReferrable
+		void* pvftable2;		
+		size_t msgidprefix_len;	// TString<64>
+		char   msgidprefix_str[64];
+
+		uint   id;				// ID_String
+		CacheString nickname;		// CacheString
+		st6::vector<Universe::ISystem*> connections;	// std::vector
+		byte   visit;
+		uint   strid_name;
+		uint   ids_info;
+		CacheString file;			// CacheString
+		class Vector NavMapPos;
+		st6::list<Universe::IZone*> zones;		// std::list
+		ISpatialPartition* spatial;
+		float  NavMapScale;
+		uint   spacemusic;
 	};
 
 	IMPORT  struct ISystem *  GetFirstSystem(void);
@@ -1692,6 +1693,24 @@ namespace Universe
 
 };
 
+struct SphereObject
+{
+	void* vtable;
+	uint dunno[3];
+};
+
+struct StarSystemSphereManagerThing
+{
+	SphereObject nebulaObjectHandle;
+	CacheString nebulaFilepath;
+	SphereObject basicStarsObjectHandle;
+	CacheString basicStarsFilepath;
+	SphereObject complexStarsObjectHandle;
+	CacheString complexStarsFilepath;
+
+	uint dunno1;
+	uint dunno2;
+};
 
 namespace Exclusion
 {

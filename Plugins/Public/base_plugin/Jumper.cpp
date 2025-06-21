@@ -103,7 +103,7 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	{
 		return false;
 	}
-	string baseNickName = "custom_return_hole_exit_" + (string)systemInfo->nickname + itos(counter);
+	string baseNickName = "custom_return_hole_exit_" + (string)systemInfo->nickname.value + itos(counter);
 	counter++;
 
 	if (pub::SpaceObj::ExistsAndAlive(CreateID(baseNickName.c_str())) == 0) //0 means alive, -2 dead
@@ -485,7 +485,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			{
 				isFirst = false;
 				auto systemInfo = Universe::get_system(originJumpHole->destSystem);
-				WritePrivateProfileStringA("Timer", "systemToExclude", systemInfo->nickname, cfg_filehyperspaceHubTimer.c_str());
+				WritePrivateProfileStringA("Timer", "systemToExclude", systemInfo->nickname.value, cfg_filehyperspaceHubTimer.c_str());
 			}
 		}
 		WritePrivateProfileStringA("Timer", "lastRandomization", itos((int)(currTime - (currTime % randomizationCooldown) + randomizationCooldownOffset)).c_str(), cfg_filehyperspaceHubTimer.c_str());

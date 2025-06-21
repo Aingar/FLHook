@@ -637,7 +637,7 @@ void MoveOfflineShipToLastDockedSolar(const wstring& charName)
 	const auto& sysInfo = Universe::get_system(baseInfo->iSystemID);
 	if (baseInfo && sysInfo)
 	{
-		WritePrivateProfileString("Player", "system", sysInfo->nickname, charpath.c_str());
+		WritePrivateProfileString("Player", "system", sysInfo->nickname.value, charpath.c_str());
 		WritePrivateProfileString("Player", "base", baseInfo->cNickname, charpath.c_str());
 	}
 	else

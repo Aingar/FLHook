@@ -102,7 +102,8 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     </ClCompile>
     <Link>
       <OutputFile>$(OutDir)$(TargetName)$(TargetExt)</OutputFile>
-      <AdditionalLibraryDirectories>$(SolutionDir)\Dependencies\boost\lib32-msvc-14.1;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalLibraryDirectories>
+      </AdditionalLibraryDirectories>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <SubSystem>Windows</SubSystem>
       <OptimizeReferences>true</OptimizeReferences>
@@ -129,6 +130,9 @@ copy /Y $(OutDir)$(TargetName).dll  $(DISCOHOOK_COPY_PATH)flhook_plugins\
 copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
       </Command>
     </PostBuildEvent>
+    <ProjectReference>
+      <LinkLibraryDependencies>false</LinkLibraryDependencies>
+    </ProjectReference>
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="Main.cpp" />

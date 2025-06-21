@@ -351,7 +351,7 @@ void HkTimerJSON()
 		pub::Player::GetSystem(iClientID, iSystemID);
 		const Universe::ISystem *iSys = Universe::get_system(iSystemID);
 
-		string sysname = iSys->nickname;
+		string sysname = iSys->nickname.value;
 
 		//if it's empty, it's probably a plugin reload. We fill the data so we don't send dumb shit or worse cause exceptions
 		auto clientIter = mapActivityData.find(iClientID);

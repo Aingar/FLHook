@@ -910,6 +910,7 @@ namespace PlayerCommands
 
 	bool AddAccess(PlayerBase* base, uint client, const wstring& entryType, const wstring& type, const wstring& entry)
 	{
+		wstring trimEntry = Trim(entry);
 		if (entry.empty())
 		{
 			PrintUserCmdText(client, L"ERR incorrect parameters!");
@@ -927,8 +928,8 @@ namespace PlayerCommands
 					return false;
 				}
 
-				base->hostile_tags.remove(entry);
-				return AddTagEntry(client, base->srp_tags, entry);
+				base->hostile_tags.remove(trimEntry);
+				return AddTagEntry(client, base->srp_tags, trimEntry);
 			}
 			else if (type == L"blacklist")
 			{
@@ -938,8 +939,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_tags.size());
 					return false;
 				}
-				base->ally_tags.remove(entry);
-				AddTagEntry(client, base->hostile_tags, entry);
+				base->ally_tags.remove(trimEntry);
+				AddTagEntry(client, base->hostile_tags, trimEntry);
 				return true;
 			}
 			else if (type == L"whitelist")
@@ -950,8 +951,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->ally_tags.size());
 					return false;
 				}
-				base->hostile_tags.remove(entry);
-				return AddTagEntry(client, base->ally_tags, entry);
+				base->hostile_tags.remove(trimEntry);
+				return AddTagEntry(client, base->ally_tags, trimEntry);
 			}
 		}
 		else if (entryType == L"name")
@@ -964,8 +965,8 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
 					return false;
 				}
-				base->hostile_names.erase(entry);
-				base->srp_names.insert(entry);
+				base->hostile_names.erase(trimEntry);
+				base->srp_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
@@ -977,8 +978,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_names.size());
 					return false;
 				}
-				base->ally_names.erase(entry);
-				base->hostile_names.insert(entry);
+				base->ally_names.erase(trimEntry);
+				base->hostile_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
@@ -990,8 +991,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->ally_names.size());
 					return false;
 				}
-				base->hostile_names.erase(entry);
-				base->ally_names.insert(entry);
+				base->hostile_names.erase(trimEntry);
+				base->ally_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}

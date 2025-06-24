@@ -24,7 +24,7 @@ L"<TEXT>Show this help page. Specify the page number to see the next page.</TEXT
 L"<TRA bold=\"true\"/><TEXT>/base login [password]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Login as base administrator. The following commands are only available if you are logged in as a base administrator.</TEXT><PARA/><PARA/>"
 
-L"<TRA bold=\"true\"/><TEXT>/base addpwd [password] [viewshop], /base rmpwd [password], /base lstpwd <masterPassword></TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TRA bold=\"true\"/><TEXT>/base addpwd [password] [viewshop], /base rmpwd [password], /base lstpwd [masterPassword]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Add, remove and list administrator passwords for the base. Add 'viewshop' to addpwd to only allow the password to view the shop.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/access</TEXT><TRA bold=\"false\"/><PARA/>"

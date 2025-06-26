@@ -194,14 +194,8 @@ wstring FactoryModule::GetInfo(bool xml)
 				volumeSum += eq->fVolume * quantity;
 			}
 
-			if (!currStock)
-			{
-				info += L" [Out of stock]";
-			}
-			else
-			{
-				info += L" [" + itows(currStock) + L" in stock]";
-			}
+			info += L" [" + itows(currStock) + L" in stock]";
+			
 		}
 	}
 

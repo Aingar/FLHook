@@ -1752,6 +1752,38 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 		return 0;
 	}
 
+	if (!pbase->dockKeyList.empty())
+	{
+		CShip* cship = ClientInfo[client].cship;
+		CEquipTraverser tr(-1);
+		CEquip* equip;
+		bool success = false;
+		while (equip = cship->equip_manager.Traverse(tr))
+		{
+			if (pbase->dockKeyList.count(equip->archetype->iArchID))
+			{
+				success = true;
+				break;
+			}
+		}
+
+		if (!success)
+		{
+			if (pbase->noDockKeyMessage.empty())
+			{
+				PrintUserCmdText(client, L"ERR Unable to dock");
+			}
+			else
+			{
+				PrintUserCmdText(client, pbase->noDockKeyMessage.c_str());
+			}
+
+			iCancel = -1;
+			response = ACCESS_DENIED;
+			return 0;
+		}
+	}
+
 	if (pbase->archetype && pbase->archetype->isjump == 1)
 	{
 		//check if we have an ID restriction

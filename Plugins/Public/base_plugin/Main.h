@@ -565,6 +565,9 @@ public:
 	Vector destPos;
 	Matrix destOri;
 
+	unordered_set<uint> dockKeyList;
+	wstring noDockKeyMessage;
+
 	/////////////////////////////////////////
 
 	bool isRearmamentAvailable = false;

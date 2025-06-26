@@ -682,6 +682,14 @@ void PlayerBase::Load()
 					{
 						fed_workers[ini.get_value_int(0)] = ini.get_value_int(1);
 					}
+					else if (ini.is_value("dock_key"))
+					{
+						dockKeyList.insert(ini.get_value_int(0));
+					}
+					else if (ini.is_value("no_dock_key_msg"))
+					{
+						noDockKeyMessage = stows(ini.get_value_string());
+					}
 				}
 				if (basetype.empty())
 				{
@@ -854,41 +862,49 @@ void PlayerBase::Save()
 		}
 
 		fprintf(file, "defensemode = %u\n", defense_mode);
-		for (auto& i : srp_tags)
+		for (const auto& i : srp_tags)
 		{
 			ini_write_wstring(file, "srp_tag", i);
 		}
-		for (auto i : srp_names)
+		for (const auto& i : srp_names)
 		{
 			ini_write_wstring(file, "srp_name", i);
 		}
-		for (auto i : srp_factions)
+		for (const auto& i : srp_factions)
 		{
 			fprintf(file, "faction_srp_tag = %d\n", i);
 		}
-		for(auto& i : ally_tags)
+		for(const auto& i : ally_tags)
 		{
 			ini_write_wstring(file, "ally_tag", i);
 		}
-		for (auto i : ally_names)
+		for (const auto& i : ally_names)
 		{
 			ini_write_wstring(file, "ally_name", i);
 		}
-		for (auto i : ally_factions)
+		for (const auto& i : ally_factions)
 		{
 			fprintf(file, "faction_ally_tag = %d\n", i);
 		}
-		for (auto i : hostile_factions)
+		for (const auto& i : hostile_factions)
 		{
 			fprintf(file, "faction_hostile_tag = %d\n", i);
 		}
-		for(auto i : hostile_tags)
+		for(const auto& i : hostile_tags)
 		{
 			ini_write_wstring(file, "hostile_tag", i);
 		}
-		for (auto i : hostile_names)
+		for (const auto& i : hostile_names)
 		{
 			ini_write_wstring(file, "hostile_name", i);
+		}
+		for (const auto& i : dockKeyList)
+		{
+			fprintf(file, "dock_key = %u\n", i);
+		}
+		if (!noDockKeyMessage.empty())
+		{
+			fprintf(file, "no_dock_key_msg = %s\n", wstos(noDockKeyMessage).c_str());
 		}
 		foreach(passwords, BasePassword, i)
 		{

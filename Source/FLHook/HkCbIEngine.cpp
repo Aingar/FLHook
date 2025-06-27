@@ -113,8 +113,6 @@ namespace HkIEngine
 
 	FARPROC FindStarListRet = FARPROC(0x6D0C846);
 
-	PBYTE fpOldStarSystemFind;
-
 	typedef MetaListNode* (__thiscall* FindIObjOnList)(MetaList&, uint searchedId);
 	FindIObjOnList FindIObjOnListFunc = FindIObjOnList(0x6CF4F00);
 
@@ -528,9 +526,10 @@ namespace HkIEngine
 		if (item != cobjMap->end())
 		{
 			CObjList* cobjList = CObjListFind(cobj->objectClass);
+			CObjNode* CObjPtr = item->second;
 			cobjMap->erase(item);
 			static uint dummy;
-			removeCObjNode(cobjList, &dummy, item->second);
+			removeCObjNode(cobjList, &dummy, CObjPtr);
 		}
 	}
 

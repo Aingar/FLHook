@@ -452,6 +452,46 @@ void BuildModule::LoadState(INI_Reader& ini)
 				active_recipe.consumed_items.emplace_back(make_pair(good, quantity));
 			}
 		}
+		else if (ini.is_value("consumed_dynamic"))
+		{
+			vector<pair<uint, uint>> vector;
+			int counter = 0;
+			int itemId = 0;
+			do
+			{
+				itemId = ini.get_value_int(counter * 2);
+				int itemAmount = ini.get_value_int(counter * 2 + 1);
+				counter++;
+				if (itemId)
+				{
+					vector.push_back({ itemId, itemAmount });
+				}
+			} while (itemId);
+			if (!vector.empty())
+			{
+				active_recipe.dynamic_consumed_items.emplace_back(vector);
+			}
+		}
+		else if (ini.is_value("consumed_dynamic_alt"))
+		{
+			DYNAMIC_ITEM item;
+			int counter = 1;
+			int itemId = 0;
+			item.sharedAmount = ini.get_value_int(0);
+			do
+			{
+				itemId = ini.get_value_int(counter);
+				counter++;
+				if (itemId)
+				{
+					item.items.push_back(itemId);
+				}
+			} while (itemId);
+			if (!item.items.empty())
+			{
+				active_recipe.dynamic_consumed_items_alt.emplace_back(item);
+			}
+		}
 		else if (ini.is_value("credit_cost"))
 		{
 			active_recipe.credit_cost = ini.get_value_int(0);
@@ -471,6 +511,33 @@ void BuildModule::SaveState(FILE* file)
 		{
 			fprintf(file, "consumed = %u, %u\n", i->first, i->second);
 		}
+	}
+	for (auto& i : active_recipe.dynamic_consumed_items)
+	{
+		bool isFirst = true;
+		fprintf(file, "consumed_dynamic = ");
+		for (auto& j : i)
+		{
+			if (isFirst)
+			{
+				isFirst = false;
+			}
+			else
+			{
+				fprintf(file, ",");
+			}
+			fprintf(file, "%u, %u", j.first, j.second);
+		}
+		fprintf(file, "\n");
+	}
+	for (auto& i : active_recipe.dynamic_consumed_items_alt)
+	{
+		fprintf(file, "consumed_dynamic_alt = %u", i.sharedAmount);
+		for (uint j : i.items)
+		{
+			fprintf(file, ", %u", j);
+		}
+		fprintf(file, "\n");
 	}
 	if (active_recipe.credit_cost)
 	{

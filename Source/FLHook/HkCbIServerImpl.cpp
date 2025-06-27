@@ -1,6 +1,7 @@
 #include "wildcards.hh"
 #include "hook.h"
 #include "CInGame.h"
+#include <memory>
 
 #ifdef SERVER_DEBUG_LOGGING
 #define ISERVER_LOG() if(set_bDebug) AddDebugLog(__FUNCSIG__);
@@ -142,17 +143,101 @@ namespace HkIServerImpl
 	iP2:       ???
 	**************************************************************************************************************/
 
+	constexpr unsigned short flufHeader = 0xF10F;
+	struct FlufPayload
+	{
+		bool compressed{};
+		char header[4]{};
+		std::vector<char> data;
+
+		std::vector<char> ToBytes() const
+		{
+			std::vector<char> bytes;
+			bytes.resize(sizeof(flufHeader) + sizeof(header) + sizeof(compressed) + data.size());
+			memcpy_s(bytes.data(), bytes.size(), &flufHeader, sizeof(flufHeader));
+			memcpy_s(bytes.data() + sizeof(flufHeader), bytes.size() - sizeof(flufHeader), header, sizeof(header));
+			memcpy_s(bytes.data() + sizeof(flufHeader) + sizeof(header), bytes.size() - sizeof(flufHeader) - sizeof(header), &compressed, sizeof(bool));
+			memcpy_s(bytes.data() + sizeof(flufHeader) + sizeof(header) + sizeof(compressed),
+				bytes.size() - sizeof(flufHeader) - sizeof(header) - sizeof(compressed),
+				data.data(),
+				data.size());
+
+			return bytes;
+		}
+
+		static std::unique_ptr<FlufPayload> FromPayload(char* data, size_t size)
+		{
+			// Check if enough room for the fluf header and the body, and that the header matches
+			if (size < sizeof(flufHeader) + sizeof(header) + sizeof(compressed) + 1 || *reinterpret_cast<ushort*>(data) != flufHeader)
+			{
+				return {};
+			}
+
+			FlufPayload payload;
+			memcpy_s(payload.header, sizeof(payload.header), data + sizeof(flufHeader), sizeof(payload.header));
+			memcpy_s(&payload.compressed, sizeof(payload.compressed), data + sizeof(flufHeader) + sizeof(header), sizeof(payload.compressed));
+			const size_t newSize = size - sizeof(flufHeader) + sizeof(header) + sizeof(compressed);
+			payload.data.resize(newSize);
+			memcpy_s(payload.data.data(), newSize, data + sizeof(flufHeader) + sizeof(header) + sizeof(compressed), newSize);
+
+			return std::make_unique<FlufPayload>(payload);
+		}
+
+		template <typename T>
+		static FlufPayload ToPayload(const T& data, const char header[4])
+		{
+			FlufPayload payload;
+			memcpy_s(payload.header, sizeof(payload.header), header, sizeof(header));
+
+			auto msgPack = rfl::msgpack::write(data);
+
+			const size_t maxPossibleSize = ZSTD_compressBound(msgPack.size());
+			payload.data.resize(maxPossibleSize);
+			const size_t newSize = ZSTD_compress(payload.data.data(), maxPossibleSize, msgPack.data(), msgPack.size(), 6);
+
+			if (newSize > msgPack.size())
+			{
+				payload.data = msgPack;
+				payload.compressed = false;
+				return payload;
+			}
+
+			payload.compressed = true;
+			payload.data.resize(newSize); // Cut down to exact size
+			return payload;
+		}
+
+	private:
+		FlufPayload() = default;
+	};
+
+
 	CInGame admin;
 	bool g_bInSubmitChat = false;
 	uint g_iTextLen = 0;
 
-	void __stdcall SubmitChat(struct CHAT_ID cId, unsigned long lP1, void const *rdlReader, struct CHAT_ID cIdTo, int iP2)
+	void __stdcall SubmitChat(struct CHAT_ID cId, unsigned long size, void const *rdlReader, struct CHAT_ID cIdTo, int iP2)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_I(cId.iID);
 		ISERVER_LOGARG_I(cIdTo.iID);
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SubmitChat, __stdcall, (struct CHAT_ID cId, unsigned long lP1, void const *rdlReader, struct CHAT_ID cIdTo, int iP2), (cId, lP1, rdlReader, cIdTo, iP2));
+		auto flufPayload = FlufPayload::FromPayload((char*)rdlReader, size);
+		if (cIdTo.iID == 0x10000 && flufPayload.get())
+		{
+			/*
+			if (strncmp(flufPayload.get()->header, "fluf", sizeof(flufPayload.get()->header)) == 0)
+			{
+				ClientId(cidFrom.id).GetData().usingFlufClientHook = true;
+			}
+			else
+			{
+				CallPlugins(&Plugin::OnPayloadReceived, ClientId(cidFrom.id), *flufPayload);
+			}*/
+			return;
+		}
+
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SubmitChat, __stdcall, (struct CHAT_ID cId, unsigned long size, void const *rdlReader, struct CHAT_ID cIdTo, int iP2), (cId, size, rdlReader, cIdTo, iP2));
 
 		TRY_HOOK {
 
@@ -160,7 +245,7 @@ namespace HkIServerImpl
 			if (cIdTo.iID == 0x10004)
 			{
 				g_bInSubmitChat = true;
-				EXECUTE_SERVER_CALL(Server.SubmitChat(cId, lP1, rdlReader, cIdTo, iP2));
+				EXECUTE_SERVER_CALL(Server.SubmitChat(cId, size, rdlReader, cIdTo, iP2));
 				g_bInSubmitChat = false;
 				return;
 			}
@@ -169,7 +254,7 @@ namespace HkIServerImpl
 			BinaryRDLReader rdl;
 			wchar_t wszBuf[1024] = L"";
 			uint iRet1;
-			rdl.extract_text_from_buffer((unsigned short*)wszBuf, sizeof(wszBuf), iRet1, (const char*)rdlReader, lP1);
+			rdl.extract_text_from_buffer((unsigned short*)wszBuf, sizeof(wszBuf), iRet1, (const char*)rdlReader, size);
 			wstring wscBuf = wszBuf;
 			uint iClientID = cId.iID;
 
@@ -266,11 +351,11 @@ namespace HkIServerImpl
 		// send
 		g_bInSubmitChat = true;
 		LOG_CORE_TIMER_START
-		EXECUTE_SERVER_CALL(Server.SubmitChat(cId, lP1, rdlReader, cIdTo, iP2));
+		EXECUTE_SERVER_CALL(Server.SubmitChat(cId, size, rdlReader, cIdTo, iP2));
 		LOG_CORE_TIMER_END
 		g_bInSubmitChat = false;
 
-		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SubmitChat_AFTER, __stdcall, (struct CHAT_ID cId, unsigned long lP1, void const *rdlReader, struct CHAT_ID cIdTo, int iP2), (cId, lP1, rdlReader, cIdTo, iP2));
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_SubmitChat_AFTER, __stdcall, (struct CHAT_ID cId, unsigned long size, void const *rdlReader, struct CHAT_ID cIdTo, int iP2), (cId, size, rdlReader, cIdTo, iP2));
 	}
 
 	/**************************************************************************************************************

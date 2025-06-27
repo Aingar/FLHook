@@ -140,6 +140,8 @@ uint repair_per_repair_cycle = 60000;
 
 uint base_access_entry_limit = 20;
 
+int defense_platform_activation_offset = 30;
+
 
 // set of configurable variables defining the diminishing returns on damage during POB siege
 // POB starts at base_shield_strength, then every 'threshold' of damage taken, 
@@ -892,6 +894,10 @@ void LoadSettingsActual()
 					else if (ini.is_value("single_vulnerability_window"))
 					{
 						single_vulnerability_window = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("defense_platform_activation_offset"))
+					{
+						defense_platform_activation_offset = ini.get_value_int(0);
 					}
 					else if (ini.is_value("construction_shiparch"))
 					{

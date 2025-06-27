@@ -366,7 +366,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		base->isShieldOn = true;
 		EnableShieldFuse(true);
 	}
-	if ((base->use_vulnerability_window && !base->vulnerableWindowStatus) || base->invulnerable == 1 || base->shield_strength_multiplier >= 1.0f)
+	if ((base->use_vulnerability_window && base->vulnerableWindowStatus != PlayerBase::BASE_VULNERABILITY_STATE::VULNERABLE) || base->invulnerable == 1 || base->shield_strength_multiplier >= 1.0f)
 	{
 		// base invulnerable, keep current health value
 		return 0;

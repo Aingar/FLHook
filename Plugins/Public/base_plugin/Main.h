@@ -470,9 +470,6 @@ public:
 
 	DEFENSE_MODE defense_mode;
 
-	//changes how defense mod act depending on the amount of damage made to base in the last hours
-	bool siege_mode;
-
 	bool has_shield = false;
 
 	bool siege_gun_only = false;
@@ -550,7 +547,14 @@ public:
 	BASE_VULNERABILITY_WINDOW vulnerabilityWindow1 = { -1, -1 };
 	BASE_VULNERABILITY_WINDOW vulnerabilityWindow2 = { -1, -1 };
 
-	bool vulnerableWindowStatus = false;
+	enum class BASE_VULNERABILITY_STATE
+	{
+		INVULNERABLE,
+		PREVULNERABLE,
+		VULNERABLE
+	};
+
+	BASE_VULNERABILITY_STATE vulnerableWindowStatus = BASE_VULNERABILITY_STATE::INVULNERABLE;
 
 	////////////Unique to Solars/////////////
 
@@ -845,6 +849,8 @@ extern unordered_set<uint> humanCargoList;
 extern unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
 
 extern bool set_SkipUnchartedKill;
+
+extern int defense_platform_activation_offset;
 
 extern float rearmamentCostRatio;
 extern vector<pair<uint, float>> rearmamentCreditRatio;

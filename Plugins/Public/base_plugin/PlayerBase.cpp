@@ -3,7 +3,7 @@
 PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
 	: basename(the_basename),
 	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0),
-	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
+	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
 {
@@ -38,7 +38,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 
 PlayerBase::PlayerBase(const string &the_path)
 	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0),
-	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), siege_mode(false),
+	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
 {
@@ -94,65 +94,78 @@ void PlayerBase::Spawn()
 	}
 }
 
-bool IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, int timeOfDay)
+PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, int timeOfDay, int startOffset)
 {
-	return ((window.start < window.end
-			&& window.start <= timeOfDay && window.end > timeOfDay)
+	if ((window.start < window.end
+		&& window.start <= timeOfDay && window.end > timeOfDay)
 		|| (window.start > window.end
-			&& (window.start <= timeOfDay || window.end > timeOfDay)));
+			&& (window.start <= timeOfDay || window.end > timeOfDay)))
+	{
+		return PlayerBase::BASE_VULNERABILITY_STATE::VULNERABLE;
+	}
+
+	window.start -= startOffset;
+	if ((window.start < window.end
+		&& window.start <= timeOfDay && window.end > timeOfDay)
+		|| (window.start > window.end
+			&& (window.start <= timeOfDay || window.end > timeOfDay)))
+	{
+		return PlayerBase::BASE_VULNERABILITY_STATE::PREVULNERABLE;
+	}
+
+	return PlayerBase::BASE_VULNERABILITY_STATE::INVULNERABLE;
 }
 
 void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 {
 	int timeOfDay = (currTime % (3600 * 24)) / 60;
-	if (IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay))
+
+	auto currVulnState = IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay, defense_platform_activation_offset);
+	if (!single_vulnerability_window)
 	{
-		if (!vulnerableWindowStatus)
-		{
-			vulnerableWindowStatus = true;
-			//Reset the base defenses to default only on the opening of the first vulnerability window
-			siege_mode = true;
-			SyncReputationForBase();
-			shield_strength_multiplier = base_shield_strength;
-			damage_taken_since_last_threshold = 0;
-			if (shield_reinforcement_threshold_map.count(base_level))
-			{
-				base_shield_reinforcement_threshold = shield_reinforcement_threshold_map[base_level];
-			}
-			else
-			{
-				base_shield_reinforcement_threshold = FLT_MAX;
-			}
-			if (baseCSolar && base_health <= max_base_health)
-			{
-				baseCSolar->set_hit_pts(base_health);
-			}
-		}
+		currVulnState = max(currVulnState, IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay, 60));
 	}
-	else if (!single_vulnerability_window && IsVulnerabilityWindowActive(vulnerabilityWindow2, timeOfDay))
+
+	if (currVulnState == vulnerableWindowStatus)
 	{
-		if (!vulnerableWindowStatus)
-		{
-			vulnerableWindowStatus = true;
-			if (baseCSolar && base_health <= max_base_health)
-			{
-				baseCSolar->set_hit_pts(base_health);
-			}
-			siege_mode = true;
-			SyncReputationForBase();
-		}
+		return;
 	}
-	else if (vulnerableWindowStatus)
+	
+	switch (currVulnState)
 	{
-		vulnerableWindowStatus = false;
+	case BASE_VULNERABILITY_STATE::VULNERABLE:
+	{
+		shield_strength_multiplier = base_shield_strength;
+		damage_taken_since_last_threshold = 0;
+		if (shield_reinforcement_threshold_map.count(base_level))
+		{
+			base_shield_reinforcement_threshold = shield_reinforcement_threshold_map[base_level];
+		}
+		else
+		{
+			base_shield_reinforcement_threshold = FLT_MAX;
+		}
 		if (baseCSolar && base_health <= max_base_health)
 		{
 			baseCSolar->set_hit_pts(base_health);
 		}
-		siege_mode = false;
-		SyncReputationForBase();
-		LogDamageDealers();
+		break;
 	}
+	case BASE_VULNERABILITY_STATE::PREVULNERABLE: break;
+	case BASE_VULNERABILITY_STATE::INVULNERABLE:
+	{
+		if (baseCSolar && base_health <= max_base_health)
+		{
+			baseCSolar->set_hit_pts(base_health);
+		}
+		LogDamageDealers();
+		break;
+	}
+	}
+
+	vulnerableWindowStatus = currVulnState;
+	SyncReputationForBase();
+	
 }
 
 void PlayerBase::LogDamageDealers()
@@ -1126,7 +1139,8 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 		return -1.0f;
 	}
 
-	if (siege_mode && temp_hostile_names.count(charname))
+	if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE 
+		&& temp_hostile_names.count(charname))
 	{
 		return -1.0f;
 	}
@@ -1139,7 +1153,7 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 		}
 		if (IsOnHostileList(charname, playeraff))
 		{
-			if (siege_mode)
+			if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE)
 			{
 				return -1.0f;
 			}
@@ -1157,7 +1171,7 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 
 	if (IsOnHostileList(charname, playeraff))
 	{
-		if (siege_mode)
+		if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE)
 		{
 			return -1.0f;
 		}

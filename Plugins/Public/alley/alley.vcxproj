@@ -121,7 +121,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
   <ItemGroup>
     <ClCompile Include="CustomPermissions.cpp" />
     <ClCompile Include="dockrestrict.cpp" />
-    <ClCompile Include="PlayerRestrictions.cpp" />
+    <ClCompile Include="Main.cpp" />
     <ClCompile Include="rep.cpp" />
     <ClCompile Include="shipclass_item.cpp" />
   </ItemGroup>

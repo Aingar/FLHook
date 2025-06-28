@@ -1197,6 +1197,131 @@ void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjF
 
 }
 
+enum direction
+{
+    NoDir = 0,
+    U = 1 << 0,
+    D = 1 << 1,
+    W = 1 << 2,
+    E = 1 << 3,
+    N = 1 << 4,
+    S = 1 << 5
+};
+
+void ExploreZone(CmnAsteroid::CAsteroidField* field, Vector pos, Matrix& rot, float size, direction dir)
+{
+    if (!field->near_field(pos))
+    {
+        return;
+    }
+    field->populate_asteroids(pos, pos);
+    if (dir == NoDir || !(dir & (N | E)))
+    {
+        Vector vecW = pos;
+        TranslateX(vecW, rot, size);
+        ExploreZone(field, vecW, rot, size, (direction)(dir | W));
+    }
+    if (dir == NoDir || !(dir & (S | W)))
+    {
+        Vector vecE = pos;
+        TranslateX(vecE, rot, -size);
+        ExploreZone(field, vecE, rot, size, (direction)(dir | E));
+    }
+    if (dir == NoDir || !(dir & (S | E)))
+    {
+        Vector vecN = pos;
+        TranslateY(vecN, rot, size);
+        ExploreZone(field, vecN, rot, size, (direction)(dir | N));
+    }
+    if (dir == NoDir || !(dir & (N | W)))
+    {
+        Vector vecS = pos;
+        TranslateY(vecS, rot, -size);
+        ExploreZone(field, vecS, rot, size, (direction)(dir | S));
+    }
+    if (dir == NoDir || dir == U)
+    {
+        Vector vecU = pos;
+        TranslateZ(vecU, rot, size);
+        ExploreZone(field, vecU, rot, size, U);
+    }
+    if (dir == NoDir || dir == D)
+    {
+        Vector vecD = pos;
+        TranslateZ(vecD, rot, -size);
+        ExploreZone(field, vecD, rot, size, D);
+    }
+}
+
+void LogAsteroidField(const wstring& zoneNick)
+{
+    uint zoneHash = CreateID(wstos(zoneNick).c_str());
+    const Universe::IZone* iZone = Universe::get_zone(zoneHash);
+    if (!iZone)
+    {
+        ConPrint(L"Zone Not Found\n");
+        return;
+    }
+
+    CmnAsteroid::CAsteroidSystem* asteroidSystem = CmnAsteroid::Find(iZone->iSystemID);
+    if (!asteroidSystem)
+    {
+        ConPrint(L"sysError\n");
+        return;
+    }
+
+    CmnAsteroid::CAsteroidField* field = asteroidSystem->FindFirst();
+    while (field)
+    {
+        if (field->zone->iZoneID == zoneHash)
+        {
+            break;
+        }
+        field = asteroidSystem->FindNext();
+    }
+
+    if (!field)
+    {
+        return;
+    }
+
+    float cubeSize = (float)field->get_cube_size();
+    uint lastCount = 0;
+    Vector initialPos = field->closest_cube_pos(field->zone->vPos);
+    ExploreZone(field, initialPos, field->zone->mRot, cubeSize, NoDir);
+
+    ConPrint(L"amount %u, %f\n", CObject::Count(CObject::CASTEROID_OBJECT), cubeSize);
+
+    fLog = fopen("./flhook_logs/Asteroids.log", "w");
+
+    CAsteroid* cobj = reinterpret_cast<CAsteroid*>(CObject::FindFirst(CObject::CASTEROID_OBJECT));
+    while (cobj)
+    {
+        fprintf(fLog, "%0.0f %0.0f %0.0f\n", cobj->vPos.x, cobj->vPos.y, cobj->vPos.z);
+        cobj = reinterpret_cast<CAsteroid*>(CObject::FindNext());
+    }
+    fclose(fLog);
+}
+#define IS_CMD(a) !wscCmd.compare(L##a)
+#define RIGHT_CHECK(a) if(!(cmds->rights & a)) { cmds->Print(L"ERR No permission\n"); return true; }
+
+bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
+{
+    returncode = DEFAULT_RETURNCODE;
+
+    RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+    if (IS_CMD("asteroidgen"))
+    {
+        
+        returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+        LogAsteroidField(cmds->ArgStr(1));
+        return true;
+    }
+
+    return false;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 /** Functions to hook */
@@ -1221,6 +1346,8 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
     p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JettisonCargo, PLUGIN_HkIServerImpl_JettisonCargo, 0));
     p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SolarColGrpDestroyed, PLUGIN_SolarColGrpDestroyed, 0));
     p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
+
+    p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
     p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));
     return p_PI;
 }

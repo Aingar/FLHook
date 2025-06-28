@@ -1516,6 +1516,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 
 		auto percentage = cmd->ArgInt(3);
 		float floatPerc = 0.01f * (float)percentage;
+		floatPerc = min(floatPerc, 1.0f);
+		floatPerc = max(floatPerc, 0.0f);
 
 		if (floatPerc == 0.0f)
 		{

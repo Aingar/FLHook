@@ -568,8 +568,9 @@ namespace PimpShip
 
 		HkAddCash(wscCharName, -(count * set_iCost));
 
-		list<EquipDesc> &equip = Players[iClientID].equipDescList.equip;
-		for (list<EquipDesc>::iterator it = equip.begin(); it != equip.end(); it++)
+		list<EquipDesc>* equip = &Players[iClientID].equipDescList.equip;
+
+		for (auto& it = equip->begin(); it != equip->end(); it++)
 		{
 			for (uint i = beginFrom; i < endAt + 1; i += everyN)
 			{
@@ -582,11 +583,19 @@ namespace PimpShip
 			}
 		}
 
-		if (&equip != &Players[iClientID].lShadowEquipDescList.equip)
-			Players[iClientID].lShadowEquipDescList.equip = equip;
-
-		if (&equip != &Players[iClientID].equipDescList.equip)
-			Players[iClientID].equipDescList.equip = equip;
+		equip = &Players[iClientID].lShadowEquipDescList.equip;
+		for (auto& it = equip->begin(); it != equip->end(); it++)
+		{
+			for (uint i = beginFrom; i < endAt + 1; i += everyN)
+			{
+				if (it->sID == info[i].sID)
+				{
+					it->iArchID = newItem;
+					info[i].iArchID = newItem;
+					break;
+				}
+			}
+		}
 
 		PrintUserCmdText(iClientID, L"Ship pimping complete. You bought %i item%ws. Effect will be visible upon relogging.", count, endAt == beginFrom ? L"" : L"s");
 

@@ -119,11 +119,24 @@ int GetMembersInSpace(CPlayerGroup* group)
 
 bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
-	uint groupId = ToUInt(GetParam(wscParam, ' ', 0));
+	uint targetGroupId = ToUInt(GetParam(wscParam, ' ', 0));
 
 	auto group = Players[iClientID].PlayerGroup;
 
-	if (!groupId && wscParam.empty())
+	if (!targetGroupId && wscParam.empty())
+	{
+		auto cship = ClientInfo[iClientID].cship;
+		if (cship)
+		{
+			auto target = cship->get_target();
+			if (target && target->cobj->objectClass == CObject::CSHIP_OBJECT)
+			{
+				targetGroupId = reinterpret_cast<CShip*>(target->cobj)->groupId;
+			}
+		}
+	}
+
+	if (!targetGroupId)
 	{
 		if (group)
 		{
@@ -131,21 +144,21 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 		}
 		else
 		{
-			PrintUserCmdText(iClientID, L"ERR No parameter provided and you're not in a group");
+			PrintUserCmdText(iClientID, L"ERR No parameter provided, target not in a group, and you're not in a group");
 		}
 		return true;
 	}
 
-	auto groupMap = reinterpret_cast<st6::map<const uint, CPlayerGroup*>*>(0x6D90400);
-	auto groupIter = groupMap->find(groupId);
-	if (!groupId || groupIter == groupMap->end() || groupIter->second->GetMemberCount() == 0)
+	static auto groupMap = reinterpret_cast<st6::map<const uint, CPlayerGroup*>*>(0x6D90400);
+	auto targetGroupIter = groupMap->find(targetGroupId);
+	if (!targetGroupId || targetGroupIter == groupMap->end() || targetGroupIter->second->GetMemberCount() == 0)
 	{
 		PrintUserCmdText(iClientID, L"ERR No such group");
 		return false;
 	}
 
-	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", groupIter->second->GetMemberCount(), GetMembersInSpace(groupIter->second));
-	if (group && groupIter->second != group)
+	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", targetGroupIter->second->GetMemberCount(), GetMembersInSpace(targetGroupIter->second));
+	if (group && group->GetID() != targetGroupId)
 	{
 		PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));
 	}

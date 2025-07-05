@@ -124,32 +124,16 @@ void CoreModule::Spawn()
 
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;
-
-		// Set base health to reflect saved value unless this is a new base with
-		// a health of zero in which case we set it to 5% of the maximum and let
-		// players repair it.
-		float current;
-		pub::SpaceObj::GetHealth(space_obj, current, base->max_base_health);
-		if (base->base_health <= 0)
-		{
-			if (base->isFreshlyBuilt)
-			{
-				base->base_health = base->max_base_health * 0.5f;
-			}
-			else
-			{
-				AddLog("ERROR: Failed to load health for base %s: read health: %f, compare with today and yesterday backups.\n", wstos(base->basename).c_str(), base->base_health);
-				base->base_health = base->max_base_health;
-			}
-		}
-		else if (base->base_health > base->max_base_health)
-		{
-			base->base_health = base->max_base_health;
-		}
 		
 		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 		base->baseCSolar->Release();
+
+		base->max_base_health = base->baseCSolar->archetype->fHitPoints;
+		if (base->base_health > base->max_base_health)
+		{
+			base->base_health = base->max_base_health;
+		}
 
 		if (base->archetype && !base->archetype->isjump)
 		{

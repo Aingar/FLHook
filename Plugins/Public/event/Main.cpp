@@ -92,6 +92,8 @@ struct EVENT
 	time_t endTime = 0;
 	wstring startMessage = L"";
 	wstring endMessage = L"";
+	bool suppressStart = false;
+	bool suppressEnd = false;
 };
 
 struct TRADE_EVENT : public EVENT {
@@ -375,6 +377,14 @@ void LoadSettings()
 						MarketGoodEntry.iMin = iSellPrice;
 						MarketGoodEntry.iTransType = (!bBaseBuys) ? TransactionType_Buy : TransactionType_Sell;
 					}
+					else if (ini.is_value("suppress_end_announcement"))
+					{
+						te.suppressEnd = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("suppress_start_announcement"))
+					{
+						te.suppressStart = ini.get_value_bool(0);
+					}
 				}
 				if (invalidData)
 				{
@@ -382,7 +392,7 @@ void LoadSettings()
 				}
 				else
 				{
-					if (te.isActive && !activeEvents.count(id))
+					if (te.isActive && !activeEvents.count(id) && !te.suppressStart)
 					{
 						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
 					}
@@ -540,6 +550,14 @@ void LoadSettings()
 					{
 						ce.endMessage = stows(ini.get_value_string());
 					}
+					else if (ini.is_value("suppress_end_announcement"))
+					{
+						ce.suppressEnd = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("suppress_start_announcement"))
+					{
+						ce.suppressStart = ini.get_value_bool(0);
+					}
 				}
 
 				if (invalidData)
@@ -548,7 +566,7 @@ void LoadSettings()
 				}
 				else
 				{
-					if (ce.isActive && !activeEvents.count(id))
+					if (ce.isActive && !activeEvents.count(id) && !ce.suppressStart)
 					{
 						HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
 					}
@@ -886,7 +904,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 		HookExt::IniSetWS(iClientID, "event.eventid", stows(playerData[iClientID].eventName));
 		HookExt::IniSetI(iClientID, "event.quantity", playerData[iClientID].quantity);
 
-		pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
+		pub::Audio::PlaySoundEffect(iClientID, CreateID("elgain_level"));
 		if (i->second.iBonusCash)
 		{
 			PrintUserCmdText(iClientID, L"You have entered the event: %s, you will be paid %d extra credits for every unit you deliver.", stows(i->second.sEventName).c_str(), i->second.iBonusCash);
@@ -1265,7 +1283,7 @@ void CheckActiveEvent()
 		auto& ce = event.second;
 		if (ce.isActive)
 		{
-			if (ce.endTime && ce.endTime <= currTime)
+			if (!ce.suppressEnd && ce.endTime && ce.endTime <= currTime)
 			{
 				ce.isActive = false;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(ce.sEventName)));
@@ -1284,7 +1302,7 @@ void CheckActiveEvent()
 		}
 		else
 		{
-			if (ce.startTime && ce.startTime <= currTime && ce.endTime > currTime)
+			if (!ce.suppressStart && ce.startTime && ce.startTime <= currTime && ce.endTime > currTime)
 			{
 				ce.isActive = true;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(ce.sEventName)));
@@ -1301,7 +1319,7 @@ void CheckActiveEvent()
 		auto& te = event.second;
 		if (te.isActive)
 		{
-			if (te.endTime && te.endTime <= currTime)
+			if (!te.suppressEnd && te.endTime && te.endTime <= currTime)
 			{
 				te.isActive = false;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
@@ -1324,7 +1342,7 @@ void CheckActiveEvent()
 		}
 		else
 		{
-			if (te.startTime && te.startTime <= currTime && te.endTime > currTime)
+			if (!te.suppressStart && te.startTime && te.startTime <= currTime && te.endTime > currTime)
 			{
 				te.isActive = true;
 				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));

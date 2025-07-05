@@ -1900,23 +1900,23 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 			SendResetMarketOverride(client);
 			ForceLaunch(client);
 		}
-		// If the player file indicates that the ship is in a base but this isn't this
-		// base then dump the ship into space.
-		else if (Players[client].iBaseID != base->proxy_base)
-		{
-			char system_nick[1024];
-			pub::GetSystemNickname(system_nick, sizeof(system_nick), Players[client].iSystemID);
+	}
+}
 
-			char proxy_base_nick[1024];
-			sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
-			if (CreateID(proxy_base_nick) != Players[client].iBaseID)
-			{
-				Players[client].iBaseID = base->proxy_base;
-				Players[client].iLastBaseID = base->proxy_base;
-				PrintUserCmdText(client, L"POB you are docked on has moved systems. You're being moved. It will result in a kick.");
-				HkDelayedKick(client, 5);
-			}
-		}
+unordered_set<uint> clientsToMove;
+void __stdcall BaseEnterAfter(uint baseId, uint client)
+{
+	if (clientsToMove.count(client))
+	{
+		clientsToMove.erase(client);
+
+		auto& cd = clients[client];
+
+		PlayerBase* base = GetPlayerBaseForClient(client);
+
+		Players[client].iSystemID = base->system;
+		Players[client].iBaseID = base->proxy_base;
+		Players[client].iLastBaseID = base->proxy_base;
 	}
 }
 
@@ -1960,8 +1960,9 @@ void __stdcall BaseEnter(uint baseId, uint client)
 		{
 			if (base->proxy_base != baseId)
 			{
-				DeleteDockState(client);
-				SendResetMarketOverride(client);
+				clientsToMove.insert(client);
+				PrintUserCmdText(client, L"POB you are docked on has moved systems. You're being moved. It will result in a kick.");(client);
+				HkDelayedKick(client, 3);
 				return;
 			}
 			if (!IsDockingAllowed(base, client))
@@ -2803,6 +2804,22 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		RIGHT_CHECK(RIGHT_BASES)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		set_plugin_debug_special = cmd->ArgInt(1);
+		return true;
+	}
+	else if (args.find(L"solarcheck") == 0)
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+
+		auto nickname = CreateID(wstos(cmd->ArgStrToEnd(1)).c_str());
+
+		auto csolar = (CSolar*)CObject::Find(nickname, CObject::CSOLAR_OBJECT);
+		
+		IObjRW* obj;
+		StarSystem* syst;
+		GetShipInspect(nickname, obj, syst);
+
+		cmd->Print(L"%x %x\n", csolar, obj);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"setunchartedkill") == 0)
@@ -4073,6 +4090,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete, PLUGIN_HkIServerImpl_JumpInComplete, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnterAfter, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call_After, PLUGIN_HkCb_Dock_Call_AFTER, 0));

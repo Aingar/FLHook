@@ -1472,7 +1472,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 
 	if (IS_CMD("setinvul"))
 	{
-		RIGHT_CHECK(RIGHT_SUPERADMIN)
+		RIGHT_CHECK(RIGHT_SPECIAL2)
 
 		HKPLAYERINFO adminPlyr;
 		if (HkGetPlayerInfo(cmd->GetAdminName(), adminPlyr, false) != HKE_OK)

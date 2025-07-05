@@ -440,7 +440,7 @@ namespace HkIServerImpl
 
 			if (eq.iArchID == NANOBOT_ARCH_ID)
 			{
-				uint amountToUse = static_cast<uint>(ceil((cship->archetype->fHitPoints * 1.5) / NANOBOT_HEAL_AMOUNT));
+				uint amountToUse = static_cast<uint>(floor((cship->archetype->fHitPoints * 1.5) / NANOBOT_HEAL_AMOUNT));
 				if (amountToUse < p1.sAmountUsed)
 				{
 					pub::Player::RemoveCargo(iClientID, p1.sItemId, amountToUse);

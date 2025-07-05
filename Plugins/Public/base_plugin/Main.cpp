@@ -2813,7 +2813,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		auto nickname = CreateID(wstos(cmd->ArgStrToEnd(1)).c_str());
 
 		auto csolar = (CSolar*)CObject::Find(nickname, CObject::CSOLAR_OBJECT);
-		
+		if (csolar)
+		{
+			csolar->Release();
+		}
 		IObjRW* obj;
 		StarSystem* syst;
 		GetShipInspect(nickname, obj, syst);
@@ -2981,9 +2984,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		}
 
 		base->base_health = 0;
+		auto coreModule = reinterpret_cast<CoreModule*>(base->modules[0]);
+		coreModule->SpaceObjDestroyed(coreModule->space_obj);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj);
-
+		return true;
 	}
 	else if (args.find(L"basedespawn") == 0)
 	{
@@ -3011,7 +3015,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		lastDespawnedFilename = base->path;
 		base->base_health = 0;
-		bool retVal = CoreModule(base).SpaceObjDestroyed(CoreModule(base).space_obj, false, false);
+		auto coreModule = reinterpret_cast<CoreModule*>(base->modules[0]);
+		coreModule->SpaceObjDestroyed(coreModule->space_obj);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 

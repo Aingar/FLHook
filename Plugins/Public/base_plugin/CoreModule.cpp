@@ -407,13 +407,14 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcastDeath)
 {
 	POBSolarsBySystemMap[base->system].erase(base->baseCSolar);
+	base->baseCSolar->Release();
 	base->baseCSolar = nullptr;
 	if (this->space_obj == space_obj && !undergoingDestruction)
 	{
 		undergoingDestruction = true;
 		if (set_plugin_debug > 1)
 			ConPrint(L"CoreModule::destroyed space_obj=%u\n", space_obj);
-		pub::SpaceObj::LightFuse(space_obj, "player_base_explode_fuse", 0);
+		pub::SpaceObj::Destroy(space_obj, DestroyType::VANISH);
 		spaceobj_modules.erase(space_obj);
 		this->space_obj = 0;
 

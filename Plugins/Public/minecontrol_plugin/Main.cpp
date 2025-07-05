@@ -60,8 +60,6 @@ static bool set_scaleFieldRechargeWithPlayerCount = false;
 
 const uint insufficientCargoSoundId = CreateID("insufficient_cargo_space");
 
-extern void PrintZones();
-
 struct MiningNodeInfo {
     uint itemArchId = 0;
     uint lootArchId;
@@ -118,29 +116,29 @@ unordered_map<uint, uint> pendingDestructionNodes;
 
 struct ZONE_BONUS
 {
-    ZONE_BONUS() : fMultiplier(0.0f), iReplacementLootID(0), fRechargeRate(0), fCurrReserve(100000), fMaxReserve(50000), fMined(0) {}
+    ZONE_BONUS() : multiplier(0.0f), replacementLootID(0), rechargeRate(0), currReserve(100000), maxReserve(50000), mined(0) {}
 
     wstring scZone;
 
     // The loot bonus multiplier.
-    float fMultiplier;
+    float multiplier;
 
     // The hash of the item to replace the dropped 
-    uint iReplacementLootID;
+    uint replacementLootID;
 
     // The recharge rate of the zone. This is the number of units of ore added
     // to the reserve per minute.
-    float fRechargeRate;
+    float rechargeRate;
 
     // The current amount of ore in the zone. When this gets low, ore gets harder
     // to mine. When it gets to 0, ore is impossible to mine.
-    float fCurrReserve;
+    float currReserve;
 
     // The maximum limit for the amount of ore in the field
-    float fMaxReserve;
+    float maxReserve;
 
     // The amount of ore that has been mined.
-    float fMined;
+    float mined;
 };
 unordered_map<uint, ZONE_BONUS> set_mapZoneBonus;
 
@@ -163,8 +161,6 @@ struct CONTAINER_DATA
 
 struct CLIENT_DATA
 {
-    CLIENT_DATA() = default;
-
     bool initialized = false;
     uint equippedID = 0;
     float equippedVolume = 0.0f;
@@ -247,7 +243,7 @@ void DestroyContainer(const uint clientID)
     }
 }
 
-void SpawnNode(MiningSpawnPointDB& ms, uint timestamp)
+void SpawnNode(MiningSpawnPointDB& ms)
 {
     int selectedPositionIndex = rand() % ms.positions.size();
     int selectedArchetypeIndex = rand() % ms.nodeArchetypes.size();
@@ -309,11 +305,11 @@ EXPORT void HkTimerCheckKick()
         for (auto& i = set_mapZoneBonus.begin(); i != set_mapZoneBonus.end(); i++)
         {
             auto& zone = i->second;
-            zone.fCurrReserve = min(zone.fCurrReserve + (zone.fRechargeRate * playerModifier), zone.fMaxReserve);
+            zone.currReserve = min(zone.currReserve + (zone.rechargeRate * playerModifier), zone.maxReserve);
 
-            if (file && !zone.scZone.empty() && zone.fMaxReserve > 0 && zone.fMaxReserve != zone.fCurrReserve)
+            if (file && !zone.scZone.empty() && zone.maxReserve > 0 && zone.maxReserve != zone.currReserve)
             {
-                fprintf(file, "%ls, %0.0f, %0.0f\n", zone.scZone.c_str(), zone.fCurrReserve, zone.fMined);
+                fprintf(file, "%ls, %0.0f, %0.0f\n", zone.scZone.c_str(), zone.currReserve, zone.mined);
             }
         }
 
@@ -348,7 +344,7 @@ EXPORT void HkTimerCheckKick()
 
         if (++entry.cdProgress >= entry.respawnCD)
         {
-            SpawnNode(entry, currTime);
+            SpawnNode(entry);
         }
     }
 }
@@ -373,7 +369,6 @@ EXPORT void LoadSettings()
     char szCurDir[MAX_PATH];
     GetCurrentDirectory(sizeof(szCurDir), szCurDir);
     string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\minecontrol.cfg";
-    string solarArchFile = string(szCurDir) + "..\\DATA\\SOLAR\\solararch.ini";
 
     // Load generic settings
     set_iPluginDebug = IniGetI(scPluginCfgFile, "MiningGeneral", "Debug", 0);
@@ -468,11 +463,11 @@ EXPORT void LoadSettings()
                             continue;
                         }
                         set_mapZoneBonus[zoneID].scZone = zoneName;
-                        set_mapZoneBonus[zoneID].fMultiplier = bonus;
-                        set_mapZoneBonus[zoneID].iReplacementLootID = replacementLootID;
-                        set_mapZoneBonus[zoneID].fRechargeRate = rechargeRate;
-                        set_mapZoneBonus[zoneID].fCurrReserve = maxReserve;
-                        set_mapZoneBonus[zoneID].fMaxReserve = maxReserve;
+                        set_mapZoneBonus[zoneID].multiplier = bonus;
+                        set_mapZoneBonus[zoneID].replacementLootID = replacementLootID;
+                        set_mapZoneBonus[zoneID].rechargeRate = rechargeRate;
+                        set_mapZoneBonus[zoneID].currReserve = maxReserve;
+                        set_mapZoneBonus[zoneID].maxReserve = maxReserve;
                         if (set_iPluginDebug)
                         {
                             ConPrint(L"NOTICE: zone bonus %s bonus=%2.2f replacementLootID=%s(%u) rechargeRate=%0.0f maxReserve=%0.0f\n",
@@ -515,8 +510,8 @@ EXPORT void LoadSettings()
                     }
                     uint zoneID = CreateID(zoneName.c_str());
                     auto& zoneData = set_mapZoneBonus[zoneID];
-                    zoneData.fCurrReserve = ini.get_value_float(1);
-                    zoneData.fMined = ini.get_value_float(2);
+                    zoneData.currReserve = ini.get_value_float(1);
+                    zoneData.mined = ini.get_value_float(2);
                 }
             }
         }
@@ -734,18 +729,18 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
         if (zoneBonusData != set_mapZoneBonus.end())
         {
             auto& zoneData = zoneBonusData->second;
-            if (zoneData.fCurrReserve == 0.0f)
+            if (zoneData.currReserve == 0.0f)
             {
                 return;
             }
 
-            if (zoneData.iReplacementLootID)
+            if (zoneData.replacementLootID)
             {
-                lootId = zoneData.iReplacementLootID;
+                lootId = zoneData.replacementLootID;
             }
-            miningYield *= zoneData.fMultiplier;
+            miningYield *= zoneData.multiplier;
 
-            miningYield = max(miningYield, zoneData.fCurrReserve);
+            miningYield = max(miningYield, zoneData.currReserve);
             finalZone = &zoneData; // save ZONE_BONUS ref to update AFTER all the bonuses are applied
         }
 
@@ -754,8 +749,8 @@ void __stdcall SPMunitionCollision(struct SSPMunitionCollisionInfo const& ci, un
 
         if (finalZone)
         {
-            finalZone->fCurrReserve -= miningYield;
-            finalZone->fMined += miningYield;
+            finalZone->currReserve -= miningYield;
+            finalZone->mined += miningYield;
         }
         // If this ship is has another ship targetted then send the ore into the cargo
         // hold of the other ship.
@@ -933,7 +928,6 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
         return;
     }
 
-    uint shipId = cship->id;
     uint systemId = cship->system;
     Vector pos = cship->vPos;
     Matrix ori = cship->mRot;
@@ -966,9 +960,9 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
             continue;
         }
         const auto& zoneBonusData = set_mapZoneBonus.find(zone->iZoneID);
-        if (zoneBonusData != set_mapZoneBonus.end() && zoneBonusData->second.iReplacementLootID)
+        if (zoneBonusData != set_mapZoneBonus.end() && zoneBonusData->second.replacementLootID)
         {
-            tempLootId = zoneBonusData->second.iReplacementLootID;
+            tempLootId = zoneBonusData->second.replacementLootID;
         }
         else
         {

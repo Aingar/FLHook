@@ -26,8 +26,6 @@ typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
 static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
 static st6::map<uint, StarSystem>* StarSystemMap = (st6::map<uint, StarSystem>*)0x6D8DA2C;
 
-constexpr uint shipObjType = (Fighter | Freighter | Transport | Gunboat | Cruiser | Capital);
-
 struct BurstFireGunData
 {
 	int maxMagSize;

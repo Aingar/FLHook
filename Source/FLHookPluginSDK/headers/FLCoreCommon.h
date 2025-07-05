@@ -1624,24 +1624,22 @@ namespace Universe
 		uint iShapeType; // 1 = sphere, 5 = ring
 		uint iPropertyFlags;
 		Vector vSize;
-		uint iDunno4;
+		uint mesh;
 		float edgeFraction;
-		int dunno5;
-		float dunnof;
-		uint dunno6;
+		int unused1;
+		float dragModifier;
+		float damage;
 		float scannerInterference;
-		float dunnof2;
-		uint dunno7;
-		char* spacedustName;
+		float unused2;
+		uint music;
+		CacheString spacedustName;
 		uint spacedustMaxParticles;
-		Vector dunnoV;
+		Vector fogColor;
 		CmnAsteroid::LootableZone* lootableZone;
-		uint iStartFaction; // & 0xFF, always zero
+		bool pathLabel; // & 0xFF, always zero
 		uint iCountMaxFaction; // & 0xFF, appears related to the max number of factions in a given encounter line
-		FactionSpawn* startFactionArray;
-		FactionSpawn* endFactionArray;
-		FactionSpawn* endFactionArray2;
-		uint iDunno5;
+		st6::list<FactionSpawn> factionSpawns;
+		byte visit;
 		uint idsName;
 		uint idsInfo;
 		uint iDunno6[2];

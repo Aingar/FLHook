@@ -373,7 +373,7 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 	{
 		dmgMult = 0.3333f;
 	}
-	else if (ceqobj->type == ObjectType::TradelaneRing && rootDistance < 400)
+	else if (ceqobj->type == ObjectType::TradelaneRing && rootDistance < (520*520))
 	{
 		dmgMult = 1.0f;
 	}
@@ -724,25 +724,18 @@ void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms)
 		return;
 	}
 
-	__try
+	CEquipTraverser tr(EquipmentClass::Gun);
+	CELauncher* gun;
+	while (gun = reinterpret_cast<CELauncher*>(ship->equip_manager.Traverse(tr)))
 	{
-		CEquipTraverser tr(EquipmentClass::Gun);
-		CELauncher* gun;
-		while (gun = reinterpret_cast<CELauncher*>(ship->equip_manager.Traverse(tr)))
+		auto burstGunDataIter = burstGunData.find(gun->archetype->iArchID);
+		if (burstGunDataIter == burstGunData.end())
 		{
-			auto burstGunDataIter = burstGunData.find(gun->archetype->iArchID);
-			if (burstGunDataIter == burstGunData.end())
-			{
-				continue;
-			}
-
-			shipGunData[ship->id][gun->iSubObjId] =
-			{ burstGunDataIter->second.magSize,burstGunDataIter->second.magSize, burstGunDataIter->second.reloadTime };
+			continue;
 		}
-	}
-	__except (EXCEPTION_EXECUTE_HANDLER)
-	{
-		AddLog("CShipInitCrashPrevention %x %x %0.0f %0.0f %0.0f", ship->archetype->iArchID, ship->system, ship->vPos.x, ship->vPos.y, ship->vPos.z);
+
+		shipGunData[ship->id][gun->iSubObjId] =
+		{ burstGunDataIter->second.magSize,burstGunDataIter->second.magSize, burstGunDataIter->second.reloadTime };
 	}
 }
 

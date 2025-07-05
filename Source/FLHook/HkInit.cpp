@@ -349,6 +349,9 @@ bool InitHookExports()
 	FARPROC GameObjectDestructor = FARPROC(0x6CEE4A0);
 	Detour(GameObjectDestructor, HkIEngine::GameObjectDestructorNaked);
 
+	FARPROC PubDestroy = FARPROC(0x6CF85F0);
+	Detour(PubDestroy, HkIEngine::PubDestroyDetourNaked);
+
 	FARPROC optimizeVector = FARPROC(0x6346DD0);
 	Detour(optimizeVector, HkIEngine::VectorOptimize);
 

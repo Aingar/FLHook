@@ -333,6 +333,23 @@ namespace HkIEngine
 		}
 	}
 
+	void __stdcall PubDestroyDetour(uint objId)
+	{
+		GameObjectDestructor(objId);
+	}
+
+	uint PubDestroyAddr = 0x6CF85F7;
+	__declspec(naked) void PubDestroyDetourNaked()
+	{
+		__asm {
+			push[esp + 0x4]
+			call PubDestroyDetour
+			mov ecx, [esp+0x4]
+			sub esp, 0xC
+			jmp PubDestroyAddr
+		}
+	}
+
 	int __fastcall VectorOptimize(UnkOptimize* obj)
 	{
 		obj->vec3.x += obj->vec1.x;

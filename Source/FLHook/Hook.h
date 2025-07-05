@@ -934,6 +934,7 @@ namespace HkIEngine
 	void __fastcall FixPlanetSpin(CEGun* gun, void* edx, CSimple*& target, ushort& subobjid);
 	void FindInStarListNaked();
 	void GameObjectDestructorNaked();
+	void PubDestroyDetourNaked();
 	void CAsteroidInitNaked();
 	void CGuidedInitNaked();
 	void CObjDestrOrgNaked();

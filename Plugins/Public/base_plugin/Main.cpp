@@ -1911,9 +1911,10 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 			sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
 			if (CreateID(proxy_base_nick) != Players[client].iBaseID)
 			{
-				DeleteDockState(client);
-				SendResetMarketOverride(client);
-				ForceLaunch(client);
+				Players[client].iBaseID = base->proxy_base;
+				Players[client].iLastBaseID = base->proxy_base;
+				PrintUserCmdText(client, L"POB you are docked on has moved systems. You're being moved. It will result in a kick.");
+				HkDelayedKick(client, 5);
 			}
 		}
 	}

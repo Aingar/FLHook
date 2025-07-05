@@ -738,8 +738,8 @@ void PlayerBase::Load()
 				{
 					if (moduleCounter >= modules.size())
 					{
-						ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-						return;
+						ConPrint(L"ERR TOO MANY MODULES ON %ls, SKIPPING BUID MODULE", this->basename.c_str());
+						continue;
 					}
 					modules.at(moduleCounter) = mod;
 					moduleCounter++;
@@ -749,8 +749,8 @@ void PlayerBase::Load()
 			{
 				if (moduleCounter >= modules.size())
 				{
-					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-					return;
+					ConPrint(L"ERR TOO MANY MODULES ON %ls, SKIPPING STORAGE MODULE", this->basename.c_str());
+					continue;
 				}
 				StorageModule* mod = new StorageModule(this);
 				mod->LoadState(ini);
@@ -761,8 +761,8 @@ void PlayerBase::Load()
 			{
 				if (moduleCounter >= modules.size())
 				{
-					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-					return;
+					ConPrint(L"ERR TOO MANY MODULES ON %ls, SKIPPING DEFENSE MODULE", this->basename.c_str());
+					continue;
 				}
 				DefenseModule* mod = new DefenseModule(this);
 				mod->LoadState(ini);
@@ -773,8 +773,8 @@ void PlayerBase::Load()
 			{
 				if (moduleCounter >= modules.size())
 				{
-					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-					return;
+					ConPrint(L"ERR TOO MANY MODULES ON %ls, SKIPPING FACTORY MODULE", this->basename.c_str());
+					continue;
 				}
 				FactoryModule* mod = new FactoryModule(this);
 				mod->LoadState(ini);
@@ -785,8 +785,8 @@ void PlayerBase::Load()
 			{
 				if (moduleCounter >= modules.size())
 				{
-					ConPrint(L"ERR TOO MANY MODULES ON %ls", this->basename.c_str());
-					return;
+					ConPrint(L"ERR TOO MANY MODULES ON %ls, SKIPPING REARMAMENT MODULE", this->basename.c_str());
+					continue;
 				}
 				RearmamentModule* mod = new RearmamentModule(this);
 				mod->LoadState(ini);

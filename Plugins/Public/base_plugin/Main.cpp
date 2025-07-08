@@ -1178,6 +1178,12 @@ void LoadSettingsActual()
 			PlayerBase *base = new PlayerBase(filepath);
 			if (base && !base->nickname.empty())
 			{
+				if (player_bases.count(base->base))
+				{
+					AddLog("BASE %s ALREADY EXISTS!\nPATH: %s\nPATH2: %s", wstos(player_bases[base->base]->basename).c_str(), filepath.c_str(), player_bases[base->base]->path.c_str());
+					ConPrint(L"BASE %s ALREADY EXISTS!\nPATH: %s\nPATH2 %s\n", player_bases[base->base]->basename.c_str(), stows(filepath).c_str(), stows(player_bases[base->base]->path.c_str()));
+					continue;
+				}
 				player_bases[base->base] = base;
 				base->Spawn();
 			}
@@ -1903,23 +1909,6 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 	}
 }
 
-unordered_set<uint> clientsToMove;
-void __stdcall BaseEnterAfter(uint baseId, uint client)
-{
-	if (clientsToMove.count(client))
-	{
-		clientsToMove.erase(client);
-
-		auto& cd = clients[client];
-
-		PlayerBase* base = GetPlayerBaseForClient(client);
-
-		Players[client].iSystemID = base->system;
-		Players[client].iBaseID = base->proxy_base;
-		Players[client].iLastBaseID = base->proxy_base;
-	}
-}
-
 void __stdcall BaseEnter(uint baseId, uint client)
 {
 	auto& cd = clients[client];
@@ -1960,9 +1949,7 @@ void __stdcall BaseEnter(uint baseId, uint client)
 		{
 			if (base->proxy_base != baseId)
 			{
-				clientsToMove.insert(client);
-				PrintUserCmdText(client, L"POB you are docked on has moved systems. You're being moved. It will result in a kick.");(client);
-				HkDelayedKick(client, 3);
+				PrintUserCmdText(client, L"The POB you are on has moved systems. Launch to be beamed back to it.");
 				return;
 			}
 			if (!IsDockingAllowed(base, client))
@@ -2208,6 +2195,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		returncode = SKIPPLUGINS;
 		return;
 	}
+
 	if (player_launch_base)
 	{
 		if (Players[client].iSystemID != player_launch_base->system)
@@ -3016,7 +3004,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		lastDespawnedFilename = base->path;
 		base->base_health = 0;
 		auto coreModule = reinterpret_cast<CoreModule*>(base->modules[0]);
-		coreModule->SpaceObjDestroyed(coreModule->space_obj);
+		coreModule->SpaceObjDestroyed(coreModule->space_obj, false, false);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 
@@ -4095,7 +4083,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete, PLUGIN_HkIServerImpl_JumpInComplete, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnterAfter, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call_After, PLUGIN_HkCb_Dock_Call_AFTER, 0));

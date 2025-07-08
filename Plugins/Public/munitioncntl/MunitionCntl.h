@@ -11,6 +11,7 @@ void SolarExplosionHitNaked();
 void ShipColGrpDmgNaked();
 void ShipFuseLightNaked();
 void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg);
+void __fastcall ShipEnergyDamage(IObjRW* iobj, void* edx, float incDmg, DamageList* dmg);
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg);
@@ -151,6 +152,14 @@ enum TRACKING_STATE {
 	NOTRACK_NOALERT
 };
 
+struct MunitionData
+{
+	int armorPen;
+	float percentageHullDmg;
+	float percentageShieldDmg;
+	float percentageEnergyDmg;
+};
+
 extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 extern unordered_map<uint, ShieldBoostFuseInfo> shieldFuseMap;
 extern unordered_map<uint, GuidedData> guidedDataMap;
@@ -169,11 +178,11 @@ extern FARPROC ShipEquipDestroyedFunc;
 extern vector<float> armorReductionVector;
 extern int shipArmorRating;
 extern uint shipArmorArch;
-extern int weaponArmorPenValue;
-extern uint weaponArmorPenArch;
+extern MunitionData* weaponMunitionData;
+extern uint weaponMunitionDataArch;
 extern bool armorEnabled;
 
-extern unordered_map<uint, int> munitionArmorPenMap;
+extern unordered_map<uint, MunitionData> munitionArmorPenMap;
 extern unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;
 extern unordered_map<uint, unordered_map<ushort, int>>::iterator shipArmorIter;
 extern unordered_map<uint, unordered_map<ushort, BurstFireGunData>> shipGunData;

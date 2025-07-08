@@ -112,13 +112,6 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	if (explData && ceqobj->objectClass == CObject::CSHIP_OBJECT)
 	{
 		detonationDistance = explData->detDist;
-		weaponArmorPenValue = explData->armorPen;
-		weaponArmorPenArch = 0;
-	}
-	else
-	{
-		weaponArmorPenValue = 0;
-		weaponArmorPenArch = 0;
 	}
 
 	float threeThirds = explosion->explosionArchetype->fRadius - detonationDistance;
@@ -447,6 +440,11 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, D
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageEnergyDmg)
+	{
+		incDmg += incDmg * (weaponMunitionData->percentageEnergyDmg);
+	}
+
 	uint clientId = iobj->cobj->ownerPlayer;
 	if (!clientId)
 	{
@@ -566,7 +564,7 @@ ShipMunitionHitFunc ShipMunitionHitCall = ShipMunitionHitFunc(0x6CE9350);
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg)
 {
 
-	if (weaponArmorPenArch == data->munitionId->iArchID || SubObjectID::IsShieldEquipID(data->subObjId))
+	if (weaponMunitionDataArch == data->munitionId->iArchID || SubObjectID::IsShieldEquipID(data->subObjId))
 	{
 		armorEnabled = true;
 		ShipMunitionHitCall(iShip, data, dmg);
@@ -574,15 +572,15 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 		return;
 	}
 
-	weaponArmorPenArch = data->munitionId->iArchID;
+	weaponMunitionDataArch = data->munitionId->iArchID;
 	const auto munitionIter = munitionArmorPenMap.find(data->munitionId->iArchID);
 	if (munitionIter == munitionArmorPenMap.end())
 	{
-		weaponArmorPenValue = 0;
+		weaponMunitionData = nullptr;
 	}
 	else
 	{
-		weaponArmorPenValue = munitionIter->second;
+		weaponMunitionData = &munitionIter->second;
 	}
 
 	armorEnabled = true;
@@ -594,8 +592,9 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 
 void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
-	if (armorEnabled)
+	if (armorEnabled && weaponMunitionData)
 	{
+		incDmg += incDmg * weaponMunitionData->percentageHullDmg;
 		int colGrpArmor = 0;
 		static auto shipIter = shipArmorMap.end();
 
@@ -613,14 +612,13 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 				colGrpArmor = shipArmorRating;
 			}
 
-			if (colGrpArmor && colGrpArmor > weaponArmorPenValue)
+			if (colGrpArmor && colGrpArmor > weaponMunitionData->armorPen)
 			{
-				incDmg *= armorReductionVector.at(colGrpArmor - weaponArmorPenValue);
+				incDmg *= armorReductionVector.at(colGrpArmor - weaponMunitionData->armorPen);
 			}
 		}
-
-		armorEnabled = false;
 	}
+	armorEnabled = false;
 }
 
 __declspec(naked) void ShipColGrpDmgNaked()
@@ -680,10 +678,28 @@ __declspec(naked) void ShipFuseLightNaked()
 	}
 }
 
+using ShipEnergyDamageType = void(__thiscall*)(IObjRW*, float incDmg, DamageList* dmg);
+ShipEnergyDamageType ShipEnergyDamageFunc = ShipEnergyDamageType(0x6CEA4A0);
+void __fastcall ShipEnergyDamage(IObjRW* iobj, void* edx, float incDmg, DamageList* dmg)
+{
+	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageEnergyDmg)
+	{
+		incDmg += incDmg * weaponMunitionData->percentageEnergyDmg;
+	}
+
+	ShipEnergyDamageFunc(iobj, incDmg, dmg);
+}
+
+
 using ShipEquipDamageType = void(__thiscall*)(IObjRW*, CEquip*, float incDmg, DamageList* dmg);
 ShipEquipDamageType ShipEquipDamageFunc = ShipEquipDamageType(0x6CEA4A0);
 void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg)
 {
+	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageHullDmg)
+	{
+		incDmg += incDmg * weaponMunitionData->percentageHullDmg;
+	}
+
 	if (!iobj->is_player())
 	{
 		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);

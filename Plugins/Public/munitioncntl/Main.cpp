@@ -24,7 +24,7 @@ unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;
 unordered_map<uint, unordered_map<ushort, int>>::iterator shipArmorIter;
-unordered_map<uint, int> munitionArmorPenMap;
+unordered_map<uint, MunitionData> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 vector<float> armorReductionVector;
 
@@ -266,7 +266,19 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("armor_pen"))
 					{
-						munitionArmorPenMap[currNickname] = ini.get_value_int(0);
+						munitionArmorPenMap[currNickname].armorPen = ini.get_value_int(0);
+					}
+					else if (ini.is_value("percentage_damage_hull"))
+					{
+						munitionArmorPenMap[currNickname].percentageHullDmg = ini.get_value_float(0);
+					}
+					else if (ini.is_value("percentage_damage_shield"))
+					{
+						munitionArmorPenMap[currNickname].percentageShieldDmg = ini.get_value_float(0);
+					}
+					else if (ini.is_value("percentage_damage_energy"))
+					{
+						munitionArmorPenMap[currNickname].percentageEnergyDmg = ini.get_value_float(0);
 					}
 					else if (ini.is_value("arming_time"))
 					{
@@ -1254,8 +1266,9 @@ int Update()
 int shipArmorRating = 0;
 uint shipArmorArch = 0;
 
-int weaponArmorPenValue = 0;
-uint weaponArmorPenArch = 0;
+
+MunitionData* weaponMunitionData = nullptr;
+uint weaponMunitionDataArch = 0;
 
 bool armorEnabled = 0;
 
@@ -1263,17 +1276,22 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (armorEnabled)
+	if (weaponMunitionData)
+	{
+		incDmg += incDmg * weaponMunitionData->percentageHullDmg;
+	}
+
+	if (weaponMunitionData && armorEnabled)
 	{
 		FetchShipArmor(iobj->cobj->archetype->iArchID);
 
-		if (shipArmorRating && (shipArmorRating > weaponArmorPenValue))
+		if (shipArmorRating && (shipArmorRating > weaponMunitionData->armorPen))
 		{
-			incDmg *= armorReductionVector.at(shipArmorRating - weaponArmorPenValue);
+			incDmg *= armorReductionVector.at(shipArmorRating - weaponMunitionData->armorPen);
 		}
-
-		armorEnabled = false;
 	}
+
+	armorEnabled = false;
 
 	if (iobj->is_player())
 	{

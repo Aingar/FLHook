@@ -85,6 +85,22 @@ bool CommodityLimit::GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int iC
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	//Check to ensure this ship has been undocked at least once and the character has an hookext ID value stored
+	uint pID = ClientInfo[iClientID].playerID;
+
+	static const uint recruitID = CreateID("dsy_license_military");
+	if (!pID || pID == recruitID)
+	{
+		auto good = GoodList_get()->find_by_id(gbi.iGoodID);
+		if (good && good->iType == GOODINFO_TYPE_COMMODITY)
+		{
+			PrintUserCmdText(iClientID, L"ERR You cannot buy commodities as Recruit ID holder");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			mapBuySuppression[iClientID] = true;
+			return false;
+		}
+	}
+
 	if (Players[iClientID].equipDescList.equip.size() >= 127)
 	{
 		PrintUserCmdText(iClientID, L"ERR Too many individual items in hold, aborting purchase to prevent character corruption");
@@ -98,8 +114,7 @@ bool CommodityLimit::GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int iC
 	{
 		return true;
 	}
-	//Check to ensure this ship has been undocked at least once and the character has an hookext ID value stored
-	uint pID = HookExt::IniGetI(iClientID, "event.shipid");
+
 	if (pID != 0)
 	{
 		bool valid = false;

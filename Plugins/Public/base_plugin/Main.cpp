@@ -3158,6 +3158,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		newbase->baseloadout = "legacy";
 		newbase->defense_mode = PlayerBase::DEFENSE_MODE::IFF;
 		newbase->isCrewSupplied = true;
+		newbase->base_health = 1000000.f;
 
 		newbase->invulnerable = newbase->archetype->invulnerable;
 		newbase->logic = newbase->archetype->logic;

@@ -34,7 +34,7 @@ static const uint SETINFO_START_INFOCARD = 267500;
 #define RSRCID_PLAYERINFO_TITLE 500000
 #define RSRCID_PLAYERINFO_TEXT RSRCID_PLAYERINFO_TITLE + 1
 #define MAX_PARAGRAPHS 5
-#define MAX_CHARACTERS 2000
+#define MAX_CHARACTERS_PER_PARA 1000
 
 void PropagatePlayerInfo(uint clientId)
 {
@@ -408,9 +408,9 @@ bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const ws
 		static wstring temp = L"</TEXT><PARA/><PARA/>";
 		wstring currString = playerInfoData[iClientID].playerInfo;
 		
-		if (wscMsg.size() + infoVec[iPara].length() > MAX_CHARACTERS)
+		if (wscMsg.size() + infoVec[iPara].length() > MAX_CHARACTERS_PER_PARA)
 		{
-			PrintUserCmdText(iClientID, L"ERR Text will be too long!(including formatting) Current lenght: %u, Max Lenght: %u", playerInfoData[iClientID].playerInfo.length(), MAX_CHARACTERS);
+			PrintUserCmdText(iClientID, L"ERR Text will be too long!(including formatting) Current lenght: %u, Max Lenght: %u", playerInfoData[iClientID].playerInfo.length(), MAX_CHARACTERS_PER_PARA);
 			return false;
 		}
 		

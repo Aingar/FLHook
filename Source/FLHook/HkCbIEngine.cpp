@@ -171,10 +171,10 @@ namespace HkIEngine
 		return nullptr;
 	}
 
+	static uint lastFoundItem = 0;
 	IObjRW* __stdcall FindInStarList(StarSystemMock* starSystem, uint searchedId)
 	{
 		static StarSystem* lastFoundInSystem = nullptr;
-		static uint lastFoundItem = 0;
 		IObjRW* retVal = nullptr;
 		
 		if (searchedId == 0)
@@ -315,6 +315,7 @@ namespace HkIEngine
 		{
 			cacheNonsolarIObjs.erase(id);
 		}
+		lastFoundItem = 0;
 	}
 
 	uint GameObjectDestructorRet = 0x6CEE4A7;

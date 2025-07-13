@@ -254,6 +254,10 @@ void ReadMunitionDataFromInis()
 					{
 						explosionTypeMap[explosion_arch].detDist = ini.get_value_float(0);
 					}
+					else if (ini.is_value("disable_proximity_fuse"))
+					{
+						mineInfoMap[currNickname].disableContactExplosion = ini.get_value_bool(0);
+					}
 				}
 			}
 			else if (ini.is_header("Munition"))
@@ -844,7 +848,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	shipGunData.erase(iobj->cobj->id);
 }
 
-int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+bool __stdcall MineDestroyed(IObjRW* iobj, DestroyType& destroyType, uint killerId, uint callSource)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -854,22 +858,25 @@ int __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	auto& mineInfo = mineInfoMap.find(mineArch->iArchID);
 	if (mineInfo != mineInfoMap.end())
 	{
-		if (mineArch->fLifeTime - mine->remainingLifetime < mineInfo->second.armingTime)
+		if (mineInfo->second.disableContactExplosion && callSource == 0x6CF3853 && destroyType == DestroyType::FUSE) // contact or lifetime expiration
 		{
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			return 2;
+			return false;
+		}
+		if (mineArch->fLifeTime - mine->remainingLifetime < mineInfo->second.armingTime)
+		{
+			destroyType = DestroyType::VANISH;
 		}
 
 		if (mineInfo->second.detonateOnEndLifetime)
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			return 1;
+			destroyType = DestroyType::FUSE;
 		}
 	}
-	return 0;
+	return true;
 }
 
-bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+bool __stdcall GuidedDestroyed(IObjRW* iobj, DestroyType& destroyType, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -887,8 +894,7 @@ bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 		CGuided* guided = reinterpret_cast<CGuided*>(iobj->cobj);
 		if (guided->lifetime < armingTime)
 		{
-			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-			return false;
+			destroyType = DestroyType::VANISH;
 		}
 	}
 	return true;
@@ -1276,18 +1282,20 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (weaponMunitionData)
-	{
-		incDmg += incDmg * weaponMunitionData->percentageHullDmg;
-	}
-
-	if (weaponMunitionData && armorEnabled)
+	if (armorEnabled)
 	{
 		FetchShipArmor(iobj->cobj->archetype->iArchID);
 
-		if (shipArmorRating && (shipArmorRating > weaponMunitionData->armorPen))
+		int finalArmorValue = shipArmorRating;
+		if (weaponMunitionData)
 		{
-			incDmg *= armorReductionVector.at(shipArmorRating - weaponMunitionData->armorPen);
+			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+			finalArmorValue = max(0, finalArmorValue - weaponMunitionData->armorPen);
+		}
+
+		if (finalArmorValue)
+		{
+			incDmg *= armorReductionVector.at(finalArmorValue);
 		}
 	}
 

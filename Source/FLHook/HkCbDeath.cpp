@@ -292,39 +292,12 @@ __declspec(naked) void ShipDestroyedNaked()
 	}
 }
 
-
-inline int MineDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId)
+bool __stdcall MineDestroyed(IObjRW* iobj, DestroyType& isKill, uint killerId, uint source)
 {
-	CALL_PLUGINS(PLUGIN_MineDestroyed, int, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
-	return 0;
-}
+	CALL_PLUGINS(PLUGIN_MineDestroyed, bool, __stdcall, (IObjRW * iobj, DestroyType& isKill, uint killerId, uint source), (iobj, isKill, killerId, source));
 
-bool __stdcall MineDestroyed(IObjRW* iobj, bool isKill, uint killerId)
-{
 	LOG_CORE_TIMER_START
-	TRY_HOOK
-	int pluginResult = MineDestroyedPluginCaller(iobj, isKill, killerId);
-	switch (pluginResult)
-	{
-	case 0:
-		return true;
-	case 1:
-		if (!isKill)
-		{
-			pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::FUSE);
-			return false;
-		}
-		break;
-	case 2:
-		if (isKill)
-		{
-			pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::VANISH);
-			return false;
-		}
-		break;
-	}
 	return true;
-	CATCH_HOOK(AddLog("MineDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
 }
 
@@ -333,8 +306,10 @@ __declspec(naked) void MineDestroyedNaked()
 {
 	__asm {
 		push ecx
-		push[esp + 0xC]
-		push[esp + 0xC]
+		push[esp + 0x4]
+		push[esp + 0x10]
+		lea eax, [esp + 0x10]
+		push eax
 		push ecx
 		call MineDestroyed
 		pop ecx
@@ -347,28 +322,11 @@ __declspec(naked) void MineDestroyedNaked()
 	}
 }
 
-inline bool GuidedDestroyedPluginCaller(IObjRW* iobj, bool isKill, uint killerId)
-{
-	static IObjRW* lastIObj = nullptr;
-	if (lastIObj == iobj)
-	{
-		return true;
-	}
-	lastIObj = iobj;
-
-	CALL_PLUGINS(PLUGIN_GuidedDestroyed, bool, __stdcall, (IObjRW * iobj, bool isKill, uint killerId), (iobj, isKill, killerId));
-	return true;
-}
-
-bool __stdcall GuidedDestroyed(IObjRW* iobj, bool isKill, uint killerId)
+bool __stdcall GuidedDestroyed(IObjRW* iobj, DestroyType& destroyType, uint killerId)
 {
 	LOG_CORE_TIMER_START
 	TRY_HOOK
-	if (!GuidedDestroyedPluginCaller(iobj, isKill, killerId))
-	{
-		pub::SpaceObj::Destroy(((CSimple*)iobj->cobj)->id, DestroyType::VANISH);
-		return false;
-	}
+		CALL_PLUGINS(PLUGIN_GuidedDestroyed, bool, __stdcall, (IObjRW * iobj, DestroyType& destroyType, uint killerId), (iobj, destroyType, killerId));
 	return true;
 	CATCH_HOOK(AddLog("GuidedDestroyed exception"); return true)
 	LOG_CORE_TIMER_END
@@ -381,7 +339,8 @@ __declspec(naked) void GuidedDestroyedNaked()
 	__asm {
 		push ecx
 		push[esp + 0xC]
-		push[esp + 0xC]
+		lea eax, [esp + 0xC]
+		push eax
 		push ecx
 		call GuidedDestroyed
 		pop ecx

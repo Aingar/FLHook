@@ -46,6 +46,7 @@ struct MineInfo
 	float dispersionAngle = 0.0f;
 	bool detonateOnEndLifetime = false;
 	bool stopSpin = false;
+	bool disableContactExplosion = false;
 };
 
 struct GuidedData

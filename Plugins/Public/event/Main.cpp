@@ -35,7 +35,6 @@ struct PlayerEventData
 {
 	bool eventInteraction = false;
 	bool eventEnabled = false;
-	uint playerID = 0;
 	uint quantity = 0;
 	string eventName;
 };
@@ -832,7 +831,8 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 		playerData[iClientID].eventName = wstos(HookExt::IniGetWS(iClientID, "event.eventid"));
 		playerData[iClientID].quantity = HookExt::IniGetI(iClientID, "event.quantity");
 		//check if this event still exist
-		if ((!empty(playerData[iClientID].eventName)) && (mapTradeEvents.find(playerData[iClientID].eventName) != mapTradeEvents.end()))
+		auto eventIter = mapTradeEvents.find(playerData[iClientID].eventName);
+		if (eventIter != mapTradeEvents.end() && eventIter->second.isActive)
 		{
 			PrintUserCmdText(iClientID, L"You are still eligible to complete the event: %s", stows(mapTradeEvents[playerData[iClientID].eventName].sEventName).c_str());
 			PrintUserCmdText(iClientID, L"Amount of registered cargo: %u", playerData[iClientID].quantity);
@@ -1018,11 +1018,6 @@ void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Actual Code
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void __stdcall PlayerLaunch_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)
-{
-	playerData[iClientID].playerID = 0;
-}
 
 void ProcessEventData()
 {
@@ -1725,7 +1720,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->ePluginReturnCode = &returncode;
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkTimerCheckKick, PLUGIN_HkTimerCheckKick, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&PlayerLaunch_AFTER, PLUGIN_HkIServerImpl_PlayerLaunch_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodBuy_AFTER, PLUGIN_HkIServerImpl_GFGoodBuy_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&GFGoodSell_AFTER, PLUGIN_HkIServerImpl_GFGoodSell_AFTER, 0));

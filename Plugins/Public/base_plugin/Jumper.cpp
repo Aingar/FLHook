@@ -191,7 +191,6 @@ struct DeepRegion
 {
 	string name;
 	uint cooldown = 0;
-	uint openCount = 0;
 	string openArch;
 	string openLoadout;
 	string closeArch;
@@ -215,7 +214,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	uint randomizationCooldownOffset = 3600 * 9;
 	vector<DeepRegion> deepRegionVector;
 	INI_Reader ini;
-	map<string, time_t> deepRegionTimerMap;
+	map<string, pair<uint, uint>> deepRegionTimerMap;
 
 	if (ini.open(cfg_filehyperspaceHubTimer.c_str(), false))
 	{
@@ -246,7 +245,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					}
 					else
 					{
-						deepRegionTimerMap[ini.get_name_ptr()] = ini.get_value_int(0);
+						deepRegionTimerMap[ini.get_name_ptr()] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
 					}
 				}
 			}
@@ -309,10 +308,6 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					{
 						dr.cooldown = ini.get_value_int(0);
 					}
-					else if (ini.is_value("opencount"))
-					{
-						dr.openCount = ini.get_value_int(0);
-					}
 					else if (ini.is_value("openarch"))
 					{
 						dr.openArch = ini.get_value_string();
@@ -331,6 +326,14 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 					}
 					else if (ini.is_value("entrance"))
 					{
+						uint baseId = CreateID(ini.get_value_string());
+						auto baseIter = player_bases.find(baseId);
+						auto timerIter = deepRegionTimerMap.find(dr.name);
+						if (timerIter != deepRegionTimerMap.end() && (baseIter == player_bases.end() || baseIter->second->destSystem == timerIter->second.first))
+						{
+							ConPrint(L"Skipped %x\n", timerIter->second.first);
+							continue;
+						}
 						dr.entriesToRandomize.push_back(CreateID(ini.get_value_string()));
 					}
 				}
@@ -494,13 +497,19 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 	for (DeepRegion& dr : deepRegionVector)
 	{
 		auto timerIter = deepRegionTimerMap.find(dr.name);
-		if (timerIter != deepRegionTimerMap.end() && currTime < timerIter->second + dr.cooldown)
+		if (timerIter != deepRegionTimerMap.end() && currTime < timerIter->second.second + dr.cooldown)
 		{
 			continue;
 		}
-		
+
 		int entry = GetRandom() % dr.entriesToRandomize.size();
 		int counter = -1;
+		uint baseID = dr.entriesToRandomize.at(entry);
+		if (timerIter->second.first == baseID)
+		{
+			entry = (entry + 1) % dr.entriesToRandomize.size();
+		}
+
 		for (uint baseID : dr.entriesToRandomize)
 		{
 			counter++;
@@ -532,6 +541,12 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 				connectedBaseIter->second->basesolar = dr.openArch;
 				connectedBaseIter->second->baseloadout = dr.openLoadout;
 				connectedBaseIter->second->basename = entrySysInfoName + L" Jump Hole";
+
+
+				auto systemInfo = Universe::get_system(base->destSystem);
+				string entryVar = string(systemInfo->nickname.value) + ", " + itos((int)currTime);
+				WritePrivateProfileStringA("Timer", dr.name.c_str(), entryVar.c_str(), cfg_filehyperspaceHubTimer.c_str());
+				ConPrint(L"Spawned leading to %s\n", stows(systemInfo->nickname.value).c_str());
 			}
 			else
 			{
@@ -546,8 +561,6 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			connectedBaseIter->second->Save();
 			RespawnBase(base);
 			RespawnBase(connectedBaseIter->second);
-
-			WritePrivateProfileStringA("Timer", dr.name.c_str(), itos((int)currTime).c_str(), cfg_filehyperspaceHubTimer.c_str());
 		}
 	}
 }

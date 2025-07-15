@@ -596,14 +596,7 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 	{
 		if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
 		{
-			if (colGrp->colGrp->rootHealthProxy)
-			{
-				incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
-			}
-			else
-			{
-				incDmg += colGrp->colGrp->hitPts * weaponMunitionData->percentageHullDmg;
-			}
+			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
 		}
 		
 		int colGrpArmor = 0;

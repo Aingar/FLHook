@@ -640,7 +640,7 @@ namespace Archetype
 
 	public:
 		CollisionGroup* next;
-		USHORT	id;
+		ushort	id;
 		CacheString name;
 		uint type;
 		uint hitPts;
@@ -5541,7 +5541,7 @@ struct MunitionImpactData
 {
 	uint attackerId;
 	Archetype::Munition* munitionId;
-	uint subObjId;
+	ushort subObjId;
 };
 
 struct ExplosionDamageEvent
@@ -5648,7 +5648,7 @@ struct IObjRWAbstract
 	virtual bool get_dunno_0x40();                           // 352 sub_6CEE6D0
 	virtual int instantiate_cship(Archetype::Root* archPtr); // 356 sub_6D01040
 	virtual bool set_cship(uint shipId);                     // 360 sub_6D010A0
-	virtual void sub_6D01450();                              // 364
+	virtual void update(float deltaTime);                    // 364
 	virtual void sub_6D01A60();                              // 368
 	virtual int sub_6CEE810(void* PhySys_unk);               // physics collsion handling?                                       //372
 	virtual void sub_6CEE980(int dunno);                     // Behavior interface update?                                              //376

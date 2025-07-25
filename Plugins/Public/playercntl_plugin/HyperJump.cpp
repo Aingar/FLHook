@@ -43,9 +43,6 @@ namespace HyperJump
 		return item;
 	}
 
-	// Ships restricted from jumping
-	static set<uint> jumpRestrictedShipsList;
-
 	static set<uint> setCloakingClients;
 
 	void ClientCloakCallback(CLIENT_CLOAK_STRUCT* info)
@@ -62,8 +59,6 @@ namespace HyperJump
 
 	static unordered_map<uint, unordered_map<uint, vector<uint>>> mapAvailableJumpSystems;
 
-	static uint BeaconCommodity = 0;
-	static float JumpCargoSizeRestriction = 7000;
 	static uint set_blindJumpOverrideSystem = 0;
 	static uint set_jumpInPvPInvulnerabilityPeriod = 5000;
 	static uint set_exitJumpHoleLoadout = CreateID("wormhole_unstable");
@@ -138,7 +133,6 @@ namespace HyperJump
 		int jump_timer;
 		uint jumpDistance;
 		uint iTargetSystem;
-		uint iCoordinateIndex;
 		uint targetClient;
 		Vector vTargetPosition;
 		Matrix matTargetOrient;
@@ -183,7 +177,6 @@ namespace HyperJump
 		jd.vTargetPosition.z = 0;
 		jd.targetClient = 0;
 		jd.last_tick_charge = 0;
-		jd.iCoordinateIndex = 0;
 		jd.jump_type = JUMPGATE_HOLE_JUMP;
 
 		if (clearFuses)
@@ -290,11 +283,7 @@ namespace HyperJump
 				{
 					while (ini.read_value())
 					{
-						if (ini.is_value("BeaconCommodity"))
-						{
-							BeaconCommodity = CreateID(ini.get_value_string());
-						}
-						else if (ini.is_value("BlindJumpOverrideSystem"))
+						if (ini.is_value("BlindJumpOverrideSystem"))
 						{
 							set_blindJumpOverrideSystem = CreateID(ini.get_value_string());
 						}
@@ -319,21 +308,6 @@ namespace HyperJump
 						else if (ini.is_value("BanJumpSystem"))
 						{
 							set_banJumpSystems.insert(CreateID(ini.get_value_string()));
-						}
-					}
-				}
-				else if (ini.is_header("shiprestrictions"))
-				{
-					while (ini.read_value())
-					{
-						if (ini.is_value("restrict"))
-						{
-							uint nicknameHash = CreateID(ini.get_value_string(0));
-							jumpRestrictedShipsList.emplace(nicknameHash);
-						}
-						else if (ini.is_value("JumpCargoSizeRestriction"))
-						{
-							JumpCargoSizeRestriction = ini.get_value_float(0);
 						}
 					}
 				}
@@ -443,10 +417,6 @@ namespace HyperJump
 					}
 					mapBeaconMatrix[bm.nickname] = bm;
 				}
-			}
-			if (BeaconCommodity == 0)
-			{
-				BeaconCommodity = CreateID("commodity_event_04");
 			}
 			ini.close();
 		}

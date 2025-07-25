@@ -840,7 +840,7 @@ bool UserCmd_Disruptor(uint iClientID, const wstring &wscCmd, const wstring &wsc
 {
 	//not found
 	auto cd = mapClientsCD.find(iClientID);
-	if (mapClientsCD.find(iClientID) == mapClientsCD.end())
+	if (cd == mapClientsCD.end())
 	{
 		PrintUserCmdText(iClientID, L"Cloak Disruptor not found.");
 	}

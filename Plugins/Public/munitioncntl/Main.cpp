@@ -24,6 +24,8 @@ unordered_map<uint, EngineProperties> engineData;
 unordered_map<uint, ExplosionDamageData> explosionTypeMap;
 unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;
 unordered_map<uint, unordered_map<ushort, int>>::iterator shipArmorIter;
+unordered_map<uint, unordered_map<ushort, int>> solarArmorMap;
+unordered_map<uint, unordered_map<ushort, int>>::iterator solarArmorIter;
 unordered_map<uint, MunitionData> munitionArmorPenMap;
 Archetype::Explosion* shieldExplosion;
 vector<float> armorReductionVector;
@@ -99,6 +101,7 @@ void ReadMunitionDataFromInis()
 
 	vector<string> equipFiles;
 	vector<string> shipFiles;
+	vector<string> solarFiles;
 
 	while (ini.read_header())
 	{
@@ -115,6 +118,10 @@ void ReadMunitionDataFromInis()
 			else if (ini.is_value("ships"))
 			{
 				shipFiles.emplace_back(ini.get_value_string());
+			}
+			else if (ini.is_value("solar"))
+			{
+				solarFiles.emplace_back(ini.get_value_string());
 			}
 		}
 	}
@@ -179,6 +186,56 @@ void ReadMunitionDataFromInis()
 					{
 						int armorValue = ini.get_value_int(0);
 						shipArmorMap[currNickname][currSID] = armorValue;
+						maxArmorValue = max(maxArmorValue, armorValue);
+						break;
+					}
+				}
+			}
+		}
+
+		ini.close();
+	}
+
+
+	for (string solarFile : solarFiles)
+	{
+		solarFile = gameDir + solarFile;
+		if (!ini.open(solarFile.c_str(), false))
+		{
+			continue;
+		}
+
+		uint currNickname = 0;
+		ushort currSID = 0;
+		while (ini.read_header())
+		{
+			if (ini.is_header("Solar"))
+			{
+				currSID = 3;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						currNickname = CreateID(ini.get_value_string());
+					}
+					else if (ini.is_value("armor"))
+					{
+						int armorValue = ini.get_value_int(0);
+						solarArmorMap[currNickname][1] = armorValue;
+						maxArmorValue = max(maxArmorValue, armorValue);
+						break;
+					}
+				}
+			}
+			else if (ini.is_header("CollisionGroup"))
+			{
+				currSID++;
+				while (ini.read_value())
+				{
+					if (ini.is_value("armor"))
+					{
+						int armorValue = ini.get_value_int(0);
+						solarArmorMap[currNickname][currSID] = armorValue;
 						maxArmorValue = max(maxArmorValue, armorValue);
 						break;
 					}
@@ -1271,6 +1328,8 @@ int Update()
 
 int shipArmorRating = 0;
 uint shipArmorArch = 0;
+int solarArmorRating = 0;
+uint solarArmorArch = 0;
 
 
 MunitionData* weaponMunitionData = nullptr;

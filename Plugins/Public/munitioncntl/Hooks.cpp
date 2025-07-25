@@ -1,11 +1,14 @@
 #include "MunitionCntl.h"
 
-FARPROC GuidedExplosionHitOrigFunc, SolarExplosionHitOrigFunc, ShipMunitionHitOrigFunc, ShipColGrpDmgFunc, ShipFuseLightFunc, ShipEquipDestroyedFunc;
+FARPROC GuidedExplosionHitOrigFunc, SolarExplosionHitOrigFunc, ShipMunitionHitOrigFunc, ShipColGrpDmgFunc, ShipFuseLightFunc, ShipEquipDestroyedFunc, SolarHullDmgFunc, SolarColGrpDmgFunc;
 
 PATCH_INFO piServerDLL =
 {
 	"server.dll", 0x6CE0000,
 	{
+		{0x6D6761C,		&SolarHullDamageNaked,		4, &SolarHullDmgFunc,	false},
+		{0x6D67684,		&SolarColGrpDamageNaked,		4, &SolarColGrpDmgFunc,	false},
+		{0x6D675EC,		&SolarMunitionHit,		4, nullptr,	false},
 		{0x6D6732C,		&ShipEquipDamage,		4, nullptr,	false},
 		{0x6D67338,		&ShipEnergyDamage,		4, nullptr,	false},
 		{0x6D666C0,		&GuidedExplosionHitNaked,	4, &GuidedExplosionHitOrigFunc, false},

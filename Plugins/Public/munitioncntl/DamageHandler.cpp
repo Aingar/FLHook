@@ -21,6 +21,25 @@ void FetchShipArmor(uint shipHash)
 	}
 }
 
+void FetchSolarArmor(uint solarhash)
+{
+	if (solarArmorArch == solarhash)
+	{
+		return;
+	}
+
+	solarArmorIter = solarArmorMap.find(solarhash);
+	solarArmorArch = solarhash;
+	if (solarArmorIter == solarArmorMap.end())
+	{
+		solarArmorRating = 0;
+	}
+	else
+	{
+		solarArmorRating = solarArmorIter->second[1];
+	}
+}
+
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType)
 {
 	if (!weaponType || !shield || !shield->highestToughnessShieldGenArch)
@@ -28,7 +47,7 @@ float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType
 		return 1.0f;
 	}
 	auto shieldResistIter = shieldResistMap->find(weaponType);
-	if (shieldResistIter == shieldResistMap->end())
+	if (shieldResistIter == shieldResistMap->end() || !shieldResistIter.key())
 	{
 		return 1.0f;
 	}
@@ -558,6 +577,43 @@ __declspec(naked) void SolarExplosionHitNaked()
 	}
 }
 
+typedef void(__thiscall* SolarMunitionHitFunc)(IObjRW*, MunitionImpactData*, DamageList*);
+SolarMunitionHitFunc SolarMunitionHitCall = SolarMunitionHitFunc(0x6D02D90);
+
+void __fastcall SolarMunitionHit(IObjRW* solar, void* edx, MunitionImpactData* data, DamageList* dmg)
+{
+	if (!reinterpret_cast<CSolar*>(solar->cobj)->isDestructible)
+	{
+		SolarMunitionHitCall(solar, data, dmg);
+		return;
+	}
+
+	if (weaponMunitionDataArch == data->munitionId->iArchID)
+	{
+		armorEnabled = true;
+		SolarMunitionHitCall(solar, data, dmg);
+		armorEnabled = false;
+		return;
+	}
+
+	weaponMunitionDataArch = data->munitionId->iArchID;
+	const auto munitionIter = munitionArmorPenMap.find(data->munitionId->iArchID);
+	if (munitionIter == munitionArmorPenMap.end())
+	{
+		weaponMunitionData = nullptr;
+	}
+	else
+	{
+		weaponMunitionData = &munitionIter->second;
+	}
+
+	armorEnabled = true;
+
+	SolarMunitionHitCall(solar, data, dmg);
+
+	armorEnabled = false;
+}
+
 typedef void(__thiscall* ShipMunitionHitFunc)(IObjRW*, MunitionImpactData*, DamageList*);
 ShipMunitionHitFunc ShipMunitionHitCall = ShipMunitionHitFunc(0x6CE9350);
 
@@ -588,6 +644,96 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 	ShipMunitionHitCall(iShip, data, dmg);
 
 	armorEnabled = false;
+}
+
+void __stdcall SolarHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
+{
+	if (armorEnabled)
+	{
+		FetchSolarArmor(iobj->cobj->archetype->iArchID);
+
+		int finalArmorValue = solarArmorRating;
+		if (weaponMunitionData)
+		{
+			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+			finalArmorValue = max(0, finalArmorValue - weaponMunitionData->armorPen);
+		}
+
+		if (finalArmorValue)
+		{
+			incDmg *= armorReductionVector.at(finalArmorValue);
+		}
+		armorEnabled = false;
+	}
+}
+
+__declspec(naked) void SolarHullDamageNaked()
+{
+	__asm {
+		push ecx
+		push[esp + 0xC]
+		lea eax, [esp + 0xC]
+		push eax
+		push ecx
+		call SolarHullDamage
+		pop ecx
+		jmp[SolarHullDmgFunc]
+	}
+}
+
+void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
+{
+	if (armorEnabled)
+	{
+		if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
+		{
+			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+		}
+
+		int colGrpArmor = 0;
+		static auto shipIter = shipArmorMap.end();
+
+		FetchSolarArmor(iobj->cobj->archetype->iArchID);
+
+		if (shipArmorIter != shipArmorMap.end())
+		{
+			auto colGrpIter = shipArmorIter->second.find(colGrp->colGrp->id);
+			if (colGrpIter != shipArmorIter->second.end())
+			{
+				colGrpArmor = colGrpIter->second;
+			}
+			else
+			{
+				colGrpArmor = shipArmorRating;
+			}
+
+			if (weaponMunitionData)
+			{
+				colGrpArmor = max(0, colGrpArmor - weaponMunitionData->armorPen);
+			}
+
+			if (colGrpArmor)
+			{
+				incDmg *= armorReductionVector.at(colGrpArmor);
+			}
+		}
+		armorEnabled = false;
+	}
+}
+
+__declspec(naked) void SolarColGrpDamageNaked()
+{
+	__asm {
+		push ecx
+		push[esp + 0x10]
+		lea eax, [esp + 0x10]
+		push eax
+		push[esp + 0x10]
+		push ecx
+		call SolarColGrpDmg
+		pop ecx
+		jmp[SolarColGrpDmgFunc]
+	}
 }
 
 void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)

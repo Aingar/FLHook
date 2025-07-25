@@ -882,7 +882,7 @@ wstring GetLocation(unsigned int iClientID)
 	if (!iSystemID || !iShip)
 	{
 		PrintUserCmdText(iClientID, L"ERR Not in space");
-		return false;
+		return L"";
 	}
 
 	Vector pos;

@@ -125,15 +125,20 @@ void CoreModule::Spawn()
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;
 		
-		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 		base->baseCSolar->Release();
 
 		base->max_base_health = base->baseCSolar->archetype->fHitPoints;
-		if (base->base_health > base->max_base_health)
+		if (base->isFreshlyBuilt)
+		{
+			base->base_health = base->max_base_health * 0.5f;
+		}
+		else if (base->base_health > base->max_base_health)
 		{
 			base->base_health = base->max_base_health;
 		}
+
+		pub::SpaceObj::SetRelativeHealth(space_obj, base->base_health / base->max_base_health);
 
 		if (base->archetype && !base->archetype->isjump)
 		{

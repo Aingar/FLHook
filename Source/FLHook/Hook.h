@@ -888,6 +888,7 @@ struct ZoneSpecialData
 {
 	uint dmgType = ZONEDMG_HULL;
 	float percentageDamage;
+	float distanceStartingScale;
 	float flatDamage;
 
 	float distanceScaling;

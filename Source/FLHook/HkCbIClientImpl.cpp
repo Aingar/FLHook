@@ -1106,10 +1106,11 @@ void LoadZoneDamageData(const char* path)
 			{
 				data.flatDamage = ini.get_value_float(0);
 				data.percentageDamage = ini.get_value_float(1) * 0.01f;
-				data.distanceScaling = ini.get_value_float(2);
-				data.logScale = ini.get_value_float(3);
+				data.distanceStartingScale = ini.get_value_float(2) * 0.01f;
+				data.distanceScaling = ini.get_value_float(3);
+				data.logScale = ini.get_value_float(4);
 				data.dmgType = ZONEDMG_HULL;
-				string propertiesStr = ini.get_value_string(4);
+				string propertiesStr = ini.get_value_string(5);
 				if (propertiesStr.find("shield") != string::npos)
 					data.dmgType |= ZONEDMG_SHIELD;
 				if (propertiesStr.find("cruise") != string::npos)
@@ -1123,8 +1124,8 @@ void LoadZoneDamageData(const char* path)
 					data.logScale = 1;
 				}
 
-				data.shieldMult = ini.get_value_float(5);
-				data.energyMult = ini.get_value_float(6);
+				data.shieldMult = ini.get_value_float(6);
+				data.energyMult = ini.get_value_float(7);
 
 				zoneSpecialData[nickname] = data;
 				break;

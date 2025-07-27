@@ -301,7 +301,8 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("dispersion_angle"))
 					{
-						mineInfoMap[currNickname].dispersionAngle = ini.get_value_float(0) / (180.f / 3.14f);
+						mineInfoMap[currNickname].dispersionAngleMax = ini.get_value_float(0) / (180.f / 3.14f);
+						mineInfoMap[currNickname].dispersionAngleMin = ini.get_value_float(1) / (180.f / 3.14f);
 					}
 					else if (ini.is_value("explosion_arch"))
 					{
@@ -672,22 +673,38 @@ void MineSpin(CMine* mine, Vector& spinVec)
 void MineImpulse(CMine* mine, Vector& launchVec)
 {
 	auto mineInfo = mineInfoMap.find(mine->archetype->iArchID);
-	if (mineInfo != mineInfoMap.end() && mineInfo->second.dispersionAngle > 0.0f)
+	if (mineInfo != mineInfoMap.end() && mineInfo->second.dispersionAngleMax > 0.0f)
 	{
+		IObjRW* obj;
+		StarSystem* sys;
+		GetShipInspect(mine->ownerId, obj, sys);
+		if (!obj)
+		{
+			return;
+		}
+
+		Vector shipVelocityVec = obj->get_velocity();
+
+		launchVec.x -= shipVelocityVec.x;
+		launchVec.y -= shipVelocityVec.y;
+		launchVec.z -= shipVelocityVec.z;
+
+
 		Vector randVecAxis = RandomVector(1.0f);
 
 		Vector vxp = VectorCross(randVecAxis, launchVec);
 		Vector vxvxp = VectorCross(randVecAxis, vxp);
 
-		float angle = mineInfo->second.dispersionAngle;
+		float angle = mineInfo->second.dispersionAngleMax - mineInfo->second.dispersionAngleMin;
 		angle *= rand() % 10000 / 10000.f;
+		angle += mineInfo->second.dispersionAngleMin;
 
 		vxp = VectorMultiply(vxp, sinf(angle));
 		vxvxp = VectorMultiply(vxvxp, 1.0f - cosf(angle));
 
-		launchVec.x += vxp.x + vxvxp.x;
-		launchVec.y += vxp.y + vxvxp.y;
-		launchVec.z += vxp.z + vxvxp.z;
+		launchVec.x += vxp.x + vxvxp.x + shipVelocityVec.x;
+		launchVec.y += vxp.y + vxvxp.y + shipVelocityVec.y;
+		launchVec.z += vxp.z + vxvxp.z + shipVelocityVec.z;
 	}
 
 	PhySys::AddToVelocity(mine, launchVec);
@@ -923,6 +940,7 @@ bool __stdcall MineDestroyed(IObjRW* iobj, DestroyType& destroyType, uint killer
 		if (mineArch->fLifeTime - mine->remainingLifetime < mineInfo->second.armingTime)
 		{
 			destroyType = DestroyType::VANISH;
+			return true;
 		}
 
 		if (mineInfo->second.detonateOnEndLifetime)
@@ -961,10 +979,7 @@ void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!playerShieldState[pShip.clientId].shieldState)
-	{
-		shieldStateUpdateMap.push_back({ client, pShip.clientId, 0 });
-	}
+	shieldStateUpdateMap.push_back({ client, pShip.clientId, 0 });
 }
 
 void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
@@ -1072,19 +1087,50 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		HkDelayedKick(iClientID, 5);
 	}
 
+	auto cship = ClientInfo[iClientID].cship;
+	if (cship)
+	{
+		float rootColGrpHpLoss = 0.0f;
+		auto currColGrp = cship->shiparch()->collisiongroup;
+		while (currColGrp)
+		{
+			if (!currColGrp->rootHealthProxy)
+			{
+				continue;
+			}
+
+			auto foundColGrp = cship->archGroupManager.FindByID(currColGrp->id);
+			if (!foundColGrp)
+			{
+				rootColGrpHpLoss += (float)currColGrp->hitPts;
+			}
+			else
+			{
+				rootColGrpHpLoss += foundColGrp->hitPts - (float)currColGrp->hitPts;
+			}
+
+			currColGrp = currColGrp->next;
+		}
+
+		float maxAllowedHp = cship->shiparch()->fHitPoints - rootColGrpHpLoss;
+		if (cship->hitPoints > maxAllowedHp)
+		{
+			pub::SpaceObj::SetRelativeHealth(cship->id, maxAllowedHp / cship->shiparch()->fHitPoints);
+		}
+	}
+
 	equipUpdateVector.push_back({ iClientID, 0 });
 }
 
 void Timer()
 {
-	static unordered_map<uint, vector<ushort>*> eqSids;
+	static unordered_map<uint, vector<pair<ushort, bool>>*> eqSids;
 	for (auto iter = shieldStateUpdateMap.begin(); iter != shieldStateUpdateMap.end();)
 	{
 		++iter->count;
 		if (iter->count > 1)
 		{
 			XActivateEquip eq;
-			eq.bActivate = false;
 
 			CShip* cship = ClientInfo[iter->targetClient].cship;
 			if (!cship)
@@ -1094,7 +1140,7 @@ void Timer()
 			}
 			eq.iSpaceID = cship->id;
 
-			vector<ushort>* sids;
+			vector<pair<ushort, bool>>* sids;
 			auto sidsIter = eqSids.find(iter->targetClient);
 			if (sidsIter != eqSids.end())
 			{
@@ -1102,13 +1148,13 @@ void Timer()
 			}
 			else
 			{
-				sids = new vector<ushort>();
+				sids = new vector<pair<ushort, bool>>();
 				CEquipTraverser tr(ShieldGenerator);
 				CEquip* shield;
 
 				while (shield = cship->equip_manager.Traverse(tr))
 				{
-					sids->emplace_back(shield->iSubObjId);
+					sids->push_back({ shield->iSubObjId, shield->isActive });
 				}
 				eqSids[iter->targetClient] = sids;
 			}
@@ -1121,9 +1167,10 @@ void Timer()
 				HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(iter->client, cship->id, dmg);
 			}
 
-			for (ushort sid : *sids)
+			for (auto sid : *sids)
 			{
-				eq.sID = sid;
+				eq.sID = sid.first;
+				eq.bActivate = sid.second;
 				HookClient->Send_FLPACKET_COMMON_ACTIVATEEQUIP(iter->client, eq);
 			}
 		}

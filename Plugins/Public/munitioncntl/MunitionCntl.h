@@ -46,7 +46,8 @@ struct BurstFireData
 struct MineInfo
 {
 	float armingTime = 0.0f;
-	float dispersionAngle = 0.0f;
+	float dispersionAngleMax = 0.0f;
+	float dispersionAngleMin = 0.0f;
 	bool detonateOnEndLifetime = false;
 	bool stopSpin = false;
 	bool disableContactExplosion = false;

@@ -42,12 +42,22 @@ vector<pair<uint, uint>> equipUpdateVector;
 unordered_map<uint, uint> NewMissileUpdateMap;
 unordered_map<uint, InvulData> invulMap;
 
+float guidedZoneImpulseDrag = 30.f;
+
 struct SpeedCheck
 {
 	float targetSpeed = 0;
 	uint checkCounter = 0;
 };
 unordered_map<uint, SpeedCheck> topSpeedWatch;
+
+struct ImpulseData
+{
+	float baseForce;
+	float logMult;
+};
+
+unordered_map<uint, ImpulseData> zoneImpulseData;
 
 uint lastProcessedProjectile = 0;
 
@@ -90,6 +100,7 @@ void ReadMunitionDataFromInis()
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 	string currDir = string(szCurDir);
 	string scFreelancerIniFile = currDir + R"(\freelancer.ini)";
+	string scUniverseIniFile = currDir + R"(\..\DATA\UNIVERSE\universe.ini)";
 
 	string gameDir = currDir.substr(0, currDir.length() - 4);
 	gameDir += string(R"(\DATA\)");
@@ -102,6 +113,7 @@ void ReadMunitionDataFromInis()
 	vector<string> equipFiles;
 	vector<string> shipFiles;
 	vector<string> solarFiles;
+	vector<string> systemFiles;
 
 	while (ini.read_header())
 	{
@@ -128,8 +140,63 @@ void ReadMunitionDataFromInis()
 
 	ini.close();
 
+	if (ini.open(scUniverseIniFile.c_str(), false))
+	{
+		
+		while (ini.read_header())
+		{
+			if (!ini.is_header("system"))
+			{
+				continue;
+			}
+
+			while (ini.read_value())
+			{
+				if (ini.is_value("file"))
+				{
+					systemFiles.push_back(ini.get_value_string());
+					break;
+				}
+			}
+		}
+		ini.close();
+	}
+
+	for (string& sysFile : systemFiles)
+	{
+		string fileDir = currDir + R"(\..\DATA\UNIVERSE\)" + sysFile;
+		if (!ini.open(fileDir.c_str(), false))
+		{
+			continue;
+		}
+
+		while (ini.read_header())
+		{
+			if (!ini.is_header("zone"))
+			{
+				continue;
+			}
+
+			uint nickname;
+			while (ini.read_value())
+			{
+				if (ini.is_value("nickname"))
+				{
+					nickname = CreateID(ini.get_value_string(0));
+				}
+				else if (ini.is_value("custom_impulse"))
+				{
+					zoneImpulseData[nickname] = { ini.get_value_float(0), ini.get_value_float(1) };
+					break;
+				}
+			}
+		}
+
+		ini.close();
+	}
+
 	int maxArmorValue = 0;
-	for (string shipFile : shipFiles)
+	for (string& shipFile : shipFiles)
 	{
 		shipFile = gameDir + shipFile;
 		if (!ini.open(shipFile.c_str(), false))
@@ -197,7 +264,7 @@ void ReadMunitionDataFromInis()
 	}
 
 
-	for (string solarFile : solarFiles)
+	for (string& solarFile : solarFiles)
 	{
 		solarFile = gameDir + solarFile;
 		if (!ini.open(solarFile.c_str(), false))
@@ -252,7 +319,7 @@ void ReadMunitionDataFromInis()
 		armorReductionVector.emplace_back(1.0f - (static_cast<float>(i) / (i + ARMOR_MOD)));
 	}
 
-	for (string equipFile : equipFiles)
+	for (string& equipFile : equipFiles)
 	{
 		equipFile = gameDir + equipFile;
 		if (!ini.open(equipFile.c_str(), false))
@@ -672,6 +739,9 @@ void MineSpin(CMine* mine, Vector& spinVec)
 
 void MineImpulse(CMine* mine, Vector& launchVec)
 {
+	using UpdateZonesType = void(__thiscall*)(CSimple*, float, uint);
+	static_cast<UpdateZonesType>((void*)0x62B5D00)(mine, 0.0f, 0);
+
 	auto mineInfo = mineInfoMap.find(mine->archetype->iArchID);
 	if (mineInfo != mineInfoMap.end() && mineInfo->second.dispersionAngleMax > 0.0f)
 	{
@@ -843,6 +913,9 @@ void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
 	}
 
 	guided->Release();
+
+	using UpdateZonesType = void(__thiscall*)(CSimple*, float, uint);
+	static_cast<UpdateZonesType>((void*)0x62B5D00)(guided, 0.0f, 0);
 
 	auto guidedInfo = guidedDataMap.find(guided->archetype->iArchID);
 	if (guidedInfo == guidedDataMap.end())
@@ -1096,6 +1169,7 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		{
 			if (!currColGrp->rootHealthProxy)
 			{
+				currColGrp = currColGrp->next;
 				continue;
 			}
 
@@ -1594,6 +1668,58 @@ void ShipColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjFa
 	{
 		FindAndDisableEquip(cship->ownerPlayer, hp);
 	}
+}
+
+void CSimpleUpdateHook(CSimple* csimple, float deltaTime)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	if (!csimple->currentDamageZone)
+	{
+		return;
+	}
+
+	auto zoneDataIter = zoneImpulseData.find(csimple->currentDamageZone->iZoneID);
+	if (zoneDataIter == zoneImpulseData.end())
+	{
+		return;
+	}
+
+	Vector relativePosition = VectorSubtract(csimple->vPos, csimple->currentDamageZone->vPos);
+	float distanceFromCenter = VectorMagnitude(relativePosition);
+	if (distanceFromCenter < 30)
+	{
+		return;
+	}
+	float relativeDepth = csimple->currentDamageZone->vSize.x / distanceFromCenter;
+	float distanceMult = powf(relativeDepth, zoneDataIter->second.logMult);
+	float mass = csimple->archetype->fMass;
+	float force = -zoneDataIter->second.baseForce * mass * distanceMult * deltaTime;
+
+	ResizeVector(relativePosition, 1.0f);
+	relativePosition.x *= force;
+	relativePosition.y *= force;
+	relativePosition.z *= force;
+	csimple->add_impulse(relativePosition);
+}
+
+int __fastcall CMineUpdate(CMine* mine, void* edx, float deltatime, uint dunno)
+{
+	using CMineUpdateType = int(__thiscall*)(CMine*, float, uint);
+	int retVal = static_cast<CMineUpdateType>((void*)0x62ACA00)(mine, deltatime, dunno);
+
+	CSimpleUpdateHook(mine, deltatime);
+
+	return retVal;
+}
+int __fastcall CGuidedUpdate(CGuided* guided, void* edx, float deltatime, uint dunno)
+{
+	using CMineUpdateType = int(__thiscall*)(CGuided*, float, uint);
+	int retVal = static_cast<CMineUpdateType>((void*)0x62ACD40)(guided, deltatime, dunno);
+
+	CSimpleUpdateHook(guided, deltatime);
+
+	return retVal;
 }
 
 #define IS_CMD(a) !args.compare(L##a)

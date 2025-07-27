@@ -28,6 +28,9 @@ PATCH_INFO piCommonDLL =
 	{
 		{0x639D1CC,			&CELauncherFire,		4, nullptr,	false},
 		{0x639C138,			&CShipInit,		4, nullptr,	false},
+		//{0x639C07C,			&CShipUpdate,		4, nullptr,	false},
+		{0x639E4AC,			&CMineUpdate,		4, nullptr,	false},
+		{0x639BCBC,			&CGuidedUpdate,		4, nullptr,	false},
 
 		{0,0,0,0} // terminate
 	}

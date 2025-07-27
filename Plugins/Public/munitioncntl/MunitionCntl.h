@@ -26,6 +26,9 @@ FireResult __fastcall CELauncherFire(CELauncher* gun, void* edx, const Vector& p
 void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms);
 void FetchShipArmor(uint shipHash);
 
+int __fastcall CMineUpdate(CMine*, void*, float, uint);
+int __fastcall CGuidedUpdate(CGuided*, void*, float, uint);
+
 typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
 static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
 static st6::map<uint, StarSystem>* StarSystemMap = (st6::map<uint, StarSystem>*)0x6D8DA2C;

@@ -74,6 +74,7 @@ void MultiplyMatrix(Matrix& m, float num);
 Matrix InverseMatrix(Matrix& m1);
 Vector VectorMatrixMultiply(Vector& v1, Matrix& m1);
 float VectorMagnitude(Vector& v);
+Vector VectorSubtract(const Vector& v1, const Vector& v2);
 float SquaredVectorMagnitude(Vector& v);
 void ResizeVector(Vector& v, float targetLength);
 Vector NormalizeVector(Vector& v);

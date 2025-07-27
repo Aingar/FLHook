@@ -235,6 +235,28 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		string victim = wstos((const wchar_t*)Players.GetActiveCharacterName(targetClient));
 		
 		LogDeathDamage("%s has attacked %s in %s", inflictor.c_str(), victim.c_str(), Universe::get_system(iobj->cobj->system)->nickname);
+
+		bool firstEntry = true;
+		for (auto& equip : Players[targetClient].equipDescList.equip)
+		{
+			if (equip.bMounted)
+			{
+				continue;
+			}
+
+			bool isCommodity = false;
+			pub::IsCommodity(equip.iArchID, isCommodity);
+			if (isCommodity)
+			{
+				if (firstEntry)
+				{
+					firstEntry = false;
+					LogDeathDamage("cargo onboard:");
+				}
+				auto equipArch = Archetype::GetEquipment(equip.iArchID);
+				LogDeathDamage("- %dx %s", equip.iCount, wstos(HkGetWStringFromIDS(equipArch->iIdsName)).c_str());
+			}
+		}
 	}
 	damageArray[targetClient][dmg->iInflictorPlayerID].currDamage += incDmg;
 }

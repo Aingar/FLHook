@@ -381,79 +381,6 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 	return true;
 }
 
-bool UserCmd_RefreshCharacters(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
-{
-	if (!CheckIsInBase(iClientID))
-		return true;
-
-	FILETIME ft;
-	SYSTEMTIME st;
-	GetLocalTime(&st);
-	SystemTimeToFileTime(&st, &ft);
-	char toWrite[128];
-	sprintf_s(toWrite, "%u,%u", ft.dwHighDateTime, ft.dwLowDateTime);
-
-	CAccount *acc = HkGetAccountByClientID(iClientID);
-	CAccountListNode *characterList = acc->pFirstListNode;
-	PrintUserCmdText(iClientID, L"Refreshing Characters:");
-	PrintUserCmdText(iClientID, L""); // Line break to make it look nice
-	int iCharactersRefreshed = 0; // Number to keep track of
-	HK_ERROR err; // If it errors we want to inform them
-
-	// Save the current char in case for whatever reason they haven't been saved already
-	// Prevents any potential data loss.
-	HkSaveChar(reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)));
-
-	// We need to keep track of the first character name lest it loops forever.
-	wstring wscFirstCharacterName;
-	while (characterList)
-	{
-		// We need to make sure the character name is not null (which it is sometimes because Freelancer?)
-		if (!characterList->wszCharname)
-		{
-			// Loop to the next one if this happens.
-			characterList = characterList->next;
-			continue;
-		}
-
-		wstring wscCharacterName;
-		try {
-			wscCharacterName = reinterpret_cast<wchar_t*>(characterList->wszCharname);
-		}
-		catch (...) {
-			// Loop to the next one if this happens.
-			characterList = characterList->next;
-			continue;
-		}
-
-		// Only store the first name
-		if (iCharactersRefreshed == 0)
-			wscFirstCharacterName = wscCharacterName;
-
-		// If this isn't the first name, we need to check that we've not looped over the list again
-		else
-			if (wscCharacterName == wscFirstCharacterName)
-				break; // End the loop if the names match
-
-		iCharactersRefreshed++;
-		PrintUserCmdText(iClientID, L"Character: %s - Timestamps Refreshed", wscCharacterName.c_str());
-		if ((err = HkFLIniWrite(wscCharacterName, L"tstamp", stows(toWrite))) != HKE_OK)
-		{
-			PrintUserCmdText(iClientID, L"ERROR: %s", HkErrGetText(err).c_str());
-			return true;
-		}
-
-		// Loop again
-		characterList = characterList->next;
-	}
-	// List the amount of characters we've refreshed.
-	PrintUserCmdText(iClientID, L"Sucessfully refreshed %u characters.", iCharactersRefreshed);
-
-	// Kick them as a way to prevent save data loss and ensure everything ticks over as intended.
-	HkKickReason(reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)), L"Updating Character File, please wait 10 seconds before reconnecting.");
-	return true;
-}
-
 // /frelancer - gives the user a freelancer IFF
 bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
@@ -497,8 +424,6 @@ struct USERCMD
 
 USERCMD UserCmds[] =
 {
-	{ L"/refresh", UserCmd_RefreshCharacters, L"" },
-	{ L"/refresh*", UserCmd_RefreshCharacters, L"" },
 	{ L"/freelancer", UserCmd_FreelancerIFF, L"" },
 	{ L"/wp", UserCmd_WayPoint, L"" },
 	{ L"/wpp", UserCmd_WayPointPlayer, L"" },

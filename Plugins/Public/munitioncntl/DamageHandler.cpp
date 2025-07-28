@@ -704,7 +704,7 @@ void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, D
 			}
 			else
 			{
-				colGrpArmor = shipArmorRating;
+				colGrpArmor = solarArmorRating;
 			}
 
 			if (weaponMunitionData)

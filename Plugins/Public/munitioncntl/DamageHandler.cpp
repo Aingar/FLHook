@@ -683,42 +683,43 @@ __declspec(naked) void SolarHullDamageNaked()
 
 void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
-	if (armorEnabled)
+	if (!armorEnabled)
 	{
-		if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
-		{
-			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
-		}
-
-		int colGrpArmor = 0;
-		static auto shipIter = shipArmorMap.end();
-
-		FetchSolarArmor(iobj->cobj->archetype->iArchID);
-
-		if (shipArmorIter != shipArmorMap.end())
-		{
-			auto colGrpIter = shipArmorIter->second.find(colGrp->colGrp->id);
-			if (colGrpIter != shipArmorIter->second.end())
-			{
-				colGrpArmor = colGrpIter->second;
-			}
-			else
-			{
-				colGrpArmor = solarArmorRating;
-			}
-
-			if (weaponMunitionData)
-			{
-				colGrpArmor = max(0, colGrpArmor - weaponMunitionData->armorPen);
-			}
-
-			if (colGrpArmor)
-			{
-				incDmg *= armorReductionVector.at(colGrpArmor);
-			}
-		}
-		armorEnabled = false;
+		return;
 	}
+
+	if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
+	{
+		incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+	}
+
+	int colGrpArmor = 0;
+
+	FetchSolarArmor(iobj->cobj->archetype->iArchID);
+
+	if (solarArmorIter != solarArmorMap.end())
+	{
+		auto colGrpIter = solarArmorIter->second.find(colGrp->colGrp->id);
+		if (colGrpIter != solarArmorIter->second.end())
+		{
+			colGrpArmor = colGrpIter->second;
+		}
+		else
+		{
+			colGrpArmor = solarArmorRating;
+		}
+
+		if (weaponMunitionData)
+		{
+			colGrpArmor = max(0, colGrpArmor - weaponMunitionData->armorPen);
+		}
+
+		if (colGrpArmor)
+		{
+			incDmg *= armorReductionVector.at(colGrpArmor);
+		}
+	}
+	armorEnabled = false;
 }
 
 __declspec(naked) void SolarColGrpDamageNaked()

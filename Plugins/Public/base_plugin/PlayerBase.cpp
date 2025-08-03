@@ -301,7 +301,10 @@ void PlayerBase::SetupDefaults()
 
 wstring PlayerBase::GetBaseHeaderText()
 {
-
+	if (archetype && archetype->isjump)
+	{
+		return HkGetWStringFromIDS(66146);
+	}
 	const Universe::ISystem* sys = Universe::get_system(system);
 
 	wstring base_status = L"<RDL><PUSH/>";

@@ -163,14 +163,14 @@ void __fastcall ShipRadiationDamage(IObjRW* ship, void* edx, float time, DamageL
 		{
 			if (edgeDistance <= zd.distanceScaling)
 			{
-				dmgMultiplier = zd.distanceStartingScale + ( 1.0f - zd.distanceStartingScale * powf(edgeDistance / zd.distanceScaling, zd.logScale));
+				dmgMultiplier = zd.distanceStartingScale + (( 1.0f - zd.distanceStartingScale) * powf(edgeDistance / zd.distanceScaling, zd.logScale));
 			}
 		}
 		else
 		{
 			if (edgeDistance <= -zd.distanceScaling)
 			{
-				dmgMultiplier = zd.distanceStartingScale + ( 1.0f - powf(1.0f - (edgeDistance / -zd.distanceScaling), zd.logScale));
+				dmgMultiplier = zd.distanceStartingScale + (( 1.0f - zd.distanceScaling) * powf(1.0f - (edgeDistance / -zd.distanceScaling), zd.logScale));
 			}
 			else
 			{

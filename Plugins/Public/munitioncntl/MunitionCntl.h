@@ -111,13 +111,18 @@ struct EngineProperties
 	string hpType;
 };
 
+struct MunitionData
+{
+	int armorPen;
+	float percentageHullDmg;
+	float percentageShieldDmg;
+	float percentageEnergyDmg;
+};
+
 struct ExplosionDamageData
 {
 	uint weaponType = 0;
-	float percentageDamageHull = 0.0f;
-	float percentageDamageShield = 0.0f;
-	float percentageDamageEnergy = 0.0f;
-	int armorPen = 0;
+	MunitionData munitionData;
 	float detDist = 0.0f;
 	bool cruiseDisrupt = false;
 	bool damageSolars = true;
@@ -158,14 +163,6 @@ enum TRACKING_STATE {
 	TRACK_ALERT,
 	TRACK_NOALERT,
 	NOTRACK_NOALERT
-};
-
-struct MunitionData
-{
-	int armorPen;
-	float percentageHullDmg;
-	float percentageShieldDmg;
-	float percentageEnergyDmg;
 };
 
 extern unordered_map<uint, ExplosionDamageData> explosionTypeMap;

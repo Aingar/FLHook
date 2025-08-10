@@ -190,9 +190,9 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 		float hullDmg = explosion->explosionArchetype->fHullDamage;
 
-		if (explData && explData->percentageDamageHull)
+		if (explData && explData->munitionData.percentageHullDmg)
 		{
-			hullDmg += explData->percentageDamageHull * equip->archetype->fHitPoints;
+			hullDmg += explData->munitionData.percentageHullDmg * equip->archetype->fHitPoints;
 		}
 
 		float damageToDeal = eqDmgMult * hullDmg * equip->archetype->fExplosionResistance;
@@ -240,17 +240,9 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 			float hullDmg = explosion->explosionArchetype->fHullDamage;
 
-			if (explData && explData->percentageDamageHull)
-			{
-				hullDmg += explData->percentageDamageHull * colGrp->colGrp->hitPts;
-			}
-
 			if (!colGrp->colGrp->rootHealthProxy)
 			{
-				if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
-				{
-					armorEnabled = true;
-				}
+				armorEnabled = true;
 				float damage = colGrpDmgMult * hullDmg * colGrp->colGrp->explosionResistance;
 				iobj->damage_col_grp(colGrp, damage, dmg);
 
@@ -284,9 +276,9 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	rootDistance = max(rootDistance, 0.1f);
 	
 	float hullDmgBudget = explosion->explosionArchetype->fHullDamage;
-	if (explData && explData->percentageDamageHull)
+	if (explData && explData->munitionData.percentageHullDmg)
 	{
-		hullDmgBudget += explData->percentageDamageHull * ceqobj->archetype->fHitPoints;
+		hullDmgBudget += explData->munitionData.percentageHullDmg * ceqobj->archetype->fHitPoints;
 	}
 	hullDmgBudget *= ceqobj->archetype->fExplosionResistance;
 
@@ -295,10 +287,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		float dmgMult = colGrpMultSum > 1.0f ? distance.second / colGrpMultSum : distance.second;
 		float damage = dmgMult * explosion->explosionArchetype->fHullDamage;
 		float damageToDeal = damage * distance.first->colGrp->explosionResistance;
-		if (explData && explData->percentageDamageHull)
-		{
-			damageToDeal += explData->percentageDamageHull * distance.first->colGrp->hitPts;
-		}
+
 		armorEnabled = true;
 		iobj->damage_col_grp(distance.first, damageToDeal, dmg);
 		hullDmgBudget -= damageToDeal;
@@ -309,10 +298,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		return;
 	}
 
-	if (ceqobj->objectClass == CObject::CSHIP_OBJECT)
-	{
-		armorEnabled = true;
-	}
+	armorEnabled = true;
 	iobj->damage_hull(hullDmgBudget, dmg);
 
 	armorEnabled = false;
@@ -355,10 +341,6 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	if (explData)
 	{
-		if (explData->percentageDamageShield)
-		{
-			shieldDamage += explData->percentageDamageShield * shield->maxShieldHitPoints;
-		}
 		if (explData->weaponType)
 		{
 			shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
@@ -430,9 +412,9 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 	}
 
 	float damage = dmgMult * explosion->explosionArchetype->fEnergyDamage;
-	if (explData && explData->percentageDamageEnergy)
+	if (explData && explData->munitionData.percentageEnergyDmg)
 	{
-		damage += reinterpret_cast<CEqObj*>(iobj->cobj)->maxPower * explData->percentageDamageEnergy;
+		damage += reinterpret_cast<CEqObj*>(iobj->cobj)->maxPower * explData->munitionData.percentageEnergyDmg;
 	}
 
 	iobj->damage_energy(damage, dmg);
@@ -440,18 +422,29 @@ void EnergyExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageLis
 
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg)
 {
-	returncode = NOFUNCTIONCALL;
 	float rootDistance = FLT_MAX;
 	const auto iter = explosionTypeMap.find(explosion->explosionArchetype->iID);
 	const auto explData = iter == explosionTypeMap.end() ? nullptr : &iter->second;
 
+	weaponMunitionDataArch = explosion->explosionArchetype->iID;
+	if (explData)
+	{
+		weaponMunitionData = &explData->munitionData;
+	}
+	else
+	{
+		weaponMunitionData = nullptr;
+	}
+
 	if (ShieldAndDistance(iobj, explosion, dmg, rootDistance, explData))
 	{
+		returncode = NOFUNCTIONCALL;
 		return true;
 	}
 
 	ShipExplosionHandlingExtEqColGrpHull(iobj, explosion, dmg, rootDistance, explData);
 	EnergyExplosionHit(iobj, explosion, dmg, rootDistance, explData);
+	returncode = NOFUNCTIONCALL;
 	return false;
 }
 

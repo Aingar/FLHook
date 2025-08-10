@@ -544,22 +544,22 @@ void ReadMunitionDataFromInis()
 					}
 					else if (ini.is_value("armor_pen"))
 					{
-						damageType.armorPen = ini.get_value_int(0);
+						damageType.munitionData.armorPen = ini.get_value_int(0);
 						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_hull"))
 					{
-						damageType.percentageDamageHull = ini.get_value_float(0);
+						damageType.munitionData.percentageHullDmg = ini.get_value_float(0);
 						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_shield"))
 					{
-						damageType.percentageDamageShield = ini.get_value_float(0);
+						damageType.munitionData.percentageShieldDmg = ini.get_value_float(0);
 						foundItem = true;
 					}
 					else if (ini.is_value("percentage_damage_energy"))
 					{
-						damageType.percentageDamageEnergy = ini.get_value_float(0);
+						damageType.munitionData.percentageEnergyDmg = ini.get_value_float(0);
 						foundItem = true;
 					}
 					else if (ini.is_value("cruise_disruptor"))
@@ -611,22 +611,22 @@ void ReadMunitionDataFromInis()
 				}
 				else if (ini.is_value("armor_pen"))
 				{
-					damageType.armorPen = ini.get_value_int(0);
+					damageType.munitionData.armorPen = ini.get_value_int(0);
 					foundItem = true;
 				}
 				else if (ini.is_value("percentage_damage_hull"))
 				{
-					damageType.percentageDamageHull = ini.get_value_float(0);
+					damageType.munitionData.percentageHullDmg = ini.get_value_float(0);
 					foundItem = true;
 				}
 				else if (ini.is_value("percentage_damage_shield"))
 				{
-					damageType.percentageDamageShield = ini.get_value_float(0);
+					damageType.munitionData.percentageShieldDmg = ini.get_value_float(0);
 					foundItem = true;
 				}
 				else if (ini.is_value("percentage_damage_energy"))
 				{
-					damageType.percentageDamageEnergy = ini.get_value_float(0);
+					damageType.munitionData.percentageEnergyDmg = ini.get_value_float(0);
 					foundItem = true;
 				}
 				else if (ini.is_value("cruise_disruptor"))

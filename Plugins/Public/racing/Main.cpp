@@ -1672,7 +1672,7 @@ void __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, D
 	}
 
 	uint clientId = iobj->cobj->ownerPlayer;
-	if (!clientId || dmg->damageCause != DamageCause::CruiseDisrupter || !dmg->iInflictorPlayerID)
+	if (!clientId || dmg->damageCause != DamageCause::CruiseDisrupter)
 	{
 		return;
 	}

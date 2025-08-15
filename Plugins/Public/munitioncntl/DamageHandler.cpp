@@ -128,7 +128,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	CEqObj* ceqobj = reinterpret_cast<CEqObj*>(iobj->cobj);
 
 	float detonationDistance = 0.0f;
-	if (explData && ceqobj->objectClass == CObject::CSHIP_OBJECT)
+	if (explData)
 	{
 		detonationDistance = explData->detDist;
 	}
@@ -910,12 +910,7 @@ FireResult __fastcall CELauncherFire(CELauncher* gun, void* edx, const Vector& p
 	const static CELAUNCHERFIRE gunfirefunc = CELAUNCHERFIRE(0x62995C0);
 
 	FireResult fireResult = gunfirefunc(gun, pos);
-	if (fireResult != FireResult::Success)
-	{
-		return fireResult;
-	}
-
-	if (gun->owner->ownerPlayer)
+	if (fireResult != FireResult::Success || gun->owner->ownerPlayer)
 	{
 		return fireResult;
 	}

@@ -948,14 +948,20 @@ void __stdcall ShipEquipmentDestroyed(IObjRW* ship, CEquip* eq, DamageEntry::Sub
 
 	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(EquipmentClass::Shield));
-	if (!shield)
+	if (!shield || shield->linkedShieldGen.size() != 1)
 	{
 		return;
 	}
 
-	if (shield->linkedShieldGen.size() == 1)
+	for (auto& linkedShield : shield->linkedShieldGen)
 	{
+		if (linkedShield != eq)
+		{
+			continue;
+		}
+		
 		ship->cequip_death(shield, fate, dmgList);
+		break;
 	}
 }
 

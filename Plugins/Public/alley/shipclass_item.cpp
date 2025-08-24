@@ -260,8 +260,31 @@ void SCI::CheckItems(unsigned int iClientID)
 		wstring wscMsg = L"ERR You have no ID on your ship. You must have one.";
 		owned[iClientID] = wscMsg;
 		StoreReturnPointForClient(iClientID);
+		return;
 	}
 
+
+	static const uint recruitID = CreateID("dsy_license_military");
+	if (ClientInfo[iClientID].playerID == recruitID)
+	{
+		for (auto& item : Players[iClientID].equipDescList.equip)
+		{
+			if (item.bMounted)
+			{
+				continue;
+			}
+
+			bool isCommodity = false;
+			pub::IsCommodity(item.iArchID, isCommodity);
+			if (isCommodity)
+			{
+				wstring wscMsg = L"ERR You cannot carry commodities with Recruit ID mounted.";
+				owned[iClientID] = wscMsg;
+				StoreReturnPointForClient(iClientID);
+				break;
+			}
+		}
+	}
 
 	return;
 }

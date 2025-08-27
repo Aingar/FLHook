@@ -763,7 +763,7 @@ void LoadSettings()
 			}
 			else if (ini.is_value("race_name"))
 			{
-				race.raceName = stows(ini.get_value_string(0));
+				race.raceName = stows(ini.get_value_string());
 			}
 			else if (ini.is_value("race_num"))
 			{
@@ -903,7 +903,7 @@ bool UserCmd_RaceScoreboard(uint clientID, const wstring& cmd, const wstring& pa
 		return true;
 	}
 
-	auto raceNum = ToUInt(GetParam(param, ' ', 1));
+	auto raceNum = ToUInt(GetParam(param, ' ', 0));
 	auto& raceIter = raceObjIter->second.find(raceNum);
 	if (raceIter == raceObjIter->second.end())
 	{

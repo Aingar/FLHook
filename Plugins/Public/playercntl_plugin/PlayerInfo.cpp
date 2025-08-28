@@ -488,55 +488,18 @@ bool PlayerInfo::UserCmd_ShowInfoSelf(uint iClientID, const wstring& wscCmd, con
 		InitializePlayerInfo(iClientID);
 	}
 
-	if (wscParam == L"me")
-	{
-
-		HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Your Information");
-		HkChangeIDSString(iClientID, SETINFO_START_INFOCARD + iClientID, playerInfoData[iClientID].playerInfo);
-		FmtStr caption(0, 0);
-		caption.begin_mad_lib(SETINFO_START_INFOCARD);
-		caption.end_mad_lib();
-
-		FmtStr message(0, 0);
-		message.begin_mad_lib(SETINFO_START_INFOCARD + iClientID);
-		message.end_mad_lib();
-
-		pub::Player::PopUpDialog(iClientID, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
-		return true;
-	}
-
-	auto cship = ClientInfo[iClientID].cship;
-	if (!cship)
-	{
-		PrintUserCmdText(iClientID, L"ERR Not in space");
-		return true;
-	}
-
-	auto targetShip = cship->get_target();
-	if (!targetShip || targetShip->cobj->objectClass != CObject::CSHIP_OBJECT)
-	{
-		PrintUserCmdText(iClientID, L"ERR No player target");
-		return true;
-	}
-	auto targetCShip = reinterpret_cast<CShip*>(targetShip->cobj);
-	if (!targetCShip->ownerPlayer)
-	{
-		PrintUserCmdText(iClientID, L"ERR No player target");
-		return true;
-	}
-
-	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Target Information");
+	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD, L"Your Information");
+	HkChangeIDSString(iClientID, SETINFO_START_INFOCARD + iClientID, playerInfoData[iClientID].playerInfo);
 	FmtStr caption(0, 0);
 	caption.begin_mad_lib(SETINFO_START_INFOCARD);
 	caption.end_mad_lib();
 
 	FmtStr message(0, 0);
-	message.begin_mad_lib(SETINFO_START_INFOCARD + targetCShip->ownerPlayer);
+	message.begin_mad_lib(SETINFO_START_INFOCARD + iClientID);
 	message.end_mad_lib();
 
 	pub::Player::PopUpDialog(iClientID, caption, message, POPUPDIALOG_BUTTONS_CENTER_OK);
 	return true;
-
 }
 
 void PlayerInfo::ClearInfo(uint clientId, bool fullClear)

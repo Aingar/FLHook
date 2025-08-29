@@ -256,10 +256,10 @@ void LoadMarketGoodsIni(const string& scPath, map<uint, market_map_t >& mapBaseM
 			MarketGoodInfo mgi;
 			mgi.iGoodID = CreateID(ini.get_value_string(0));
 			mgi.iMin = ini.get_value_int(3);
-			mgi.iQuantity = ini.get_value_int(4);
+			mgi.iStock = ini.get_value_int(4);
 			mgi.iTransType = (TransactionType)ini.get_value_int(5);
-			mgi.fRep = 0.0f;
-			mgi.fRank = 0.0f;
+			mgi.fRep = ini.get_value_float(2);
+			mgi.fRank = ini.get_value_float(1);
 			const GoodInfo* gi = GoodList::find_by_id(mgi.iGoodID);
 			mgi.fPrice = (gi) ? gi->fPrice * ini.get_value_float(6) : 0.0f;
 			mapMarket.insert(market_map_t::value_type(mgi.iGoodID, mgi));
@@ -1240,7 +1240,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&AcceptTrade, PLUGIN_HkIServerImpl_AcceptTrade, 0));
 
 
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ShipDestroyed, PLUGIN_ShipDestroyed, -1));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));
 

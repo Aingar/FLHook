@@ -5916,8 +5916,6 @@ public:
 	TransactionType iTransType;
 	float fRank;
 	float fRep;
-	int iQuantity;
-	float fScale;
 };
 
 class IMPORT MarshalBuffer

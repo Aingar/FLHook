@@ -136,6 +136,8 @@ map<string, COMBAT_EVENT> mapCombatEvents;
 
 map<string, EVENT_TRACKER> mapEventTracking;
 
+unordered_set<uint> permadeathItems;
+uint permadeathDestination = CreateID("iw09_03_base"); // bastille
 uint SuhlDeathCounter = 0;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,7 +188,7 @@ void LoadSettings()
 	mapEventTracking.clear();
 	mapTradeEvents.clear();
 	mapCombatEvents.clear();
-
+	permadeathItems.clear();
 
 	unordered_map <uint, string> mapIDs;
 
@@ -232,6 +234,16 @@ void LoadSettings()
 	{
 		while (ini.read_header())
 		{
+			if (ini.is_header("Hardcore"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("item"))
+					{
+						permadeathItems.insert(CreateID(ini.get_value_string()));
+					}
+				}
+			}
 			//Trade events
 			if (ini.is_header("TradeEvent"))
 			{
@@ -1472,6 +1484,23 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	if (cship->ownerPlayer)
 	{
+		if (!permadeathItems.empty() )
+		{
+			CEquipTraverser tr(Cargo);
+			CEquip* eq;
+			while (eq = cship->equip_manager.Traverse(tr))
+			{
+				if (!permadeathItems.count(eq->archetype->iArchID))
+				{
+					continue;
+				}
+
+				Players[cship->ownerPlayer].iLastBaseID = permadeathDestination;
+				PrintUserCmdText(cship->ownerPlayer, L"Your hardcore run has ended, respawn redirected to Bastille.");
+				PrintUserCmdText(cship->ownerPlayer, L"Better luck next time!");
+			}
+		}
+
 		if (iobj->cobj->currentDamageZone)
 		{
 			if (iobj->cobj->currentDamageZone->iZoneID == 0xac4c6708)

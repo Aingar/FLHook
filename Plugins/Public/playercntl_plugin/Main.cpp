@@ -54,6 +54,7 @@ float set_fSpinProtectMass;
 float set_fSpinImpulseMultiplier;
 
 float set_fMinCLootRoadkillSpeed = 25.0f;
+float set_shipFuseRepairRatio = 1.5f;
 
 // set of ships which cannot use TradeLane, and are blocked
 // from forming on other ships to bypass the block
@@ -123,6 +124,7 @@ void LoadSettings()
 	set_bEnableGiveCash = IniGetB(scPluginCfgFile, "General", "EnableGiveCash", false);
 	set_bEnableDeathMsg = IniGetB(scPluginCfgFile, "General", "EnableDeathMsg", false);
 
+	set_shipFuseRepairRatio = IniGetF(scPluginCfgFile, "General", "FuseRepairRatio", 1.5f);
 	set_fSpinProtectMass = IniGetF(scPluginCfgFile, "General", "SpinProtectionMass", 180.0f);
 	set_fSpinImpulseMultiplier = IniGetF(scPluginCfgFile, "General", "SpinProtectionMultiplier", -1.0f);
 
@@ -440,7 +442,7 @@ namespace HkIServerImpl
 
 			if (eq.iArchID == NANOBOT_ARCH_ID)
 			{
-				uint amountToUse = static_cast<uint>(floor((cship->archetype->fHitPoints * 1.5) / NANOBOT_HEAL_AMOUNT));
+				uint amountToUse = static_cast<uint>(floor((cship->archetype->fHitPoints * set_shipFuseRepairRatio) / NANOBOT_HEAL_AMOUNT));
 				if (amountToUse < p1.sAmountUsed)
 				{
 					pub::Player::RemoveCargo(iClientID, p1.sItemId, amountToUse);

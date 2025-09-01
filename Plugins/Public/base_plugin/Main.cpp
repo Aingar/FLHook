@@ -586,6 +586,14 @@ void LoadRecipes()
 					{
 						recipe.moduleCargoStorage = ini.get_value_int(0);
 					}
+					else if (ini.is_value("affiliation_bonus"))
+					{
+						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
+					}
+					else if (ini.is_value("restricted"))
+					{
+						recipe.restricted = ini.get_value_bool(0);
+					}
 				}
 				AddModuleRecipeToMaps(recipe, craft_types, build_type, recipe_number);
 			}
@@ -1701,13 +1709,19 @@ bool UserCmd_Process(uint client, const wstring &args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
+	else if (args.find(L"/base setrestockmargin") == 0)
+	{
+		PlayerCommands::SetRestockMargin(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
 	else if (args.find(L"/base") == 0)
 	{
 		PlayerCommands::BaseHelp(client, args);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
-	else if (args.find(L"/rearm") == 0)
+	else if (args.find(L"/restock") == 0)
 	{
 		RearmamentModule::Rearm(client);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -1949,6 +1963,13 @@ void __stdcall BaseEnter(uint baseId, uint client)
 		{
 			if (base->proxy_base != baseId)
 			{
+				auto iBase = Universe::get_base(baseId);
+				if (string(iBase->cNickname).find("proxy_base") == string::npos)
+				{
+					DeleteDockState(client);
+					SendResetMarketOverride(client);
+					return;
+				}
 				PrintUserCmdText(client, L"The POB you are on has moved systems. Launch to be beamed back to it.");
 				return;
 			}
@@ -1968,7 +1989,6 @@ void __stdcall BaseEnter(uint baseId, uint client)
 				}
 			}
 
-			RearmamentModule::CheckPlayerInventory(client, base);
 			// Reset the commodity list	and send a dummy entry if there are no
 			// commodities in the market
 			SaveDockState(client);
@@ -1988,6 +2008,18 @@ void __stdcall BaseEnter(uint baseId, uint client)
 
 	DeleteDockState(client);
 	SendResetMarketOverride(client);
+}
+
+
+void __stdcall BaseEnter_AFTER(uint baseId, uint client)
+{
+	returncode = DEFAULT_RETURNCODE;
+
+	PlayerBase* base = GetPlayerBaseForClient(client);
+	if (base)
+	{
+		RearmamentModule::CheckPlayerInventory(client, base);
+	}
 }
 
 void __stdcall BaseExit(uint base, uint client)
@@ -2284,11 +2316,18 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	int count = gsi.iCount;
 	int price = item.sellPrice * count;
 
-	if ((item.quantity + count) > item.max_stock)
+	if (item.quantity >= item.max_stock)
 	{
 		PrintUserCmdText(client, L"ERR: Base cannot accept goods, stock limit reached.");
 		cd.reverse_sell = true;
 		return;
+	}
+
+	if ((item.quantity + count) > item.max_stock)
+	{
+		count = item.max_stock - item.quantity;
+		cd.reverseSellAmount = gsi.iCount - count;
+		PrintUserCmdText(client, L"INFO: Reached stock limit. Only selling %u out of attempted %u units", count, gsi.iCount);
 	}
 
 	if (price < 0)
@@ -2356,11 +2395,11 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	if (base->AddMarketGood(gsi.iArchID, gsi.iCount))
+	if (base->AddMarketGood(gsi.iArchID, count))
 	{
 		lastTransactionBase = true;
 		lastTransactionArchID = gsi.iArchID;
-		lastTransactionCount = gsi.iCount;
+		lastTransactionCount = count;
 		lastTransactionClientID = client;
 	}
 	else
@@ -2384,7 +2423,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		string cname = wstos(listCommodities[gsi.iArchID]);
 		string cbase = wstos(base->basename);
 
-		Notify_Event_Commodity_Sold(client, cname, gsi.iCount, cbase);
+		Notify_Event_Commodity_Sold(client, cname, count, cbase);
 	}
 
 	//build string and log the purchase
@@ -2403,7 +2442,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 			//HkMsgU(L"DEBUG: POB event commodity found");
 			//At this point, send the data to HookExt
 			PrintUserCmdText(client, L"Processing event deposit, please wait up to 15 seconds...");
-			HookExt::AddPOBEventData(client, wstos(HookExt::IniGetWS(client, "event.eventid")), gsi.iCount);
+			HookExt::AddPOBEventData(client, wstos(HookExt::IniGetWS(client, "event.eventid")), count);
 		}
 	}
 
@@ -2427,7 +2466,7 @@ void __stdcall ReqRemoveItem(unsigned short slot, int count, unsigned int client
 	returncode = DEFAULT_RETURNCODE;
 
 	auto& cd = clients[client];
-	if (cd.player_base && cd.reverse_sell)
+	if (cd.player_base && (cd.reverse_sell || cd.reverseSellAmount))
 	{
 		returncode = SKIPPLUGINS;
 		int hold_size;
@@ -2453,6 +2492,20 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 				if (ci.iID == iID)
 				{
 					Server.ReqAddItem(ci.iArchID, ci.hardpoint.value, count, ci.fStatus, ci.bMounted, client);
+					return;
+				}
+			}
+		}
+		else if (cd.reverseSellAmount)
+		{
+			returncode = SKIPPLUGINS;
+
+			for (CARGO_INFO& ci : cd.cargo)
+			{
+				if (ci.iID == iID)
+				{
+					Server.ReqAddItem(ci.iArchID, ci.hardpoint.value, cd.reverseSellAmount, ci.fStatus, ci.bMounted, client);
+					cd.reverseSellAmount = 0;
 					return;
 				}
 			}
@@ -3515,6 +3568,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		base->AddMarketGood(goodId, amount);
 		base->Save();
 
+		PrintUserCmdText(client, L"OK added %s x%u to %s", cmd->ArgStr(1).c_str(), amount, base->basename.c_str());
 		BaseLogging("%s added %s x%u to %s", wstos(cmd->GetAdminName()).c_str(), wstos(cmd->ArgStr(1)).c_str(), amount, wstos(base->basename).c_str());
 
 		return true;
@@ -4084,6 +4138,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete, PLUGIN_HkIServerImpl_JumpInComplete, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter, PLUGIN_HkIServerImpl_BaseEnter, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseExit, PLUGIN_HkIServerImpl_BaseExit, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call_After, PLUGIN_HkCb_Dock_Call_AFTER, 0));

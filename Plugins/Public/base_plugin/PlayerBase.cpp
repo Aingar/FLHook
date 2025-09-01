@@ -297,13 +297,18 @@ void PlayerBase::SetupDefaults()
 	}
 
 	RecalculateCargoSpace();
+
+	if (base_level >= 2)
+	{
+		isRearmamentAvailable = true;
+	}
 }
 
 wstring PlayerBase::GetBaseHeaderText()
 {
 	if (archetype && archetype->isjump)
 	{
-		return HkGetWStringFromIDS(66146);
+		return LR"(<?xml version="1.0" encoding="UTF-16"?><RDL><PUSH/><TRA data="65281" mask="-31" def="30"/><TEXT>***GRAVITATIONAL ANOMALY DETECTED***</TEXT><PARA/><TRA data="96" mask="-31" def="-1"/><TEXT> </TEXT><PARA/><TEXT>Magnetic and gravimetric readings are consistent with a Jump Hole -- a natural phenomenon that functions similar to a Jump Gate, though the hazards associated with traveling through a Jump Hole remain largely unknown. Like Jump Gates, jump holes are semi-permeable areas in real-space that have a tendency to breach the natural boundaries of linear time and space. Unlike Jump Gates, though, these anomalies occur naturally and so are both unpredictable and unstable. Traveling through jump holes is a risky proposition at best. Though some have been charted and, based on accounts from ships that have accidentally encountered them, have had their exit points logged, just as many ships have never been heard from again. It is believed that these ships were either crushed in the violent, cataclysmic vortex that lies outside the narrow corridor of a jump tunnel, or were sent to a place far enough away to make communication or a return trip infeasible. In either case, those missing are presumed dead. Ageira Technologies and Deep Space Engineering urge all citizens to use the prescribed Trade Lanes and Jump Gates and to avoid all contact with jump holes.</TEXT><PARA/><POP/></RDL>)";
 	}
 	const Universe::ISystem* sys = Universe::get_system(system);
 
@@ -371,6 +376,11 @@ wstring PlayerBase::GetBaseHeaderText()
 wstring PlayerBase::BuildBaseDescription()
 {
 	wstring base_info = GetBaseHeaderText();
+
+	if (archetype && archetype->isjump)
+	{
+		return base_info;
+	}
 
 	if (single_vulnerability_window)
 	{
@@ -706,6 +716,10 @@ void PlayerBase::Load()
 					{
 						noDockKeyMessage = stows(ini.get_value_string());
 					}
+					else if (ini.is_value("rearmament_margin"))
+					{
+						rearmamentCostPerCredit = ini.get_value_float(0);
+					}
 				}
 				if (basetype.empty())
 				{
@@ -837,6 +851,10 @@ void PlayerBase::Save()
 		fprintf(file, "last_vulnerability_change = %u\n", lastVulnerabilityWindowChange);
 		fprintf(file, "vulnerability_windows = %u, %u\n", vulnerabilityWindow1.start / 60, vulnerabilityWindow2.start / 60);
 
+		if (isRearmamentAvailable)
+		{
+			fprintf(file, "rearmament_margin = %0.3f\n", rearmamentCostPerCredit);
+		}
 		fprintf(file, "money = %I64d\n", money);
 		auto sysInfo = Universe::get_system(system);
 		fprintf(file, "system = %s\n", sysInfo->nickname.value);

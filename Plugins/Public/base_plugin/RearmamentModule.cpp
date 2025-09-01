@@ -12,7 +12,7 @@ RearmamentModule::~RearmamentModule()
 
 wstring RearmamentModule::GetInfo(bool xml)
 {
-    return L"Rearmament Module";
+    return L"Rearmament Module - " + itows(static_cast<int>(base->rearmamentCostPerCredit * 100.f)) + L"% of regular restock prices.";
 }
 
 void RearmamentModule::LoadState(INI_Reader& ini)
@@ -99,7 +99,7 @@ void RearmamentModule::Rearm(uint clientId)
     Server.LocationExit(location, clientId);
     Server.BaseExit(baseId, clientId);
 
-    int cost = static_cast<int>(actualToPay);
+    int cost = static_cast<int>(creditCost);
     pub::Player::AdjustCash(clientId, -cost);
     base->ChangeMoney(cost);
 
@@ -130,13 +130,13 @@ void RearmamentModule::Rearm(uint clientId)
         itemCart.remHoldSize -= static_cast<int>(eq->fVolume * item.iCount);
         pub::Player::AddCargo(clientId, item.iArchID, item.iCount, 1, false);
 
-        PrintUserCmdText(clientId, L"Rearm(%s): %d unit(s) loaded", item.wscDescription.c_str(), item.iCount);
+        PrintUserCmdText(clientId, L"Restock(%s): %d unit(s) loaded", item.wscDescription.c_str(), item.iCount);
     }
 
     static uint equipSound = CreateID("ui_load_cargo");
     pub::Audio::PlaySoundEffect(clientId, equipSound);
 
-    PrintUserCmdText(clientId, L"Cost: $%d", cost);
+    PrintUserCmdText(clientId, L"Restock Cost: $%d", cost);
     Server.BaseEnter(baseId, clientId);
     Server.LocationEnter(location, clientId);
     
@@ -199,5 +199,6 @@ void RearmamentModule::CheckPlayerInventory(uint clientId, PlayerBase* base)
         return;
     }
 
-    PrintUserCmdText(clientId, L"Rearmament available(/rearm), cost %d credits", static_cast<int>(base->rearmamentCostPerCredit * actualToPay));
+    PrintUserCmdText(clientId, L"Rearmament available (type /restock), cost %d credits. (%0.0f%% of normal repair cost)", 
+        static_cast<int>(base->rearmamentCostPerCredit * actualToPay), (base->rearmamentCostPerCredit * 100.f));
 }

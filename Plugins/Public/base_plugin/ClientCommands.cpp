@@ -119,7 +119,7 @@ void SendMarketGoodSync(PlayerBase* base, uint client)
 		else
 		{
 			_snwprintf(buf, sizeof(buf), L" SetMarketOverride %u %u %u %u %u %u",
-				base->proxy_base, good, item.price, 1, item.quantity - item.min_stock, item.sellPrice);
+				base->proxy_base, good, item.price, 0, item.quantity - item.min_stock, item.sellPrice);
 		}
 		SendCommand(client, buf);
 	}
@@ -236,6 +236,11 @@ void SendBaseStatus(uint client, PlayerBase* base)
 		uint nextCheckMinute = (nextCheckInSeconds % 3600) / 60;
 		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Refusing to work over lack of supplies, next supply check in " + itows(nextCheckHour) + L"h " + itows(nextCheckMinute) + L"m</TEXT><PARA/>";
 		base_status += L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
+	}
+
+	if (base->isRearmamentAvailable)
+	{
+		base_status += L"<TEXT>Rearmament Available at " + itows(static_cast<int>(base->rearmamentCostPerCredit * 100.f)) + L"% of regular restock prices.</TEXT><PARA/>";
 	}
 
 	base_status += L"<PARA/>";

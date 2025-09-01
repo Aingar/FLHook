@@ -614,10 +614,12 @@ enum class POPUPWINDOWTYPE
 struct CLIENT_DATA
 {
 	CLIENT_DATA() : reverse_sell(false), stop_buy(false), admin(false), viewshop(false), docking_base(0),
-		player_base(0), last_player_base(0), lastPopupPage(0), lastPopupWindowType(POPUPWINDOWTYPE::NONE){}
+		player_base(0), reverseSellAmount(0), last_player_base(0), lastPopupPage(0), lastPopupWindowType(POPUPWINDOWTYPE::NONE){}
 
 	// If true reverse the last sell by readding the item.
 	bool reverse_sell;
+
+	int reverseSellAmount;
 
 	// The cargo list used by the reverse sell.
 	list<CARGO_INFO> cargo;
@@ -693,6 +695,7 @@ namespace PlayerCommands
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
 	void SetPrefFood(uint client, const wstring& cmd);
+	void SetRestockMargin(uint client, const wstring& cmd);
 	void BaseSetPublic(uint client, const wstring& cmd);
 
 	void BaseDeploy(uint client, const wstring& args);
@@ -852,7 +855,6 @@ extern bool set_SkipUnchartedKill;
 
 extern int defense_platform_activation_offset;
 
-extern float rearmamentCostRatio;
 extern vector<pair<uint, float>> rearmamentCreditRatio;
 
 struct ScheduledRespawn

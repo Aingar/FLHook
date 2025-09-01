@@ -820,7 +820,7 @@ void PlayerAutorepair(uint iClientID)
 	return;
 }
 
-list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize)
+list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSpecialAmmo)
 {
 	// player cargo
 	list<CARGO_INFO> lstCargo;
@@ -945,18 +945,21 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize)
 				}
 			}
 
-			//FLHook handling
-			if (mapAutobuyFLHookCloak.find(eq->iArchID) != mapAutobuyFLHookCloak.end() && mapEntry.bAutobuyCloak)
+			if (getSpecialAmmo)
 			{
-				mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = L"Cloak Batteries";
-			}
-			if (mapAutobuyFLHookJump.find(eq->iArchID) != mapAutobuyFLHookJump.end() && mapEntry.bAutobuyJump)
-			{
-				mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = L"Jump Batteries";
-			}
-			if (mapAutobuyFLHookMatrix.find(eq->iArchID) != mapAutobuyFLHookMatrix.end() && mapEntry.bAutobuyMatrix)
-			{
-				mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = L"Matrix Batteries";
+				//FLHook handling
+				if (mapAutobuyFLHookCloak.find(eq->iArchID) != mapAutobuyFLHookCloak.end() && mapEntry.bAutobuyCloak)
+				{
+					mapAutobuyFLHookExtras[mapAutobuyFLHookCloak[eq->iArchID]] = L"Cloak Batteries";
+				}
+				if (mapAutobuyFLHookJump.find(eq->iArchID) != mapAutobuyFLHookJump.end() && mapEntry.bAutobuyJump)
+				{
+					mapAutobuyFLHookExtras[mapAutobuyFLHookJump[eq->iArchID]] = L"Jump Batteries";
+				}
+				if (mapAutobuyFLHookMatrix.find(eq->iArchID) != mapAutobuyFLHookMatrix.end() && mapEntry.bAutobuyMatrix)
+				{
+					mapAutobuyFLHookExtras[mapAutobuyFLHookMatrix[eq->iArchID]] = L"Matrix Batteries";
+				}
 			}
 		}
 		//Buy flhook stuff here
@@ -974,7 +977,7 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize)
 void PlayerAutobuy(uint iClientID, uint iBaseID)
 {
 	int iRemHoldSize;
-	auto lstCart = GetShoppingCart(iClientID, iRemHoldSize);
+	auto lstCart = GetShoppingCart(iClientID, iRemHoldSize, true);
 
 	// search base in base-info list
 	const auto& baseIter = lstBases.find(iBaseID);
@@ -1243,7 +1246,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 
 		auto commData = reinterpret_cast<CUSTOM_AUTOBUY_CARTITEMS*>(data);
 
-		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize);
+		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize, false);
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1260,7 +1263,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->ePluginReturnCode = &returncode;
 
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
-	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 0));
+	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&BaseEnter_AFTER, PLUGIN_HkIServerImpl_BaseEnter_AFTER, 1));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&CharacterSelect_AFTER, PLUGIN_HkIServerImpl_CharacterSelect_AFTER, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&UserCmd_Process, PLUGIN_UserCmd_Process, 0));

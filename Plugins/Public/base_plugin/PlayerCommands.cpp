@@ -1466,6 +1466,15 @@ namespace PlayerCommands
 				}
 			}
 
+			if (!buildRecipe->affiliationBonus.empty() && buildRecipe->restricted)
+			{
+				if (buildRecipe->affiliationBonus.find(base->affiliation) == buildRecipe->affiliationBonus.end())
+				{
+					PrintUserCmdText(client, L"ERR Module not buildable on this base");
+					return;
+				}
+			}
+
 			if (buildRecipe->shortcut_number == Module::TYPE_CORE)
 			{
 				if (base->base_level >= 4)
@@ -1577,6 +1586,16 @@ namespace PlayerCommands
 			if (buildRecipe->credit_cost)
 			{
 				PrintUserCmdText(client, L"|   $%u credits", buildRecipe->credit_cost);
+			}
+
+			if (!buildRecipe->affiliationBonus.empty() && buildRecipe->restricted)
+			{
+				PrintUserCmdText(client, L"Only buildable by:");
+				for (const auto& rep : buildRecipe->affiliationBonus)
+				{
+						PrintUserCmdText(client, L"|   %s",
+							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str());
+				}
 			}
 		}
 		else
@@ -3150,6 +3169,42 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
 			base->Save();
 		}
+	}
+
+	void SetRestockMargin(uint client, const wstring& cmd)
+	{
+		PlayerBase* base = GetPlayerBaseForClient(client);
+		if (!base)
+		{
+			PrintUserCmdText(client, L"ERR Not in player base");
+			return;
+		}
+
+		if (!checkBaseAdminAccess(base, client))
+		{
+			return;
+		}
+
+		auto inputStr = GetParam(cmd, ' ', 2);
+		if (inputStr.empty())
+		{
+			PrintUserCmdText(client, L"ERR Invalid input");
+			return;
+		}
+
+		float input = ToFloat(inputStr);
+
+		if (input < 0.0f)
+		{
+			PrintUserCmdText(client, L"ERR Invalid input");
+			return;
+		}
+
+		base->rearmamentCostPerCredit = input / 100.f;
+
+		PrintUserCmdText(client, L"Base will now offer repairs at %0.0f%% of regular station prices", input);
+
+		base->Save();
 	}
 
 	void BaseSetVulnerabilityWindow(uint client, const wstring& cmd)

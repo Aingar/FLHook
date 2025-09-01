@@ -242,8 +242,12 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 
 			if (!colGrp->colGrp->rootHealthProxy)
 			{
-				armorEnabled = true;
+				armorEnabled = DmgLogicArmor;
 				float damage = colGrpDmgMult * hullDmg * colGrp->colGrp->explosionResistance;
+				if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
+				{
+					damage += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+				}
 				iobj->damage_col_grp(colGrp, damage, dmg);
 
 				continue;
@@ -288,7 +292,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		float damage = dmgMult * explosion->explosionArchetype->fHullDamage;
 		float damageToDeal = damage * distance.first->colGrp->explosionResistance;
 
-		armorEnabled = true;
+		armorEnabled = DmgLogicArmor;
 		iobj->damage_col_grp(distance.first, damageToDeal, dmg);
 		hullDmgBudget -= damageToDeal;
 	}
@@ -298,10 +302,10 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		return;
 	}
 
-	armorEnabled = true;
+	armorEnabled = DmgLogicArmor;
 	iobj->damage_hull(hullDmgBudget, dmg);
 
-	armorEnabled = false;
+	armorEnabled = DmgLogicNone;
 }
 
 bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
@@ -339,12 +343,9 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	float shieldDamage = (explosion->explosionArchetype->fHullDamage * ShieldEquipConsts::HULL_DAMAGE_FACTOR) + explosion->explosionArchetype->fEnergyDamage;
 
-	if (explData)
+	if (explData && explData->weaponType)
 	{
-		if (explData->weaponType)
-		{
-			shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
-		}
+		shieldDamage *= GetWeaponModifier(shield, nullptr, explData->weaponType);
 	}
 
 	float threeThirds = explosion->explosionArchetype->fRadius - detDist;
@@ -376,6 +377,10 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 		return true;
 	}
 
+	if (explData && explData->munitionData.percentageShieldDmg)
+	{
+		shieldDamage += shield->maxShieldHitPoints * (1.0f - shield->offlineThreshold) * weaponMunitionData->percentageShieldDmg;
+	}
 	float damage = dmgMult * shieldDamage;
 	iobj->damage_shield_direct(shield, damage, dmg);
 
@@ -452,7 +457,7 @@ void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, D
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageShieldDmg)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageShieldDmg)
 	{
 		incDmg += shield->maxShieldHitPoints * (1.0f - shield->offlineThreshold) * weaponMunitionData->percentageShieldDmg;
 	}
@@ -583,9 +588,9 @@ void __fastcall SolarMunitionHit(IObjRW* solar, void* edx, MunitionImpactData* d
 
 	if (weaponMunitionDataArch == data->munitionId->iArchID)
 	{
-		armorEnabled = true;
+		armorEnabled = DmgLogicAll;
 		SolarMunitionHitCall(solar, data, dmg);
-		armorEnabled = false;
+		armorEnabled = DmgLogicNone;
 		return;
 	}
 
@@ -600,11 +605,11 @@ void __fastcall SolarMunitionHit(IObjRW* solar, void* edx, MunitionImpactData* d
 		weaponMunitionData = &munitionIter->second;
 	}
 
-	armorEnabled = true;
+	armorEnabled = DmgLogicAll;
 
 	SolarMunitionHitCall(solar, data, dmg);
 
-	armorEnabled = false;
+	armorEnabled = DmgLogicNone;
 }
 
 typedef void(__thiscall* ShipMunitionHitFunc)(IObjRW*, MunitionImpactData*, DamageList*);
@@ -615,9 +620,9 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 
 	if (weaponMunitionDataArch == data->munitionId->iArchID)
 	{
-		armorEnabled = true;
+		armorEnabled = DmgLogicAll;
 		ShipMunitionHitCall(iShip, data, dmg);
-		armorEnabled = false;
+		armorEnabled = DmgLogicNone;
 		return;
 	}
 
@@ -632,23 +637,32 @@ void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* da
 		weaponMunitionData = &munitionIter->second;
 	}
 
-	armorEnabled = true;
+	armorEnabled = DmgLogicAll;
 
 	ShipMunitionHitCall(iShip, data, dmg);
 
-	armorEnabled = false;
+	armorEnabled = DmgLogicNone;
 }
 
 void __stdcall SolarHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
-	if (armorEnabled)
+	if (armorEnabled == DmgLogicNone)
+	{
+		return;
+	}
+
+	if (armorEnabled & DmgLogicPercDmg && weaponMunitionData)
+	{
+		incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+	}
+
+	if (armorEnabled & DmgLogicArmor)
 	{
 		FetchSolarArmor(iobj->cobj->archetype->iArchID);
 
 		int finalArmorValue = solarArmorRating;
 		if (weaponMunitionData)
 		{
-			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
 			finalArmorValue = max(0, finalArmorValue - weaponMunitionData->armorPen);
 		}
 
@@ -656,8 +670,8 @@ void __stdcall SolarHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		{
 			incDmg *= armorReductionVector.at(finalArmorValue);
 		}
-		armorEnabled = false;
 	}
+	armorEnabled = DmgLogicNone;
 }
 
 __declspec(naked) void SolarHullDamageNaked()
@@ -676,43 +690,46 @@ __declspec(naked) void SolarHullDamageNaked()
 
 void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
-	if (!armorEnabled)
+	if (armorEnabled == DmgLogicNone)
 	{
 		return;
 	}
 
-	if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
 	{
 		incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
 	}
 
-	int colGrpArmor = 0;
-
-	FetchSolarArmor(iobj->cobj->archetype->iArchID);
-
-	if (solarArmorIter != solarArmorMap.end())
+	if (armorEnabled & DmgLogicArmor)
 	{
-		auto colGrpIter = solarArmorIter->second.find(colGrp->colGrp->id);
-		if (colGrpIter != solarArmorIter->second.end())
-		{
-			colGrpArmor = colGrpIter->second;
-		}
-		else
-		{
-			colGrpArmor = solarArmorRating;
-		}
+		int colGrpArmor = 0;
 
-		if (weaponMunitionData)
-		{
-			colGrpArmor = max(0, colGrpArmor - weaponMunitionData->armorPen);
-		}
+		FetchSolarArmor(iobj->cobj->archetype->iArchID);
 
-		if (colGrpArmor)
+		if (solarArmorIter != solarArmorMap.end())
 		{
-			incDmg *= armorReductionVector.at(colGrpArmor);
+			auto colGrpIter = solarArmorIter->second.find(colGrp->colGrp->id);
+			if (colGrpIter != solarArmorIter->second.end())
+			{
+				colGrpArmor = colGrpIter->second;
+			}
+			else
+			{
+				colGrpArmor = solarArmorRating;
+			}
+
+			if (weaponMunitionData)
+			{
+				colGrpArmor = max(0, colGrpArmor - weaponMunitionData->armorPen);
+			}
+
+			if (colGrpArmor)
+			{
+				incDmg *= armorReductionVector.at(colGrpArmor);
+			}
 		}
 	}
-	armorEnabled = false;
+	armorEnabled = DmgLogicNone;
 }
 
 __declspec(naked) void SolarColGrpDamageNaked()
@@ -732,13 +749,13 @@ __declspec(naked) void SolarColGrpDamageNaked()
 
 void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
-	if (armorEnabled)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
 	{
-		if (weaponMunitionData && weaponMunitionData->percentageHullDmg)
-		{
-			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
-		}
-		
+		incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+	}
+	
+	if (armorEnabled & DmgLogicArmor)
+	{
 		int colGrpArmor = 0;
 		static auto shipIter = shipArmorMap.end();
 
@@ -767,7 +784,8 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 			}
 		}
 	}
-	armorEnabled = false;
+
+	armorEnabled = DmgLogicNone;
 }
 
 __declspec(naked) void ShipColGrpDmgNaked()
@@ -831,7 +849,7 @@ using ShipEnergyDamageType = void(__thiscall*)(IObjRW*, float incDmg, DamageList
 ShipEnergyDamageType ShipEnergyDamageFunc = ShipEnergyDamageType(0x6CEAFC0);
 void __fastcall ShipEnergyDamage(IObjRW* iobj, void* edx, float incDmg, DamageList* dmg)
 {
-	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageEnergyDmg)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageEnergyDmg)
 	{
 		incDmg += reinterpret_cast<CShip*>(iobj->cobj)->maxPower * weaponMunitionData->percentageEnergyDmg;
 	}
@@ -844,7 +862,7 @@ using ShipEquipDamageType = void(__thiscall*)(IObjRW*, CEquip*, float incDmg, Da
 ShipEquipDamageType ShipEquipDamageFunc = ShipEquipDamageType(0x6CEA4A0);
 void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg)
 {
-	if (armorEnabled && weaponMunitionData && weaponMunitionData->percentageHullDmg)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
 	{
 		incDmg += incDmg * weaponMunitionData->percentageHullDmg;
 	}
@@ -948,20 +966,24 @@ void __stdcall ShipEquipmentDestroyed(IObjRW* ship, CEquip* eq, DamageEntry::Sub
 
 	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
 	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(EquipmentClass::Shield));
-	if (!shield || shield->linkedShieldGen.size() != 1)
+	if (!shield)
 	{
 		return;
 	}
 
+	int validShieldCount = 0;
 	for (auto& linkedShield : shield->linkedShieldGen)
 	{
-		if (linkedShield != eq)
+		if (!linkedShield->ShieldGenArch()->fMaxCapacity || !linkedShield->ShieldGenArch()->fRegenerationRate)
 		{
 			continue;
 		}
-		
+		validShieldCount++;
+	}
+
+	if (validShieldCount <= 0)
+	{
 		ship->cequip_death(shield, fate, dmgList);
-		break;
 	}
 }
 

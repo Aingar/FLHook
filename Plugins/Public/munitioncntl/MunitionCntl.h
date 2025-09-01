@@ -33,6 +33,14 @@ typedef void(__thiscall* TriggerExplosion)(StarSystem*, ExplosionDamageEvent*);
 static TriggerExplosion TriggerExplosionFunc = TriggerExplosion(0x6D0B260);
 static st6::map<uint, StarSystem>* StarSystemMap = (st6::map<uint, StarSystem>*)0x6D8DA2C;
 
+enum DmgLogic
+{
+	DmgLogicNone,
+	DmgLogicArmor,
+	DmgLogicPercDmg,
+	DmgLogicAll = DmgLogicArmor | DmgLogicPercDmg
+};
+
 struct BurstFireGunData
 {
 	int maxMagSize;
@@ -113,10 +121,10 @@ struct EngineProperties
 
 struct MunitionData
 {
-	int armorPen;
-	float percentageHullDmg;
-	float percentageShieldDmg;
-	float percentageEnergyDmg;
+	int armorPen = 0;
+	float percentageHullDmg = 0.0f;
+	float percentageShieldDmg = 0.0f;
+	float percentageEnergyDmg = 0.0f;
 };
 
 struct ExplosionDamageData
@@ -189,7 +197,7 @@ extern int solarArmorRating;
 extern uint solarArmorArch;
 extern MunitionData* weaponMunitionData;
 extern uint weaponMunitionDataArch;
-extern bool armorEnabled;
+extern DmgLogic armorEnabled;
 
 extern unordered_map<uint, MunitionData> munitionArmorPenMap;
 extern unordered_map<uint, unordered_map<ushort, int>> shipArmorMap;

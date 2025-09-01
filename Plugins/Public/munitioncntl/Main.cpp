@@ -1452,24 +1452,27 @@ uint shipArmorArch = 0;
 int solarArmorRating = 0;
 uint solarArmorArch = 0;
 
-
 MunitionData* weaponMunitionData = nullptr;
 uint weaponMunitionDataArch = 0;
 
-bool armorEnabled = 0;
+DmgLogic armorEnabled = DmgLogicNone;
 
 void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (armorEnabled)
+	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
+	{
+		incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
+}
+
+	if (armorEnabled & DmgLogicArmor)
 	{
 		FetchShipArmor(iobj->cobj->archetype->iArchID);
 
 		int finalArmorValue = shipArmorRating;
 		if (weaponMunitionData)
 		{
-			incDmg += iobj->cobj->archetype->fHitPoints * weaponMunitionData->percentageHullDmg;
 			finalArmorValue = max(0, finalArmorValue - weaponMunitionData->armorPen);
 		}
 
@@ -1479,7 +1482,8 @@ void __stdcall ShipHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 		}
 	}
 
-	armorEnabled = false;
+
+	armorEnabled = DmgLogicNone;
 
 	if (iobj->is_player())
 	{

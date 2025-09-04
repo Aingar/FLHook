@@ -141,6 +141,7 @@ struct ShipData
 {
 	int engineCount = 0;
 	bool internalEngine = false;
+	bool internalPowerPlant = true;
 	unordered_map<string, unordered_set<string>> engineHpMap;
 	unordered_map<ushort, vector<string>> colGrpHpMap;
 	unordered_map<uint, vector<string>> fuseHpMap;

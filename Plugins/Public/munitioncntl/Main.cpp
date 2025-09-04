@@ -650,8 +650,7 @@ void ReadMunitionDataFromInis()
 
 	for (string& shipFile : shipFiles)
 	{
-		string filename = gameDir + shipFile;
-		if (!ini.open(filename.c_str(), false))
+		if (!ini.open(shipFile.c_str(), false))
 		{
 			continue;
 		}
@@ -699,6 +698,10 @@ void ReadMunitionDataFromInis()
 								shipDataMap[currNickname].engineCount++;
 							}
 							shipDataMap[currNickname].engineHpMap[equipType].insert(hardpointName);
+						}
+						else if (hardpointName.find("HpPower") != string::npos)
+						{
+							shipDataMap[currNickname].internalPowerPlant = false;
 						}
 
 						i++;
@@ -824,13 +827,20 @@ void FindAndDisableEquip(uint client, const string& hardpoint)
 	}
 }
 
-bool VerifyEngines(uint client)
+enum class EquipCheck
+{
+	OK,
+	ENGINE,
+	POWER
+};
+
+EquipCheck VerifyEngines(uint client)
 {
 	CShip* cship = ClientInfo[client].cship;
 
 	if (!cship)
 	{
-		return true;
+		return EquipCheck::OK;
 	}
 
 	const auto& equip = Players[client].equipDescList;
@@ -840,16 +850,28 @@ bool VerifyEngines(uint client)
 	{
 		int counter = 0;
 		CEquipTraverser tr(Engine);
-		CEEngine* cequip;
-		while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+		CEquip* cequip;
+		while (cequip = cship->equip_manager.Traverse(tr))
 		{
 			counter++;
 		}
-		if (counter == 1)
+		if (counter != 1)
 		{
-			return true;
+			return EquipCheck::ENGINE;
 		}
-		return false;
+
+		counter = 0;
+		CEquipTraverser tr2(Power);
+		while (cequip = cship->equip_manager.Traverse(tr2))
+		{
+			counter++;
+		}
+		if (counter != 1)
+		{
+			return EquipCheck::POWER;
+		}
+
+		return EquipCheck::OK;
 	}
 
 	auto& shipHpData = shipHpDataIter->second;
@@ -859,8 +881,8 @@ bool VerifyEngines(uint client)
 	bool internalEngineFound = false;
 
 	CEquipTraverser tr(Engine);
-	CEEngine* cequip;
-	while (cequip = reinterpret_cast<CEEngine*>(cship->equip_manager.Traverse(tr)))
+	CEquip* cequip;
+	while (cequip = cship->equip_manager.Traverse(tr))
 	{
 		auto equipDesc = equip.find_equipment_item(cequip->iSubObjId);
 		string hardpoint = equipDesc->szHardPoint.value;
@@ -873,7 +895,7 @@ bool VerifyEngines(uint client)
 				continue;
 			}
 			
-			return false;
+			return EquipCheck::ENGINE;
 		}
 
 		mountedEngineCounter++;
@@ -881,27 +903,40 @@ bool VerifyEngines(uint client)
 		auto engineType = engineData.find(cequip->archetype->iArchID);
 		if (engineType == engineData.end())
 		{
-			return false;
+			return EquipCheck::ENGINE;
 		}
 
 		auto hpMapIter = shipHpData.engineHpMap.find(engineType->second.hpType);
 		if (hpMapIter == shipHpData.engineHpMap.end())
 		{
-			return false;
+			return EquipCheck::ENGINE;
 		}
 
 		if (!hpMapIter->second.count(hardpoint))
 		{
-			return false;
+			return EquipCheck::ENGINE;
 		}
 	}
 
 	if (mountedEngineCounter != shipHpData.engineCount)
 	{
-		return false;
+		return EquipCheck::ENGINE;
 	}
 
-	return true;
+	if (!shipHpData.internalEngine)
+	{
+		CEquipTraverser tr2(Power);
+		while (cequip = cship->equip_manager.Traverse(tr2))
+		{
+			auto equipDesc = equip.find_equipment_item(cequip->iSubObjId);
+			if (strcmp(equipDesc->szHardPoint.value, "BAY") == 0)
+			{
+				return EquipCheck::POWER;
+			}
+		}
+	}
+
+	return EquipCheck::OK;
 }
 
 void ProcessGuided(FLPACKET_CREATEGUIDED& createGuidedPacket)
@@ -1133,6 +1168,22 @@ void UnmountEngines(uint client)
 	}
 }
 
+void UnmountPowerPlants(uint client)
+{
+	for (auto& eq : Players[client].equipDescList.equip)
+	{
+		auto equipArch = Archetype::GetEquipment(eq.iArchID);
+		if (!equipArch)
+		{
+			continue;
+		}
+		if (equipArch->get_class_type() == Archetype::AClassType::POWER)
+		{
+			eq.bMounted = false;
+		}
+	}
+}
+
 void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1151,11 +1202,20 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		}
 	}
 
-	if (!VerifyEngines(iClientID))
+	auto checkResult = VerifyEngines(iClientID);
+	if (checkResult == EquipCheck::ENGINE)
 	{
 		HkBeamById(iClientID, Players[iClientID].iLastBaseID);
 		PrintUserCmdText(iClientID, L"ERR Invalid engine(s) detected. You will be kicked to unmount the engines.");
 		UnmountEngines(iClientID);
+		Plugin_Communication(CUSTOM_BEAM_LAST_BASE, &iClientID);
+		HkDelayedKick(iClientID, 5);
+	}
+	else if (checkResult == EquipCheck::POWER)
+	{
+		HkBeamById(iClientID, Players[iClientID].iLastBaseID);
+		PrintUserCmdText(iClientID, L"ERR Invalid powerplant(s) detected. You will be kicked to unmount the powerplant.");
+		UnmountPowerPlants(iClientID);
 		Plugin_Communication(CUSTOM_BEAM_LAST_BASE, &iClientID);
 		HkDelayedKick(iClientID, 5);
 	}
@@ -1624,7 +1684,8 @@ void __stdcall ReqAddItem(uint& goodId, char const* hardpoint, int count, float 
 	if (mounted && strcmp(hardpoint, "BAY") == 0)
 	{
 		auto equip = Archetype::GetEquipment(goodId);
-		if (equip->get_class_type() == Archetype::AClassType::ENGINE)
+		if (equip->get_class_type() == Archetype::AClassType::ENGINE
+			|| equip->get_class_type() == Archetype::AClassType::ENGINE)
 		{
 			mounted = false;
 		}

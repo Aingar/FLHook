@@ -1685,7 +1685,7 @@ void __stdcall ReqAddItem(uint& goodId, char const* hardpoint, int count, float 
 	{
 		auto equip = Archetype::GetEquipment(goodId);
 		if (equip->get_class_type() == Archetype::AClassType::ENGINE
-			|| equip->get_class_type() == Archetype::AClassType::ENGINE)
+			|| equip->get_class_type() == Archetype::AClassType::POWER)
 		{
 			mounted = false;
 		}

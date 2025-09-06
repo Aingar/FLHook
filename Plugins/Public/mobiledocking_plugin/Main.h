@@ -47,6 +47,7 @@ struct DOCKEDCRAFTINFO
 	uint lastDockedSolar;
 	bool jettisoned;
 	bool justloggedin;
+	time_t lastDockTime;
 };
 
 struct DEFERREDJUMPDATA

@@ -30,6 +30,8 @@ unordered_map<uint, DEFERREDJUMPDATA> deferredJumpData;
 
 string scCarrierDataFile;
 
+time_t set_undockingTimeDelay = 120;
+
 
 enum JettisonResult
 {
@@ -289,6 +291,10 @@ void LoadSettings()
 					else if (ini.is_value("banned_system"))
 					{
 						bannedSystems.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("undock_delay"))
+					{
+						set_undockingTimeDelay = ini.get_value_int(0);
 					}
 				}
 			}
@@ -611,6 +617,18 @@ void HkTimerCheckKick()
 		launchData.timer++;
 		launchCheck++;
 	}
+
+	for (auto& docked : idToDockedInfoMap)
+	{
+		if (Players[docked.first].iBaseID != mobileDockingProxyBase)
+		{
+			continue;
+		}
+		if (docked.second->lastDockTime + set_undockingTimeDelay == currTime)
+		{
+			PrintUserCmdText(docked.first, L"Launch preparations complete, ready to launch.");
+		}
+	}
 }
 
 void MoveOfflineShipToLastDockedSolar(const wstring& charName)
@@ -720,6 +738,17 @@ void StartDockingProcedure(uint dockingID, uint carrierID)
 
 void AddClientToDockQueue(uint dockingID, uint carrierID)
 {
+	auto dockingData = idToDockedInfoMap.find(dockingID);
+	if (dockingData != idToDockedInfoMap.end())
+	{
+		wstring carrierName = (wchar_t*)Players.GetActiveCharacterName(carrierID);
+		if (dockingData->second->carrierName == carrierName)
+		{
+			StartDockingProcedure(dockingID, carrierID);
+			return;
+		}
+	}
+
 	const auto& dockMode = mobiledockClients[carrierID].dockMode;
 	if (dockMode == ALLOW_ALL)
 	{
@@ -857,6 +886,15 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
 	if (dockInfo->justloggedin)
 	{
+		return;
+	}
+
+	if (dockInfo->lastDockTime + set_undockingTimeDelay > time(0))
+	{
+		PrintUserCmdText(client, L"INFO: Preparations for launch underway. Ready in %u seconds.", 
+			dockInfo->lastDockTime + set_undockingTimeDelay - time(0));
+		
+		HkBeamById(client, mobileDockingProxyBase);
 		return;
 	}
 
@@ -1042,7 +1080,6 @@ void __stdcall BaseEnter(uint iBaseID, uint client)
 		return;
 	}
 
-	idToDockedIter->second->justloggedin = false;
 	uint carrierID = HkGetClientIdFromCharname(idToDockedIter->second->carrierName);
 
 	if (iBaseID == mobileDockingProxyBase)
@@ -1060,7 +1097,12 @@ void __stdcall BaseEnter(uint iBaseID, uint client)
 		status += L"</TEXT>";
 		status += L"<POP/></RDL>";
 		SendSetBaseInfoText2(client, status);
-		PrintUserCmdText(client, L"Successfully docked on carrier.");
+
+		if (!idToDockedIter->second->justloggedin && idToDockedIter->second->lastDockTime + set_undockingTimeDelay <= time(0))
+		{
+			PrintUserCmdText(client, L"Successfully docked on carrier, ready to launch in %d seconds.", set_undockingTimeDelay);
+			idToDockedIter->second->lastDockTime = time(0);
+		}
 	}
 	else
 	{
@@ -1072,6 +1114,8 @@ void __stdcall BaseEnter(uint iBaseID, uint client)
 
 		RemoveShipFromLists(charName, false);
 	}
+
+	idToDockedIter->second->justloggedin = false;
 }
 
 bool UserCmd_Process(uint client, const wstring& wscCmd)

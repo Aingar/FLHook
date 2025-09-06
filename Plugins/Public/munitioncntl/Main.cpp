@@ -923,7 +923,7 @@ EquipCheck VerifyEngines(uint client)
 		return EquipCheck::ENGINE;
 	}
 
-	if (!shipHpData.internalEngine)
+	if (!shipHpData.internalPowerPlant)
 	{
 		CEquipTraverser tr2(Power);
 		while (cequip = cship->equip_manager.Traverse(tr2))

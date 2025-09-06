@@ -329,9 +329,16 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 						uint baseId = CreateID(ini.get_value_string());
 						auto baseIter = player_bases.find(baseId);
 						auto timerIter = deepRegionTimerMap.find(dr.name);
-						if (timerIter != deepRegionTimerMap.end() && (baseIter == player_bases.end() || baseIter->second->destSystem == timerIter->second.first))
+						if (timerIter != deepRegionTimerMap.end() && time(0) < timerIter->second.second + dr.cooldown 
+							&& (baseIter == player_bases.end()))
 						{
-							ConPrint(L"Skipped %x\n", timerIter->second.first);
+							continue;
+						}
+						if (baseIter->first == timerIter->second.first)
+						{
+							baseIter->second->baseloadout = dr.closeLoadout;
+							baseIter->second->basesolar = dr.closeArch;
+							baseIter->second->Save();
 							continue;
 						}
 						dr.entriesToRandomize.push_back(CreateID(ini.get_value_string()));
@@ -524,7 +531,7 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 			auto connectedBaseIter = player_bases.find(base->destObject);
 			if (connectedBaseIter == player_bases.end())
 			{
-				ConPrint(L"HYPERSPACE HUB: Deep Region %s exitpoint of %s not found!\n", stows(dr.name).c_str(), base->basename.c_str());
+				ConPrint(L"HYPERSPACE HUB: Deep Region %s exitpoint of %s not found!\n", stows(dr.name).c_str(), stows(base->nickname).c_str());
 				continue;
 			}
 
@@ -544,9 +551,8 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 
 
 				auto systemInfo = Universe::get_system(base->destSystem);
-				string entryVar = string(systemInfo->nickname.value) + ", " + itos((int)currTime);
+				string entryVar = base->nickname + ", " + itos((int)currTime);
 				WritePrivateProfileStringA("Timer", dr.name.c_str(), entryVar.c_str(), cfg_filehyperspaceHubTimer.c_str());
-				ConPrint(L"Spawned leading to %s\n", stows(systemInfo->nickname.value).c_str());
 			}
 			else
 			{

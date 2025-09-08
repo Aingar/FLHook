@@ -573,14 +573,15 @@ void __stdcall SendDeathMessage(const wstring& message, uint& system, uint& clie
 		killerCounter++;
 	}
 
+	const Universe::ISystem* deathSystem = Universe::get_system(Players[clientVictim].iSystemID);
 	if (assistMessage.empty())
 	{
-		LogDeathDamage("Player Death: %s, total %0.0f", wstos(deathMessage).c_str(), totalDamageTaken);
+		LogDeathDamage("Player Death: %s, total %0.0f, died in %s", wstos(deathMessage).c_str(), totalDamageTaken, deathSystem->nickname.value);
 		ProcessDeath(clientVictim, &deathMessage, nullptr, system, true, involvedGroups, involvedPlayers);
 	}
 	else
 	{
-		LogDeathDamage("Player Death: %s %s, total %0.0f", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken);
+		LogDeathDamage("Player Death: %s %s, total %0.0f, died in %s", wstos(deathMessage).c_str(), wstos(assistMessage).c_str(), totalDamageTaken, deathSystem->nickname.value);
 		ProcessDeath(clientVictim, &deathMessage, &assistMessage, system, true, involvedGroups, involvedPlayers);
 	}
 	ClearDamageTaken(clientVictim);

@@ -2486,6 +2486,7 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 		{
 			returncode = SKIPPLUGINS;
 			cd.reverse_sell = false;
+			cd.reverseSellAmount = 0;
 
 			for(CARGO_INFO& ci : cd.cargo)
 			{

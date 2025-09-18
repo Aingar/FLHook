@@ -1166,7 +1166,8 @@ void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjF
     {
         return;
     }
-    if (!miningSolarMap.count(iobj->cobj->archetype->iArchID))
+    auto nodeArrayIter = miningSolarMap.find(iobj->cobj->archetype->iArchID);
+    if (nodeArrayIter == miningSolarMap.end())
     {
         return;
     }
@@ -1177,7 +1178,7 @@ void SolarColGrpDestroyed(IObjRW* iobj, CArchGroup* colGrp, DamageEntry::SubObjF
     }
 
     auto& nodeArray = miningSolarMap.at(iobj->cobj->archetype->iArchID);
-    const MiningNodeInfo& node = nodeArray.at(colGrp->colGrp->id);
+    const MiningNodeInfo& node = nodeArrayIter->second.at(colGrp->colGrp->id);
     if (!node.itemArchId)
     {
         return;

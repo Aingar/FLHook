@@ -338,6 +338,19 @@ static double __cdecl HkCb_TimingSeconds(__int64 &ticks_delta)
 	return seconds;
 }
 
+void Detour(void* pOFunc, void* pHkFunc, unsigned char* originalData)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(originalData, pOFunc, 5);
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
 void Detour(void* pOFunc, void* pHkFunc)
 {
 	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
@@ -347,7 +360,41 @@ void Detour(void* pOFunc, void* pHkFunc)
 	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
 	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
 	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+}
+
+void DetourFast(void* pOFunc, void* pHkFunc)
+{
+	BYTE bPatch[5]; // We need to change 5 bytes and I'm going to use memcpy so this is the simplest way.
+	bPatch[0] = 0xE9; // Set the first byte of the byte array to the op code for the JMP instruction.
+	DWORD dwRelativeAddress = (DWORD)pHkFunc - (DWORD)pOFunc - 5; // Calculate the relative JMP address.
+	memcpy(&bPatch[1], &dwRelativeAddress, 4); // Copy the relative address to the byte array.
+	memcpy(pOFunc, bPatch, 5); // Change the first 5 bytes to the JMP instruction.
+}
+
+void UnDetour(void* pOFunc, unsigned char* originalData)
+{
+	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
+	VirtualProtect(pOFunc, 5, PAGE_EXECUTE_READWRITE, &dwOldProtection); // Allow us to write to the memory we need to change
+	memcpy(pOFunc, originalData, 5);
 	VirtualProtect(pOFunc, 5, dwOldProtection, 0); // Set the protection back to what it was.
+}
+
+PBYTE Content_6BFE0_Data;
+using C_6BFE0 = int(__thiscall*)(uint*, int);
+C_6BFE0 C_6BFE0_Call;
+int __fastcall Content_6BFE0_Detour(uint* unk, void* edx, int a2)
+{
+	if (unk[2] == 0 && (unk[6] == 1 || unk[6] == 2))
+	{
+		AddLog("content 6BFE0/6C216 crash suppression attempt, no data available");
+		return 0;
+	}
+
+	UnDetour(C_6BFE0_Call, Content_6BFE0_Data);
+	int retVal = C_6BFE0_Call(unk, a2);
+	DetourFast(C_6BFE0_Call, Content_6BFE0_Detour);
+
+	return retVal;
 }
 
 void CrashCatcher::Init()
@@ -469,6 +516,13 @@ void CrashCatcher::Init()
 				float fDistance = 6500;
 				WriteProcMem((char*)hModContentAC + 0xD3D6E, &fDistance, 4);
 				WriteProcMem((char*)hModContentAC + 0x58F46, &fDistance, 4);
+
+				{
+					DWORD addr = DWORD(hModContentAC) + 0x6BFE0;
+					C_6BFE0_Call = (C_6BFE0)addr;
+					Content_6BFE0_Data = PBYTE(malloc(5));
+					Detour((void*)addr, Content_6BFE0_Detour, Content_6BFE0_Data);
+				}
 			}
 		}
 	}

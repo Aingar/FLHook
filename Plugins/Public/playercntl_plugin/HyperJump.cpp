@@ -65,7 +65,7 @@ namespace HyperJump
 	static uint set_exitJumpHoleArchetype = CreateID("jumphole_noentry");
 	static uint set_entryJumpHoleLoadout = CreateID("wormhole_unstable");
 	static uint set_entryJumpHoleArchetype = CreateID("flhook_jumphole");
-	static uint set_IDSNamespaceStart = 267200;
+	static uint set_IDSNamespaceStart = 267800;
 	static uint set_maxJumpRange = 0;
 	static unordered_set<uint> set_banJumpSystems;
 

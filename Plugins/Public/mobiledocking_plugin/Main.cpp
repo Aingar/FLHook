@@ -463,7 +463,8 @@ void DockShipOnCarrier(uint dockingID, uint carrierID)
 	bool shipAlreadyDocked = false;
 
 	wstring carrierName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(carrierID));
-	if (idToDockedInfoMap.count(dockingID) && idToDockedInfoMap.at(dockingID)->carrierName == carrierName)
+	auto dockIter = idToDockedInfoMap.find(dockingID);
+	if (dockIter != idToDockedInfoMap.end() && dockIter->second->carrierName == carrierName)
 	{
 		shipAlreadyDocked = true;
 	}
@@ -842,12 +843,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
-	if (!ClientInfo[client].cship)
-	{
-		return;
-	}
-
-	if (ClientInfo[client].cship->type & (Cruiser | Capital))
+	if (ClientInfo[client].cship && ClientInfo[client].cship->type & (Cruiser | Capital))
 	{
 		SetAvailableModuleSlots(client);
 
@@ -899,7 +895,7 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 	}
 
 	PrintUserCmdText(client, L"INFO: Launched from the carrier.");
-	uint carrierClientID = HkGetClientIdFromCharname(idToDockedInfoMap[client]->carrierName.c_str());
+	uint carrierClientID = HkGetClientIdFromCharname(idToDockedIter->second->carrierName.c_str());
 
 	// If carrier is present at server - do it, if not - whatever. Plugin erases all associated client data after disconnect. 
 	if (carrierClientID == -1)
@@ -1035,10 +1031,11 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iTargetID, 
 		}
 
 		// If ship is already registered as 'docked' on this carrier, proceed and ignore the capacity.
-		if (idToDockedInfoMap.count(client))
+		auto dockedIter = idToDockedInfoMap.find(client);
+		if (dockedIter != idToDockedInfoMap.end())
 		{
 			wstring targetName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iTargetClientID));
-			if (idToDockedInfoMap.at(client)->carrierName == targetName)
+			if (dockedIter->second->carrierName == targetName)
 			{
 				AddClientToDockQueue(client, iTargetClientID);
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -1370,7 +1367,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 
 		nameToDockedIter->second.justloggedin = true;
 		idToDockedInfoMap[iClientID] = &nameToDockedIter->second;
-		uint carrierClientID = HkGetClientIdFromCharname(idToDockedInfoMap[iClientID]->carrierName.c_str());
+		uint carrierClientID = HkGetClientIdFromCharname(nameToDockedIter->second.carrierName.c_str());
 		if (carrierClientID != -1)
 		{
 			const auto& shipInfo = Archetype::GetShip(Players[iClientID].iShipArchetype);
@@ -1385,7 +1382,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 			{
 				wstring& lastBaseName = GetLastBaseName(iClientID);
 				PrintUserCmdText(iClientID, L"Carrier %ls is in an area where mobile docking is banned, undock will put you on %ls",
-					idToDockedInfoMap[iClientID]->carrierName.c_str(), lastBaseName.c_str());
+					nameToDockedIter->second.carrierName.c_str(), lastBaseName.c_str());
 			}
 			else if (carrierInfo.iShipID)
 			{
@@ -1393,7 +1390,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 				Matrix ori;
 				pub::SpaceObj::GetLocation(carrierInfo.iShipID, pos, ori);
 				wstring& sector = VectorToSectorCoord(sysInfo->id, pos);
-				PrintUserCmdText(iClientID, L"Carrier %ls in flight, %ls %ls", idToDockedInfoMap[iClientID]->carrierName.c_str(), sysName.c_str(), sector.c_str());
+				PrintUserCmdText(iClientID, L"Carrier %ls in flight, %ls %ls", nameToDockedIter->second.carrierName.c_str(), sysName.c_str(), sector.c_str());
 			}
 			else if (carrierInfo.iBaseID)
 			{

@@ -90,6 +90,9 @@ L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT><PARA
 L"<TRA bold=\"true\"/><TEXT>/base setfood [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/base setrestockmargin</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Sets the percentage of the rearm cost compared to baseline. 0 means free repairs, 200 means double compared to regular stations.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/base setpublic [public/private] [masterpassword]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets or unsets the base visibility to external APIs.</TEXT>",
 

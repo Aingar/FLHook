@@ -60,6 +60,12 @@ void CoreModule::Spawn()
 		{
 			si.iLoadoutID = CreateID(archname);
 		}
+		else if (base->baseloadout == "legacy")
+		{
+			char loadout[100];
+			_snprintf(loadout, sizeof(loadout), "dsy_playerbase_%02u", base->base_level);
+			si.iLoadoutID = CreateID(loadout);
+		}
 		else
 		{
 			si.iLoadoutID = CreateID(base->baseloadout.c_str());

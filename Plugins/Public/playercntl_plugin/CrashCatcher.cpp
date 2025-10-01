@@ -390,8 +390,16 @@ int __fastcall Content_6BFE0_Detour(uint* unk, void* edx, int a2)
 		return 0;
 	}
 
+	int retVal = 0;
 	UnDetour(C_6BFE0_Call, Content_6BFE0_Data);
-	int retVal = C_6BFE0_Call(unk, a2);
+	try
+	{
+		retVal = C_6BFE0_Call(unk, a2);
+	}
+	catch (...)
+	{
+		AddLog("content 6BFE0/6C216 crash suppression failed, debug info: %u %u", unk[2], unk[6]);
+	}
 	DetourFast(C_6BFE0_Call, Content_6BFE0_Detour);
 
 	return retVal;

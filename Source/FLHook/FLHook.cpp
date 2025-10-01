@@ -193,6 +193,11 @@ LONG WINAPI FLHookTopLevelFilter(struct _EXCEPTION_POINTERS *pExceptionInfo)
 	DumpOnlinePlayers();
 
 	CALL_PLUGINS_NORET(PLUGIN_ServerCrash, , , );
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd))
+	{
+		pub::Save(pd->iOnlineID, 1);
+	}
 	return EXCEPTION_EXECUTE_HANDLER; 	// EXCEPTION_CONTINUE_SEARCH;
 }
 

@@ -1864,6 +1864,9 @@ namespace PlayerCommands
 				auto& affilIter = affiliation_product.find(base->affiliation);
 				if (affilIter == affiliation_product.end())
 				{
+					auto defaultItem = affiliation_product.find(0);
+					const GoodInfo* gi = GoodList::find_by_id(defaultItem->second.first);
+					PrintUserCmdText(client, L"|   %ls x%u", HkGetWStringFromIDS(gi->iIDSName).c_str(), defaultItem->second.second);
 					continue;
 				}
 

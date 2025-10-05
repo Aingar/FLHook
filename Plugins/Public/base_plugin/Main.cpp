@@ -2314,7 +2314,6 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 	MARKET_ITEM &item = base->market_items[gsi.iArchID];
 
 	int count = gsi.iCount;
-	int price = item.sellPrice * count;
 
 	if (item.quantity >= item.max_stock)
 	{
@@ -2329,6 +2328,8 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		cd.reverseSellAmount = gsi.iCount - count;
 		PrintUserCmdText(client, L"INFO: Reached stock limit. Only selling %u out of attempted %u units", count, gsi.iCount);
 	}
+
+	int price = item.sellPrice * count;
 
 	if (price < 0)
 	{

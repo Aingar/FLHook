@@ -1168,10 +1168,6 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 
 	if (defense_mode == DEFENSE_MODE::IFF)
 	{
-		if (attitude <= -0.55f)
-		{
-			return -0.59f;
-		}
 		if (IsOnHostileList(charname, playeraff))
 		{
 			if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE)

@@ -55,6 +55,15 @@ struct iddockinfo
 	unordered_set<uint> exempt;
 	unordered_set<uint> iff;
 	unordered_set<uint> bases;
+
+	struct AffiliationList
+	{
+		wstring message;
+		unordered_set<uint> exceptions;
+	};
+
+	unordered_map<uint, AffiliationList> affiliationWhitelist;
+	unordered_map<uint, AffiliationList> affiliationBlacklist;
 	wstring dockMessage;
 };
 
@@ -148,6 +157,28 @@ void SCI::LoadSettings()
 					else if (ini.is_value("message"))
 					{
 						info.dockMessage = stows(ini.get_value_string());
+					}
+					else if (ini.is_value("affil_blacklist"))
+					{
+						auto& entry = info.affiliationBlacklist[MakeId(ini.get_value_string(0))];
+						entry.message = stows(ini.get_value_string(1));
+						int i = 2;
+						while (!ini.is_value_empty(i))
+						{
+							entry.exceptions.insert(CreateID(ini.get_value_string(i)));
+							i++;
+						}
+					}
+					else if (ini.is_value("affil_whitelist"))
+					{
+						auto& entry = info.affiliationWhitelist[MakeId(ini.get_value_string(0))];
+						entry.message = stows(ini.get_value_string(1));
+						int i = 2;
+						while (!ini.is_value_empty(i))
+						{
+							entry.exceptions.insert(CreateID(ini.get_value_string(i)));
+							i++;
+						}
 					}
 				}
 				for (uint id : ids)
@@ -426,6 +457,37 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		return true;
 	}
 
+	auto iobj = HkGetInspectObj(iDockTarget);
+	if (!iobj)
+	{
+		return true;
+	}
+	CSolar* csolar = (CSolar*)iobj->cobj;
+	uint affiliation;
+	Reputation::Vibe::GetAffiliation(csolar->repVibe, affiliation, false);
+
+	if (!idData.affiliationBlacklist.empty())
+	{
+		uint dockTarget = csolar->dockTargetId ? csolar->dockTargetId : csolar->dockTargetId2;
+		auto iter = idData.affiliationBlacklist.find(affiliation);
+		if (iter != idData.affiliationBlacklist.end() && iter->second.exceptions.count(dockTarget))
+		{
+			PrintUserCmdText(iClientID, iter->second.message.c_str());
+			return false;
+		}
+	}
+
+	if (!idData.affiliationWhitelist.empty())
+	{
+		uint dockTarget = csolar->dockTargetId ? csolar->dockTargetId : csolar->dockTargetId2;
+		auto iter = idData.affiliationWhitelist.find(affiliation);
+		if (iter != idData.affiliationWhitelist.end() && !iter->second.exceptions.count(dockTarget))
+		{
+			PrintUserCmdText(iClientID, iter->second.message.c_str());
+			return false;
+		}
+	}
+
 	if (idData.type == 3) // cargo restriction
 	{
 		if (idData.exempt.count(currship))
@@ -456,15 +518,7 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 
 	if (idData.type == 2) // iffRestriction
 	{
-		auto iobj = HkGetInspectObj(iDockTarget);
-		if (!iobj)
-		{
-			return true;
-		}
 
-		CSolar* csolar = (CSolar*)iobj->cobj;
-		uint affiliation;
-		Reputation::Vibe::GetAffiliation(csolar->repVibe, affiliation, false);
 		if (csolar->isDynamic)
 		{
 			if (idData.iff.count(affiliation))

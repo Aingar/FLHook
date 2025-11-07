@@ -777,6 +777,13 @@ void LoadSettingsActual()
 {
 	returncode = DEFAULT_RETURNCODE;
 
+	CSolar* pueblo = (CSolar*)CObject::Find(CreateID("Li03_04_01"), CObject::CSOLAR_OBJECT);
+	if (pueblo)
+	{
+		pueblo->dockTargetId = 0;
+		pueblo->dockTargetId2 = 0;
+	}
+
 	EquipmentUtilities::ReadIniNicknames();
 
 	// The path to the configuration file.

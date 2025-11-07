@@ -1928,6 +1928,8 @@ namespace PlayerCommands
 					}
 				}
 			}
+
+			PrintUserCmdText(client, L"Cooking rate: %0.0f volume/minute", recipe->cooking_rate);
 			return;
 		}
 

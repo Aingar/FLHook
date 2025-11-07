@@ -782,6 +782,7 @@ void LoadSettingsActual()
 	{
 		pueblo->dockTargetId = 0;
 		pueblo->dockTargetId2 = 0;
+		pueblo->Release();
 	}
 
 	EquipmentUtilities::ReadIniNicknames();

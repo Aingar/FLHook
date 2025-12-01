@@ -101,7 +101,7 @@ struct TRADE_EVENT : public EVENT {
 	unordered_set<uint> pobStartBase;
 	unordered_set<uint> uEndBase;
 	unordered_set<uint> pobEndBase;
-	uint uCommodityID;
+	unordered_set<uint> commodityList;
 	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
 	unordered_set<uint> lAllowedIDs;
 	map<uint, market_map_t> eventEconOverride;
@@ -315,7 +315,9 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						pub::GetGoodID(te.uCommodityID, ini.get_value_string(0));
+						uint goodId;
+						pub::GetGoodID(goodId, ini.get_value_string(0));
+						te.commodityList.insert(goodId);
 					}
 					else if (ini.is_value("limited"))
 					{
@@ -742,11 +744,11 @@ void LoadSettings()
 	{
 		for (auto& pobEntry : te.second.pobStartBase)
 		{
-			pobData[pobEntry].insert(te.second.uCommodityID);
+			pobData[pobEntry].insert(te.second.commodityList.begin(), te.second.commodityList.end());
 		}
 		for (auto& pobExit : te.second.pobEndBase)
 		{
-			pobData[pobExit].insert(te.second.uCommodityID);
+			pobData[pobExit].insert(te.second.commodityList.begin(), te.second.commodityList.end());
 		}
 	}
 	info.data = pobData;
@@ -877,7 +879,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	for (map<string, TRADE_EVENT>::iterator i = mapTradeEvents.begin(); i != mapTradeEvents.end(); ++i)
 	{
 		//check if it's one of the commodities undergoing an event
-		if (!i->second.isActive || gbi.iGoodID != i->second.uCommodityID)
+		if (!i->second.isActive || !i->second.commodityList.count(gbi.iGoodID))
 		{
 			continue;
 		}
@@ -950,7 +952,7 @@ void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int 
 		return;
 	}
 	//this if is if we are interacting with this commodity and already in event mode
-	if (!i->second.isActive || gsi.iArchID != i->second.uCommodityID)
+	if (!i->second.isActive || !i->second.commodityList.count(gsi.iArchID))
 	{
 		return;
 	}

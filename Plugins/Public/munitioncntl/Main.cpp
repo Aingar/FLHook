@@ -41,6 +41,7 @@ vector<pair<uint, uint>> equipUpdateVector;
 
 unordered_map<uint, uint> NewMissileUpdateMap;
 unordered_map<uint, InvulData> invulMap;
+unordered_set<wstring> techexemptedPlayers;
 
 float guidedZoneImpulseDrag = 30.f;
 
@@ -714,6 +715,36 @@ void ReadMunitionDataFromInis()
 	}
 }
 
+void ReadTechExemptedPlayers()
+{
+
+	ChangeINITerminator('\x8');
+	INI_Reader ini;
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	ChangeINITerminator('\x8');
+	string scCfgFile = string(szCurDir) + "\\flhook_plugins\\techcompat_exemptions.cfg";
+	if (ini.open(scCfgFile.c_str(), false))
+	{
+		while (ini.read_header())
+		{
+			if (ini.is_header("techcompat"))
+			{
+				while (ini.read_value())
+				{
+					if (ini.is_value("character"))
+					{
+						wstring name = stows(ini.get_value_string());
+						techexemptedPlayers.insert(name);
+					}
+				}
+			}
+		}
+		ini.close();
+	}
+	ChangeINITerminator(';');
+}
+
 struct SrvGun
 {
 	void* vtable;
@@ -837,8 +868,9 @@ enum class EquipCheck
 EquipCheck VerifyEngines(uint client)
 {
 	CShip* cship = ClientInfo[client].cship;
+	wstring name = (wchar_t*)Players.GetActiveCharacterName(client);
 
-	if (!cship)
+	if (!cship || techexemptedPlayers.count(name))
 	{
 		return EquipCheck::OK;
 	}

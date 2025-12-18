@@ -360,6 +360,72 @@ EXPORT void ClearClientInfo(uint iClientID)
     DestroyContainer(iClientID);
 }
 
+void LoadNodeFile(const string& fileName)
+{
+    INI_Reader ini;
+    if (!ini.open(fileName.c_str(), false))
+    {
+        return;
+    }
+    
+    while (ini.read_header())
+    {
+        if (!ini.is_header("MiningSystem"))
+        {
+            continue;
+        }
+
+        MiningSpawnPointDB miningDBEntry;
+
+        while (ini.read_value())
+        {
+            if (ini.is_value("position"))
+            {
+                miningDBEntry.positions.push_back({ ini.get_value_float(0) ,ini.get_value_float(1) ,ini.get_value_float(2) });
+            }
+            else if (ini.is_value("system"))
+            {
+                miningDBEntry.system = CreateID(ini.get_value_string());
+            }
+            else if (ini.is_value("max_spawn_count"))
+            {
+                miningDBEntry.maxSpawnCount = ini.get_value_int(0);
+            }
+            else if (ini.is_value("respawn_cooldown"))
+            {
+                miningDBEntry.respawnCD = ini.get_value_int(0);
+            }
+            else if (ini.is_value("node_archetype"))
+            {
+                miningDBEntry.nodeArchetypes.push_back({ CreateID(ini.get_value_string(0)), CreateID(ini.get_value_string(1)) });
+            }
+            else if (ini.is_value("name"))
+            {
+                miningDBEntry.miningNodeGroupName = ini.get_value_string();
+            }
+            else if (ini.is_value("node_ids"))
+            {
+                miningDBEntry.nodeIDS = ini.get_value_int(0);
+            }
+        }
+
+        if (miningDBEntry.maxSpawnCount > miningDBEntry.positions.size())
+        {
+            AddLog("ERROR: INCORRECT MINING NODE CONFIG FOR NODE SYSTEM %s\n", miningDBEntry.miningNodeGroupName.c_str());
+            ConPrint(L"ERROR: INCORRECT MINING NODE CONFIG FOR NODE SYSTEM %ls\n", stows(miningDBEntry.miningNodeGroupName).c_str());
+            continue;
+        }
+        for (uint i = 0; i < miningDBEntry.maxSpawnCount; ++i)
+        {
+            miningDBEntry.nicknamesVector.emplace_back("mining_node_" + miningDBEntry.miningNodeGroupName + itos(i));
+        }
+
+        miningDB.emplace_back(miningDBEntry);
+    }
+
+    ini.close();
+}
+
 /// Load the configuration
 EXPORT void LoadSettings()
 {
@@ -519,64 +585,10 @@ EXPORT void LoadSettings()
     }
 
     string miningDatabaseCfg = string(szCurDir) + R"(\flhook_plugins\minecontrol_nodes.cfg)";
-    if (ini.open(miningDatabaseCfg.c_str(), false))
-    {
-        while (ini.read_header())
-        {
-            if (!ini.is_header("MiningSystem"))
-            {
-                continue;
-            }
+    string miningDatabaseCfgHidden = string(szCurDir) + R"(\flhook_plugins\minecontrol_nodes_hidden.cfg)";
 
-            MiningSpawnPointDB miningDBEntry;
-
-            while (ini.read_value())
-            {
-                if (ini.is_value("position"))
-                {
-                    miningDBEntry.positions.push_back({ ini.get_value_float(0) ,ini.get_value_float(1) ,ini.get_value_float(2) });
-                }
-                else if (ini.is_value("system"))
-                {
-                    miningDBEntry.system = CreateID(ini.get_value_string());
-                }
-                else if (ini.is_value("max_spawn_count"))
-                {
-                    miningDBEntry.maxSpawnCount = ini.get_value_int(0);
-                }
-                else if (ini.is_value("respawn_cooldown"))
-                {
-                    miningDBEntry.respawnCD = ini.get_value_int(0);
-                }
-                else if (ini.is_value("node_archetype"))
-                {
-                    miningDBEntry.nodeArchetypes.push_back({ CreateID(ini.get_value_string(0)), CreateID(ini.get_value_string(1)) });
-                }
-                else if (ini.is_value("name"))
-                {
-                    miningDBEntry.miningNodeGroupName = ini.get_value_string();
-                }
-                else if (ini.is_value("node_ids"))
-                {
-                    miningDBEntry.nodeIDS = ini.get_value_int(0);
-                }
-            }
-
-            if (miningDBEntry.maxSpawnCount > miningDBEntry.positions.size())
-            {
-                AddLog("ERROR: INCORRECT MINING NODE CONFIG FOR NODE SYSTEM %s\n", miningDBEntry.miningNodeGroupName.c_str());
-                ConPrint(L"ERROR: INCORRECT MINING NODE CONFIG FOR NODE SYSTEM %ls\n", stows(miningDBEntry.miningNodeGroupName).c_str());
-                continue;
-            }
-            for (uint i = 0; i < miningDBEntry.maxSpawnCount; ++i)
-            {
-                miningDBEntry.nicknamesVector.emplace_back("mining_node_" + miningDBEntry.miningNodeGroupName + itos(i));
-            }
-
-            miningDB.emplace_back(miningDBEntry);
-        }
-        ini.close();
-    }
+    LoadNodeFile(miningDatabaseCfg);
+    LoadNodeFile(miningDatabaseCfgHidden);
 
     struct PlayerData* pPD = 0;
     while (pPD = Players.traverse_active(pPD))

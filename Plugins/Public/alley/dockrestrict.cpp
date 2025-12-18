@@ -221,9 +221,8 @@ bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &
 	IObjRW* target = cship->get_target();
 
 	if (!target) {
-		//PrintUserCmdText(iClientID, L"ERR No target");
-		//return true;
-		target = HkGetInspectObj(cship->id);
+		PrintUserCmdText(iClientID, L"ERR No target");
+		return true;
 	}
 
 	uint targetClientID = target->cobj->ownerPlayer;
@@ -233,7 +232,7 @@ bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &
 		return true;
 	}
 
-	if (!nodockData.validSystems.count(cship->system))
+	if (!nodockData.validSystems.empty() && !nodockData.validSystems.count(cship->system))
 	{
 		PrintUserCmdText(iClientID, L"ERR You cannot use this command in this system");
 		return true;
@@ -263,12 +262,16 @@ bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &
 	ss << set_duration;
 	string strduration = ss.str();
 
-	wstring wscMsg = L"%time %victim's docking rights have been removed by %player for minimum %duration seconds";
+	wstring wscMsg = L"%time %victim's docking rights have been temporarily restricted by %player for %duration seconds for factions:";
 	wscMsg = ReplaceStr(wscMsg, L"%time", GetTimeString(false));
 	wscMsg = ReplaceStr(wscMsg, L"%player", (const wchar_t*)Players.GetActiveCharacterName(iClientID));
 	wscMsg = ReplaceStr(wscMsg, L"%victim", targetName.c_str());
 	wscMsg = ReplaceStr(wscMsg, L"%duration", stows(strduration).c_str());
-	PrintLocalUserCmdText(iClientID, wscMsg, 10000);
+	PrintLocalUserCmdText(iClientID, wscMsg, 20000);
+	for (auto faction : nodockData.blockedBaseIFFs)
+	{
+		PrintLocalUserCmdText(iClientID, HkGetWStringFromIDS(Reputation::get_short_name(faction)).c_str(), 20000);
+	}
 
 	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 

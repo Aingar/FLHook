@@ -715,7 +715,7 @@ namespace Rename
 		// If a rename was done recently by this player then reject the request.
 		// I know that time() returns time_t...shouldn't matter for a few years
 		// yet.
-		if ((lastRenameTime + 300) < (int)time(0))
+		if ((lastRenameTime + 7200) < (int)time(0))
 		{
 			if ((lastRenameTime + set_iRenameTimeLimit) > (int)time(0))
 			{

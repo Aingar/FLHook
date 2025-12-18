@@ -118,6 +118,11 @@ PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(BASE_VULNERABIL
 
 void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 {
+	if (set_holiday_mode)
+	{
+		return;
+	}
+
 	int timeOfDay = (currTime % (3600 * 24)) / 60;
 
 	auto currVulnState = IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay, defense_platform_activation_offset);

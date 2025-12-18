@@ -484,9 +484,6 @@ void CoreModule::SetReputation(int player_rep, float attitude)
 
 		int obj_rep;
 		pub::SpaceObj::GetRep(this->space_obj, obj_rep);
-		if (set_plugin_debug > 1)
-			ConPrint(L"CoreModule::SetReputation player_rep=%u obj_rep=%u attitude=%f base=%08x\n",
-				player_rep, obj_rep, attitude, base->base);
 		pub::Reputation::SetAttitude(obj_rep, player_rep, attitude);
 	}
 }

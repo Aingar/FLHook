@@ -97,6 +97,10 @@ void LoadSettings()
 	// Load settings blocks
 	LoadSettingsNPCBounties();
 	LoadSettingsNPCDrops();
+
+	//stop NPCs from disabling thrusters when faced by the player
+	BYTE nop[] = { 0x90 ,0x90 ,0x90 };
+	WriteProcMem((void*)0x62C6220, nop, 3);
 }
 
 void LoadSettingsNPCBounties()

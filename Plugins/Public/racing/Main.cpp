@@ -524,7 +524,7 @@ void DisbandRace(shared_ptr<Race> race, bool abruptEnd)
 				PrintUserCmdText(participant.first, L"Race disbanded, $%d credits refunded", poolEntry);
 				pub::Player::AdjustCash(participant.first, poolEntry);
 			}
-			ToggleRaceMode(participant.first, false, 300.f);
+			ToggleRaceMode(participant.first, false, 510.f);
 			racersMap.erase(participant.first);
 		}
 	}
@@ -568,7 +568,7 @@ void DisqualifyPlayer(uint client)
 
 	auto& race = racer->race;
 
-	ToggleRaceMode(client, false, 300.f);
+	ToggleRaceMode(client, false, 510.f);
 	racersMap.erase(client);
 
 	for (auto& participant : race->participants)
@@ -1027,7 +1027,7 @@ bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& para
 	{
 		racer->race->participants.erase(racer->clientId);
 	}
-	ToggleRaceMode(clientID, false, 300.f);
+	ToggleRaceMode(clientID, false, 510.f);
 	racersMap.erase(regIter);
 
 
@@ -1417,7 +1417,7 @@ void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 			ProcessWinner(racer, false, currTime);
 		}
 
-		ToggleRaceMode(racer->clientId, false, 300.f);
+		ToggleRaceMode(racer->clientId, false, 510.f);
 		return;
 	}
 
@@ -1552,7 +1552,7 @@ void Timer()
 		{
 			if (--client->second)
 			{
-				ToggleRaceMode(client->first, false, 300.0f);
+				ToggleRaceMode(client->first, false, 510.f);
 				client++;
 				continue;
 			}

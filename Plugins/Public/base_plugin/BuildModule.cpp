@@ -188,7 +188,11 @@ bool BuildModule::TryConsume(float volumeToProcess)
 			float origVolumeToProcess = volumeToProcess;
 
 			volumeToProcess = min(volumeToProcess, item.second * eq->fVolume);
-			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			float countToRemove = 1;
+			if (eq->fVolume)
+			{
+				countToRemove = floorf(volumeToProcess / eq->fVolume);
+			}
 			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
 			item.second -= quantityToConsumeUint;
 			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
@@ -236,7 +240,11 @@ bool BuildModule::TryConsume(float volumeToProcess)
 			float origVolumeToProcess = volumeToProcess;
 
 			volumeToProcess = min(volumeToProcess, items->sharedAmount * eq->fVolume);
-			float countToRemove = floorf(volumeToProcess / eq->fVolume);
+			float countToRemove = 1;
+			if (eq->fVolume)
+			{
+				countToRemove = floorf(volumeToProcess / eq->fVolume);
+			}
 			uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, goodIter->second.quantity));
 			amassedCookingRate = origVolumeToProcess - countToRemove * eq->fVolume;
 
@@ -286,7 +294,11 @@ bool BuildModule::TryConsume(float volumeToProcess)
 		float origVolumeToProcess = volumeToProcess;
 
 		volumeToProcess = min(volumeToProcess, i->second * eq->fVolume);
-		float countToRemove = floorf(volumeToProcess / eq->fVolume);
+		float countToRemove = 1;
+		if (eq->fVolume)
+		{
+			countToRemove = floorf(volumeToProcess / eq->fVolume);
+		}
 		uint quantityToConsumeUint = static_cast<uint>(min(countToRemove, market_item->second.quantity));
 		i->second -= quantityToConsumeUint;
 		amassedCookingRate = origVolumeToProcess - (countToRemove * eq->fVolume);
@@ -447,8 +459,8 @@ void BuildModule::LoadState(INI_Reader& ini)
 		else if (ini.is_value("consumed"))
 		{
 			uint good = ini.get_value_int(0);
-			uint quantity = ini.get_value_int(1);
-			if (quantity)
+			int quantity = ini.get_value_int(1);
+			if (quantity > 0)
 			{
 				active_recipe.consumed_items.emplace_back(make_pair(good, quantity));
 			}

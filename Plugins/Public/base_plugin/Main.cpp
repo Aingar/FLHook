@@ -578,6 +578,19 @@ void LoadRecipes()
 						} while (!itemName.empty());
 						recipe.dynamic_consumed_items_alt.push_back(items);
 					}
+					else if (ini.is_value("catalyst"))
+					{
+						ValidateItem(ini.get_value_string(0));
+						uint cargoHash = CreateID(ini.get_value_string(0));
+						if (humanCargoList.count(cargoHash))
+						{
+							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+						}
+						else
+						{
+							recipe.catalyst_items.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+						}
+					}
 					else if (ini.is_value("reqlevel"))
 					{
 						recipe.reqlevel = ini.get_value_int(0);

@@ -1146,30 +1146,6 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 
 	// load universe / we load the universe directly before the server becomes internet accessible
 	lstBases.clear();
-	Universe::IBase *base = Universe::GetFirstBase();
-	while (base)
-	{
-		BASE_INFO bi;
-		bi.bDestroyed = false;
-		bi.iObjectID = base->lSpaceObjID;
-		char *szBaseName = "";
-		__asm
-		{
-			pushad
-			mov ecx, [base]
-			mov eax, [base]
-			mov eax, [eax]
-			call[eax + 4]
-			mov[szBaseName], eax
-			popad
-		}
-
-		bi.scBasename = szBaseName;
-		bi.iBaseID = CreateID(szBaseName);
-		lstBases[bi.iBaseID] = bi;
-
-		base = Universe::GetNextBase();
-	}
 
 	Universe::ISystem* system = Universe::GetFirstSystem();
 	while (system)
@@ -1177,6 +1153,34 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 		pub::System::LoadSystem(system->id);
 		LoadZoneDamageData(system->file.value);
 		system = Universe::GetNextSystem();
+	}
+
+	CSolar* solar = reinterpret_cast<CSolar*>(CObject::FindFirst(CObject::CSOLAR_OBJECT));
+	while(solar)
+	{
+		if (!solar->dockTargetId)
+		{
+			solar = reinterpret_cast<CSolar*>(CObject::FindNext());
+			continue;
+		}
+
+		auto base = Universe::get_base(solar->dockTargetId);
+
+		if (!base)
+		{
+			ConPrint(L"Error reading base data for %x", solar->id);
+			solar = reinterpret_cast<CSolar*>(CObject::FindNext());
+			continue;
+		}
+		BASE_INFO bi;
+		bi.bDestroyed = false;
+		bi.iObjectID = solar->id;
+		char* szBaseName = "";
+		bi.scBasename = base->cNickname;
+		bi.iBaseID = solar->dockTargetId;
+		lstBases[bi.iBaseID] = bi;
+	exit:
+		solar = reinterpret_cast<CSolar*>(CObject::FindNext());
 	}
 
 	CALL_CLIENT_METHOD(Startup(iDunno, iDunno2));

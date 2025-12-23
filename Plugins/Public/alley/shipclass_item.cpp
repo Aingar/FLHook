@@ -53,6 +53,7 @@ struct iddockinfo
 	unordered_set<uint> systems;
 	unordered_set<uint> shipclasses;
 	unordered_set<uint> exempt;
+	unordered_set<uint> exemptBases;
 	unordered_set<uint> iff;
 	unordered_set<uint> bases;
 
@@ -145,6 +146,10 @@ void SCI::LoadSettings()
 					else if (ini.is_value("exempt"))
 					{
 						info.exempt.insert(CreateID(ini.get_value_string(0)));
+					}
+					else if (ini.is_value("exempt_base"))
+					{
+						info.exemptBases.insert(CreateID(ini.get_value_string(0)));
 					}
 					else if (ini.is_value("iff"))
 					{
@@ -496,6 +501,11 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		}
 
 		if (!idData.systems.count(currsystem))
+		{
+			return true;
+		}
+
+		if (idData.exemptBases.count(iDockTarget))
 		{
 			return true;
 		}

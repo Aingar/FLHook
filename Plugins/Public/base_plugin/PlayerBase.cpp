@@ -668,6 +668,28 @@ void PlayerBase::Load()
 					{
 						ally_factions.insert(ini.get_value_int(0));
 					}
+					else if (ini.is_value("nodock_tag"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						if (!tag.empty())
+						{
+							nodock_tags.emplace_back(tag);
+						}
+					}
+					else if (ini.is_value("nodock_name"))
+					{
+						wstring tag;
+						ini_get_wstring(ini, tag);
+						if (!tag.empty())
+						{
+							nodock_names.insert(tag);
+						}
+					}
+					else if (ini.is_value("nodock_faction"))
+					{
+						nodock_factions.insert(ini.get_value_int(0));
+					}
 					else if (ini.is_value("hostile_tag"))
 					{
 						wstring tag;
@@ -925,6 +947,18 @@ void PlayerBase::Save()
 		{
 			fprintf(file, "faction_ally_tag = %d\n", i);
 		}
+		for (const auto& i : nodock_factions)
+		{
+			fprintf(file, "nodock_faction = %d\n", i);
+		}
+		for (const auto& i : nodock_tags)
+		{
+			ini_write_wstring(file, "nodock_tag", i);
+		}
+		for (const auto& i : nodock_names)
+		{
+			ini_write_wstring(file, "nodock_name", i);
+		}
 		for (const auto& i : hostile_factions)
 		{
 			fprintf(file, "faction_hostile_tag = %d\n", i);
@@ -1114,6 +1148,27 @@ bool PlayerBase::IsOnAllyList(const wstring& charname, uint affiliation)
 	return false;
 }
 
+bool PlayerBase::IsOnNodockList(const wstring& charname, uint affiliation)
+{
+	if (nodock_factions.count(affiliation))
+	{
+		return true;
+	}
+	if (nodock_names.count(charname))
+	{
+		return true;
+	}
+	for (auto& i : nodock_tags)
+	{
+		if (charname.find(i) == 0)
+		{
+			return true;
+		}
+	}
+
+	return false;
+}
+
 bool PlayerBase::IsOnHostileList(const wstring& charname, uint affiliation)
 {
 	if (hostile_factions.count(affiliation))
@@ -1189,6 +1244,11 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 	if (defense_mode == DEFENSE_MODE::NODOCK_NEUTRAL)
 	{
 		no_access_rep = -0.59f;
+	}
+
+	if (IsOnNodockList(charname, playeraff))
+	{
+		return -0.59f;
 	}
 
 	if (IsOnHostileList(charname, playeraff))

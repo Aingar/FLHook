@@ -28,7 +28,7 @@ L"<TRA bold=\"true\"/><TEXT>/base addpwd [password] [viewshop], /base rmpwd [pas
 L"<TEXT>Add, remove and list administrator passwords for the base. Add 'viewshop' to addpwd to only allow the password to view the shop.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/access</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Add, remove and list whitelisted/blacklisted tags, ships and factions for the base.</TEXT><PARA/><PARA/>"
+L"<TEXT>Add, remove and list whitelisted/nodocked/hostile tags, ships and factions for the base.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base setmasterpwd [old password] [new password]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Set the master password for the base.</TEXT><PARA/><PARA/>"
@@ -71,11 +71,11 @@ L"<TEXT>Show the shop stock list for [page]. There are a maximum of 40 items sho
 
 L"<TRA bold=\"true\"/><TEXT>/base defensemode</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control the defense mode for the base.</TEXT><PARA/>"
-L"<TEXT>Defense Mode 1 - Logic: SRP Whitelist > Blacklist > IFF Standing.</TEXT><PARA/>"
+L"<TEXT>Defense Mode 1 - Logic: SRP Whitelist > Hostilelist > Nodocklist > IFF Standing.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Anyone with good standing.</TEXT><PARA/><PARA/>"
 L"<TEXT>Defense Mode 2 - Logic: Whitelist > No Dock.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
-L"<TEXT>Defense Mode 3 - Logic: Whitelist > Hostile.</TEXT><PARA/>"
+L"<TEXT>Defense Mode 3 - Logic: Whitelist > Nodocklist > Hostile.</TEXT><PARA/>"
 L"<TEXT>Docking Rights: Whitelisted ships only.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base info</TEXT><TRA bold=\"false\"/><PARA/>"
@@ -789,7 +789,13 @@ namespace PlayerCommands
 			base->srp_tags.clear();
 
 		}
-		else if (type == L"blacklist")
+		else if (type == L"nodock")
+		{
+			base->nodock_names.clear();
+			base->nodock_factions.clear();
+			base->nodock_tags.clear();
+		}
+		else if (type == L"hostile")
 		{
 			base->hostile_names.clear();
 			base->hostile_factions.clear();
@@ -804,7 +810,7 @@ namespace PlayerCommands
 		else
 		{
 			PrintUserCmdText(client, L"ERR incorrect parameter!");
-			PrintUserCmdText(client, L"usage: /access clear <srp|whitelist|blacklist>");
+			PrintUserCmdText(client, L"usage: /access clear <srp|whitelist|nodock|hostile>");
 			return false;
 		}
 
@@ -823,7 +829,13 @@ namespace PlayerCommands
 			factionSet = &base->srp_factions;
 			tagList = &base->srp_tags;
 		}
-		else if (type == L"blacklist")
+		if (type == L"nodock")
+		{
+			nameSet = &base->nodock_names;
+			factionSet = &base->nodock_factions;
+			tagList = &base->nodock_tags;
+		}
+		else if (type == L"hostile")
 		{
 			nameSet = &base->hostile_names;
 			factionSet = &base->hostile_factions;
@@ -838,7 +850,7 @@ namespace PlayerCommands
 		else
 		{
 			PrintUserCmdText(client, L"ERR incorrect parameter!");
-			PrintUserCmdText(client, L"usage: /access list <srp|whitelist|blacklist>");
+			PrintUserCmdText(client, L"usage: /access list <srp|whitelist|nodock|hostile>");
 			return;
 		}
 
@@ -917,7 +929,7 @@ namespace PlayerCommands
 		if (entry.empty())
 		{
 			PrintUserCmdText(client, L"ERR incorrect parameters!");
-			PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+			PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|nodock|hostile> <entry>");
 			return false;
 		}
 		if (entryType == L"tag")
@@ -932,9 +944,11 @@ namespace PlayerCommands
 				}
 
 				base->hostile_tags.remove(trimEntry);
+				base->nodock_tags.remove(trimEntry);
+				base->ally_tags.remove(trimEntry);
 				return AddTagEntry(client, base->srp_tags, trimEntry);
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				if (base->hostile_tags.size() >= base_access_entry_limit)
 				{
@@ -942,8 +956,24 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_tags.size());
 					return false;
 				}
+				base->srp_tags.remove(trimEntry);
 				base->ally_tags.remove(trimEntry);
+				base->nodock_tags.remove(trimEntry);
 				AddTagEntry(client, base->hostile_tags, trimEntry);
+				return true;
+			}
+			else if (type == L"nodock")
+			{
+				if (base->nodock_tags.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->nodock_tags.size());
+					return false;
+				}
+				base->srp_tags.remove(trimEntry);
+				base->ally_tags.remove(trimEntry);
+				base->hostile_tags.remove(trimEntry);
+				AddTagEntry(client, base->nodock_tags, trimEntry);
 				return true;
 			}
 			else if (type == L"whitelist")
@@ -954,6 +984,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->ally_tags.size());
 					return false;
 				}
+				base->srp_tags.remove(trimEntry);
+				base->nodock_tags.remove(trimEntry);
 				base->hostile_tags.remove(trimEntry);
 				return AddTagEntry(client, base->ally_tags, trimEntry);
 			}
@@ -968,12 +1000,14 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
 					return false;
 				}
+				base->ally_names.erase(trimEntry);
 				base->hostile_names.erase(trimEntry);
+				base->nodock_names.erase(trimEntry);
 				base->srp_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				if (base->hostile_names.size() >= base_access_entry_limit)
 				{
@@ -981,8 +1015,25 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_names.size());
 					return false;
 				}
+				base->srp_names.erase(trimEntry);
+				base->nodock_names.erase(trimEntry);
 				base->ally_names.erase(trimEntry);
 				base->hostile_names.insert(trimEntry);
+				PrintUserCmdText(client, L"OK!");
+				return true;
+			}
+			else if (type == L"nodock")
+			{
+				if (base->nodock_names.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->nodock_names.size());
+					return false;
+				}
+				base->srp_names.erase(trimEntry);
+				base->hostile_names.erase(trimEntry);
+				base->ally_names.erase(trimEntry);
+				base->nodock_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
@@ -994,6 +1045,8 @@ namespace PlayerCommands
 						base_access_entry_limit, base->ally_names.size());
 					return false;
 				}
+				base->srp_names.erase(trimEntry);
+				base->nodock_names.erase(trimEntry);
 				base->hostile_names.erase(trimEntry);
 				base->ally_names.insert(trimEntry);
 				PrintUserCmdText(client, L"OK!");
@@ -1017,12 +1070,14 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR: SRP accesses are only editable by admins!");
 					return false;
 				}
+				base->ally_factions.erase(affil->id);
+				base->nodock_factions.erase(affil->id);
 				base->hostile_factions.erase(affil->id);
 				base->srp_factions.insert(affil->id);
 				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
 				return true;
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				if (base->hostile_factions.size() >= base_access_entry_limit)
 				{
@@ -1030,8 +1085,25 @@ namespace PlayerCommands
 						base_access_entry_limit, base->hostile_factions.size());
 					return false;
 				}
+				base->srp_factions.erase(affil->id);
 				base->ally_factions.erase(affil->id);
+				base->nodock_factions.erase(affil->id);
 				base->hostile_factions.insert(affil->id);
+				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
+				return true;
+			}
+			else if (type == L"nodock")
+			{
+				if (base->nodock_factions.size() >= base_access_entry_limit)
+				{
+					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
+						base_access_entry_limit, base->nodock_factions.size());
+					return false;
+				}
+				base->srp_factions.erase(affil->id);
+				base->ally_factions.erase(affil->id);
+				base->hostile_factions.erase(affil->id);
+				base->nodock_factions.insert(affil->id);
 				PrintUserCmdText(client, L"OK added %ls", affil->factionname.c_str());
 				return true;
 			}
@@ -1051,7 +1123,7 @@ namespace PlayerCommands
 		}
 
 		PrintUserCmdText(client, L"ERR incorrect parameters!");
-		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|nodock|hostile> <entry>");
 
 		return false;
 	}
@@ -1071,9 +1143,13 @@ namespace PlayerCommands
 
 				return RemoveTagEntry(client, base->srp_tags, entry);
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				return RemoveTagEntry(client, base->hostile_tags, entry);
+			}
+			else if (type == L"nodock")
+			{
+				return RemoveTagEntry(client, base->nodock_tags, entry);
 			}
 			else if (type == L"whitelist")
 			{
@@ -1099,7 +1175,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				if (!base->hostile_names.count(entry))
 				{
@@ -1107,6 +1183,17 @@ namespace PlayerCommands
 					return false;
 				}
 				base->hostile_names.erase(entry);
+				PrintUserCmdText(client, L"OK!");
+				return true;
+			}
+			else if (type == L"nodock")
+			{
+				if (!base->nodock_names.count(entry))
+				{
+					PrintUserCmdText(client, L"ERR No such name!");
+					return false;
+				}
+				base->nodock_names.erase(entry);
 				PrintUserCmdText(client, L"OK!");
 				return true;
 			}
@@ -1148,7 +1235,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
 				return true;
 			}
-			else if (type == L"blacklist")
+			else if (type == L"hostile")
 			{
 				if (!base->hostile_factions.count(affil->id))
 				{
@@ -1156,6 +1243,17 @@ namespace PlayerCommands
 					return false;
 				}
 				base->hostile_factions.erase(affil->id);
+				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
+				return true;
+			}
+			else if (type == L"nodock")
+			{
+				if (!base->nodock_factions.count(affil->id))
+				{
+					PrintUserCmdText(client, L"ERR No such faction!");
+					return false;
+				}
+				base->nodock_factions.erase(affil->id);
 				PrintUserCmdText(client, L"OK removed %ls!", affil->factionname.c_str());
 				return true;
 			}
@@ -1173,7 +1271,7 @@ namespace PlayerCommands
 		}
 
 		PrintUserCmdText(client, L"ERR incorrect parameters!");
-		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|blacklist> <entry>");
+		PrintUserCmdText(client, L"usage: /access add <tag|name|faction> <srp|whitelist|nodock|hostile> <entry>");
 
 		return false;
 	}
@@ -1333,7 +1431,7 @@ namespace PlayerCommands
 		else
 		{
 			PrintUserCmdText(client, L"/base defensemode <mode>");
-			PrintUserCmdText(client, L"|  <mode> = 1 - Logic: SRP Whitelist > Blacklist > IFF Standing. | Docking Rights: Anyone with good standing.");
+			PrintUserCmdText(client, L"|  <mode> = 1 - Logic: SRP Whitelist > Hostilelist > Nodocklist > IFF Standing. | Docking Rights: Anyone with good standing.");
 			PrintUserCmdText(client, L"|  <mode> = 2 - Logic: Whitelist > No Dock. | Docking Rights: Whitelisted ships only.");
 			PrintUserCmdText(client, L"|  <mode> = 3 - Logic: Whitelist > Hostile. | Docking Rights: Whitelisted ships only.");
 			PrintUserCmdText(client, L"defensemode = %u", base->defense_mode);

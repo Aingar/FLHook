@@ -356,6 +356,7 @@ public:
 	void SyncReputationForBaseObject(uint space_obj);
 	bool IsOnHostileList(const wstring& charname, uint affiliation);
 	bool IsOnAllyList(const wstring& charname, uint affiliation);
+	bool IsOnNodockList(const wstring& charname, uint affiliation);
 	bool IsOnSRPList(const wstring& charname, uint affiliation);
 
 	void SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage);
@@ -493,6 +494,13 @@ public:
 
 	//List of allied factions
 	unordered_set<uint> ally_factions;
+
+	unordered_set<wstring> nodock_names;
+
+	//List of nodock factions
+	unordered_set<uint> nodock_factions;
+
+	list<wstring> nodock_tags;
 
 	//List of hostile factions
 	unordered_set<uint> hostile_factions;

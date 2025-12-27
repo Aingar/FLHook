@@ -28,6 +28,8 @@ unordered_map<uint, unordered_set<uint>> eventCommodities;
 
 uint set_export_cooldown = 900;
 
+uint MAX_PINNED_ITEMS;
+
 // Clients
 unordered_map<uint, CLIENT_DATA> clients;
 
@@ -855,6 +857,10 @@ void LoadSettingsActual()
 					else if (ini.is_value("export_cooldown"))
 					{
 						set_export_cooldown = ini.get_value_int(0);
+					}
+					else if (ini.is_value("max_pinned_items"))
+					{
+						MAX_PINNED_ITEMS = ini.get_value_int(0);
 					}
 					else if (ini.is_value("status_path_html"))
 					{

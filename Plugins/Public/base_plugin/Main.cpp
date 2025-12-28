@@ -1230,6 +1230,8 @@ void LoadSettingsActual()
 		FindClose(h);
 	}
 
+	PlayerBase::GenerateHashFile();
+
 	// loadHyperspaceHubConfig is weekday where 0 = sunday, 6 = saturday
 	// if it's today, randomize appropriate 'jump hole' POBs
 	if (bmapLoadHyperspaceHubConfig)

@@ -1428,3 +1428,17 @@ bool PlayerBase::FeedCrew(uint crewId, uint count)
 
 	return true;
 }
+
+void PlayerBase::GenerateHashFile()
+{
+	FILE* file = fopen("..\\DATA\\playerBaseHashes.txt", "w");
+	if (!file)
+	{
+		return;
+	}
+	for (auto& pb : player_bases)
+	{
+		fprintf(file, "%s\n", pb.second->nickname.c_str());
+	}
+	fclose(file);
+}

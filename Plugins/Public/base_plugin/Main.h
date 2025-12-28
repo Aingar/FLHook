@@ -349,6 +349,8 @@ public:
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
 
+	static void GenerateHashFile();
+
 	static string CreateBaseNickname(const string& basename);
 
 	float GetAttitudeTowardsClient(uint client);

@@ -154,8 +154,7 @@ namespace Rename
 			wstring wscCharname(si.wszCharname);
 			for (auto i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (WstrInsensitiveFind(wscCharname, i->first) == 0
-					&& i->second.rename_password.size() != 0)
+				if (WstrInsensitiveFind(wscCharname, i->first) == 0)
 				{
 					Server.CharacterInfoReq(iClientID, true);
 					return true;
@@ -329,6 +328,7 @@ namespace Rename
 			mapTagToPassword[tag].description = description;
 
 			PrintUserCmdText(iClientID, L"Created faction tag %s with master password %s", tag.c_str(), pass.c_str());
+			PrintUserCmdText(iClientID, L"Tag will remain inactive until you set the public password using /settagpass <tag> <master password> <rename password>", tag.c_str(), pass.c_str());
 			AddLog("NOTICE: Tag %s created by %s (%s)", wstos(tag).c_str(), wstos(wscCharname).c_str(), wstos(HkGetAccountIDByClientID(iClientID)).c_str());
 			SaveSettings();
 			return true;
@@ -662,9 +662,14 @@ namespace Rename
 
 			for (auto& i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (WstrInsensitiveFind(wscNewCharname, i->first) == 0
-					&& i->second.rename_password.size() != 0)
+				if (WstrInsensitiveFind(wscNewCharname, i->first) == 0)
 				{
+					if (i->second.rename_password.empty())
+					{
+						PrintUserCmdText(iClientID, L"WARN This tag is registered but lacks a rename password.");
+						PrintUserCmdText(iClientID, L"Please inform the tag creator about the issue.");
+						return true;
+					}
 					if (!wscPassword.length())
 					{
 						PrintUserCmdText(iClientID, L"ERR Name starts with an owned tag. Password is required.");

@@ -299,6 +299,14 @@ bool CoreModule::Timer(uint time)
 
 	uint number_of_crew = base->HasMarketItem(set_base_crew_type);
 	bool isCrewSufficient = number_of_crew >= (base->base_level * 200) && base->fed_workers[set_base_crew_type] >= (base->base_level * 200);
+	if (base->isCrewSupplied && !isCrewSufficient)
+	{
+		int missingCrew = (base->base_level * 200) - base->fed_workers[set_base_crew_type];
+		if (missingCrew > 0)
+		{
+			isCrewSufficient = base->FeedCrew(set_base_crew_type, missingCrew);
+		}
+	}
 
 	if (baseHealthChanged && base->baseCSolar)
 	{

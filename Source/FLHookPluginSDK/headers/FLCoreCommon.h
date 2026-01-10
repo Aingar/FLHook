@@ -1975,7 +1975,7 @@ namespace PhySys
 		struct CSimple* cobj;
 		Vector position;
 		Vector normalizedVelocity;
-		uint unknown;
+		uint subtargetDacomCRC;
 	};
 
 	IMPORT  float  ANOM_LIMITS_MAX_ANGULAR_VELOCITY_PER_PSI;

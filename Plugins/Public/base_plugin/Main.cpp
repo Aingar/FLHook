@@ -1378,6 +1378,19 @@ void HkTimerCheckKick()
 	if (curr_time % set_tick_time == 0)
 	{
 		RebuildCSolarSystemList();
+
+		ULARGE_INTEGER freeSpace;
+		if (GetDiskFreeSpaceExA(nullptr, &freeSpace, nullptr, nullptr))
+		{
+			if (freeSpace.QuadPart < 2'000'000'000)
+			{
+				ConPrint(L"WARNING: DISK SPACE RUNNING OUT %uMB REMAINING\n", freeSpace.LowPart / 1'000'000);
+			}
+			else if (freeSpace.QuadPart < 1'000'000'000)
+			{
+				exit(0);
+			}
+		}
 	}
 
 	for(auto& iter : player_bases)

@@ -74,6 +74,7 @@ int iLoadedClassTypes = 0;
 int iLoadedClassDiffMultipliers = 0;
 void LoadSettingsNPCBounties(void);
 
+float set_groupDistance = 20000.f;
 
 bool set_bDropsEnabled = true;
 int iLoadedNPCDropClasses = 0;
@@ -137,21 +138,23 @@ void LoadSettingsNPCBounties()
 			{
 				while (ini.read_value())
 				{
-					if (!strcmp(ini.get_name_ptr(), "enabled"))
+					if (ini.is_value("enabled"))
 					{
 						if (ini.get_value_int(0) == 0)
 							set_bBountiesEnabled = false;
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "group_scale"))
+					else if (ini.is_value("group_range"))
+					{
+						set_groupDistance = ini.get_value_float(0);
+					}
+					else if (ini.is_value("group_scale"))
 					{
 						mapBountyGroupScale[ini.get_value_int(0)] = ini.get_value_float(1);
 						++iLoadedNPCBountyGroupScale;
 						if (set_iPluginDebug)
 							ConPrint(L"PVECONTROLLER: Loaded group scale multiplier %u, %f.\n", ini.get_value_int(0), ini.get_value_float(1));
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "class"))
+					else if (ini.is_value("class"))
 					{
 						int iClass = ini.get_value_int(0);
 						mapBountyPayouts[iClass].iBasePayout = ini.get_value_int(1);
@@ -159,8 +162,7 @@ void LoadSettingsNPCBounties()
 						if (set_iPluginDebug)
 							ConPrint(L"PVECONTROLLER: Loaded class base value %u, $%d.\n", iClass, mapBountyPayouts[iClass].iBasePayout);
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "ship"))
+					else if (ini.is_value("ship"))
 					{
 						uint uShiparchHash = CreateID(ini.get_value_string(0));
 						mapBountyShipPayouts[uShiparchHash].iBasePayout = ini.get_value_int(1);
@@ -168,8 +170,7 @@ void LoadSettingsNPCBounties()
 						if (set_iPluginDebug)
 							ConPrint(L"PVECONTROLLER: Loaded override for \"%s\" == %u, $%d.\n", stows(ini.get_value_string(0)).c_str(), uShiparchHash, mapBountyShipPayouts[uShiparchHash].iBasePayout);
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "system_multiplier"))
+					else if (ini.is_value("system_multiplier"))
 					{
 						uint uSystemHash = CreateID(ini.get_value_string(0));
 						mapBountySystemScales[uSystemHash] = ini.get_value_float(1);
@@ -177,8 +178,7 @@ void LoadSettingsNPCBounties()
 						if (set_iPluginDebug)
 							ConPrint(L"PVECONTROLLER: Loaded system scale multiplier for \"%s\" == %u, %f.\n", stows(ini.get_value_string(0)).c_str(), uSystemHash, ini.get_value_float(1));
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "class_type"))
+					else if (ini.is_value("class_type"))
 					{
 						for (uint i = 1; i <= ini.get_num_parameters() - 1; i++) {
 							mapShipClassTypes[ini.get_value_int(i)] = ini.get_value_int(0);
@@ -187,8 +187,7 @@ void LoadSettingsNPCBounties()
 								ConPrint(L"PVECONTROLLER: Loaded ship class (%u) as type (%u) \n", ini.get_value_int(i), ini.get_value_int(0));
 						}
 					}
-
-					if (!strcmp(ini.get_name_ptr(), "class_diff"))
+					else if (ini.is_value("class_diff"))
 					{
 						mapClassDiffMultipliers[ini.get_value_int(0)] = ini.get_value_float(1);
 						++iLoadedClassDiffMultipliers;
@@ -458,7 +457,12 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 				for (uint i = 0 ; i < memberCount ; i++)
 				{
 					uint memberId = playerGroup->GetMember(i);
-					if (Players[memberId].iSystemID == uKillerSystem)
+					auto memberShip = ClientInfo[memberId].cship;
+					if (!memberShip || Players[memberId].iSystemID != uKillerSystem)
+					{
+						continue;
+					}
+					if (HkDistance3D(memberShip->vPos, cship->vPos) < set_groupDistance)
 					{
 						inSystemMembers.emplace_back(memberId);
 					}

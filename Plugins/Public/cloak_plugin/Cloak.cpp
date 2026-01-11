@@ -1059,22 +1059,6 @@ void __stdcall JumpInComplete_AFTER(unsigned int iSystem, unsigned int iShip)
 	}
 
 	jumpingPlayers[iClientID] = 5;
-
-	auto& cloakData = mapClientsCloak.find(iClientID);
-	if (cloakData == mapClientsCloak.end())
-	{
-		return;
-	}
-
-	if (cloakData->second.iState == STATE_CLOAK_CHARGING)
-	{
-		SetState(iClientID, iShip, STATE_CLOAK_OFF);
-		pub::Audio::PlaySoundEffect(iClientID, CreateID("cloak_osiris"));
-		PrintUserCmdText(iClientID, L"Alert: Cloaking device overheat detected. Shutting down.");
-
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-		HkAddCheaterLog(wscCharname, L"Switched system while under cloak charging mode");
-	}
 }
 
 int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget, int& iCancel, enum DOCK_HOST_RESPONSE& response)
@@ -1091,12 +1075,12 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 	{
 		return 0;
 	}
-	// If the last jump happened within 60 seconds then prohibit the docking
-	// on a jump hole or gate.
+
 	uint iTypeID;
 	pub::SpaceObj::GetType(iDockTarget, iTypeID);
 	if (!(iTypeID & (JumpGate | JumpHole)))
 	{
+		jumpingPlayers[client] = 0;
 		return 0;
 	}
 	
@@ -1106,20 +1090,9 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &iDockTarget
 		return 0;
 	}
 
-	if (cloakInfo->second.iState == STATE_CLOAK_CHARGING)
+	if (cloakInfo->second.iState == STATE_CLOAK_CHARGING || cloakInfo->second.iState == STATE_CLOAK_ON)
 	{
-		SetState(client, iShip, STATE_CLOAK_OFF);
-		pub::Audio::PlaySoundEffect(client, CreateID("cloak_osiris"));
-		PrintUserCmdText(client, L"Alert: Cloaking device overheat detected. Shutting down.");
-
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(client);
-		HkAddCheaterLog(wscCharname, L"About to enter a JG/JH while under cloak charging mode");
-		return 0;
-	}
-	
-	if (cloakInfo->second.iState == STATE_CLOAK_ON)
-	{
-		jumpingPlayers[client] = 20;
+		jumpingPlayers[client] = 35;
 	}
 
 	return 0;

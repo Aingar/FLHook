@@ -990,6 +990,23 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 	int iCash;
 	HkGetCash(ARG_CLIENTID(iClientID), iCash);
 
+	// get base rep
+	int iSolarRep;
+	pub::SpaceObj::GetSolarRep(bi->iObjectID, iSolarRep);
+	uint iBaseRep;
+	pub::Reputation::GetAffiliation(iSolarRep, iBaseRep);
+
+	// get player rep
+	int iRepID;
+	pub::Player::GetRep(iClientID, iRepID);
+
+	// check if rep is sufficient
+	float fPlayerRep = -1.0f;
+	if (iBaseRep != -1)
+	{
+		pub::Reputation::GetGroupFeelingsTowards(iRepID, iBaseRep, fPlayerRep);
+	}
+
 	for(AUTOBUY_CARTITEM& cartItem : lstCart)
 	{
 		if (Players[iClientID].equipDescList.equip.size() > 120)
@@ -1003,21 +1020,6 @@ void PlayerAutobuy(uint iClientID, uint iBaseID)
 
 		// check if good is available and if player has the neccessary rep
 		bool bGoodAvailable = false;
-		// get base rep
-		int iSolarRep;
-		pub::SpaceObj::GetSolarRep(bi->iObjectID, iSolarRep);
-		uint iBaseRep;
-		pub::Reputation::GetAffiliation(iSolarRep, iBaseRep);
-		if (iBaseRep == -1)
-			continue; // rep can't be determined yet(space object not created yet?)
-
-		// get player rep
-		int iRepID;
-		pub::Player::GetRep(iClientID, iRepID);
-
-		// check if rep is sufficient
-		float fPlayerRep;
-		pub::Reputation::GetGroupFeelingsTowards(iRepID, iBaseRep, fPlayerRep);
 		foreach(bi->lstMarketMisc, DATA_MARKETITEM, itmi)
 		{
 			if (itmi->iArchID == cartItem.iArchID)

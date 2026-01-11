@@ -1158,7 +1158,7 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 	CSolar* solar = reinterpret_cast<CSolar*>(CObject::FindFirst(CObject::CSOLAR_OBJECT));
 	while(solar)
 	{
-		if (!solar->dockTargetId)
+		if (!solar->dockTargetId || solar->parentNickname)
 		{
 			solar = reinterpret_cast<CSolar*>(CObject::FindNext());
 			continue;

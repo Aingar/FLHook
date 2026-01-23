@@ -1179,7 +1179,7 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 		bi.scBasename = base->cNickname;
 		bi.iBaseID = solar->dockTargetId;
 		lstBases[bi.iBaseID] = bi;
-	exit:
+
 		solar = reinterpret_cast<CSolar*>(CObject::FindNext());
 	}
 

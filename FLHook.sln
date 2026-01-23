@@ -126,6 +126,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "CommFixer", "Plugins\Public
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForceEquipment", "Plugins\Public\force_equipment\ForceEquipment.vcxproj", "{C7809793-1350-4C9F-A40E-2EEA101080DA}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ducktales", "..\..\DiscoPrivate\FLHookPrivAingar\Plugins\Private\ducktales\ducktales.vcxproj", "{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -307,6 +309,12 @@ Global
 		{C7809793-1350-4C9F-A40E-2EEA101080DA}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
 		{C7809793-1350-4C9F-A40E-2EEA101080DA}.Release|Win32.ActiveCfg = Release|Win32
 		{C7809793-1350-4C9F-A40E-2EEA101080DA}.Release|Win32.Build.0 = Release|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Debug|Win32.ActiveCfg = Debug|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Debug|Win32.Build.0 = Debug|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Release|Win32.ActiveCfg = Release|Win32
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -343,6 +351,7 @@ Global
 		{29DD7FEC-ECCB-42F1-A32B-E8913D826E38} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{5F5B6544-16BA-4F89-991D-8CABEBA2613D} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{C7809793-1350-4C9F-A40E-2EEA101080DA} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}

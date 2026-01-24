@@ -338,6 +338,18 @@ static double __cdecl HkCb_TimingSeconds(__int64 &ticks_delta)
 	return seconds;
 }
 
+__declspec(naked) void acosDetour()
+{
+	__asm {
+		push 0
+		fstp [esp]
+		call acosf
+		fld [esp]
+		add esp, 4
+		ret
+	}
+}
+
 void Detour(void* pOFunc, void* pHkFunc, unsigned char* originalData)
 {
 	DWORD dwOldProtection = 0; // Create a DWORD for VirtualProtect calls to allow us to write.
@@ -530,6 +542,11 @@ void CrashCatcher::Init()
 					C_6BFE0_Call = (C_6BFE0)addr;
 					Content_6BFE0_Data = PBYTE(malloc(5));
 					Detour((void*)addr, Content_6BFE0_Detour, Content_6BFE0_Data);
+				}
+
+				{
+					DWORD addr = 0x6391FC2;
+					Detour((void*)addr, acosDetour);
 				}
 			}
 		}

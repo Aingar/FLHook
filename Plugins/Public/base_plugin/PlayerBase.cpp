@@ -1197,7 +1197,33 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 		return 0.0f;
 	}
 
-	// By default all bases are hostile to everybody.
+	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+	uint playeraff = GetAffliationFromClient(client);
+
+	if (IsOnSRPList(charname, playeraff))
+	{
+		return 1.0f;
+	}
+
+	float hostile_rep =
+		vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE ? -0.59f : -1.f;
+	if(temp_hostile_names.count(charname))
+	{
+		return hostile_rep;
+	}
+
+	float no_access_rep = hostile_rep;
+
+	if (defense_mode == DEFENSE_MODE::NODOCK_NEUTRAL)
+	{
+		no_access_rep = -0.59f;
+	}
+
+	if (IsOnHostileList(charname, playeraff))
+	{
+		return hostile_rep;
+	}
+
 	float attitude = 1.0f;
 
 	// If an affiliation is defined then use the player's attitude.
@@ -1207,66 +1233,27 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 		pub::Reputation::GetGroupFeelingsTowards(rep, affiliation, attitude);
 	}
 
-	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-	uint playeraff = GetAffliationFromClient(client);
-
-	if (IsOnSRPList(charname, playeraff))
-	{
-		return 1.0f;
-	}
-
-	if (attitude <= -0.6f)
-	{
-		return -1.0f;
-	}
-
-	if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE 
-		&& temp_hostile_names.count(charname))
-	{
-		return -1.0f;
-	}
-
-	if (defense_mode == DEFENSE_MODE::IFF)
-	{
-		if (IsOnHostileList(charname, playeraff))
-		{
-			if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE)
-			{
-				return -1.0f;
-			}
-			return -0.59f;
-		}
-
-		return 1.0f;
-	}
-
-	float no_access_rep = -1.0f;
-	if (defense_mode == DEFENSE_MODE::NODOCK_NEUTRAL)
-	{
-		no_access_rep = -0.59f;
-	}
-
 	if (IsOnNodockList(charname, playeraff))
-	{
-		return -0.59f;
-	}
-
-	if (IsOnHostileList(charname, playeraff))
 	{
 		if (vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE)
 		{
-			return -1.0f;
+			return min(no_access_rep, attitude);
 		}
 		return no_access_rep;
 	}
 
 	if (IsOnAllyList(charname, playeraff))
 	{
-		return 1.0f;
+		return max(-0.55, attitude);
+	}
+
+	if (defense_mode == DEFENSE_MODE::IFF)
+	{
+		return attitude;
 	}
 
 	// if a player has no standing at all, be neutral otherwise newbies all get shot
-	return no_access_rep;
+	return hostile_rep;
 }
 
 // For all players in the base's system, resync their reps towards all objects

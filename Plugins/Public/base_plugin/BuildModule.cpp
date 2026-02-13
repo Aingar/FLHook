@@ -329,7 +329,7 @@ bool BuildModule::TryConsume(float volumeToProcess)
 bool BuildModule::Timer(uint time)
 {
 
-	if ((time % set_tick_time) != 0)
+	if ((time % set_tick_time) != 0 || base->IsDefaultAffiliation())
 		return false;
 
 	if (Paused || (!base->isCrewSupplied && !set_holiday_mode))

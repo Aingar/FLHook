@@ -154,7 +154,7 @@ namespace Rename
 			wstring wscCharname(si.wszCharname);
 			for (auto i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
-				if (WstrInsensitiveFind(wscCharname, i->first) == 0)
+				if (WstrInsensitiveFind(wscCharname, i->first) == 0 && i->second.rename_password != L"open")
 				{
 					Server.CharacterInfoReq(iClientID, true);
 					return true;
@@ -669,6 +669,10 @@ namespace Rename
 						PrintUserCmdText(iClientID, L"WARN This tag is registered but lacks a rename password.");
 						PrintUserCmdText(iClientID, L"Please inform the tag creator about the issue.");
 						return true;
+					}
+					if (i->second.rename_password == L"open")
+					{
+						break;
 					}
 					if (!wscPassword.length())
 					{

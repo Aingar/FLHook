@@ -1641,7 +1641,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 			return true;
 		}
 		RepFixer::ReloadFactionReps();
-		cmds->Print(L"OK");
+		cmds->Print(L"OK\n");
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

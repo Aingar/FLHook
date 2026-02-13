@@ -212,6 +212,12 @@ bool ADOCK::NoDockCommand(uint iClientID, const wstring &wscCmd, const wstring &
 	}
 	NoDockData& nodockData = nodockDataIter->second;
 
+	if (nodockData.blockedBaseIFFs.empty())
+	{
+		PrintUserCmdText(iClientID, L"ERR Your ID cannot use this command");
+		return true;
+	}
+
 	CShip* cship = ClientInfo[iClientID].cship;
 	if (!cship) {
 		PrintUserCmdText(iClientID, L"ERR You are docked");

@@ -972,16 +972,22 @@ void __stdcall ShipEquipmentDestroyed(IObjRW* ship, CEquip* eq, DamageEntry::Sub
 	}
 
 	int validShieldCount = 0;
-	for (auto& linkedShield : shield->linkedShieldGen)
+	bool foundShield = false;
+	for (auto linkedShield : shield->linkedShieldGen)
 	{
-		if (!linkedShield->ShieldGenArch()->fMaxCapacity || !linkedShield->ShieldGenArch()->fRegenerationRate)
+		if (linkedShield == eq)
 		{
+			foundShield = true;
 			continue;
 		}
-		validShieldCount++;
+
+		if (linkedShield->ShieldGenArch()->fMaxCapacity > 0.f || linkedShield->ShieldGenArch()->fRegenerationRate > 0.f)
+		{
+			validShieldCount++;
+		}
 	}
 
-	if (validShieldCount <= 0)
+	if (validShieldCount <= 0 && foundShield)
 	{
 		ship->cequip_death(shield, fate, dmgList);
 	}

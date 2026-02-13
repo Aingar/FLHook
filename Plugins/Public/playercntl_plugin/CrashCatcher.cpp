@@ -546,7 +546,7 @@ void CrashCatcher::Init()
 
 				{
 					DWORD addr = 0x6391FC2;
-					Detour((void*)addr, acosDetour);
+					//Detour((void*)addr, acosDetour);
 				}
 			}
 		}

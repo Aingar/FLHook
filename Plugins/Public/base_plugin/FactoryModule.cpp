@@ -26,7 +26,11 @@ wstring FactoryModule::GetInfo(bool xml)
 	wstring info;
 
 	std::wstring Status = L"";
-	if (Paused)
+	if (base->IsDefaultAffiliation())
+	{
+		Status = L"(Inactive) ";
+	}
+	else if (Paused)
 	{
 		Status = L"(Paused) ";
 	}
@@ -60,31 +64,6 @@ wstring FactoryModule::GetInfo(bool xml)
 	}
 	if (!active_recipe.nickname)
 	{
-		info += end;
-		return info;
-	}
-	if (active_recipe.consumed_items.empty() 
-		&& active_recipe.dynamic_consumed_items.empty() 
-		&& active_recipe.dynamic_consumed_items_alt.empty() 
-		&& !active_recipe.credit_cost)
-	{
-		info += openLine + active_recipe.infotext + L": Waiting for free cargo storage" + openLine + L"or available max stock limit to drop off:";
-		for (auto& item : active_recipe.produced_items)
-		{
-			if (!item.second)
-			{
-				continue;
-			}
-			uint good = item.first;
-			uint quantity = item.second;
-			const GoodInfo* gi = GoodList::find_by_id(good);
-			if (gi->iType == GOODINFO_TYPE_SHIP)
-			{
-				gi = GoodList::find_by_id(gi->iHullGoodID);
-			}
-			info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
-		}
-
 		info += end;
 		return info;
 	}
@@ -240,8 +219,14 @@ wstring FactoryModule::GetInfo(bool xml)
 		}
 	}
 
-	info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate)*60);
-	info += end;
+	if (!errorMessage.empty())
+	{
+		info += L"<TRA data=\"0x0000FF00\" mask=\"-1\"/>" + openLine + errorMessage + end + L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
+	}
+	else
+	{
+		info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate) * 60) + end;
+	}
 
 	return info;
 }
@@ -414,8 +399,7 @@ bool FactoryModule::TryConsume(float volumeToProcess)
 // and convert this module into the specified type.	
 bool FactoryModule::Timer(uint time)
 {
-
-	if ((time % set_tick_time) != 0)
+	if ((time % set_tick_time) != 0 || base->IsDefaultAffiliation())
 	{
 		return false;
 	}
@@ -433,6 +417,8 @@ bool FactoryModule::Timer(uint time)
 		return false;
 	}
 
+	errorMessage = L"";
+	sufficientCatalysts = false;
 	// Consume goods at the cooking rate.
 	for (const auto& catalyst : active_recipe.catalyst_items)
 	{
@@ -442,7 +428,12 @@ bool FactoryModule::Timer(uint time)
 		int presentAmount = base->HasMarketItem(good);
 		if (presentAmount < quantityNeeded)
 		{
-			sufficientCatalysts = false;
+			auto gi = GoodList::find_by_id(good);
+			if (gi)
+			{
+				errorMessage = L"Insufficient catalyst onboard: ";
+				errorMessage += HkGetWStringFromIDS(gi->iIDSName);
+			}
 			return false;
 		}
 	}
@@ -465,6 +456,7 @@ bool FactoryModule::Timer(uint time)
 		int missingAmount = -(availableWorkingCrew - quantityNeeded);
 		if (availableToBeFed < missingAmount || !base->FeedCrew(good, missingAmount))
 		{
+			errorMessage = L"Unable to feed crew to handle this module";
 			sufficientCatalysts = false;
 			return false;
 		}
@@ -521,6 +513,12 @@ bool FactoryModule::Timer(uint time)
 	{
 		if (!base->AddMarketGood(item.first, item.second))
 		{
+			auto gi = GoodList::find_by_id(item.first);
+			if (gi)
+			{
+				errorMessage = L"Unable to deposit ";
+				errorMessage += HkGetWStringFromIDS(gi->iIDSName);
+			}
 			return false;
 		}
 		else

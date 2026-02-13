@@ -214,14 +214,42 @@ void CoreModule::SaveState(FILE* file)
 void CoreModule::RepairDamage()
 {
 	// no food & no water & no oxygen = RIOTS
-	if (!base->isCrewSupplied)
+	if (!base->isCrewSupplied || base->IsDefaultAffiliation())
 	{
 		return;
+	}
+
+	if (base->preferred_repair)
+	{
+		if (base->base_health >= base->max_base_health)
+			return;
+
+		int count = 1;
+		for (auto& repair : set_base_repair_items)
+		{
+			if (repair.good == base->preferred_repair)
+			{
+				count = repair.quantity;
+				break;
+			}
+		}
+
+		if (base->HasMarketItem(base->preferred_repair) >= count)
+		{
+			base->RemoveMarketGood(base->preferred_repair, count);
+			base->base_health += repair_per_repair_cycle * base->base_level;
+			baseHealthChanged = true;
+		}
 	}
 
 	// The bigger the base the more damage can be repaired.
 	for (REPAIR_ITEM& item : set_base_repair_items)
 	{
+		if (item.good == base->preferred_repair)
+		{
+			continue;
+		}
+
 		if (base->base_health >= base->max_base_health)
 			return;
 

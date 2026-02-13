@@ -1166,6 +1166,10 @@ void LoadSettingsActual()
 					{
 						archstruct.vulnerabilityWindowUse = ini.get_value_int(0);
 					}
+					else if (ini.is_value("unlimited_resupply"))
+					{
+						archstruct.hasUnlimitedResupply = ini.get_value_bool(0);
+					}
 				}
 				mapArchs[nickname] = archstruct;
 			}
@@ -1751,6 +1755,12 @@ bool UserCmd_Process(uint client, const wstring &args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
+	else if (args.find(L"/base setrepair") == 0)
+	{
+		PlayerCommands::SetPrefRepair(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+		}
 	else if (args.find(L"/base setrestockmargin") == 0)
 	{
 		PlayerCommands::SetRestockMargin(client, args);
@@ -2383,7 +2393,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		wstring wscMsgU = L"KITTY ALERT: Possible type 4 POB cheating by %name (Count = %count, Price = %price, Good = %good, Base = %base)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.sellPrice).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%good", itows(gsi.iArchID).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
@@ -2402,7 +2412,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	if (count > LONG_MAX / item.price)
+	if (count > LONG_MAX / item.sellPrice)
 	{
 		cd.reverse_sell = true;
 		PrintUserCmdText(client, L"KITTY ALERT. Illegal sale detected.");
@@ -2411,7 +2421,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		wstring wscMsgU = L"KITTY ALERT: Possible type 3 POB cheating by %name (Base = %base, Count = %count, Good = %good, Price = %price)\n";
 		wscMsgU = ReplaceStr(wscMsgU, L"%name", wscCharname.c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%count", itows(count).c_str());
-		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.price).c_str());
+		wscMsgU = ReplaceStr(wscMsgU, L"%price", itows(item.sellPrice).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%good", itows(gsi.iArchID).c_str());
 		wscMsgU = ReplaceStr(wscMsgU, L"%base", base->basename.c_str());
 
@@ -2941,7 +2951,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			cmd->Print(L"Added %ux %08x", i->second, i->first);
 		}
 		base->Save();
-		cmd->Print(L"OK");
+		cmd->Print(L"OK\n");
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
@@ -2969,7 +2979,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			cmd->Print(L"Added %ux %08x", i->second, i->first);
 		}
 		base->Save();
-		cmd->Print(L"OK");
+		cmd->Print(L"OK\n");
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
@@ -2992,7 +3002,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			pub::Player::AddCargo(client, good, quantity, 1.0, false);
 		}
 
-		cmd->Print(L"OK");
+		cmd->Print(L"OK\n");
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
@@ -3024,7 +3034,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			if (ToLower(i.second->basename).find(ToLower(basename)) == 0)
 			{
 				ForcePlayerBaseDock(info.iClientID, i.second);
-				cmd->Print(L"OK");
+				cmd->Print(L"OK\n");
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				return true;
 			}
@@ -3036,7 +3046,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			if (ToLower(i.second->basename).find(ToLower(basename)) != -1)
 			{
 				ForcePlayerBaseDock(info.iClientID, i.second);
-				cmd->Print(L"OK");
+				cmd->Print(L"OK\n");
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				return true;
 			}

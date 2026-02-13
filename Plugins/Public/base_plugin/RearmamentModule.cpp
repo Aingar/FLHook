@@ -67,23 +67,32 @@ void RearmamentModule::Rearm(uint clientId)
 
     float creditCount = 0;
     float actualToPay = 0;
-    for (auto& item : rearmamentCreditRatio)
+
+
+    if (!base->archetype || !base->archetype->hasUnlimitedResupply)
     {
-        creditCount += base->HasMarketItem(item.first) * item.second;
-        float itemsToConsume = ceilf(sumToPay / item.second);
-        uint itemCount = base->HasMarketItem(item.first);
-        itemsToConsume = min(itemsToConsume, itemCount);
-        actualToPay += itemsToConsume * item.second;
-        if (actualToPay >= sumToPay)
+        for (auto& item : rearmamentCreditRatio)
         {
-            break;
+            creditCount += base->HasMarketItem(item.first) * item.second;
+            float itemsToConsume = ceilf(sumToPay / item.second);
+            uint itemCount = base->HasMarketItem(item.first);
+            itemsToConsume = min(itemsToConsume, itemCount);
+            actualToPay += itemsToConsume * item.second;
+            if (actualToPay >= sumToPay)
+            {
+                break;
+            }
+        }
+
+        if (creditCount < sumToPay)
+        {
+            PrintUserCmdText(clientId, L"ERR Insufficient munition supplies!");
+            return;
         }
     }
-
-    if (creditCount < sumToPay)
+    else
     {
-        PrintUserCmdText(clientId, L"ERR Insufficient munition supplies!");
-        return;
+        actualToPay = itemCart.creditCost;
     }
 
     int creditCost = static_cast<int>(base->rearmamentCostPerCredit * actualToPay);
@@ -182,20 +191,33 @@ void RearmamentModule::CheckPlayerInventory(uint clientId, PlayerBase* base)
     }
 
     float actualToPay = 0;
-    for (auto& item : rearmamentCreditRatio)
+    if (!base->archetype || !base->archetype->hasUnlimitedResupply)
     {
-        float itemsToConsume = ceilf(sumToPay / item.second);
-        uint itemCount = base->HasMarketItem(item.first);
-        itemsToConsume = min(itemsToConsume, itemCount);
-        actualToPay += itemsToConsume * item.second;
-        if (actualToPay >= sumToPay)
+        for (auto& item : rearmamentCreditRatio)
         {
-            break;
+            float itemsToConsume = ceilf(sumToPay / item.second);
+            uint itemCount = base->HasMarketItem(item.first);
+            itemsToConsume = min(itemsToConsume, itemCount);
+            actualToPay += itemsToConsume * item.second;
+            if (actualToPay >= sumToPay)
+            {
+                break;
+            }
         }
+    }
+    else
+    {
+        actualToPay = itemCart.creditCost;
     }
 
     if (actualToPay < sumToPay)
     {
+        return;
+    }
+
+    if (Players[clientId].iInspectCash < actualToPay)
+    {
+        PrintUserCmdText(clientId, L"Rearmament available but you don't have enough credits (%u needed)", static_cast<int>(base->rearmamentCostPerCredit * actualToPay));
         return;
     }
 

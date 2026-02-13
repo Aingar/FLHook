@@ -457,12 +457,16 @@ void LoadSettings()
 #define ADD_EQUIP_TO_CART(desc)	{ aci.iArchID = ((Archetype::Launcher*)eq)->iProjectileArchID; \
 								aci.iCount = ammoLimitMap[aci.iArchID].ammoAdjustment; \
 								aci.wscDescription = desc; \
-								lstCart.push_back(aci); }
+								lstCart.push_back(aci); \
+auto itemArch = GoodList::find_by_archetype(aci.iArchID); \
+if(itemArch){creditCost += itemArch->fPrice * aci.iCount;}} \
 
 #define ADD_EQUIP_TO_CART_FLHOOK(IDin, desc, client)	{ aci.iArchID = IDin; \
 								aci.iCount = mapAmmoLimits[aci.iArchID].ammoLimit - HkPlayerAutoBuyGetCount(client, aci.iArchID); \
 								aci.wscDescription = desc; \
-								lstCart.push_back(aci); }
+								lstCart.push_back(aci); \
+auto itemArch = GoodList::find_by_archetype(aci.iArchID); \
+if(itemArch){creditCost += itemArch->fPrice * aci.iCount;}} \
 
 void AutobuyInfo(uint iClientID)
 {
@@ -820,8 +824,9 @@ void PlayerAutorepair(uint iClientID)
 	return;
 }
 
-list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSpecialAmmo)
+list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSpecialAmmo, float& creditCost)
 {
+	creditCost = 0.f;
 	// player cargo
 	list<CARGO_INFO> lstCargo;
 	HkEnumCargo(ARG_CLIENTID(client), lstCargo, remHoldSize);
@@ -845,6 +850,7 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSp
 				aci.iCount = ship->iMaxNanobots - it->iCount;
 				aci.wscDescription = L"Nanobots";
 				lstCart.push_back(aci);
+				creditCost += GoodList::find_by_archetype(aci.iArchID)->fPrice * aci.iCount;
 				bNanobotsFound = true;
 			}
 			else if (it->iArchID == iShieldBatsID) {
@@ -852,6 +858,7 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSp
 				aci.iCount = ship->iMaxShieldBats - it->iCount;
 				aci.wscDescription = L"Shield Batteries";
 				lstCart.push_back(aci);
+				creditCost += GoodList::find_by_archetype(aci.iArchID)->fPrice * aci.iCount;
 				bShieldBattsFound = true;
 			}
 		}
@@ -862,6 +869,7 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSp
 			aci.iArchID = iNanobotsID;
 			aci.iCount = ship->iMaxNanobots;
 			aci.wscDescription = L"Nanobots";
+			creditCost += GoodList::find_by_archetype(aci.iArchID)->fPrice * aci.iCount;
 			lstCart.push_back(aci);
 		}
 
@@ -871,6 +879,7 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSp
 			aci.iArchID = iShieldBatsID;
 			aci.iCount = ship->iMaxShieldBats;
 			aci.wscDescription = L"Shield Batteries";
+			creditCost += GoodList::find_by_archetype(aci.iArchID)->fPrice * aci.iCount;
 			lstCart.push_back(aci);
 		}
 	}
@@ -977,7 +986,8 @@ list<AUTOBUY_CARTITEM> GetShoppingCart(uint client, int& remHoldSize, bool getSp
 void PlayerAutobuy(uint iClientID, uint iBaseID)
 {
 	int iRemHoldSize;
-	auto lstCart = GetShoppingCart(iClientID, iRemHoldSize, true);
+	float creditCost;
+	auto lstCart = GetShoppingCart(iClientID, iRemHoldSize, true, creditCost);
 
 	// search base in base-info list
 	const auto& baseIter = lstBases.find(iBaseID);
@@ -1247,8 +1257,10 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		returncode = SKIPPLUGINS;
 
 		auto commData = reinterpret_cast<CUSTOM_AUTOBUY_CARTITEMS*>(data);
+		float creditCost;
 
-		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize, false);
+		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize, false, creditCost);
+		commData->creditCost = creditCost;
 	}
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

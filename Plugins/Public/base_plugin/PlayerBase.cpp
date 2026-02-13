@@ -2,7 +2,7 @@
 
 PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
 	: basename(the_basename),
-	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0),
+	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0), preferred_repair(0),
 	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(true), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
@@ -37,7 +37,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 }
 
 PlayerBase::PlayerBase(const string &the_path)
-	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0),
+	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0), preferred_repair(0),
 	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
 	shield_strength_multiplier(base_shield_strength), damage_taken_since_last_threshold(0), isPublic(false)
@@ -59,6 +59,11 @@ PlayerBase::~PlayerBase()
 			delete module;
 		}
 	}
+}
+
+bool PlayerBase::IsDefaultAffiliation()
+{
+	return !affiliation || affiliation == DEFAULT_AFFILIATION;
 }
 
 void PlayerBase::Spawn()
@@ -303,7 +308,7 @@ void PlayerBase::SetupDefaults()
 
 	RecalculateCargoSpace();
 
-	if (base_level >= 2)
+	if (base_level >= 2 || (archetype && archetype->hasUnlimitedResupply))
 	{
 		isRearmamentAvailable = true;
 	}
@@ -321,7 +326,7 @@ wstring PlayerBase::GetBaseHeaderText()
 	base_status += L"<TEXT>" + XMLText(basename) + L", " + HkGetWStringFromIDS(sys->strid_name) + L"</TEXT><PARA/>";
 
 	wstring affiliation_string = L"";
-	if (affiliation && affiliation != DEFAULT_AFFILIATION)
+	if (!IsDefaultAffiliation())
 	{
 		affiliation_string = HkGetWStringFromIDS(Reputation::get_name(affiliation));
 	}
@@ -346,7 +351,11 @@ wstring PlayerBase::GetBaseHeaderText()
 		base_status += L"<TEXT>Highlighted commodities:</TEXT>";
 		for (auto& goodId : pinned_market_items)
 		{
-			const auto& item = market_items.at(goodId);
+			const auto& item = market_items.find(goodId);
+			if (item == market_items.end())
+			{
+				continue;
+			}
 			wchar_t buf[240];
 			const GoodInfo* gi = GoodList::find_by_id(goodId);
 			if (!gi)
@@ -358,11 +367,11 @@ wstring PlayerBase::GetBaseHeaderText()
 				gi = GoodList::find_by_id(gi->iHullGoodID);
 			}
 			wstring name = HkGetWStringFromIDS(gi->iIDSName);
-			wstring stock = UIntToPrettyStr(item.quantity);
-			wstring buyPrice = UIntToPrettyStr(item.price);
-			wstring sellPrice = UIntToPrettyStr(item.sellPrice);
-			wstring minStock = UIntToPrettyStr(item.min_stock);
-			wstring maxStock = UIntToPrettyStr(item.max_stock);
+			wstring stock = UIntToPrettyStr(item->second.quantity);
+			wstring buyPrice = UIntToPrettyStr(item->second.price);
+			wstring sellPrice = UIntToPrettyStr(item->second.sellPrice);
+			wstring minStock = UIntToPrettyStr(item->second.min_stock);
+			wstring maxStock = UIntToPrettyStr(item->second.max_stock);
 			swprintf(buf, _countof(buf), L"<PARA/><TEXT>- %ls: x%ls | Buys at $%ls Sells at $%ls | Min: %ls Max: %ls</TEXT>",
 				name.c_str(), stock.c_str(), sellPrice.c_str(), buyPrice.c_str(), minStock.c_str(), maxStock.c_str());
 			base_status += buf;
@@ -580,6 +589,10 @@ void PlayerBase::Load()
 					else if (ini.is_value("preferred_food"))
 					{
 						preferred_food = ini.get_value_int(0);
+						}
+					else if (ini.is_value("preferred_repair"))
+					{
+						preferred_repair = ini.get_value_int(0);
 					}
 					else if (ini.is_value("commodity"))
 					{
@@ -842,6 +855,18 @@ void PlayerBase::Load()
 		{
 			modules.emplace_back(coreConstruction);
 		}
+
+		for (auto pinIter = pinned_market_items.begin();pinIter != pinned_market_items.end();)
+		{
+			if (!market_items.count(*pinIter))
+			{
+				pinIter = pinned_market_items.erase(pinIter);
+				continue;
+			}
+
+			pinIter++;
+		}
+
 		ini.close();
 	}
 }
@@ -868,6 +893,10 @@ void PlayerBase::Save()
 		if (preferred_food)
 		{
 			fprintf(file, "preferred_food = %u\n", preferred_food);
+		}
+		if (preferred_repair)
+		{
+			fprintf(file, "preferred_repair = %u\n", preferred_repair);
 		}
 		if (isPublic)
 		{
@@ -1206,7 +1235,7 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 	}
 
 	float hostile_rep =
-		vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE ? -0.59f : -1.f;
+		vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE ? -1.f : -0.59f;
 	if(temp_hostile_names.count(charname))
 	{
 		return hostile_rep;
@@ -1239,17 +1268,17 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 		{
 			return min(no_access_rep, attitude);
 		}
-		return no_access_rep;
+		return -0.59f;
 	}
 
 	if (IsOnAllyList(charname, playeraff))
 	{
-		return max(-0.55, attitude);
+		return max(-0.55f, attitude);
 	}
 
 	if (defense_mode == DEFENSE_MODE::IFF)
 	{
-		return attitude;
+		return max(hostile_rep, attitude);
 	}
 
 	// if a player has no standing at all, be neutral otherwise newbies all get shot

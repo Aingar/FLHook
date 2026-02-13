@@ -93,6 +93,7 @@ struct ARCHTYPE_STRUCT
 	bool hasShield = false;
 	bool siegeGunOnly = false;
 	bool vulnerabilityWindowUse = false;
+	bool hasUnlimitedResupply = false;
 	string miningevent;
 };
 
@@ -276,6 +277,7 @@ public:
 	list<uint> build_queue;
 
 	bool sufficientCatalysts = true;
+	std::wstring errorMessage = L"";
 
 	FactoryModule(PlayerBase* the_base);
 	FactoryModule(PlayerBase* the_base, uint factoryNickname);
@@ -348,6 +350,7 @@ public:
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
+	bool IsDefaultAffiliation();
 
 	static void GenerateHashFile();
 
@@ -424,6 +427,7 @@ public:
 	uint storage_space;
 
 	uint preferred_food;
+	uint preferred_repair;
 
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
@@ -705,6 +709,7 @@ namespace PlayerCommands
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
 	void SetPrefFood(uint client, const wstring& cmd);
+	void SetPrefRepair(uint client, const wstring& cmd);
 	void SetRestockMargin(uint client, const wstring& cmd);
 	void BaseSetPublic(uint client, const wstring& cmd);
 

@@ -90,6 +90,9 @@ L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT><PARA
 L"<TRA bold=\"true\"/><TEXT>/base setfood [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT><PARA/><PARA/>"
 
+L"<TRA bold=\"true\"/><TEXT>/base setrepair [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Sets the selected repair item to be used in first order when repairing the station.</TEXT><PARA/><PARA/>"
+
 L"<TRA bold=\"true\"/><TEXT>/base setrestockmargin</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the percentage of the rearm cost compared to baseline. 0 means free repairs, 200 means double compared to regular stations.</TEXT><PARA/><PARA/>"
 
@@ -1539,7 +1542,7 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"ERR Cannot upgrade base's core during holiday mode!");
 					return;
 				}
-				if (!base->affiliation)
+				if (base->IsDefaultAffiliation())
 				{
 					PrintUserCmdText(client, L"ERR Base needs to have a defined affiliation to upgrade its core!");
 					return;
@@ -3272,6 +3275,53 @@ namespace PlayerCommands
 			base->preferred_food = set_base_crew_food_items.at(input-1);
 
 			const GoodInfo* gi = GoodList::find_by_id(base->preferred_food);
+			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
+			base->Save();
+		}
+	}
+
+	void SetPrefRepair(uint client, const wstring& cmd)
+	{
+		PlayerBase* base = GetPlayerBaseForClient(client);
+		if (!base)
+		{
+			PrintUserCmdText(client, L"ERR Not in player base");
+			return;
+		}
+
+		if (!checkBaseAdminAccess(base, client))
+		{
+			return;
+		}
+
+		uint input = ToUInt(GetParam(cmd, ' ', 2));
+
+		if (!input || set_base_repair_items.size() < input)
+		{
+			PrintUserCmdText(client, L"ERR invalid input. Command usage: /base setrepair <nr>");
+			if (base->preferred_repair)
+			{
+				const GoodInfo* gi = GoodList::find_by_id(base->preferred_repair);
+				PrintUserCmdText(client, L"Current selection: %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
+			}
+			else
+			{
+				PrintUserCmdText(client, L"Current selection: none");
+			}
+			PrintUserCmdText(client, L"Available repair types:");
+			int counter = 1;
+			for (auto& repairId : set_base_repair_items)
+			{
+				const GoodInfo* gi = GoodList::find_by_id(repairId.good);
+				PrintUserCmdText(client, L"%d - %ls", counter, HkGetWStringFromIDS(gi->iIDSName).c_str());
+				counter++;
+			}
+		}
+		else
+		{
+			base->preferred_repair = set_base_repair_items.at(input - 1).good;
+
+			const GoodInfo* gi = GoodList::find_by_id(base->preferred_repair);
 			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
 			base->Save();
 		}

@@ -224,6 +224,10 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	{
 		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Insufficient crew onboard</TEXT><PARA/><TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}
+	else if (base->IsDefaultAffiliation())
+	{
+		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Crew wants to know who they're working for (must set base affiliation)</TEXT><PARA/><TRA data=\"0xE6C68400\" mask=\"-1\"/>";
+	}
 	else if (base->isCrewSupplied)
 	{
 		base_status += L"<TEXT>Crew Status: Working</TEXT><PARA/>";

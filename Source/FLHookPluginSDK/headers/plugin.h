@@ -528,6 +528,7 @@ struct CUSTOM_AUTOBUY_CARTITEMS
 	list<AUTOBUY_CARTITEM> cartItems;
 	uint clientId;
 	int remHoldSize;
+	float creditCost;
 };
 
 struct POB_SRP_ACCESS_STRUCT

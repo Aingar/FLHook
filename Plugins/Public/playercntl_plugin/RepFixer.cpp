@@ -433,6 +433,13 @@ namespace RepFixer
 			return false;
 		}
 
+		static const auto friendly = MakeId("fc_friendly");
+		if (searchedAffil == friendly)
+		{
+			PrintUserCmdText(client, L"This Faction IFF is not available");
+			return false;
+		}
+
 		uint playerRep = Players[client].iReputation;
 		
 		uint currAff;

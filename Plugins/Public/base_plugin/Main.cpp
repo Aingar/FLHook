@@ -1663,12 +1663,6 @@ bool UserCmd_Process(uint client, const wstring &args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
-	else if (args.find(L"/base rep") == 0)
-	{
-		PlayerCommands::BaseRep(client, args);
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return true;
-	}
 	else if (args.find(L"/base defensemode") == 0)
 	{
 		PlayerCommands::BaseDefenseMode(client, args);
@@ -1759,9 +1753,15 @@ bool UserCmd_Process(uint client, const wstring &args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
-	else if (args.find(L"/base setrepair") == 0)
+	else if (args.find(L"/base repair") == 0)
 	{
 		PlayerCommands::SetPrefRepair(client, args);
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (args.find(L"/base rep") == 0)
+	{
+		PlayerCommands::BaseRep(client, args);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 		}

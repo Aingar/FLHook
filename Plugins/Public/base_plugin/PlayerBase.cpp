@@ -594,6 +594,10 @@ void PlayerBase::Load()
 					{
 						preferred_repair = ini.get_value_int(0);
 					}
+					else if (ini.is_value("disabled_repair"))
+					{
+						disabled_repair.insert(ini.get_value_int(0));
+					}
 					else if (ini.is_value("commodity"))
 					{
 						MARKET_ITEM mi;
@@ -897,6 +901,10 @@ void PlayerBase::Save()
 		if (preferred_repair)
 		{
 			fprintf(file, "preferred_repair = %u\n", preferred_repair);
+		}
+		for (auto repId : disabled_repair)
+		{
+			fprintf(file, "disabled_repair = %u\n", repId);
 		}
 		if (isPublic)
 		{

@@ -224,7 +224,7 @@ void CoreModule::RepairDamage()
 		if (base->base_health >= base->max_base_health)
 			return;
 
-		int count = 1;
+		uint count = 1;
 		for (auto& repair : set_base_repair_items)
 		{
 			if (repair.good == base->preferred_repair)
@@ -232,6 +232,11 @@ void CoreModule::RepairDamage()
 				count = repair.quantity;
 				break;
 			}
+		}
+
+		if (base->disabled_repair.count(base->preferred_repair))
+		{
+			goto exitFav;
 		}
 
 		if (base->HasMarketItem(base->preferred_repair) >= count)
@@ -242,10 +247,17 @@ void CoreModule::RepairDamage()
 		}
 	}
 
+	exitFav:
+
 	// The bigger the base the more damage can be repaired.
 	for (REPAIR_ITEM& item : set_base_repair_items)
 	{
 		if (item.good == base->preferred_repair)
+		{
+			continue;
+		}
+
+		if (base->disabled_repair.count(item.good))
 		{
 			continue;
 		}

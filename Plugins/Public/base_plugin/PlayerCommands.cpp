@@ -90,8 +90,8 @@ L"<TEXT>Prints Crew, Food, Water, Oxygen and repair material counts.</TEXT><PARA
 L"<TRA bold=\"true\"/><TEXT>/base setfood [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the selected food item to be eaten by the crew first.</TEXT><PARA/><PARA/>"
 
-L"<TRA bold=\"true\"/><TEXT>/base setrepair [nr]</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Sets the selected repair item to be used in first order when repairing the station.</TEXT><PARA/><PARA/>"
+L"<TRA bold=\"true\"/><TEXT>/base repair [toggle|priority] [index]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Allows user to configure which repair items to use, and which to prioritize when repairing the station.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base setrestockmargin</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the percentage of the rearm cost compared to baseline. 0 means free repairs, 200 means double compared to regular stations.</TEXT><PARA/><PARA/>"
@@ -529,7 +529,7 @@ namespace PlayerCommands
 
 		// Do not display the first password.
 		bool first = true;
-		for(auto& bp : base->passwords)
+		for (auto& bp : base->passwords)
 		{
 			if (first)
 			{
@@ -825,7 +825,7 @@ namespace PlayerCommands
 		unordered_set<wstring>* nameSet = nullptr;
 		unordered_set<uint>* factionSet = nullptr;
 		list<wstring>* tagList = nullptr;
-		
+
 		if (type == L"srp")
 		{
 			nameSet = &base->srp_names;
@@ -1298,7 +1298,7 @@ namespace PlayerCommands
 			PrintAccesses(base, client, param1);
 			return;
 		}
-		
+
 		if (cmd == L"add")
 		{
 			if (AddAccess(base, client, param1, param2, param3))
@@ -1307,7 +1307,7 @@ namespace PlayerCommands
 			}
 			return;
 		}
-		
+
 		if (cmd == L"remove")
 		{
 			if (RemoveAccess(base, client, param1, param2, param3))
@@ -1703,8 +1703,8 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"Only buildable by:");
 				for (const auto& rep : buildRecipe->affiliationBonus)
 				{
-						PrintUserCmdText(client, L"|   %s",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str());
+					PrintUserCmdText(client, L"|   %s",
+						HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str());
 				}
 			}
 		}
@@ -1903,10 +1903,10 @@ namespace PlayerCommands
 			}
 			return;
 		}
-		
+
 		bool selectedValidCraftList = base->availableCraftList.count(craftList);
 		const RECIPE* recipe = FactoryModule::GetFactoryProductRecipe(craftList, craftNameNr);
-		
+
 		if (cmd != L"stop" && cmd != L"start" && cmd != L"pause" && cmd != L"resume" && cmd != L"info")
 		{
 			PrintUserCmdText(client, L"ERR Incorrect command, use '/craft help' for more information.");
@@ -2011,17 +2011,17 @@ namespace PlayerCommands
 					PrintUserCmdText(client, L"IFF bonuses:");
 					for (const auto& rep : recipe->affiliationBonus)
 					{
-					    if (rep.second <= 1.0f)
-					    {
-					    	PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
-					    }
-					    else
-					    {
-                            PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials penalty",
-							HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (rep.second - 1.0f) * 100);
+						if (rep.second <= 1.0f)
+						{
+							PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials discount",
+								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (1.0f - rep.second) * 100);
+						}
+						else
+						{
+							PrintUserCmdText(client, L"|   %ls - %0.f%% construction materials penalty",
+								HkGetWStringFromIDS(Reputation::get_short_name(rep.first)).c_str(), (rep.second - 1.0f) * 100);
 
-                        }
+						}
 					}
 				}
 				else
@@ -2199,7 +2199,7 @@ namespace PlayerCommands
 
 	void Bank(uint client, const wstring& args)
 	{
-		PlayerBase *base = GetPlayerBaseForClient(client);
+		PlayerBase* base = GetPlayerBaseForClient(client);
 
 		if (!base)
 		{
@@ -2884,120 +2884,120 @@ namespace PlayerCommands
 			float distance = HkDistance3D(solar->get_position(), pos);
 			switch (solar->type)
 			{
-				case Planet:
-				case Moon:
+			case Planet:
+			case Moon:
+			{
+				if (distance < (minPlanetDistance + solar->get_radius())) // In case of planets, we only care about distance from actual surface, since it can vary wildly
 				{
-					if (distance < (minPlanetDistance + solar->get_radius())) // In case of planets, we only care about distance from actual surface, since it can vary wildly
+					uint idsName = solar->get_name();
+					if (!idsName) idsName = solar->get_archetype()->iIdsName;
+					if (client)
 					{
-						uint idsName = solar->get_name();
-						if (!idsName) idsName = solar->get_archetype()->iIdsName;
-						if (client)
-						{
-							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance - solar->get_radius()), static_cast<uint>(minPlanetDistance));
-						}
-						else
-						{
-							ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance - solar->get_radius()));
-						}
-						return false;
+						PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance - solar->get_radius()), static_cast<uint>(minPlanetDistance));
 					}
-					break;
-				}
-				case DockingRing:
-				case Station:
-				{
-					if (distance < minStationDistance)
+					else
 					{
-						uint idsName = solar->get_name();
-						if (!idsName) idsName = solar->get_archetype()->iIdsName;
-						if (client)
-						{
-							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minStationDistance));
-						}
-						else
-						{
-							ConPrint(L"Base too close to %ls, Current: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
-						}
-						return false;
+						ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance - solar->get_radius()));
 					}
-					break;
+					return false;
 				}
-				case TradelaneRing:
+				break;
+			}
+			case DockingRing:
+			case Station:
+			{
+				if (distance < minStationDistance)
 				{
-					if (distance < minLaneDistance)
+					uint idsName = solar->get_name();
+					if (!idsName) idsName = solar->get_archetype()->iIdsName;
+					if (client)
 					{
-						if (client)
-						{
-							PrintUserCmdText(client, L"Trade Lane Ring is too close. Current: %um, Minimum distance: %um", static_cast<uint>(distance), static_cast<uint>(minLaneDistance));
-						}
-						else
-						{
-							ConPrint(L"Trade Lane too close, distance: %um", static_cast<uint>(distance));
-						}
-						return false;
+						PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minStationDistance));
 					}
-					break;
-				}
-				case JumpGate:
-				case JumpHole:
-				{
-					if (distance < minJumpDistance)
+					else
 					{
-						uint idsName = solar->get_name();
-						if (!idsName) idsName = solar->get_archetype()->iIdsName;
+						ConPrint(L"Base too close to %ls, Current: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
+					}
+					return false;
+				}
+				break;
+			}
+			case TradelaneRing:
+			{
+				if (distance < minLaneDistance)
+				{
+					if (client)
+					{
+						PrintUserCmdText(client, L"Trade Lane Ring is too close. Current: %um, Minimum distance: %um", static_cast<uint>(distance), static_cast<uint>(minLaneDistance));
+					}
+					else
+					{
+						ConPrint(L"Trade Lane too close, distance: %um", static_cast<uint>(distance));
+					}
+					return false;
+				}
+				break;
+			}
+			case JumpGate:
+			case JumpHole:
+			{
+				if (distance < minJumpDistance)
+				{
+					uint idsName = solar->get_name();
+					if (!idsName) idsName = solar->get_archetype()->iIdsName;
 
-						if (client)
-						{
-							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minJumpDistance));
-						}
-						else
-						{
-							ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
-						}
-						return false;
-					}
-					break;
-				}
-				case Satellite:
-				case WeaponPlatform:
-				case DestructibleDepot:
-				case MissionSatellite:
-				{
-					if (distance < minDistanceMisc)
+					if (client)
 					{
-						uint idsName = solar->get_name();
-						if (!idsName) idsName = solar->get_archetype()->iIdsName;
-						if (client)
-						{
-							PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minDistanceMisc));
-						}
-						else
-						{
-							ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
-						}
-						return false;
+						PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minJumpDistance));
 					}
-					break;
+					else
+					{
+						ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
+					}
+					return false;
 				}
-				case NonTargetable:
+				break;
+			}
+			case Satellite:
+			case WeaponPlatform:
+			case DestructibleDepot:
+			case MissionSatellite:
+			{
+				if (distance < minDistanceMisc)
 				{
+					uint idsName = solar->get_name();
+					if (!idsName) idsName = solar->get_archetype()->iIdsName;
+					if (client)
+					{
+						PrintUserCmdText(client, L"%ls too close. Current: %um, Minimum distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance), static_cast<uint>(minDistanceMisc));
+					}
+					else
+					{
+						ConPrint(L"Base too close to %ls, distance: %um", HkGetWStringFromIDS(idsName).c_str(), static_cast<uint>(distance));
+					}
+					return false;
+				}
+				break;
+			}
+			case NonTargetable:
+			{
 
-					if (distance < minDistanceMisc)
+				if (distance < minDistanceMisc)
+				{
+					uint idsName = solar->get_name();
+					if (!idsName) idsName = solar->get_archetype()->iIdsName;
+					if (client)
 					{
-						uint idsName = solar->get_name();
-						if (!idsName) idsName = solar->get_archetype()->iIdsName;
-						if (client)
-						{
-							PrintUserCmdText(client, L"Untargetable object too close. Current: %um, Minimum distance: %um", static_cast<uint>(distance), static_cast<uint>(minDistanceMisc));
-						}
-						else
-						{
-							ConPrint(L"Base too close to an untargetable object, distance: %um", static_cast<uint>(distance));
-						}
-						return false;
+						PrintUserCmdText(client, L"Untargetable object too close. Current: %um, Minimum distance: %um", static_cast<uint>(distance), static_cast<uint>(minDistanceMisc));
 					}
-					break;
+					else
+					{
+						ConPrint(L"Base too close to an untargetable object, distance: %um", static_cast<uint>(distance));
+					}
+					return false;
 				}
+				break;
+			}
 			}
 		}
 
@@ -3284,7 +3284,7 @@ namespace PlayerCommands
 		}
 		else
 		{
-			base->preferred_food = set_base_crew_food_items.at(input-1);
+			base->preferred_food = set_base_crew_food_items.at(input - 1);
 
 			const GoodInfo* gi = GoodList::find_by_id(base->preferred_food);
 			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
@@ -3301,41 +3301,100 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (!checkBaseAdminAccess(base, client))
-		{
-			return;
-		}
+		wstring command = GetParam(cmd, ' ', 2);
+		uint input = ToUInt(GetParam(cmd, ' ', 3));
 
-		uint input = ToUInt(GetParam(cmd, ' ', 2));
-
-		if (!input || set_base_repair_items.size() < input)
+		bool isAdmin = clients[client].admin;
+		if (!isAdmin)
 		{
-			PrintUserCmdText(client, L"ERR invalid input. Command usage: /base setrepair <nr>");
-			if (base->preferred_repair)
-			{
-				const GoodInfo* gi = GoodList::find_by_id(base->preferred_repair);
-				PrintUserCmdText(client, L"Current selection: %ls", HkGetWStringFromIDS(gi->iIDSName).c_str());
-			}
-			else
-			{
-				PrintUserCmdText(client, L"Current selection: none");
-			}
-			PrintUserCmdText(client, L"Available repair types:");
+			PrintUserCmdText(client, L"Repair configuration:");
 			int counter = 1;
 			for (auto& repairId : set_base_repair_items)
 			{
 				const GoodInfo* gi = GoodList::find_by_id(repairId.good);
-				PrintUserCmdText(client, L"%d - %ls", counter, HkGetWStringFromIDS(gi->iIDSName).c_str());
+				wstring isPriority = base->preferred_repair == repairId.good ? L" - PRIORITY" : L"";
+				wstring isDisabled = base->disabled_repair.count(repairId.good) ? L"DISABLED" : L"ENABLED";
+				PrintUserCmdText(client, L"%d - %ls - %ls%ls", counter, HkGetWStringFromIDS(gi->iIDSName).c_str(), isDisabled.c_str(), isPriority.c_str());
 				counter++;
+			}
+
+			if (!command.empty())
+			{
+				PrintUserCmdText(client, L"ERR Access Denied");
+			}
+
+			return;
+		}
+
+		if (command == L"priority")
+		{
+			if (input && input <= set_base_repair_items.size())
+			{
+				uint repairId = set_base_repair_items.at(input - 1).good;
+				if (repairId != base->preferred_repair)
+				{
+					base->preferred_repair = repairId;
+
+					const GoodInfo* gi = GoodList::find_by_id(base->preferred_repair);
+					PrintUserCmdText(client, L"Priority repair item set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
+				}
+				else
+				{
+					base->preferred_repair = 0;
+					PrintUserCmdText(client, L"Priority repair unset!");
+				}
+				base->Save();
+			}
+			else
+			{
+				PrintUserCmdText(client, L"ERR Invalid item index");
+			}
+
+		}
+		else if (command == L"toggle")
+		{
+			if (input && input <= set_base_repair_items.size())
+			{
+				uint repairId = set_base_repair_items.at(input - 1).good;
+
+				bool isDisabled = base->disabled_repair.count(repairId);
+
+				const GoodInfo* gi = GoodList::find_by_id(repairId);
+				auto name = HkGetWStringFromIDS(gi->iIDSName);
+				if (isDisabled)
+				{
+					base->disabled_repair.erase(repairId);
+					PrintUserCmdText(client, L"Enabled repairs with %ls", name.c_str());
+				}
+				else
+				{
+					base->disabled_repair.insert(repairId);
+					PrintUserCmdText(client, L"Disabled repairs with %ls", name.c_str());
+				}
+
+				base->Save();
+			}
+			else
+			{
+				PrintUserCmdText(client, L"ERR Invalid item index");
 			}
 		}
 		else
 		{
-			base->preferred_repair = set_base_repair_items.at(input - 1).good;
+			PrintUserCmdText(client, L"Invalid command syntax");
+			PrintUserCmdText(client, L"/base repair [priority|toggle] [index]");
+			PrintUserCmdText(client, L"example: /base repair priority 2");
+		}
 
-			const GoodInfo* gi = GoodList::find_by_id(base->preferred_repair);
-			PrintUserCmdText(client, L"Preferred food set to %ls!", HkGetWStringFromIDS(gi->iIDSName).c_str());
-			base->Save();
+		PrintUserCmdText(client, L"Repair configuration:");
+		int counter = 1;
+		for (auto& repairId : set_base_repair_items)
+		{
+			const GoodInfo* gi = GoodList::find_by_id(repairId.good);
+			wstring isPriority = base->preferred_repair == repairId.good ? L" - PRIORITY" : L"";
+			wstring isDisabled = base->disabled_repair.count(repairId.good) ? L"DISABLED" : L"ENABLED";
+			PrintUserCmdText(client, L"%d - %ls - %ls%ls", counter, HkGetWStringFromIDS(gi->iIDSName).c_str(), isDisabled.c_str(), isPriority.c_str());
+			counter++;
 		}
 	}
 
@@ -3391,7 +3450,7 @@ namespace PlayerCommands
 
 		uint currTime = (uint)time(nullptr);
 
-		if (base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown > currTime )
+		if (base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown > currTime)
 		{
 			PrintUserCmdText(client, L"ERR Can only change vulnerability windows once every %u days, %u days left", vulnerability_window_change_cooldown / (3600 * 24), 1 + ((base->lastVulnerabilityWindowChange + vulnerability_window_change_cooldown - currTime) / (3600 * 24)));
 			return;
@@ -3457,7 +3516,7 @@ namespace PlayerCommands
 			return;
 		}
 
-		base->vulnerabilityWindow1 = { vulnerabilityWindowOneStart, vulnerabilityWindowOneEnd % (60 * 24)};
+		base->vulnerabilityWindow1 = { vulnerabilityWindowOneStart, vulnerabilityWindowOneEnd % (60 * 24) };
 		if (!single_vulnerability_window)
 		{
 			base->vulnerabilityWindow2 = { vulnerabilityWindowTwoStart, vulnerabilityWindowTwoEnd % (60 * 24) };

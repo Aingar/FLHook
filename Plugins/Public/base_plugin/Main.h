@@ -430,6 +430,8 @@ public:
 	uint preferred_food;
 	uint preferred_repair;
 
+	unordered_set<uint> disabled_repair;
+
 	// The commodities carried by this base->
 	unordered_map<uint, MARKET_ITEM> market_items;
 

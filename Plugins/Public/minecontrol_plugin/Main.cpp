@@ -262,6 +262,7 @@ void SpawnNode(MiningSpawnPointDB& ms)
     info.pos = ms.positions[selectedPositionIndex];
     info.ori = EulerMatrix(eulerRotation);
     info.solar_ids = ms.nodeIDS;
+    info.affiliation = -1;
 
     Plugin_Communication(CUSTOM_SPAWN_SOLAR, &info);
 
@@ -1028,6 +1029,7 @@ void __stdcall JettisonCargo(unsigned int iClientID, struct XJettisonCargo const
     data.solar_ids = 540999 + iClientID;
     data.solarArchetypeId = set_containerSolarArchetypeID;
     data.loadoutArchetypeId = set_containerLoadoutArchetypeID;
+    data.affiliation = -1;
 
     Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_SPAWN_SOLAR, &data);
     if (data.iSpaceObjId)

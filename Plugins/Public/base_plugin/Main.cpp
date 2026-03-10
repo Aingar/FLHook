@@ -1170,6 +1170,10 @@ void LoadSettingsActual()
 					{
 						archstruct.hasUnlimitedResupply = ini.get_value_bool(0);
 					}
+					else if (ini.is_value("lock_modules"))
+					{
+						archstruct.lockModules = ini.get_value_bool(0);
+					}
 				}
 				mapArchs[nickname] = archstruct;
 			}

@@ -1469,6 +1469,12 @@ namespace PlayerCommands
 			return;
 		}
 
+		if (base->archetype && base->archetype->lockModules)
+		{
+			PrintUserCmdText(client, L"ERR This base has its modules locked, they cannot be built nor destroyed");
+			return;
+		}
+
 		wstring& cmd = GetParam(args, ' ', 1);
 		wstring& moduleListArg = GetParam(args, ' ', 2);
 		wstring& moduleNameNr = GetParamToEnd(args, ' ', 3);

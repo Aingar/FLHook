@@ -94,6 +94,7 @@ struct ARCHTYPE_STRUCT
 	bool siegeGunOnly = false;
 	bool vulnerabilityWindowUse = false;
 	bool hasUnlimitedResupply = false;
+	bool lockModules = false;
 	string miningevent;
 };
 

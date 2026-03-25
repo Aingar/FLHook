@@ -78,7 +78,12 @@ enum DestroyType
 
 struct SSPObjCollisionInfo
 {
-	DWORD dwTargetShip;
+	uint targetObj;
+	ushort targetSubObj;
+	uint sourceObj;
+	ushort sourceSubObj;
+	float collisionVelocity;
+
 };
 
 struct XActivateEquip

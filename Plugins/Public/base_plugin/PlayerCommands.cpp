@@ -105,17 +105,14 @@ L"<TEXT>Control defense modules.</TEXT><PARA/><PARA/>"
 L"<TRA bold=\"true\"/><TEXT>/base shieldmod</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control shield modules.</TEXT><PARA/><PARA/>"
 
-L"<TRA bold=\"true\"/><TEXT>/base addfac [aff tag], /base rmfac [aff tag], /base lstfac, /base myfac</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Add, remove and list ally factions for the base. Show your affiliation ID and all available.</TEXT><PARA/><PARA/>"
-
-L"<TRA bold=\"true\"/><TEXT>/base addhfac [aff tag], /base rmhfac [aff tag], /base lsthfac</TEXT><TRA bold=\"false\"/><PARA/>"
-L"<TEXT>Add, remove and list hostile factions for the base.</TEXT><PARA/><PARA/>"
-
 L"<TRA bold=\"true\"/><TEXT>/build</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Control the construction and destruction of base modules and upgrades.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/destroy [moduleIndex]</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Destroy the module at the selected index.</TEXT><PARA/><PARA/>"
+
+L"<TRA bold=\"true\"/><TEXT>/base swap [moduleIndex1] [moduleIndex2]</TEXT><TRA bold=\"false\"/><PARA/>"
+L"<TEXT>Swaps the selected modules on the module list.</TEXT><PARA/><PARA/>"
 
 L"<TRA bold=\"true\"/><TEXT>/base setshield</TEXT><TRA bold=\"false\"/><PARA/>"
 L"<TEXT>Sets the vulnerability window starting hour (server time). To set the vulnerability window start to 15:00 server time input `/base setshield 15`.</TEXT><PARA/>"
@@ -694,23 +691,6 @@ namespace PlayerCommands
 	};
 	Affiliations A;
 	void Aff_initer() { A.Init(); };
-
-	void BaseViewMyFac(uint client, const wstring& cmd)
-	{
-		const wstring& secondword = GetParam(cmd, ' ', 1);
-
-		A.PrintAll(client);
-
-		uint aff = GetAffliationFromClient(client);
-		auto playerAff = A.GetAffiliation(aff);
-		if (!playerAff)
-		{
-			PrintUserCmdText(client, L"Ship IFF ID: None");
-			return;
-		}
-
-		PrintUserCmdText(client, L"Ship IFF ID: %s, %s", playerAff->factionname.c_str(), playerAff->nickname.c_str());
-	}
 
 	void BaseRep(uint client, const wstring& args)
 	{

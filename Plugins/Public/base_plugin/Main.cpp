@@ -1657,12 +1657,6 @@ bool UserCmd_Process(uint client, const wstring &args)
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
-	else if (args.find(L"/base myfac") == 0)
-	{
-		PlayerCommands::BaseViewMyFac(client, args);
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
-		return true;
-	}
 	else if (args.find(L"/base defensemode") == 0)
 	{
 		PlayerCommands::BaseDefenseMode(client, args);

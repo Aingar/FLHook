@@ -695,7 +695,6 @@ namespace PlayerCommands
 	void BaseSetMasterPwd(uint client, const wstring& args);
 
 	void BaseAccess(uint client, const wstring& args);
-	void BaseViewMyFac(uint client, const wstring& args);
 	void BaseRep(uint client, const wstring& args);
 
 	void BaseInfo(uint client, const wstring& args);

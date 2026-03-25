@@ -1138,6 +1138,16 @@ void LoadZoneDamageData(const char* path)
 
 bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 {
+	{
+		//fix empty_frequency_cube not being respected by the server
+		auto hServer = (char*)GetModuleHandleA("server");
+		BYTE patch1[] = { 0x90, 0x90, 0x90, 0x90, 0x90, 0xD9, 0x5C};
+		WriteProcMem(hServer + 0x2426B, patch1, sizeof(patch1));
+		BYTE patch2[] = { 0x8B, 0x54 };
+		WriteProcMem(hServer + 0x242BB, patch2, sizeof(patch2));
+		BYTE patch3[] = { 0x89, 0x50 };
+		WriteProcMem(hServer + 0x242CA, patch3, sizeof(patch3));
+	}
 
 	// patch reading spin for solars
 	FARPROC spinPatchAddr = FARPROC(0x62B819B);

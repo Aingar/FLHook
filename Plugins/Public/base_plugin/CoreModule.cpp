@@ -404,7 +404,13 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		}
 		else
 		{
-			SpaceObjDestroyed(space_obj);
+			bool shouldRespawn = base->archetype ? !base->archetype->respawnWithRestart : true;
+			bool suppressDeath = base->archetype ? !base->archetype->suppressDeathAnnouncement : true;
+			if (shouldRespawn)
+			{
+				base->base_health = base->max_base_health;
+			}
+			SpaceObjDestroyed(space_obj, !shouldRespawn, suppressDeath);
 			return 0.0f;
 		}
 	}
@@ -463,7 +469,13 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 	}
 	else
 	{
-		SpaceObjDestroyed(space_obj);
+		bool shouldRespawn = base->archetype ? !base->archetype->respawnWithRestart : true;
+		bool suppressDeath = base->archetype ? !base->archetype->suppressDeathAnnouncement : true;
+		if (shouldRespawn)
+		{
+			base->base_health = base->max_base_health;
+		}
+		SpaceObjDestroyed(space_obj, !shouldRespawn, suppressDeath);
 		return 0.0f;
 	}
 }

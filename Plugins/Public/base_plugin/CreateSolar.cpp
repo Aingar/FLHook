@@ -1,5 +1,90 @@
 #include "Main.h"
 
+using st6_malloc_t = void* (*)(size_t);
+using st6_free_t = void(*)(void*);
+IMPORT st6_malloc_t st6_malloc;
+IMPORT st6_free_t st6_free;
+
+void CreateSolar::LoadExtraLoadouts()
+{
+	INI_Reader ini;
+
+	if (!ini.open("./flhook_plugins/serversideLoadouts.cfg", false))
+	{
+		return;
+	}
+
+	struct EquipDescVectorContainer
+	{
+		uint nickname;
+		EquipDescVector eqVector;
+	};
+
+	st6::map<uint, EquipDescVectorContainer>* loadoutMap = reinterpret_cast<st6::map<uint, EquipDescVectorContainer>*>(0x63FD2A8);
+	static std::unordered_set<std::string> stringSet;
+	static CacheString bayHp;
+	bayHp.value = "BAY";
+	while (ini.read_header())
+	{
+		if (!ini.is_header("Loadout"))
+		{
+			continue;
+		}
+
+		EquipDescVectorContainer eq;
+		eq.eqVector.idMaker.Reset();
+
+		bool valid = false;
+		while (ini.read_value())
+		{
+			if (ini.is_value("nickname"))
+			{
+				valid = true;
+				eq.nickname = CreateID(ini.get_value_string(0));
+			}
+			else if (ini.is_value("equip"))
+			{
+				EquipDesc eqDesc;
+				eqDesc.bMission = false;
+				eqDesc.bMounted = true;
+				eqDesc.fHealth = 1.0f;
+				eqDesc.iArchID = CreateID(ini.get_value_string(0));
+				if (ini.is_value_empty(1))
+				{
+					eqDesc.make_internal();
+				}
+				else
+				{
+					auto ret = stringSet.insert(ini.get_value_string(1));
+					const auto hpPtr = ret.first->c_str();
+					eqDesc.set_hardpoint(*reinterpret_cast<const CacheString*>(&hpPtr));
+				}
+				eqDesc.sID = eq.eqVector.idMaker.CreateEquipID();
+				eq.eqVector.equip.push_back(eqDesc);
+			}
+			else if (ini.is_value("cargo"))
+			{
+				EquipDesc eqDesc;
+				eqDesc.bMission = false;
+				eqDesc.bMounted = false;
+				eqDesc.fHealth = 1.0f;
+				eqDesc.iArchID = CreateID(ini.get_value_string(0));
+				eqDesc.set_hardpoint(bayHp);
+				eqDesc.sID = eq.eqVector.idMaker.CreateEquipID();
+				eq.eqVector.equip.push_back(eqDesc);
+			}
+		}
+
+		if (valid)
+		{
+			auto lol = loadoutMap->insert({ eq.nickname, eq });
+			ConPrint(L"%u\n", lol);
+		}
+	}
+
+	ini.close();
+}
+
 void CreateSolar::DespawnSolarCallout(DESPAWN_SOLAR_STRUCT* info)
 {
 	if (!customSolarList.count(info->spaceObjId))

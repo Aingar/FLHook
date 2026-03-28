@@ -95,6 +95,8 @@ struct ARCHTYPE_STRUCT
 	bool vulnerabilityWindowUse = false;
 	bool hasUnlimitedResupply = false;
 	bool lockModules = false;
+	bool suppressDeathAnnouncement = false;
+	bool respawnWithRestart = false;
 	string miningevent;
 };
 
@@ -736,6 +738,7 @@ namespace CreateSolar
 	void SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo const& solarInfo);
 	void CreateSolarCallout(SPAWN_SOLAR_STRUCT* info);
 	void DespawnSolarCallout(DESPAWN_SOLAR_STRUCT* info);
+	void LoadExtraLoadouts();
 }
 
 extern unordered_map<uint, CLIENT_DATA> clients;

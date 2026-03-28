@@ -801,6 +801,7 @@ void LoadSettingsActual()
 	}
 
 	EquipmentUtilities::ReadIniNicknames();
+	CreateSolar::LoadExtraLoadouts();
 
 	// The path to the configuration file.
 	char szCurDir[MAX_PATH];
@@ -1173,6 +1174,14 @@ void LoadSettingsActual()
 					else if (ini.is_value("lock_modules"))
 					{
 						archstruct.lockModules = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("suppress_death_announcement"))
+					{
+						archstruct.suppressDeathAnnouncement = ini.get_value_bool(0);
+					}
+					else if (ini.is_value("forced_respawn"))
+					{
+						archstruct.respawnWithRestart = ini.get_value_bool(0);
 					}
 				}
 				mapArchs[nickname] = archstruct;
@@ -3078,7 +3087,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		base->base_health = 0;
 		auto coreModule = reinterpret_cast<CoreModule*>(base->modules[0]);
-		coreModule->SpaceObjDestroyed(coreModule->space_obj);
+		coreModule->SpaceObjDestroyed(coreModule->space_obj, true, base->archetype ? !base->archetype->suppressDeathAnnouncement : true);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

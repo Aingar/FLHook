@@ -189,6 +189,49 @@ public:
 	uint iOwner;
 };
 
+namespace SubObjectID
+{
+	class IMPORT CollGroupIdMaker
+	{
+	public:
+		CollGroupIdMaker(void);
+		class SubObjectID::CollGroupIdMaker& operator=(class SubObjectID::CollGroupIdMaker const&);
+		unsigned short CreateGroupID(void);
+		void Reset(void);
+
+	public:
+		ushort currSId;
+	};
+
+	class IMPORT EquipIdMaker
+	{
+	public:
+		EquipIdMaker(void);
+		class SubObjectID::EquipIdMaker& operator=(class SubObjectID::EquipIdMaker const&);
+		unsigned short CreateEquipID(void);
+		void Reset(void);
+
+	public:
+		ushort currSId;
+	};
+
+	class IMPORT ShieldIdMaker
+	{
+	public:
+		ShieldIdMaker(void);
+		class SubObjectID::ShieldIdMaker& operator=(class SubObjectID::ShieldIdMaker const&);
+		unsigned short CreateShieldID(void);
+		void Reset(void);
+
+	public:
+		ushort currSId;
+	};
+
+	IMPORT  bool  IsArchGroupID(unsigned short);
+	IMPORT  bool  IsEquipID(unsigned short);
+	IMPORT  bool  IsShieldEquipID(unsigned short);
+};
+
 class IMPORT EquipDescList
 {
 public:
@@ -6795,49 +6838,6 @@ protected:
 
 public:
 	unsigned char data[OBJECT_DATA_SIZE];
-};
-
-namespace SubObjectID
-{
-	class IMPORT CollGroupIdMaker
-	{
-	public:
-		CollGroupIdMaker(void);
-		class SubObjectID::CollGroupIdMaker & operator=(class SubObjectID::CollGroupIdMaker const &);
-		unsigned short CreateGroupID(void);
-		void Reset(void);
-
-	public:
-		ushort currSId;
-	};
-
-	class IMPORT EquipIdMaker
-	{
-	public:
-		EquipIdMaker(void);
-		class SubObjectID::EquipIdMaker & operator=(class SubObjectID::EquipIdMaker const &);
-		unsigned short CreateEquipID(void);
-		void Reset(void);
-
-	public:
-		ushort currSId;
-	};
-
-	class IMPORT ShieldIdMaker
-	{
-	public:
-		ShieldIdMaker(void);
-		class SubObjectID::ShieldIdMaker & operator=(class SubObjectID::ShieldIdMaker const &);
-		unsigned short CreateShieldID(void);
-		void Reset(void);
-
-	public:
-		ushort currSId;
-	};
-
-	IMPORT  bool  IsArchGroupID(unsigned short);
-	IMPORT  bool  IsEquipID(unsigned short);
-	IMPORT  bool  IsShieldEquipID(unsigned short);
 };
 
 class IMPORT TRANode

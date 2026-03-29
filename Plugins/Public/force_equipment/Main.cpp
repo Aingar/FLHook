@@ -15,11 +15,6 @@
 #include <hookext_exports.h>
 #include <PluginUtilities.h>
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-IMPORT st6_malloc_t st6_malloc;
-IMPORT st6_free_t st6_free;
-
 static int set_iPluginDebug = 0;
 static float hullRepairFactor = 0.33f;
 static float equipmentRepairFactor = 0.3f;

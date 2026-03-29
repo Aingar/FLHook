@@ -253,8 +253,8 @@ public:
 	struct EquipDesc const* traverse_equipment_type(unsigned int, struct EquipDesc const*)const;
 
 public:
-	uint iDunno;
-	std::list<EquipDesc> equip;
+	st6::list<EquipDesc> equip;
+	SubObjectID::EquipIdMaker idMaker;
 };
 
 struct IMPORT EquipDescVector
@@ -269,8 +269,8 @@ struct IMPORT EquipDescVector
 	struct EquipDesc* traverse_equipment_type(unsigned int, struct EquipDesc const*);
 
 public:
-	uint iDunno;
-	std::vector<EquipDesc> equip;
+	st6::vector<EquipDesc> equip;
+	SubObjectID::EquipIdMaker idMaker;
 };
 
 struct IMPORT ActionDB

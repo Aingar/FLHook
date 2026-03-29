@@ -14,13 +14,13 @@ void CreateSolar::LoadExtraLoadouts()
 		return;
 	}
 
-	struct EquipDescVectorContainer
+	struct Loadout
 	{
 		uint nickname;
 		EquipDescVector eqVector;
 	};
 
-	st6::map<uint, EquipDescVectorContainer>* loadoutMap = reinterpret_cast<st6::map<uint, EquipDescVectorContainer>*>(0x63FD2A8);
+	st6::map<uint, Loadout>* loadoutMap = reinterpret_cast<st6::map<uint, Loadout>*>(0x63FD2A8);
 	static std::unordered_set<std::string> stringSet;
 	static CacheString bayHp;
 	bayHp.value = "BAY";
@@ -31,8 +31,8 @@ void CreateSolar::LoadExtraLoadouts()
 			continue;
 		}
 
-		EquipDescVectorContainer eq;
-		eq.eqVector.idMaker.Reset();
+		Loadout loadout;
+		loadout.eqVector.idMaker.Reset();
 
 		bool valid = false;
 		while (ini.read_value())
@@ -40,7 +40,7 @@ void CreateSolar::LoadExtraLoadouts()
 			if (ini.is_value("nickname"))
 			{
 				valid = true;
-				eq.nickname = CreateID(ini.get_value_string(0));
+				loadout.nickname = CreateID(ini.get_value_string(0));
 			}
 			else if (ini.is_value("equip"))
 			{
@@ -59,8 +59,8 @@ void CreateSolar::LoadExtraLoadouts()
 					const auto hpPtr = ret.first->c_str();
 					eqDesc.set_hardpoint(*reinterpret_cast<const CacheString*>(&hpPtr));
 				}
-				eqDesc.sID = eq.eqVector.idMaker.CreateEquipID();
-				eq.eqVector.equip.push_back(eqDesc);
+				eqDesc.sID = loadout.eqVector.idMaker.CreateEquipID();
+				loadout.eqVector.equip.push_back(eqDesc);
 			}
 			else if (ini.is_value("cargo"))
 			{
@@ -70,15 +70,22 @@ void CreateSolar::LoadExtraLoadouts()
 				eqDesc.fHealth = 1.0f;
 				eqDesc.iArchID = CreateID(ini.get_value_string(0));
 				eqDesc.set_hardpoint(bayHp);
-				eqDesc.sID = eq.eqVector.idMaker.CreateEquipID();
-				eq.eqVector.equip.push_back(eqDesc);
+				eqDesc.sID = loadout.eqVector.idMaker.CreateEquipID();
+				if (ini.is_value_empty(1))
+				{
+					eqDesc.iCount = 1;
+				}
+				else
+				{
+					eqDesc.iCount = ini.get_value_float(1);
+				}
+				loadout.eqVector.equip.push_back(eqDesc);
 			}
 		}
 
 		if (valid)
 		{
-			auto lol = loadoutMap->insert({ eq.nickname, eq });
-			ConPrint(L"%u\n", lol);
+			loadoutMap->insert({ loadout.nickname, loadout });
 		}
 	}
 
@@ -324,10 +331,10 @@ pub::AI::SetPersonalityParams CreateSolar::MakePersonality()
 
 	p.personality.RepairUse.use_shield_repair_pre_delay = 0.0f;
 	p.personality.RepairUse.use_shield_repair_post_delay = 1.0f;
-	p.personality.RepairUse.use_shield_repair_at_damage_percent = 0.2f;
+	p.personality.RepairUse.use_shield_repair_at_damage_percent = 0.0f;
 	p.personality.RepairUse.use_hull_repair_pre_delay = 0.0f;
 	p.personality.RepairUse.use_hull_repair_post_delay = 1.0f;
-	p.personality.RepairUse.use_hull_repair_at_damage_percent = 0.2f;
+	p.personality.RepairUse.use_hull_repair_at_damage_percent = 0.0f;
 
 	p.personality.GunUse.gun_fire_interval_time = 0.5f;
 	p.personality.GunUse.gun_fire_interval_variance_percent = 0.0f;

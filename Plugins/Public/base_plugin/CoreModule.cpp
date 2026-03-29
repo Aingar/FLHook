@@ -70,7 +70,12 @@ void CoreModule::Spawn()
 		{
 			si.iLoadoutID = CreateID(base->baseloadout.c_str());
 		}
-		if (!base->archetype->isjump)
+
+		if (base->archetype && base->archetype->notDockable)
+		{
+			si.baseId = 0;
+		}
+		else if (!base->archetype || !base->archetype->isjump)
 		{
 			si.baseId = base->proxy_base;
 		}
@@ -404,13 +409,14 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		}
 		else
 		{
-			bool shouldRespawn = base->archetype ? !base->archetype->respawnWithRestart : true;
-			bool suppressDeath = base->archetype ? !base->archetype->suppressDeathAnnouncement : true;
+			bool shouldRespawn = base->archetype ? base->archetype->respawnWithRestart : true;
+			bool suppressDeath = base->archetype ? base->archetype->suppressDeathAnnouncement : true;
 			if (shouldRespawn)
 			{
 				base->base_health = base->max_base_health;
+				base->Save();
 			}
-			SpaceObjDestroyed(space_obj, !shouldRespawn, suppressDeath);
+			SpaceObjDestroyed(space_obj, !shouldRespawn, !suppressDeath);
 			return 0.0f;
 		}
 	}
@@ -462,20 +468,26 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 
 	base->SpaceObjDamaged(space_obj, attacking_space_obj, incoming_damage);
 
-	if (base->base_health > incoming_damage)
+	if (base->base_health <= incoming_damage)
+	{
+		base->base_health = base->baseCSolar->hitPoints;
+	}
+
+	if(base->base_health <= incoming_damage)
 	{
 		base->base_health -= incoming_damage;
 		return incoming_damage;
 	}
 	else
 	{
-		bool shouldRespawn = base->archetype ? !base->archetype->respawnWithRestart : true;
-		bool suppressDeath = base->archetype ? !base->archetype->suppressDeathAnnouncement : true;
+		bool shouldRespawn = base->archetype ? base->archetype->respawnWithRestart : true;
+		bool suppressDeath = base->archetype ? base->archetype->suppressDeathAnnouncement : true;
 		if (shouldRespawn)
 		{
 			base->base_health = base->max_base_health;
+			base->Save();
 		}
-		SpaceObjDestroyed(space_obj, !shouldRespawn, suppressDeath);
+		SpaceObjDestroyed(space_obj, !shouldRespawn, !suppressDeath);
 		return 0.0f;
 	}
 }

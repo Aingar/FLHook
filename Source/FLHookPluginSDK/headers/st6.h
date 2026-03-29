@@ -399,13 +399,15 @@ namespace st6
 		{
 			_Nodeptr _Left, _Parent, _Right;
 			_Ty _Value;
-			_Redbl _Color;
+			char _Color, _Isnil;
 		};
 		typedef _REFERENCE_X(_Nodeptr, _A) _Nodepref;
 		typedef _REFERENCE_X(const _K, _A) _Keyref;
 		typedef _REFERENCE_X(_Redbl, _A) _Rbref;
+		typedef _REFERENCE_X(char, _A) _Charref;
 		typedef _REFERENCE_X(_Ty, _A) _Vref;
-		static _Rbref _Color(_Nodeptr _P) { return ((_Rbref)(*_P)._Color); }
+		static _Charref _Color(_Nodeptr _P) { return ((_Charref)(*_P)._Color); }
+		static _Charref _Isnil(_Nodeptr _P) { return ((_Charref)(*_P)._Isnil); }
 		static _Keyref _Key(_Nodeptr _P) { return (_Kfn()(_Value(_P))); }
 		static _Nodepref _Left(_Nodeptr _P) { return ((_Nodepref)(*_P)._Left); }
 		static _Nodepref _Parent(_Nodeptr _P) { return ((_Nodepref)(*_P)._Parent); }
@@ -424,84 +426,17 @@ namespace st6
 		typedef _REFERENCE_X(const _Ty, _A) const_reference;
 		// CLASS const_iterator
 		class iterator;
-		class const_iterator;
-		friend class const_iterator;
-		class const_iterator
-		{
-		  public:
-			const_iterator() {}
-			const_iterator(_Nodeptr _P) : _Ptr(_P) {}
-			const_iterator(const iterator& _X) : _Ptr(_X._Ptr) {}
-			const_reference operator*() const { return (_Value(_Ptr)); }
-			_Ctptr operator->() const { return (&**this); }
-			const_iterator& operator++()
-			{
-				_Inc();
-				return (*this);
-			}
-			const_iterator operator++(int)
-			{
-				const_iterator _Tmp = *this;
-				++*this;
-				return (_Tmp);
-			}
-			const_iterator& operator--()
-			{
-				_Dec();
-				return (*this);
-			}
-			const_iterator operator--(int)
-			{
-				const_iterator _Tmp = *this;
-				--*this;
-				return (_Tmp);
-			}
-			bool operator==(const const_iterator& _X) const { return (_Ptr == _X._Ptr); }
-			bool operator!=(const const_iterator& _X) const { return (!(*this == _X)); }
-			void _Dec()
-			{
-				if (_Color(_Ptr) == _Red && _Parent(_Parent(_Ptr)) == _Ptr)
-					_Ptr = _Right(_Ptr);
-				else if (_Left(_Ptr) != _Nil)
-					_Ptr = _Max(_Left(_Ptr));
-				else
-				{
-					_Nodeptr _P;
-					while (_Ptr == _Left(_P = _Parent(_Ptr)))
-						_Ptr = _P;
-					_Ptr = _P;
-				}
-			}
-			void _Inc()
-			{
-				if (_Right(_Ptr) != _Nil)
-					_Ptr = _Min(_Right(_Ptr));
-				else
-				{
-					_Nodeptr _P;
-					while (_Ptr == _Right(_P = _Parent(_Ptr)))
-						_Ptr = _P;
-					if (_Right(_Ptr) != _P)
-						_Ptr = _P;
-				}
-			}
-			_Nodeptr _Mynode() const { return (_Ptr); }
-
-		  protected:
-			_Nodeptr _Ptr;
-		};
-		// CLASS iterator
 		friend class iterator;
-		class iterator : public const_iterator
+		class iterator /*: public _Bidit<_Ty, difference_type>*/
 		{
-		  public:
+		public:
 			iterator() {}
-			iterator(_Nodeptr _P) : const_iterator(_P) {}
-			reference operator*() const { return (_Value(this->_Ptr)); }
+			iterator(_Nodeptr _P) : _Ptr(_P) {}
+			reference operator*() const { return (_Value(_Ptr)); }
 			_Tptr operator->() const { return (&**this); }
 			iterator& operator++()
 			{
-				this->_Inc();
+				_Inc();
 				return (*this);
 			}
 			iterator operator++(int)
@@ -512,7 +447,7 @@ namespace st6
 			}
 			iterator& operator--()
 			{
-				this->_Dec();
+				_Dec();
 				return (*this);
 			}
 			iterator operator--(int)
@@ -521,9 +456,94 @@ namespace st6
 				--*this;
 				return (_Tmp);
 			}
-			bool operator==(const iterator& _X) const { return (this->_Ptr == _X._Ptr); }
+			bool operator==(const iterator& _X) const { return (_Ptr == _X._Ptr); }
 			bool operator!=(const iterator& _X) const { return (!(*this == _X)); }
+			void _Dec()
+			{
+				if (_Color(_Ptr) == _Red && _Parent(_Parent(_Ptr)) == _Ptr)
+				{
+					_Ptr = _Right(_Ptr);
+				}
+				else if (!_Isnil(_Left(_Ptr)))
+				{
+					_Ptr = _Max(_Left(_Ptr));
+				}
+				else
+				{
+					_Nodeptr _P;
+					while (_Ptr == _Left(_P = _Parent(_Ptr)))
+					{
+						_Ptr = _P;
+					}
+					_Ptr = _P;
+				}
+			}
+			void _Inc()
+			{
+				if (!_Isnil(_Right(_Ptr)))
+				{
+					_Ptr = _Min(_Right(_Ptr));
+				}
+				else
+				{
+					_Nodeptr _P;
+					while (_Ptr == _Right(_P = _Parent(_Ptr)))
+					{
+						_Ptr = _P;
+					}
+					if (_Right(_Ptr) != _P)
+					{
+						_Ptr = _P;
+					}
+				}
+			}
+			_Nodeptr _Mynode() const { return (_Ptr); }
+
+		protected:
+			_Nodeptr _Ptr;
 		};
+		// CLASS const_iterator
+		class const_iterator;
+		friend class const_iterator;
+		class const_iterator : public iterator
+		{
+		public:
+			const_iterator() {}
+			const_iterator(_Nodeptr _P) : iterator(_P) {}
+			const_iterator(const iterator& _X) : iterator(_X) {}
+			const_reference operator*() const { return (_Value(iterator::_Ptr)); }
+			_Ctptr operator->() const { return (&**this); }
+			const_iterator& operator++()
+			{
+				this->_Inc();
+				return (*this);
+			}
+			const_iterator operator++(int)
+			{
+				iterator _Tmp = *this;
+				++*this;
+				return (_Tmp);
+			}
+			const_iterator& operator--()
+			{
+				this->_Dec();
+				return (*this);
+			}
+			const_iterator operator--(int)
+			{
+				iterator _Tmp = *this;
+				--*this;
+				return (_Tmp);
+			}
+			bool operator==(const const_iterator& _X) const { return (iterator::_Ptr == _X._Ptr); }
+			bool operator!=(const const_iterator& _X) const { return (!(*this == _X)); }
+		};
+		// typedef reverse_bidirectional_iterator<iterator,
+		//     value_type, reference, _Tptr, difference_type>
+		//     reverse_iterator;
+		// typedef reverse_bidirectional_iterator<const_iterator,
+		//     value_type, const_reference, _Ctptr, difference_type>
+		//     const_reverse_iterator;
 		typedef std::pair<iterator, bool> _Pairib;
 		typedef std::pair<iterator, iterator> _Pairii;
 		typedef std::pair<const_iterator, const_iterator> _Paircc;
@@ -543,13 +563,8 @@ namespace st6
 			erase(begin(), end());
 			_Freenode(_Head);
 			_Head = 0, _Size = 0;
-			{
-				if (--_Nilrefs == 0)
-				{
-					_Freenode(_Nil);
-					_Nil = 0;
-				}
-			}
+			_Freenode(_Nil);
+			_Nil = 0;
 		}
 		_Myt& operator=(const _Myt& _X)
 		{
@@ -565,6 +580,22 @@ namespace st6
 		const_iterator begin() const { return (const_iterator(_Lmost())); }
 		iterator end() { return (iterator(_Head)); }
 		const_iterator end() const { return (const_iterator(_Head)); }
+		// reverse_iterator rbegin()
+		//{
+		//     return (reverse_iterator(end()));
+		// }
+		// const_reverse_iterator rbegin() const
+		//{
+		//     return (const_reverse_iterator(end()));
+		// }
+		// reverse_iterator rend()
+		//{
+		//     return (reverse_iterator(begin()));
+		// }
+		// const_reverse_iterator rend() const
+		//{
+		//     return (const_reverse_iterator(begin()));
+		// }
 		size_type size() const { return (_Size); }
 		size_type max_size() const { return (allocator.max_size()); }
 		bool empty() const { return (size() == 0); }
@@ -575,25 +606,31 @@ namespace st6
 			_Nodeptr _X = _Root();
 			_Nodeptr _Y = _Head;
 			bool _Ans = true;
+			while (_X != _Nil)
 			{
-				while (_X != _Nil)
-				{
-					_Y = _X;
-					_Ans = key_compare(_Kfn()(_V), _Key(_X));
-					_X = _Ans ? _Left(_X) : _Right(_X);
-				}
+				_Y = _X;
+				_Ans = key_compare(_Kfn()(_V), _Key(_X));
+				_X = _Ans ? _Left(_X) : _Right(_X);
 			}
 			if (_Multi)
+			{
 				return (_Pairib(_Insert(_X, _Y, _V), true));
+			}
 			iterator _P = iterator(_Y);
 			if (!_Ans)
 				;
 			else if (_P == begin())
+			{
 				return (_Pairib(_Insert(_X, _Y, _V), true));
+			}
 			else
+			{
 				--_P;
+			}
 			if (key_compare(_Key(_P._Mynode()), _Kfn()(_V)))
+			{
 				return (_Pairib(_Insert(_X, _Y, _V), true));
+			}
 			return (_Pairib(_P, false));
 		}
 		iterator insert(iterator _P, const value_type& _V)
@@ -603,12 +640,16 @@ namespace st6
 			else if (_P == begin())
 			{
 				if (key_compare(_Kfn()(_V), _Key(_P._Mynode())))
+				{
 					return (_Insert(_Head, _P._Mynode(), _V));
+				}
 			}
 			else if (_P == end())
 			{
 				if (key_compare(_Key(_Rmost()), _Kfn()(_V)))
+				{
 					return (_Insert(_Nil, _Rmost(), _V));
+				}
 			}
 			else
 			{
@@ -616,9 +657,13 @@ namespace st6
 				if (key_compare(_Key((--_Pb)._Mynode()), _Kfn()(_V)) && key_compare(_Kfn()(_V), _Key(_P._Mynode())))
 				{
 					if (_Right(_Pb._Mynode()) == _Nil)
+					{
 						return (_Insert(_Nil, _Pb._Mynode(), _V));
+					}
 					else
+					{
 						return (_Insert(_Head, _P._Mynode(), _V));
+					}
 				}
 			}
 			return (insert(_V).first);
@@ -626,12 +671,16 @@ namespace st6
 		void insert(iterator _F, iterator _L)
 		{
 			for (; _F != _L; ++_F)
+			{
 				insert(*_F);
+			}
 		}
 		void insert(const value_type* _F, const value_type* _L)
 		{
 			for (; _F != _L; ++_F)
+			{
 				insert(*_F);
+			}
 		}
 		iterator erase(iterator _P)
 		{
@@ -639,17 +688,25 @@ namespace st6
 			_Nodeptr _Y = (_P++)._Mynode();
 			_Nodeptr _Z = _Y;
 			if (_Left(_Y) == _Nil)
+			{
 				_X = _Right(_Y);
+			}
 			else if (_Right(_Y) == _Nil)
+			{
 				_X = _Left(_Y);
+			}
 			else
+			{
 				_Y = _Min(_Right(_Y)), _X = _Right(_Y);
+			}
 			if (_Y != _Z)
 			{
 				_Parent(_Left(_Z)) = _Y;
 				_Left(_Y) = _Left(_Z);
 				if (_Y == _Right(_Z))
+				{
 					_Parent(_X) = _Y;
+				}
 				else
 				{
 					_Parent(_X) = _Parent(_Y);
@@ -658,11 +715,17 @@ namespace st6
 					_Parent(_Right(_Z)) = _Y;
 				}
 				if (_Root() == _Z)
+				{
 					_Root() = _Y;
+				}
 				else if (_Left(_Parent(_Z)) == _Z)
+				{
 					_Left(_Parent(_Z)) = _Y;
+				}
 				else
+				{
 					_Right(_Parent(_Z)) = _Y;
+				}
 				_Parent(_Y) = _Parent(_Z);
 				std::swap(_Color(_Y), _Color(_Z));
 				_Y = _Z;
@@ -671,27 +734,42 @@ namespace st6
 			{
 				_Parent(_X) = _Parent(_Y);
 				if (_Root() == _Z)
+				{
 					_Root() = _X;
+				}
 				else if (_Left(_Parent(_Z)) == _Z)
+				{
 					_Left(_Parent(_Z)) = _X;
+				}
 				else
+				{
 					_Right(_Parent(_Z)) = _X;
+				}
 				if (_Lmost() != _Z)
 					;
 				else if (_Right(_Z) == _Nil)
+				{
 					_Lmost() = _Parent(_Z);
+				}
 				else
+				{
 					_Lmost() = _Min(_X);
+				}
 				if (_Rmost() != _Z)
 					;
 				else if (_Left(_Z) == _Nil)
+				{
 					_Rmost() = _Parent(_Z);
+				}
 				else
+				{
 					_Rmost() = _Max(_X);
+				}
 			}
 			if (_Color(_Y) == _Black)
 			{
 				while (_X != _Root() && _Color(_X) == _Black)
+				{
 					if (_X == _Left(_Parent(_X)))
 					{
 						_Nodeptr _W = _Right(_Parent(_X));
@@ -754,6 +832,7 @@ namespace st6
 							break;
 						}
 					}
+				}
 				_Color(_X) = _Black;
 			}
 			_Destval(&_Value(_Y));
@@ -766,7 +845,9 @@ namespace st6
 			if (size() == 0 || _F != begin() || _L != end())
 			{
 				while (_F != _L)
+				{
 					erase(_F++);
+				}
 				return (_F);
 			}
 			else
@@ -788,7 +869,9 @@ namespace st6
 		void erase(const _K* _F, const _K* _L)
 		{
 			for (; _F != _L; ++_F)
+			{
 				erase(*_F);
+			}
 		}
 		void clear() { erase(begin(), end()); }
 		iterator find(const _K& _Kv)
@@ -820,6 +903,7 @@ namespace st6
 			if (allocator == _X.allocator)
 			{
 				std::swap(_Head, _X._Head);
+				std::swap(_Nil, _X._Nil);
 				std::swap(_Multi, _X._Multi);
 				std::swap(_Size, _X._Size);
 			}
@@ -831,9 +915,7 @@ namespace st6
 		}
 		friend void swap(_Myt& _X, _Myt& _Y) { _X.swap(_Y); }
 
-	  protected:
-		static _Nodeptr _Nil;
-		static size_t _Nilrefs;
+	protected:
 		void _Copy(const _Myt& _X)
 		{
 			_Root() = _Copy(_X._Root(), _Head);
@@ -844,22 +926,25 @@ namespace st6
 				_Rmost() = _Max(_Root());
 			}
 			else
+			{
 				_Lmost() = _Head, _Rmost() = _Head;
+			}
 		}
 		_Nodeptr _Copy(_Nodeptr _X, _Nodeptr _P)
 		{
-			_Nodeptr _R = _X;
-			for (; _X != _Nil; _X = _Left(_X))
+			_Nodeptr _R = _Nil;
+			if (!_Isnil(_X))
 			{
 				_Nodeptr _Y = _Buynode(_P, _Color(_X));
-				if (_R == _X)
-					_R = _Y;
-				_Right(_Y) = _Copy(_Right(_X), _Y);
 				_Consval(&_Value(_Y), _Value(_X));
-				_Left(_P) = _Y;
-				_P = _Y;
+				_Left(_Y) = _Nil, _Right(_Y) = _Nil;
+				if (_R == _Nil)
+				{
+					_R = _Y;
+				}
+				_Left(_Y) = _Copy(_Left(_X), _Y);
+				_Right(_Y) = _Copy(_Right(_X), _Y);
 			}
-			_Left(_P) = _Nil;
 			return (_R);
 		}
 		void _Erase(_Nodeptr _X)
@@ -874,14 +959,12 @@ namespace st6
 		}
 		void _Init()
 		{
-			if (_Nil == 0)
-			{
-				_Nil = _Buynode(0, _Black);
-				_Left(_Nil) = 0, _Right(_Nil) = 0;
-			}
-			++_Nilrefs;
-			_Head = _Buynode(_Nil, _Red), _Size = 0;
+			_Nil = _Buynode(0, _Black);
+			_Isnil(_Nil) = true;
+			_Left(_Nil) = 0, _Right(_Nil) = 0;
+			_Head = _Buynode(_Nil, _Red);
 			_Lmost() = _Head, _Rmost() = _Head;
+			_Size = 0;
 		}
 		iterator _Insert(_Nodeptr _X, _Nodeptr _Y, const _Ty& _V)
 		{
@@ -898,15 +981,20 @@ namespace st6
 					_Rmost() = _Z;
 				}
 				else if (_Y == _Lmost())
+				{
 					_Lmost() = _Z;
+				}
 			}
 			else
 			{
 				_Right(_Y) = _Z;
 				if (_Y == _Rmost())
+				{
 					_Rmost() = _Z;
+				}
 			}
 			for (_X = _Z; _X != _Root() && _Color(_Parent(_X)) == _Red;)
+			{
 				if (_Parent(_X) == _Left(_Parent(_Parent(_X))))
 				{
 					_Y = _Right(_Parent(_Parent(_X)));
@@ -951,6 +1039,7 @@ namespace st6
 						_Lrotate(_Parent(_Parent(_X)));
 					}
 				}
+			}
 			_Color(_Root()) = _Black;
 			return (iterator(_Z));
 		}
@@ -959,10 +1048,16 @@ namespace st6
 			_Nodeptr _X = _Root();
 			_Nodeptr _Y = _Head;
 			while (_X != _Nil)
+			{
 				if (key_compare(_Key(_X), _Kv))
+				{
 					_X = _Right(_X);
+				}
 				else
+				{
 					_Y = _X, _X = _Left(_X);
+				}
+			}
 			return (_Y);
 		}
 		_Nodeptr& _Lmost() { return (_Left(_Head)); }
@@ -972,27 +1067,39 @@ namespace st6
 			_Nodeptr _Y = _Right(_X);
 			_Right(_X) = _Left(_Y);
 			if (_Left(_Y) != _Nil)
+			{
 				_Parent(_Left(_Y)) = _X;
+			}
 			_Parent(_Y) = _Parent(_X);
 			if (_X == _Root())
+			{
 				_Root() = _Y;
+			}
 			else if (_X == _Left(_Parent(_X)))
+			{
 				_Left(_Parent(_X)) = _Y;
+			}
 			else
+			{
 				_Right(_Parent(_X)) = _Y;
+			}
 			_Left(_Y) = _X;
 			_Parent(_X) = _Y;
 		}
 		static _Nodeptr _Max(_Nodeptr _P)
 		{
-			while (_Right(_P) != _Nil)
+			while (!_Isnil(_Right(_P)))
+			{
 				_P = _Right(_P);
+			}
 			return (_P);
 		}
 		static _Nodeptr _Min(_Nodeptr _P)
 		{
-			while (_Left(_P) != _Nil)
+			while (!_Isnil(_Left(_P)))
+			{
 				_P = _Left(_P);
+			}
 			return (_P);
 		}
 		_Nodeptr& _Rmost() { return (_Right(_Head)); }
@@ -1004,14 +1111,22 @@ namespace st6
 			_Nodeptr _Y = _Left(_X);
 			_Left(_X) = _Right(_Y);
 			if (_Right(_Y) != _Nil)
+			{
 				_Parent(_Right(_Y)) = _X;
+			}
 			_Parent(_Y) = _Parent(_X);
 			if (_X == _Root())
+			{
 				_Root() = _Y;
+			}
 			else if (_X == _Right(_Parent(_X)))
+			{
 				_Right(_Parent(_X)) = _Y;
+			}
 			else
+			{
 				_Left(_Parent(_X)) = _Y;
+			}
 			_Right(_Y) = _X;
 			_Parent(_X) = _Y;
 		}
@@ -1020,17 +1135,24 @@ namespace st6
 			_Nodeptr _X = _Root();
 			_Nodeptr _Y = _Head;
 			while (_X != _Nil)
+			{
 				if (key_compare(_Kv, _Key(_X)))
+				{
 					_Y = _X, _X = _Left(_X);
+				}
 				else
+				{
 					_X = _Right(_X);
+				}
+			}
 			return (_Y);
 		}
-		_Nodeptr _Buynode(_Nodeptr _Parg, _Redbl _Carg)
+		_Nodeptr _Buynode(_Nodeptr _Parg, char _Carg)
 		{
 			_Nodeptr _S = (_Nodeptr)allocator._Charalloc(1 * sizeof(_Node));
 			_Parent(_S) = _Parg;
 			_Color(_S) = _Carg;
+			_Isnil(_S) = false;
 			return (_S);
 		}
 		void _Consval(_Tptr _P, const _Ty& _V) { _Construct(&*_P, _V); }
@@ -1038,40 +1160,38 @@ namespace st6
 		void _Freenode(_Nodeptr _S) { allocator.deallocate(_S, 1); }
 		_A allocator;
 		_Pr key_compare;
-		_Nodeptr _Head;
+		_Nodeptr _Head, _Nil;
 		bool _Multi;
 		size_type _Size;
 	};
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
-	typename _Tree<_K, _Ty, _Kfn, _Pr, _A>::_Nodeptr _Tree<_K, _Ty, _Kfn, _Pr, _A>::_Nil = 0;
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
-	size_t _Tree<_K, _Ty, _Kfn, _Pr, _A>::_Nilrefs = 0;
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+
+	// tree TEMPLATE OPERATORS
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator==(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (_X.size() == _Y.size() && equal(_X.begin(), _X.end(), _Y.begin()));
 	}
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator!=(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (!(_X == _Y));
 	}
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator<(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (lexicographical_compare(_X.begin(), _X.end(), _Y.begin(), _Y.end()));
 	}
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator>(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (_Y < _X);
 	}
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator<=(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (!(_Y < _X));
 	}
-	template<class _K, class _Ty, class _Kfn, class _Pr, class _A>
+	template <class _K, class _Ty, class _Kfn, class _Pr, class _A>
 	inline bool operator>=(const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _X, const _Tree<_K, _Ty, _Kfn, _Pr, _A>& _Y)
 	{
 		return (!(_X < _Y));

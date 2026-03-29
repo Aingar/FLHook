@@ -1360,7 +1360,7 @@ void ReportAttack(wstring basename, wstring charname, uint system, wstring alert
 // Return true if 
 void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float incoming_damage)
 {
-	if (invulnerable)
+	if (invulnerable || (archetype && archetype->suppressDeathAnnouncement))
 	{
 		return;
 	}

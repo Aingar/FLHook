@@ -97,6 +97,7 @@ struct ARCHTYPE_STRUCT
 	bool lockModules = false;
 	bool suppressDeathAnnouncement = false;
 	bool respawnWithRestart = false;
+	bool notDockable = false;
 	string miningevent;
 };
 

@@ -215,7 +215,7 @@ uint GetAffliationFromClient(uint client)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PlayerBase *GetPlayerBase(uint base)
+PlayerBase* GetPlayerBase(uint base)
 {
 	const auto& i = player_bases.find(base);
 	if (i != player_bases.end())
@@ -227,7 +227,7 @@ PlayerBase *GetPlayerBase(uint base)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PlayerBase *GetPlayerBaseForClient(uint client)
+PlayerBase* GetPlayerBaseForClient(uint client)
 {
 	auto& j = clients.find(client);
 	if (j == clients.end())
@@ -245,7 +245,7 @@ PlayerBase *GetPlayerBaseForClient(uint client)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-PlayerBase *GetLastPlayerBaseForClient(uint client)
+PlayerBase* GetLastPlayerBaseForClient(uint client)
 {
 	auto& j = clients.find(client);
 	if (j == clients.end())
@@ -261,7 +261,7 @@ PlayerBase *GetLastPlayerBaseForClient(uint client)
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-void Logging(const char *szString, ...)
+void Logging(const char* szString, ...)
 {
 	char szBufString[1024];
 	va_list marker;
@@ -270,10 +270,10 @@ void Logging(const char *szString, ...)
 
 	char szBuf[64];
 	time_t tNow = time(0);
-	struct tm *t = localtime(&tNow);
+	struct tm* t = localtime(&tNow);
 	strftime(szBuf, sizeof(szBuf), "%Y/%m/%d %H:%M:%S", t);
 
-	FILE *Logfile = fopen(("./flhook_logs/flhook_cheaters.log"), "at");
+	FILE* Logfile = fopen(("./flhook_logs/flhook_cheaters.log"), "at");
 	if (Logfile)
 	{
 		fprintf(Logfile, "%s %s\n", szBuf, szBufString);
@@ -283,7 +283,7 @@ void Logging(const char *szString, ...)
 }
 
 // These logging functions need consolidating.
-void BaseLogging(const char *szString, ...)
+void BaseLogging(const char* szString, ...)
 {
 	char szBufString[1024];
 	va_list marker;
@@ -292,10 +292,10 @@ void BaseLogging(const char *szString, ...)
 
 	char szBuf[64];
 	time_t tNow = time(0);
-	struct tm *t = localtime(&tNow);
+	struct tm* t = localtime(&tNow);
 	strftime(szBuf, sizeof(szBuf), "%Y/%m/%d %H:%M:%S", t);
 
-	FILE *BaseLogfile = fopen("./flhook_logs/playerbase_events.log", "at");
+	FILE* BaseLogfile = fopen("./flhook_logs/playerbase_events.log", "at");
 	if (BaseLogfile)
 	{
 		fprintf(BaseLogfile, "%s %s\n", szBuf, szBufString);
@@ -315,9 +315,9 @@ void RespawnBase(PlayerBase* base)
 	newBase->Spawn();
 }
 
-FILE *LogfileEventCommodities = fopen("./flhook_logs/event_pobsales.log", "at");
+FILE* LogfileEventCommodities = fopen("./flhook_logs/event_pobsales.log", "at");
 
-void LoggingEventCommodity(const char *szString, ...)
+void LoggingEventCommodity(const char* szString, ...)
 {
 	char szBufString[1024];
 	va_list marker;
@@ -326,7 +326,7 @@ void LoggingEventCommodity(const char *szString, ...)
 
 	char szBuf[64];
 	time_t tNow = time(0);
-	struct tm *t = localtime(&tNow);
+	struct tm* t = localtime(&tNow);
 	strftime(szBuf, sizeof(szBuf), "%Y/%m/%d %H:%M:%S", t);
 	fprintf(LogfileEventCommodities, "%s %s\n", szBuf, szBufString);
 	fflush(LogfileEventCommodities);
@@ -347,9 +347,9 @@ void Notify_Event_Commodity_Sold(uint iClientID, string commodity, int count, st
 	LoggingEventCommodity("%s", scText.c_str());
 }
 
-void LogCheater(uint client, const wstring &reason)
+void LogCheater(uint client, const wstring& reason)
 {
-	CAccount *acc = Players.FindAccountFromClientID(client);
+	CAccount* acc = Players.FindAccountFromClientID(client);
 
 	if (!HkIsValidClientID(client) || !acc)
 	{
@@ -1035,7 +1035,7 @@ void LoadSettingsActual()
 					{
 						lowTierMiningCommoditiesSet.insert(CreateID(ini.get_value_string()));
 					}
-					else if(ini.is_value("deployment_cooldown"))
+					else if (ini.is_value("deployment_cooldown"))
 					{
 						deploymentCooldownDuration = ini.get_value_int(0);
 					}
@@ -1183,13 +1183,17 @@ void LoadSettingsActual()
 					{
 						archstruct.respawnWithRestart = ini.get_value_bool(0);
 					}
+					else if (ini.is_value("not_dockable"))
+					{
+						archstruct.notDockable = ini.get_value_bool(0);
+					}
 				}
 				mapArchs[nickname] = archstruct;
 			}
 		}
 		ini.close();
 	}
-  
+
 	if (ini.open(cfg_fileforbiddencommodities.c_str(), false))
 	{
 		while (ini.read_header())
@@ -1227,7 +1231,7 @@ void LoadSettingsActual()
 		do
 		{
 			string filepath = string(datapath) + R"(\Accts\MultiPlayer\player_bases\)" + findfile.cFileName;
-			PlayerBase *base = new PlayerBase(filepath);
+			PlayerBase* base = new PlayerBase(filepath);
 			if (base && !base->nickname.empty())
 			{
 				if (player_bases.count(base->base))
@@ -1254,8 +1258,8 @@ void LoadSettingsActual()
 	if (bmapLoadHyperspaceHubConfig)
 	{
 		time_t tNow = time(0);
-		struct tm *t = localtime(&tNow);
-		uint currWeekday = (t->tm_wday + 6)%7; // conversion from sunday-week-start to monday-start
+		struct tm* t = localtime(&tNow);
+		uint currWeekday = (t->tm_wday + 6) % 7; // conversion from sunday-week-start to monday-start
 		if (bmapLoadHyperspaceHubConfig & (1 << currWeekday)) // 1 - monday, 2 - tuesday, 4 - wednesday and so on
 		{
 			HyperJump::LoadHyperspaceHubConfig(string(szCurDir));
@@ -1265,7 +1269,7 @@ void LoadSettingsActual()
 	HyperJump::InitJumpHoleConfig();
 
 	// Load and sync player state
-	struct PlayerData *pd = 0;
+	struct PlayerData* pd = 0;
 	while (pd = Players.traverse_active(pd))
 	{
 		uint client = pd->iOnlineID;
@@ -1281,7 +1285,7 @@ void LoadSettingsActual()
 		LoadDockState(client);
 		if (clients[client].player_base)
 		{
-			PlayerBase *base = GetPlayerBaseForClient(client);
+			PlayerBase* base = GetPlayerBaseForClient(client);
 			if (base)
 			{
 				// Reset the commodity list	and send a dummy entry if there are no
@@ -1356,7 +1360,7 @@ void HkTimerCheckKick()
 
 	if (!basesToRespawn.empty())
 	{
-		for (auto& iter = basesToRespawn.begin() ; iter != basesToRespawn.end();)
+		for (auto& iter = basesToRespawn.begin(); iter != basesToRespawn.end();)
 		{
 			if (--iter->secondsUntil != 0)
 			{
@@ -1410,9 +1414,9 @@ void HkTimerCheckKick()
 		}
 	}
 
-	for(auto& iter : player_bases)
+	for (auto& iter : player_bases)
 	{
-		PlayerBase *base = iter.second;
+		PlayerBase* base = iter.second;
 		base->Timer(curr_time);
 	}
 
@@ -1490,7 +1494,7 @@ __declspec(naked) void HkCb_IsDockableErrorNaked()
 	}
 }
 
-bool __stdcall HkCb_Land(IObjRW *obj, uint base_dock_id, uint base)
+bool __stdcall HkCb_Land(IObjRW* obj, uint base_dock_id, uint base)
 {
 	if (!obj)
 	{
@@ -1536,16 +1540,16 @@ __declspec(naked) void HkCb_LandNaked()
 			// It's false, so a safe bet that it's a moor.  Is it the player?
 			mov	eax, [edi]
 			mov	ecx, edi
-			call[eax + 0xbc] // is_player
-			test	al, al
-			jnz done
+				call[eax + 0xbc] // is_player
+				test	al, al
+				jnz done
 
 
 
 
-			done :
-		push 0x6D0C251
-			ret
+			done:
+			push 0x6D0C251
+				ret
 	}
 }
 
@@ -1627,7 +1631,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	return true;
 }
 
-bool UserCmd_Process(uint client, const wstring &args)
+bool UserCmd_Process(uint client, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (args.find(L"/base login") == 0)
@@ -1767,7 +1771,7 @@ bool UserCmd_Process(uint client, const wstring &args)
 		PlayerCommands::BaseRep(client, args);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
-		}
+	}
 	else if (args.find(L"/base setrestockmargin") == 0)
 	{
 		PlayerCommands::SetRestockMargin(client, args);
@@ -1789,7 +1793,7 @@ bool UserCmd_Process(uint client, const wstring &args)
 	return false;
 }
 
-static void ForcePlayerBaseDock(uint client, PlayerBase *base)
+static void ForcePlayerBaseDock(uint client, PlayerBase* base)
 {
 	auto& cd = clients[client];
 	cd.player_base = base->base;
@@ -1803,7 +1807,7 @@ static void ForcePlayerBaseDock(uint client, PlayerBase *base)
 	HkBeamById(client, base->proxy_base);
 }
 
-static bool IsDockingAllowed(PlayerBase *base, uint client)
+static bool IsDockingAllowed(PlayerBase* base, uint client)
 {
 	// Base allows neutral ships to dock
 	if (base->GetAttitudeTowardsClient(client) > -0.55f)
@@ -1814,7 +1818,7 @@ static bool IsDockingAllowed(PlayerBase *base, uint client)
 	return false;
 }
 
-int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& iCancel, enum DOCK_HOST_RESPONSE& response)
+int __cdecl Dock_Call(unsigned int const& iShip, unsigned int const& base, int& iCancel, enum DOCK_HOST_RESPONSE& response)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1900,7 +1904,7 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 			Archetype::Ship* TheShipArch = Archetype::GetShip(Players[client].iShipArchetype);
 			uint shipclass = TheShipArch->iShipClass;
 
-			if(!pbase->archetype->allowedshipclasses.count(shipclass))
+			if (!pbase->archetype->allowedshipclasses.count(shipclass))
 			{
 				PrintUserCmdText(client, L"ERR Unable to dock with a vessel of this type.");
 				iCancel = -1;
@@ -1932,11 +1936,11 @@ int __cdecl Dock_Call(unsigned int const &iShip, unsigned int const &base, int& 
 	clients[client].docking_base = base;
 
 	SendBaseStatus(client, pbase);
-	
+
 	return 0;
 }
 
-void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int client)
+void __stdcall CharacterSelect(struct CHARACTER_ID const& cId, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1952,7 +1956,7 @@ void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int clie
 	}
 }
 
-void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned int client)
+void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& cId, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1972,7 +1976,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const &cId, unsigned in
 			ConPrint(L"CharacterSelect_AFTER[2] client=%u player_base=%u\n", client, cd.player_base);
 
 		// If this base does not exist, dump the ship into space
-		PlayerBase *base = GetPlayerBase(cd.player_base);
+		PlayerBase* base = GetPlayerBase(cd.player_base);
 		if (!base)
 		{
 			DeleteDockState(client);
@@ -2017,7 +2021,7 @@ void __stdcall BaseEnter(uint baseId, uint client)
 	// that we're in the base->
 	if (cd.player_base)
 	{
-		PlayerBase *base = GetPlayerBaseForClient(client);
+		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (base)
 		{
 			if (base->proxy_base != baseId)
@@ -2130,7 +2134,7 @@ void __stdcall RequestEvent(int iIsFormationRequest, unsigned int iShip, unsigne
 	{
 		if (!iIsFormationRequest)
 		{
-			PlayerBase *base = GetPlayerBase(iDockTarget);
+			PlayerBase* base = GetPlayerBase(iDockTarget);
 			if (base)
 			{
 				// Shield is up, docking is not possible.
@@ -2167,7 +2171,7 @@ PlayerBase* player_launch_base = nullptr;
 
 /// If the ship is launching from a player base record this so that
 /// override the launch location.
-bool __stdcall LaunchPosHook(uint space_obj, const CEqObj &p1, const Vector &pos, const Matrix &rot, int dockId, uint client)
+bool __stdcall LaunchPosHook(uint space_obj, const CEqObj& p1, const Vector& pos, const Matrix& rot, int dockId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (player_launch_base)
@@ -2340,13 +2344,13 @@ bool CheckIfCommodityForbidden(uint goodId)
 	return forbidden_player_base_commodity_set.find(goodId) != forbidden_player_base_commodity_set.end();
 }
 
-void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client)
+void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	lastTransactionBase = false;
 
 	// If the client is in a player controlled base
-	PlayerBase *base = GetPlayerBaseForClient(client);
+	PlayerBase* base = GetPlayerBaseForClient(client);
 	if (!base)
 	{
 		return;
@@ -2370,7 +2374,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 		return;
 	}
 
-	MARKET_ITEM &item = base->market_items[gsi.iArchID];
+	MARKET_ITEM& item = base->market_items[gsi.iArchID];
 
 	int count = gsi.iCount;
 
@@ -2488,7 +2492,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const &gsi, unsigned int client
 
 	//build string and log the purchase
 	wstring charname = (const wchar_t*)Players.GetActiveCharacterName(client);
-	const GoodInfo *gi = GoodList_get()->find_by_id(gsi.iArchID);
+	const GoodInfo* gi = GoodList_get()->find_by_id(gsi.iArchID);
 	string gname = wstos(HtmlEncode(HkGetWStringFromIDS(gi->iIDSName)));
 	string msg = "Player " + wstos(charname) + " sold item " + gname + " x" + itos(count);
 	Log::LogBaseAction(wstos(base->basename), msg.c_str());
@@ -2548,7 +2552,7 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 			cd.reverse_sell = false;
 			cd.reverseSellAmount = 0;
 
-			for(CARGO_INFO& ci : cd.cargo)
+			for (CARGO_INFO& ci : cd.cargo)
 			{
 				if (ci.iID == iID)
 				{
@@ -2580,12 +2584,12 @@ void __stdcall ReqRemoveItem_AFTER(unsigned short iID, int count, unsigned int c
 }
 
 int shipPurchasePrice = 0;
-void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
+void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const& gbi, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	// If the client is in a player controlled base
-	PlayerBase *base = GetPlayerBaseForClient(client);
+	PlayerBase* base = GetPlayerBaseForClient(client);
 	if (base)
 	{
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
@@ -2610,7 +2614,7 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		int curr_money;
 		pub::Player::InspectCash(client, curr_money);
 
-		const wstring &charname = (const wchar_t*)Players.GetActiveCharacterName(client);
+		const wstring& charname = (const wchar_t*)Players.GetActiveCharacterName(client);
 
 		// In theory, these should never be called.
 		if (count == 0 || ((mi.min_stock > (mi.quantity - count)) && !cd.admin))
@@ -2643,7 +2647,7 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 		}
 
 		//build string and log the purchase
-		const GoodInfo *gi = GoodList_get()->find_by_id(gbi.iGoodID);
+		const GoodInfo* gi = GoodList_get()->find_by_id(gbi.iGoodID);
 		string gname = wstos(HtmlEncode(HkGetWStringFromIDS(gi->iIDSName)));
 		string msg = "Player " + wstos(charname) + " purchased item " + gname + " x" + itos(count);
 		Log::LogBaseAction(wstos(base->basename), msg.c_str());
@@ -2678,12 +2682,12 @@ void __stdcall GFGoodBuy(struct SGFGoodBuyInfo const &gbi, unsigned int client)
 	}
 }
 
-void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iClientID)
+void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const& gbi, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	// If the client is in a player controlled base
-	PlayerBase *base = GetPlayerBaseForClient(iClientID);
+	PlayerBase* base = GetPlayerBaseForClient(iClientID);
 	if (base)
 	{
 		returncode = SKIPPLUGINS;
@@ -2697,10 +2701,10 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	}
 }
 
-void __stdcall ReqAddItem(uint& good, char const *hardpoint, int count, float fStatus, bool& bMounted, unsigned int client)
+void __stdcall ReqAddItem(uint& good, char const* hardpoint, int count, float fStatus, bool& bMounted, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
-	PlayerBase *base = GetPlayerBaseForClient(client);
+	PlayerBase* base = GetPlayerBaseForClient(client);
 	if (base)
 	{
 		returncode = SKIPPLUGINS;
@@ -2713,16 +2717,16 @@ void __stdcall ReqAddItem(uint& good, char const *hardpoint, int count, float fS
 	}
 }
 
-void __stdcall ReqAddItem_AFTER(unsigned int good, char const *hardpoint, int count, float fStatus, bool bMounted, unsigned int client)
+void __stdcall ReqAddItem_AFTER(unsigned int good, char const* hardpoint, int count, float fStatus, bool bMounted, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	// If the client is in a player controlled base
-	PlayerBase *base = GetPlayerBaseForClient(client);
+	PlayerBase* base = GetPlayerBaseForClient(client);
 	if (base)
 	{
 		returncode = SKIPPLUGINS;
-		PlayerData *pd = &Players[client];
+		PlayerData* pd = &Players[client];
 
 		// Add to check-list which is being compared to the users equip-list when saving
 		// char to fix "Ship or Equipment not sold on base" kick
@@ -2823,7 +2827,7 @@ void SetColGrp(uint client, st6::list<CollisionGroupDesc>&)
 	}
 }
 
-void __stdcall ReqEquipment(class EquipDescList const &edl, unsigned int client)
+void __stdcall ReqEquipment(class EquipDescList const& edl, unsigned int client)
 {
 	returncode = DEFAULT_RETURNCODE;
 	if (clients[client].player_base)
@@ -2846,8 +2850,24 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 	auto& i = spaceobj_modules.find(space_obj);
 	if (i != spaceobj_modules.end())
 	{
-		returncode = SKIPPLUGINS;
+		CSolar* csolar = reinterpret_cast<CSolar*>(iobj->cobj);
+
+		CEquipTraverser tr(Cargo);
+		CECargo* cargo = nullptr;
+		while (cargo = reinterpret_cast<CECargo*>(csolar->equip_manager.Traverse(tr)))
+		{
+			Vector dropPos = csolar->vPos;
+			Vector randomVector = RandomVector(static_cast<float>(rand() % static_cast<int>(csolar->radiusCentered * 2.f)) + 20.f);
+			dropPos.x += randomVector.x;
+			dropPos.y += randomVector.y;
+			dropPos.z += randomVector.z;
+
+			ConPrint(L"CreateLoot %x %u\n", cargo->archetype->iArchID, cargo->count);
+			CreateLootSimple(csolar->system, csolar->id, cargo->archetype->iArchID, cargo->count, dropPos, false);
+		}
+
 		i->second->SpaceObjDestroyed(space_obj);
+		returncode = SKIPPLUGINS;
 		return;
 	}
 	customSolarList.erase(space_obj);
@@ -2897,14 +2917,14 @@ bool HasSRPAccess(uint client, uint baseId)
 
 #define IS_CMD(a) !args.compare(L##a)
 #define RIGHT_CHECK(a) if(!(cmd->rights & a)) { cmd->Print(L"ERR No permission\n"); return true; }
-bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
+bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
 
 	if (args.find(L"setdebugspecial") == 0)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		set_plugin_debug_special = cmd->ArgInt(1);
 		return true;
 	}
@@ -2912,7 +2932,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		auto nickname = CreateID(wstos(cmd->ArgStrToEnd(1)).c_str());
+			auto nickname = CreateID(wstos(cmd->ArgStrToEnd(1)).c_str());
 
 		auto csolar = (CSolar*)CObject::Find(nickname, CObject::CSOLAR_OBJECT);
 		if (csolar)
@@ -2930,7 +2950,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	else if (args.find(L"setunchartedkill") == 0)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
-		set_SkipUnchartedKill = !set_SkipUnchartedKill;
+			set_SkipUnchartedKill = !set_SkipUnchartedKill;
 		cmd->Print(L"skip unch kill %u\n", (uint)set_SkipUnchartedKill);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
@@ -2939,8 +2959,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
-		PlayerBase *base = GetPlayerBaseForClient(client);
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (!base)
 		{
 			cmd->Print(L"ERR Not in player base");
@@ -2966,8 +2986,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
-		PlayerBase *base = GetPlayerBaseForClient(client);
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (!base)
 		{
 			cmd->Print(L"ERR Not in player base");
@@ -2994,7 +3014,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		if (!client)
 		{
 			cmd->Print(L"ERR Not in game");
@@ -3066,9 +3086,9 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
-		PlayerBase *base = nullptr;
+		PlayerBase* base = nullptr;
 		for (auto& i : player_bases)
 		{
 			if (i.second->basename == cmd->ArgStrToEnd(1) || stows(i.second->nickname) == cmd->ArgStrToEnd(1))
@@ -3095,7 +3115,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		wstring baseName = cmd->ArgStrToEnd(1);
 
 		PlayerBase* base = nullptr;
@@ -3127,7 +3147,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 	{
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
 		char datapath[MAX_PATH];
 		GetUserDataPath(datapath);
@@ -3185,10 +3205,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		bool optype = cmd->ArgInt(1);
 
-		PlayerBase *base = nullptr;
+		PlayerBase* base = nullptr;
 		for (auto& i : player_bases)
 		{
 			if (i.second->basename == cmd->ArgStrToEnd(2))
@@ -3226,7 +3246,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
 		uint ship;
 		pub::Player::GetShip(client, ship);
@@ -3264,7 +3284,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		wstring password = L"hastesucks";
 		wstring basename = stows(randomname);
 
-		PlayerBase *newbase = new PlayerBase(client, password, basename);
+		PlayerBase* newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->basetype = "legacy";
 		newbase->archetype = &mapArchs[newbase->basetype];
@@ -3292,7 +3312,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 
 		uint ship;
 		pub::Player::GetShip(client, ship);
@@ -3377,7 +3397,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		wstring password = L"nopassword";
 
-		PlayerBase *newbase = new PlayerBase(client, password, basename);
+		PlayerBase* newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = CreateID(wstos(theaffiliation).c_str());
 		newbase->basetype = wstos(type);
@@ -3400,7 +3420,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		PrintUserCmdText(client, L"OK: Solar deployed");
 		//PrintUserCmdText(client, L"Default administration password is %s", password.c_str());
 
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL; 
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else if (args.find(L"basecreate") == 0)
@@ -3409,8 +3429,8 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
-		PlayerBase *base = GetPlayerBaseForClient(client);
+			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		PlayerBase* base = GetPlayerBaseForClient(client);
 
 		uint ship;
 		pub::Player::GetShip(client, ship);
@@ -3483,7 +3503,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 			wstos(charname).c_str(),
 			wstos(HkGetAccountID(HkGetAccountByCharname(charname))).c_str());
 
-		PlayerBase *newbase = new PlayerBase(client, password, basename);
+		PlayerBase* newbase = new PlayerBase(client, password, basename);
 		player_bases[newbase->base] = newbase;
 		newbase->affiliation = theaffiliation;
 		newbase->basetype = wstos(type);
@@ -3510,7 +3530,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		set_plugin_debug = 1;
+			set_plugin_debug = 1;
 		cmd->Print(L"OK base debug is on, sure hope you know what you're doing here.\n");
 		return true;
 	}
@@ -3520,7 +3540,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		RIGHT_CHECK(RIGHT_BASES)
 
-		set_plugin_debug = 0;
+			set_plugin_debug = 0;
 		cmd->Print(L"OK base debug is off.\n");
 		return true;
 	}
@@ -3531,21 +3551,21 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		RIGHT_CHECK(RIGHT_BASES)
 
 
-		ConPrint(L"POB distance check for following settings:\n"
-			L"High Tier Mining: %um\n"
-			L"Planets: %um\n"
-			L"Solars: %um\n"
-			L"Trade Lanes: %um\n"
-			L"JH/JG: %um\n"
-			L"POBs: %um\n"
-			L"Other: %um\n",
-			static_cast<uint>(minMiningDistance),
-			static_cast<uint>(minPlanetDistance),
-			static_cast<uint>(minStationDistance),
-			static_cast<uint>(minLaneDistance),
-			static_cast<uint>(minJumpDistance),
-			static_cast<uint>(minOtherPOBDistance),
-			static_cast<uint>(minDistanceMisc));
+			ConPrint(L"POB distance check for following settings:\n"
+				L"High Tier Mining: %um\n"
+				L"Planets: %um\n"
+				L"Solars: %um\n"
+				L"Trade Lanes: %um\n"
+				L"JH/JG: %um\n"
+				L"POBs: %um\n"
+				L"Other: %um\n",
+				static_cast<uint>(minMiningDistance),
+				static_cast<uint>(minPlanetDistance),
+				static_cast<uint>(minStationDistance),
+				static_cast<uint>(minLaneDistance),
+				static_cast<uint>(minJumpDistance),
+				static_cast<uint>(minOtherPOBDistance),
+				static_cast<uint>(minDistanceMisc));
 
 		for (const auto& base : player_bases)
 		{
@@ -3684,7 +3704,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 
 		auto baseName = cmd->ArgStrToEnd(1);
 		PlayerBase* pb = nullptr;
-		if(baseName.empty())
+		if (baseName.empty())
 		{
 			auto target = ClientInfo[client].cship->get_target();
 			auto pbIter = player_bases.find(target->get_id());
@@ -3725,6 +3745,59 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring &args)
 		pb->rotation = ClientInfo[client].cship->mRot;
 
 		cmd->Print(L"POB pulled to your location, change visible on system re-entry\n");
+		return true;
+	}
+	else if (args.find(L"baserename") == 0)
+	{
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+
+		RIGHT_CHECK(RIGHT_SUPERADMIN);
+
+		uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
+		if (client == -1)
+		{
+			cmd->Print(L"Only usable ingame\n");
+			return true;
+		}
+
+		if (!ClientInfo[client].cship)
+		{
+			cmd->Print(L"Only usable in space\n");
+			return true;
+		}
+
+		auto target = ClientInfo[client].cship->get_target();
+		auto pbIter = player_bases.find(target->get_id());
+		if (pbIter == player_bases.end())
+		{
+			cmd->Print(L"Target is not a POB\n");
+			return true;
+		}
+
+		auto newBaseName = cmd->ArgStrToEnd(1);
+		if (newBaseName.empty())
+		{
+			cmd->Print(L"Target is not a POB\n");
+			return true;
+		}
+
+		PlayerBase* base = pbIter->second;
+
+		base->basename = newBaseName;
+		base->Save();
+
+		struct PlayerData* pd = 0;
+		while (pd = Players.traverse_active(pd))
+		{
+			HkChangeIDSString(pd->iOnlineID, base->solar_ids, base->basename);
+			HkChangeIDSString(pd->iOnlineID, base->description_ids, base->description_text);
+			if (base->baseCSolar)
+			{
+				SendBaseIDSList(pd->iOnlineID, base->baseCSolar->id, base->description_ids);
+			}
+		}
+
+		cmd->Print(L"POB renamed to %ls\n", newBaseName.c_str());
 		return true;
 	}
 	else if (args.find(L"dumpbaseinfo") == 0)
@@ -3772,7 +3845,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	{
 		returncode = SKIPPLUGINS;
 		CUSTOM_BASE_BEAM_STRUCT* info = reinterpret_cast<CUSTOM_BASE_BEAM_STRUCT*>(data);
-		PlayerBase *base = GetPlayerBase(info->iTargetBaseID);
+		PlayerBase* base = GetPlayerBase(info->iTargetBaseID);
 		if (base)
 		{
 			ForcePlayerBaseDock(info->iClientID, base);
@@ -3783,7 +3856,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	{
 		returncode = SKIPPLUGINS;
 		CUSTOM_BASE_IS_IT_POB_STRUCT* info = reinterpret_cast<CUSTOM_BASE_IS_IT_POB_STRUCT*>(data);
-		PlayerBase *base = GetPlayerBase(info->iBase);
+		PlayerBase* base = GetPlayerBase(info->iBase);
 		if (base)
 		{
 			info->bAnswer = true;
@@ -3793,7 +3866,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	{
 		returncode = SKIPPLUGINS;
 		CUSTOM_BASE_IS_DOCKED_STRUCT* info = reinterpret_cast<CUSTOM_BASE_IS_DOCKED_STRUCT*>(data);
-		PlayerBase *base = GetPlayerBaseForClient(info->iClientID);
+		PlayerBase* base = GetPlayerBaseForClient(info->iClientID);
 		if (base)
 		{
 			info->iDockedBaseID = base->base;
@@ -3815,9 +3888,9 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 				ConPrint(L"base: CUSTOM_REVERSE_TRANSACTION: Something is very wrong! Expected client ID %d but got %d\n", lastTransactionClientID, info->iClientID);
 				return;
 			}
-			PlayerBase *base = GetPlayerBaseForClient(info->iClientID);
+			PlayerBase* base = GetPlayerBaseForClient(info->iClientID);
 
-			MARKET_ITEM &item = base->market_items[lastTransactionArchID];
+			MARKET_ITEM& item = base->market_items[lastTransactionArchID];
 			int price = item.price * lastTransactionCount;
 
 			base->RemoveMarketGood(lastTransactionArchID, lastTransactionCount);
@@ -4188,7 +4261,7 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayPause = true;
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
-  
+
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 1));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&ClearClientInfo, PLUGIN_ClearClientInfo, 0));
 	p_PI->lstHooks.emplace_back(PLUGIN_HOOKINFO((FARPROC*)&DelayedDisconnect, PLUGIN_DelayedDisconnect, 0));

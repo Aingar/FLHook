@@ -1,14 +1,19 @@
 ﻿#pragma once
 
-// N.B.: Must be included *after* FLHook.hpp; st6_malloc and st6_free must be defined!
-#ifndef ST6_ALLOCATION_DEFINED
-	#error st6_malloc and st6_free must be defined before st6.h is included!
+#ifdef FLHOOK_EXPORT
+
+#define ST6_INIT EXPORT
+#else
+
+#define ST6_INIT IMPORT
+
 #endif
+// N.B.: Must be included *after* FLHook.hpp; st6_malloc and st6_free must be defined!
 using st6_malloc_t = void* (*)(size_t);
 using st6_free_t = void (*)(void*);
 
-static st6_malloc_t st6_malloc;
-static st6_free_t st6_free;
+extern ST6_INIT st6_malloc_t st6_malloc;
+extern ST6_INIT st6_free_t st6_free;
 
 #include <cstddef>
 #include <stdexcept>
@@ -29,6 +34,7 @@ static st6_free_t st6_free;
 
 namespace st6
 {
+
 	template<class _Ty>
 	_Ty* _Allocate(ptrdiff_t _N, _Ty*)
 	{

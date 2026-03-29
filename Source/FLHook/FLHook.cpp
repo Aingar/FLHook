@@ -4,6 +4,9 @@
 #include "CConsole.h"
 #include "CSocket.h"
 
+st6_malloc_t st6_malloc;
+st6_free_t st6_free;
+
 // structs
 struct SOCKET_CONNECTION
 {
@@ -267,7 +270,6 @@ void FLHookInit_Pre()
 		const auto dll = GetModuleHandle(TEXT("msvcrt.dll"));
 		if (!dll)
 			throw std::runtime_error("msvcrt.dll");
-
 		st6_malloc = reinterpret_cast<st6_malloc_t>(GetProcAddress(dll, "malloc"));
 		st6_free = reinterpret_cast<st6_free_t>(GetProcAddress(dll, "free"));
 	}

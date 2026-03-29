@@ -72,7 +72,7 @@ void CreateSolar::LoadExtraLoadouts()
 				}
 				else
 				{
-					eqDesc.iCount = ini.get_value_float(1);
+					eqDesc.iCount = ini.get_value_int(1);
 				}
 				loadout.eqVector.equip.push_back(eqDesc);
 			}

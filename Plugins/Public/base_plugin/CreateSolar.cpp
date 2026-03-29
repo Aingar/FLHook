@@ -13,6 +13,7 @@ void CreateSolar::LoadExtraLoadouts()
 	{
 		uint nickname;
 		EquipDescVector eqVector;
+		SubObjectID::EquipIdMaker idMaker;
 	};
 
 	st6::map<uint, Loadout>* loadoutMap = reinterpret_cast<st6::map<uint, Loadout>*>(0x63FD2A8);
@@ -27,7 +28,7 @@ void CreateSolar::LoadExtraLoadouts()
 		}
 
 		Loadout loadout;
-		loadout.eqVector.idMaker.Reset();
+		loadout.idMaker.Reset();
 
 		bool valid = false;
 		while (ini.read_value())
@@ -54,7 +55,7 @@ void CreateSolar::LoadExtraLoadouts()
 					const auto hpPtr = ret.first->c_str();
 					eqDesc.set_hardpoint(*reinterpret_cast<const CacheString*>(&hpPtr));
 				}
-				eqDesc.sID = loadout.eqVector.idMaker.CreateEquipID();
+				eqDesc.sID = loadout.idMaker.CreateEquipID();
 				loadout.eqVector.equip.push_back(eqDesc);
 			}
 			else if (ini.is_value("cargo"))
@@ -65,7 +66,7 @@ void CreateSolar::LoadExtraLoadouts()
 				eqDesc.fHealth = 1.0f;
 				eqDesc.iArchID = CreateID(ini.get_value_string(0));
 				eqDesc.set_hardpoint(bayHp);
-				eqDesc.sID = loadout.eqVector.idMaker.CreateEquipID();
+				eqDesc.sID = loadout.idMaker.CreateEquipID();
 				if (ini.is_value_empty(1))
 				{
 					eqDesc.iCount = 1;

@@ -254,7 +254,6 @@ public:
 
 public:
 	st6::list<EquipDesc> equip;
-	SubObjectID::EquipIdMaker idMaker;
 };
 
 struct IMPORT EquipDescVector
@@ -270,7 +269,6 @@ struct IMPORT EquipDescVector
 
 public:
 	st6::vector<EquipDesc> equip;
-	SubObjectID::EquipIdMaker idMaker;
 };
 
 struct IMPORT ActionDB

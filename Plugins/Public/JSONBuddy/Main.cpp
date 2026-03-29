@@ -378,7 +378,7 @@ void HkTimerJSON()
 		//ensure the ID is empty, as we want to return something if no ID is found.
 		clientData.id = "";
 
-		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+		for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 		{
 			if (mapIDs.find(item->iArchID) != mapIDs.end())
 			{

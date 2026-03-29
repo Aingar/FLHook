@@ -686,7 +686,7 @@ uint GetInstalledModules(uint iClientID)
 	uint modules = 0;
 
 	// Check to see if the vessel undocking currently has a docking module equipped
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+	for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 	{
 		if (item->bMounted && dockingModuleEquipmentCapacityMap.count(item->iArchID))
 		{

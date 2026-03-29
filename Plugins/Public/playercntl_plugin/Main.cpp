@@ -642,13 +642,13 @@ namespace HkIServerImpl
 		returncode = DEFAULT_RETURNCODE;
 
 		// If spin protection is off, do nothing.
-		if (!ci.dwTargetShip || set_fSpinProtectMass == -1.0f)
+		if (!ci.targetObj || set_fSpinProtectMass == -1.0f)
 		{
 			return;
 		}
 		
 		uint type;
-		pub::SpaceObj::GetType(ci.dwTargetShip, type);
+		pub::SpaceObj::GetType(ci.targetObj, type);
 
 		uint client_ship;
 		pub::Player::GetShip(iClientID, client_ship);
@@ -660,7 +660,7 @@ namespace HkIServerImpl
 			float playerSpeed = sqrtf(V1.x * V1.x + V1.y * V1.y + V1.z * V1.z);
 			if (playerSpeed > set_fMinCLootRoadkillSpeed)
 			{
-				pub::SpaceObj::Destroy(ci.dwTargetShip, DestroyType::FUSE);
+				pub::SpaceObj::Destroy(ci.targetObj, DestroyType::FUSE);
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			}
 			return;
@@ -672,7 +672,7 @@ namespace HkIServerImpl
 		//	return;
 
 		float target_mass;
-		pub::SpaceObj::GetMass(ci.dwTargetShip, target_mass);
+		pub::SpaceObj::GetMass(ci.targetObj, target_mass);
 
 		float client_mass;
 		pub::SpaceObj::GetMass(client_ship, client_mass);
@@ -686,14 +686,14 @@ namespace HkIServerImpl
 			return;
 
 		Vector V1, V2;
-		pub::SpaceObj::GetMotion(ci.dwTargetShip, V1, V2);
+		pub::SpaceObj::GetMotion(ci.targetObj, V1, V2);
 		V1.x *= set_fSpinImpulseMultiplier * client_mass;
 		V1.y *= set_fSpinImpulseMultiplier * client_mass;
 		V1.z *= set_fSpinImpulseMultiplier * client_mass;
 		V2.x *= set_fSpinImpulseMultiplier * client_mass;
 		V2.y *= set_fSpinImpulseMultiplier * client_mass;
 		V2.z *= set_fSpinImpulseMultiplier * client_mass;
-		pub::SpaceObj::AddImpulse(ci.dwTargetShip, V1, V2);
+		pub::SpaceObj::AddImpulse(ci.targetObj, V1, V2);
 
 	}
 
@@ -744,7 +744,7 @@ namespace HkIServerImpl
 		{
 			PurchaseRestrictions::ReqChangeCashHappenedStatus(iClientID, false);
 
-			for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+			for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 			{
 				if (item->sID == slot)
 				{

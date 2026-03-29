@@ -16,11 +16,6 @@
 #include <hookext_exports.h>
 #include <PluginUtilities.h>
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-IMPORT st6_malloc_t st6_malloc;
-IMPORT st6_free_t st6_free;
-
 static int set_iPluginDebug = 0;
 static float hullRepairFactor = 0.33f;
 static float equipmentRepairFactor = 0.3f;
@@ -721,8 +716,8 @@ void PlayerAutorepair(uint iClientID)
 	int repairCost = (int)floor(shipArch->fHitPoints * (1.0f - Players[iClientID].fRelativeHealth) * hullRepairFactor);
 
 	set<ushort> eqToFix;
-	list<EquipDesc> &equip = Players[iClientID].equipDescList.equip;
-	for (list<EquipDesc>::iterator item = equip.begin(); item != equip.end(); item++)
+	st6::list<EquipDesc> &equip = Players[iClientID].equipDescList.equip;
+	for (st6::list<EquipDesc>::iterator item = equip.begin(); item != equip.end(); item++)
 	{
 		if (!item->bMounted || item->fHealth == 1.0f)
 		{

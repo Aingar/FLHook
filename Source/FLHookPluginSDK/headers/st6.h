@@ -4,6 +4,11 @@
 #ifndef ST6_ALLOCATION_DEFINED
 	#error st6_malloc and st6_free must be defined before st6.h is included!
 #endif
+using st6_malloc_t = void* (*)(size_t);
+using st6_free_t = void (*)(void*);
+
+static st6_malloc_t st6_malloc;
+static st6_free_t st6_free;
 
 #include <cstddef>
 #include <stdexcept>

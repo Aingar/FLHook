@@ -566,7 +566,7 @@ namespace HyperJump
 
 		// Check that the player has a jump drive and initialise the infomation
 		// about it - otherwise return false.
-		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+		for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 		{
 			if (mapJumpDriveArch.count(item->iArchID))
 			{
@@ -586,7 +586,7 @@ namespace HyperJump
 		{
 			return true;
 		}
-		for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+		for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 		{
 			if (mapBeaconMatrix.count(item->iArchID))
 			{
@@ -1194,7 +1194,7 @@ namespace HyperJump
 					continue;
 				}
 
-				for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+				for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 				{
 					if (jd.arch->mapFuelToUsagePerDistance.count(item->iArchID))
 					{

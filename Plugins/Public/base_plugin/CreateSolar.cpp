@@ -1,10 +1,5 @@
 #include "Main.h"
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-IMPORT st6_malloc_t st6_malloc;
-IMPORT st6_free_t st6_free;
-
 void CreateSolar::LoadExtraLoadouts()
 {
 	INI_Reader ini;

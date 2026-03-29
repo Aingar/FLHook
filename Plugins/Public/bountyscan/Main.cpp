@@ -63,7 +63,7 @@ bool UserCmd_BountyScan(uint iClientID, const wstring &wscCmd, const wstring &ws
 	// id
 	const Archetype::Tractor* itemPtr = nullptr;
 	auto& equipDesc = Players[iClientIDTarget].equipDescList.equip;
-	list<EquipDesc>::iterator equip;
+	st6::list<EquipDesc>::iterator equip;
 	for (equip = equipDesc.begin(); equip != equipDesc.end(); equip++)
 	{
 		if (equip->bMounted)

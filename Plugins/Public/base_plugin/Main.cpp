@@ -15,11 +15,6 @@
 #include <sstream>
 #include <hookext_exports.h>
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-IMPORT st6_malloc_t st6_malloc;
-IMPORT st6_free_t st6_free;
-
 bool set_SkipUnchartedKill = false;
 
 string lastDespawnedFilename;
@@ -1879,7 +1874,7 @@ int __cdecl Dock_Call(unsigned int const& iShip, unsigned int const& base, int& 
 		if (pbase->archetype->idrestriction == 1)
 		{
 			bool foundid = false;
-			for (list<EquipDesc>::iterator item = Players[client].equipDescList.equip.begin(); item != Players[client].equipDescList.equip.end(); item++)
+			for (st6::list<EquipDesc>::iterator item = Players[client].equipDescList.equip.begin(); item != Players[client].equipDescList.equip.end(); item++)
 			{
 				if (item->bMounted && pbase->archetype->allowedids.count(item->iArchID))
 				{

@@ -329,7 +329,7 @@ bool AP::RacestartCmd(uint iClientID, const wstring &wscCmd, const wstring &wscP
 
 	bool isAllowed = false;
 
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+	for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 	{
 		if (find(racestartids.begin(), racestartids.end(), item->iArchID) != racestartids.end() && item->bMounted)
 		{

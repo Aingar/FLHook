@@ -23,7 +23,7 @@ wstring GetAnticheatError(HK_ERROR);
 int GetPlayerWorth(uint clientId);
 void ResetPlayerWorth(uint clientId);
 
-bool HkSetEquip(uint iClientID, const list<EquipDesc>& equip);
+bool HkSetEquip(uint iClientID, const st6::list<EquipDesc>& equip);
 HK_ERROR HkAddEquip(const wstring &wscCharname, uint iGoodID, const string &scHardpoint);
 HK_ERROR HkAntiCheat(uint iClientID);
 HK_ERROR HkDeleteCharacter(CAccount *acc, wstring &wscCharname);

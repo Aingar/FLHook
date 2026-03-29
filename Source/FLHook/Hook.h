@@ -15,11 +15,6 @@
 // defines
 
 
-using st6_malloc_t = void* (*)(size_t);
-using st6_free_t = void(*)(void*);
-EXPORT extern st6_malloc_t st6_malloc;
-EXPORT extern st6_free_t st6_free;
-
 //#define CORE_TIMER_LOGGING
 //#define HOOK_TIMER_LOGGING
 

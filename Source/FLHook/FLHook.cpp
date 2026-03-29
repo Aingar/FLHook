@@ -4,9 +4,6 @@
 #include "CConsole.h"
 #include "CSocket.h"
 
-st6_malloc_t st6_malloc;
-st6_free_t st6_free;
-
 // structs
 struct SOCKET_CONNECTION
 {

@@ -224,7 +224,7 @@ void SCI::CheckItems(unsigned int iClientID)
 
 
 	// Check all items on ship, see if one isn't meant for this ship class.
-	for (list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
+	for (st6::list<EquipDesc>::iterator item = Players[iClientID].equipDescList.equip.begin(); item != Players[iClientID].equipDescList.equip.end(); item++)
 	{
 		if (!item->bMounted)
 		{
@@ -270,7 +270,7 @@ void SCI::CheckItems(unsigned int iClientID)
 		}
 		// check for non-stackable items
 		
-		for (list<EquipDesc>::iterator itemstack = Players[iClientID].equipDescList.equip.begin(); itemstack != Players[iClientID].equipDescList.equip.end(); itemstack++)
+		for (st6::list<EquipDesc>::iterator itemstack = Players[iClientID].equipDescList.equip.begin(); itemstack != Players[iClientID].equipDescList.equip.end(); itemstack++)
 		{
 			if (!itemstack->bMounted)
 			{

@@ -126,7 +126,7 @@ float HkDistance3DByShip(uint iShip1, uint iShip2)
 	return sqrtf(sq1*sq1 + sq2 * sq2 + sq3 * sq3);
 }
 
-bool HkSetEquip(uint iClientID, const list<EquipDesc>& equip)
+bool HkSetEquip(uint iClientID, const st6::list<EquipDesc>& equip)
 {
 	// Update FLHook's lists to make anticheat pleased.
 	if (&equip != &Players[iClientID].lShadowEquipDescList.equip)
@@ -137,7 +137,7 @@ bool HkSetEquip(uint iClientID, const list<EquipDesc>& equip)
 
 	// Calculate packet size. First two bytes reserved for items count.
 	uint itemBufSize = 2;
-	for (list<EquipDesc>::const_iterator item = equip.begin(); item != equip.end(); item++)
+	for (st6::list<EquipDesc>::const_iterator item = equip.begin(); item != equip.end(); item++)
 	{
 		itemBufSize += sizeof(SETEQUIPMENT_ITEM) + strlen(item->szHardPoint.value) + 1;
 	}
@@ -147,7 +147,7 @@ bool HkSetEquip(uint iClientID, const list<EquipDesc>& equip)
 
 	// Add items to packet as array of variable size.
 	uint index = 0;
-	for (list<EquipDesc>::const_iterator item = equip.begin(); item != equip.end(); item++)
+	for (st6::list<EquipDesc>::const_iterator item = equip.begin(); item != equip.end(); item++)
 	{
 		SETEQUIPMENT_ITEM setEquipItem;
 		setEquipItem.iCount = item->iCount;

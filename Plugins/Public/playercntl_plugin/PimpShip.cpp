@@ -162,8 +162,8 @@ namespace PimpShip
 		int iSlotID = 1;
 
 		mapInfo[iClientID].mapCurrEquip.clear();
-		list<EquipDesc> &eqLst = Players[iClientID].equipDescList.equip;
-		for (list<EquipDesc>::iterator eq = eqLst.begin(); eq != eqLst.end(); eq++)
+		st6::list<EquipDesc> &eqLst = Players[iClientID].equipDescList.equip;
+		for (st6::list<EquipDesc>::iterator eq = eqLst.begin(); eq != eqLst.end(); eq++)
 		{
 			if (IsItemArchIDAvailable(eq->iArchID))
 			{
@@ -568,7 +568,7 @@ namespace PimpShip
 
 		HkAddCash(wscCharName, -(count * set_iCost));
 
-		list<EquipDesc>* equip = &Players[iClientID].equipDescList.equip;
+		st6::list<EquipDesc>* equip = &Players[iClientID].equipDescList.equip;
 
 		for (auto& it = equip->begin(); it != equip->end(); it++)
 		{

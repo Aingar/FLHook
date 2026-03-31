@@ -1103,7 +1103,11 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 		if (!ExecuteCommandString_Callback(this, wscCmd))
 		{
 
-			if (IS_CMD("getcash")) {
+			if (IS_CMD("exit")) {
+				FLHookShutdown();
+				std::exit(0);
+			}
+			else if (IS_CMD("getcash")) {
 				CmdGetCash(ArgCharname(1));
 			}
 			else if (IS_CMD("setcash")) {

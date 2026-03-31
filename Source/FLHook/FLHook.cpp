@@ -276,10 +276,13 @@ void FLHookInit_Pre()
 	// start console
 	AllocConsole();
 	SetConsoleTitle("FLHook");
-	SetConsoleCtrlHandler(ConsoleHandler, TRUE);
+	SetConsoleCtrlHandler(nullptr, TRUE);
 	hConsoleIn = GetStdHandle(STD_INPUT_HANDLE);
 	hConsoleOut = GetStdHandle(STD_OUTPUT_HANDLE);
 	hConsoleErr = GetStdHandle(STD_ERROR_HANDLE);
+	DWORD mode = 0;
+	auto consoleMode = GetConsoleMode(hConsoleIn, &mode);
+	SetConsoleMode(hConsoleIn, mode | ENABLE_WINDOW_INPUT);
 
 	ConPrint(L"Welcome to FLHook Console (" VERSION L")\n");
 
@@ -531,6 +534,11 @@ bool FLHookInit()
 		ConPrint(L"ERROR: %s\n", stows(szError).c_str());
 		return false;
 	}
+
+	auto hwnd = GetConsoleWindow();
+	auto hMenu = GetSystemMenu(hwnd, false);
+	DeleteMenu(hMenu, SC_CLOSE, MF_BYCOMMAND);
+
 	return true;
 }
 

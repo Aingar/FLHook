@@ -1549,6 +1549,7 @@ __declspec(naked) void HkCb_LandNaked()
 }
 
 static bool patched = false;
+bool shutdownBasePlugin = false;
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
@@ -1558,6 +1559,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	// calls load settings on FLHook startup and .rehash.
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
+		shutdownBasePlugin = true;
+
 		if (!patched)
 		{
 			patched = true;
@@ -2841,9 +2844,10 @@ void __stdcall ReqShipArch_AFTER(uint shipArchId, uint clientId)
 void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 {
 	returncode = DEFAULT_RETURNCODE;
+
 	uint space_obj = iobj->get_id();
 	auto& i = spaceobj_modules.find(space_obj);
-	if (i != spaceobj_modules.end())
+	if (i != spaceobj_modules.end() && !shutdownBasePlugin)
 	{
 		CSolar* csolar = reinterpret_cast<CSolar*>(iobj->cobj);
 
@@ -2857,13 +2861,11 @@ void __stdcall BaseDestroyed(IObjRW* iobj, bool isKill, uint dunno)
 			dropPos.y += randomVector.y;
 			dropPos.z += randomVector.z;
 
-			ConPrint(L"CreateLoot %x %u\n", cargo->archetype->iArchID, cargo->count);
 			CreateLootSimple(csolar->system, csolar->id, cargo->archetype->iArchID, cargo->count, dropPos, false);
 		}
 
 		i->second->SpaceObjDestroyed(space_obj);
 		returncode = SKIPPLUGINS;
-		return;
 	}
 	customSolarList.erase(space_obj);
 }

@@ -897,3 +897,5 @@ namespace EquipmentUtilities
 	const char* FindNickname(uint hash);
 }
 #endif
+
+extern bool shutdownBasePlugin;

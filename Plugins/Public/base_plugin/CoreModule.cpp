@@ -20,6 +20,11 @@ dont_rust(false), baseHealthChanged(false), undergoingDestruction(false)
 
 CoreModule::~CoreModule()
 {
+	if (shutdownBasePlugin)
+	{
+		return;
+	}
+
 	if (space_obj)
 	{
 		if (base->baseCSolar)

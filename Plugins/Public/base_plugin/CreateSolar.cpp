@@ -239,7 +239,7 @@ void CreateSolar::SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo con
 pub::AI::SetPersonalityParams CreateSolar::MakePersonality()
 {
 	pub::AI::SetPersonalityParams p;
-	p.state_graph = pub::StateGraph::get_state_graph("NOTHING", pub::StateGraph::TYPE_STANDARD);
+	p.state_graph = pub::StateGraph::get_state_graph("NOTHING", pub::StateGraph::TYPE_LEADER);
 	p.state_id = true;
 
 	p.personality.EvadeDodgeUse.evade_dodge_style_weight[0] = 0.4f;

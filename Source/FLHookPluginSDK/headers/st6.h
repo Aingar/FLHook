@@ -31,6 +31,9 @@ extern ST6_INIT st6_free_t st6_free;
 #ifndef _REFERENCE_X
 	#define _REFERENCE_X(T, A) T&
 #endif
+#ifndef _FPOSOFF
+	#define _FPOSOFF(fp) ((long long)(fp))
+#endif
 
 namespace st6
 {

@@ -101,7 +101,7 @@ pub::AI::SetPersonalityParams HkMakePersonality(int graphid)
 {
 
 	pub::AI::SetPersonalityParams p;
-	p.state_graph = pub::StateGraph::get_state_graph(listgraphs[graphid], pub::StateGraph::TYPE_STANDARD);
+	p.state_graph = pub::StateGraph::get_state_graph(listgraphs[graphid], pub::StateGraph::TYPE_LEADER);
 	p.state_id = true;
 
 	p.personality.EvadeDodgeUse.evade_dodge_style_weight[0] = 0.4f;
@@ -489,11 +489,12 @@ void CreateNPC(const wstring& name, Vector pos, Matrix& rot, uint iSystem, const
 	si.vPos = pos;
 	si.mOrientation = rot;
 	si.iLoadout = arch.Loadout;
-	si.iLook1 = CreateID("li_newscaster_head_gen_hat");
-	si.iLook2 = CreateID("pl_female1_journeyman_body");
-	si.iComm = CreateID("comm_br_darcy_female");
+	si.Costume.head = CreateID("li_newscaster_head_gen_hat");
+	si.Costume.body = CreateID("pl_female1_journeyman_body");
+	si.Costume.accessory[0] = CreateID("comm_br_darcy_female");
+	si.Costume.accessories = 1;
 	si.iPilotVoice = CreateID("pilot_f_leg_f01a");
-	si.iHealth = -1;
+	si.iHitPointsLeft = -1;
 	si.iLevel = 19;
 
 	// Define the string used for the scanner name. Because the
@@ -644,12 +645,12 @@ void AdminCmd_AICome(CCmds* cmds, const wstring& groupName)
 			pub::AI::SubmitDirective(ship, &cancelOP);
 
 			pub::AI::DirectiveGotoOp go;
-			go.iGotoType = 1;
-			go.vPos = pos;
-			go.vPos.x = pos.x + rand_FloatRange(0, 500);
-			go.vPos.y = pos.y + rand_FloatRange(0, 500);
-			go.vPos.z = pos.z + rand_FloatRange(0, 500);
-			go.fRange = 0;
+			go.gotoType = pub::AI::GotoOpType::Vec;
+			go.pos = pos;
+			go.pos.x = pos.x + rand_FloatRange(0, 500);
+			go.pos.y = pos.y + rand_FloatRange(0, 500);
+			go.pos.z = pos.z + rand_FloatRange(0, 500);
+			go.range = 0;
 			pub::AI::SubmitDirective(ship, &go);
 		}
 		cmds->Print(L"OK\n");
@@ -663,12 +664,12 @@ void AdminCmd_AICome(CCmds* cmds, const wstring& groupName)
 			pub::AI::SubmitDirective(ship, &cancelOP);
 
 			pub::AI::DirectiveGotoOp go;
-			go.iGotoType = 1;
-			go.vPos = pos;
-			go.vPos.x = pos.x + rand_FloatRange(0, 500);
-			go.vPos.y = pos.y + rand_FloatRange(0, 500);
-			go.vPos.z = pos.z + rand_FloatRange(0, 500);
-			go.fRange = 0;
+			go.gotoType = pub::AI::GotoOpType::Vec;
+			go.pos = pos;
+			go.pos.x = pos.x + rand_FloatRange(0, 500);
+			go.pos.y = pos.y + rand_FloatRange(0, 500);
+			go.pos.z = pos.z + rand_FloatRange(0, 500);
+			go.range = 0;
 			pub::AI::SubmitDirective(ship, &go);
 		}
 		cmds->Print(L"OK\n");
@@ -707,8 +708,8 @@ void AdminCmd_AIFollow(CCmds* cmds, const wstring& wscCharname, const wstring& g
 			pub::AI::DirectiveCancelOp cancelOP;
 			pub::AI::SubmitDirective(npc, &cancelOP);
 			pub::AI::DirectiveFollowOp testOP;
-			testOP.leader = iShip1;
-			testOP.max_distance = 100;
+			testOP.followSpaceObj = iShip1;
+			testOP.maxDistance = 100;
 			pub::AI::SubmitDirective(npc, &testOP);
 		}
 		cmds->Print(L"Following %s\n", info.wscCharname.c_str());
@@ -721,8 +722,8 @@ void AdminCmd_AIFollow(CCmds* cmds, const wstring& wscCharname, const wstring& g
 			pub::AI::DirectiveCancelOp cancelOP;
 			pub::AI::SubmitDirective(npc, &cancelOP);
 			pub::AI::DirectiveFollowOp testOP;
-			testOP.leader = iShip1;
-			testOP.max_distance = 100;
+			testOP.followSpaceObj = iShip1;
+			testOP.maxDistance = 100;
 			pub::AI::SubmitDirective(npc, &testOP);
 		}
 		cmds->Print(L"Following %s\n", info.wscCharname.c_str());
@@ -792,19 +793,19 @@ void AdminCmd_AIGoto(CCmds* cmds, const wstring& groupName, const wstring& coord
 			pub::AI::SubmitDirective(npc, &cancelOP);
 
 			pub::AI::DirectiveGotoOp go;
-			go.iGotoType = 1;
-			go.vPos = coords->second.pos;
-			go.vPos.x += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.vPos.y += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.vPos.z += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.fRange = 0;
+			go.gotoType = pub::AI::GotoOpType::Vec;
+			go.pos = coords->second.pos;
+			go.pos.x += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.pos.y += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.pos.z += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.range = 0;
 			if (useCruise)
 			{
-				go.goto_cruise = true;
+				go.goToCruise = true;
 			}
 			else
 			{
-				go.goto_no_cruise = true;
+				go.goToNoCruise = true;
 			}
 			pub::AI::SubmitDirective(npc, &go);
 		}
@@ -819,19 +820,19 @@ void AdminCmd_AIGoto(CCmds* cmds, const wstring& groupName, const wstring& coord
 			pub::AI::SubmitDirective(npc, &cancelOP);
 
 			pub::AI::DirectiveGotoOp go;
-			go.iGotoType = 1;
-			go.vPos = coords->second.pos;
-			go.vPos.x += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.vPos.y += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.vPos.z += rand_FloatRange(-coords->second.spread, coords->second.spread);
-			go.fRange = 0;
+			go.gotoType = pub::AI::GotoOpType::Vec;
+			go.pos = coords->second.pos;
+			go.pos.x += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.pos.y += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.pos.z += rand_FloatRange(-coords->second.spread, coords->second.spread);
+			go.range = 0;
 			if (useCruise)
 			{
-				go.goto_cruise = true;
+				go.goToCruise = true;
 			}
 			else
 			{
-				go.goto_no_cruise = true;
+				go.goToNoCruise = true;
 			}
 			pub::AI::SubmitDirective(npc, &go);
 		}

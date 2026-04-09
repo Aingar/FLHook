@@ -56,6 +56,11 @@ PATCH_INFO piServerDLL =
 		{0x6D672A0,		&HookExplosionHitNaked,				4, &fpOldExplosionHit,		false},
 		{0x6D672CC,		&ShipHullDamageNaked,				4, &ShipHullDamageOrigFunc,							false},
 		{0x6D6761C,		&SolarHullDamageNaked,				4, &SolarHullDamageOrigFunc, false},
+		{0x6D67334,		&ShipColGrpDmgNaked,		4, &ShipColGrpDmgFunc, false},
+		{0x6D67684,		&SolarColGrpDmgNaked,		4, &SolarColGrpDmgFunc,	false},
+		{0x6D6732C,		&ShipEquipDamageNaked,		        4, &ShipEquipDamageOrigFunc,	false},
+		{0x6D6767C,		&SolarEquipDamageNaked,             4, &SolarEquipDamageOrigFunc,	false},
+		{0x6D67680,		&SolarShieldDamageNaked,		4, &SolarShieldDamageOrigFunc,	false},
 		{0x6D6420C,		&HkIEngine::_LaunchPos,				4, &HkIEngine::fpOldLaunchPos,	false},
 		{0x6D648E0,		&HkIEngine::FreeReputationVibe,		4, 0,							false},
 
@@ -85,7 +90,7 @@ PATCH_INFO piDaLibDLL =
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool Patch(PATCH_INFO &pi)
+bool Patch(PATCH_INFO& pi)
 {
 	HMODULE hMod = GetModuleHandle(pi.szBinName);
 	if (!hMod)
@@ -96,7 +101,7 @@ bool Patch(PATCH_INFO &pi)
 		if (!pi.piEntries[i].pAddress)
 			break;
 
-		char *pAddress = (char*)hMod + (pi.piEntries[i].pAddress - pi.pBaseAddress);
+		char* pAddress = (char*)hMod + (pi.piEntries[i].pAddress - pi.pBaseAddress);
 		if (!pi.piEntries[i].pOldValue) {
 			pi.piEntries[i].pOldValue = new char[pi.piEntries[i].iSize];
 			pi.piEntries[i].bAlloced = true;
@@ -113,7 +118,7 @@ bool Patch(PATCH_INFO &pi)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-bool RestorePatch(PATCH_INFO &pi)
+bool RestorePatch(PATCH_INFO& pi)
 {
 	HMODULE hMod = GetModuleHandle(pi.szBinName);
 	if (!hMod)
@@ -124,7 +129,7 @@ bool RestorePatch(PATCH_INFO &pi)
 		if (!pi.piEntries[i].pAddress)
 			break;
 
-		char *pAddress = (char*)hMod + (pi.piEntries[i].pAddress - pi.pBaseAddress);
+		char* pAddress = (char*)hMod + (pi.piEntries[i].pAddress - pi.pBaseAddress);
 		WriteProcMem(pAddress, pi.piEntries[i].pOldValue, pi.piEntries[i].iSize);
 		if (pi.piEntries[i].bAlloced)
 			delete[] pi.piEntries[i].pOldValue;
@@ -135,9 +140,9 @@ bool RestorePatch(PATCH_INFO &pi)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-CDPClientProxy **g_cClientProxyArray;
+CDPClientProxy** g_cClientProxyArray;
 
-CDPServer *cdpSrv;
+CDPServer* cdpSrv;
 
 HkIClientImpl* FakeClient;
 HkIClientImpl* HookClient;
@@ -153,7 +158,7 @@ CLIENT_INFO ClientInfo[MAX_CLIENT_ID + 1];
 uint g_iServerLoad = 0;
 uint g_iPlayerCount = 0;
 
-char *g_FLServerDataPtr;
+char* g_FLServerDataPtr;
 
 _GetShipInspect GetShipInspect;
 
@@ -215,7 +220,7 @@ load settings from flhookhuser.ini
 
 void LoadUserSettings(uint iClientID)
 {
-	CAccount *acc = Players.FindAccountFromClientID(iClientID);
+	CAccount* acc = Players.FindAccountFromClientID(iClientID);
 	wstring wscDir;
 	HkGetAccountDirName(acc, wscDir);
 	string scUserFile = scAcctPath + wstos(wscDir) + "\\flhookuser.ini";
@@ -250,7 +255,7 @@ load settings from flhookhuser.ini (specific to character)
 
 void LoadUserCharSettings(uint iClientID)
 {
-	CAccount *acc = Players.FindAccountFromClientID(iClientID);
+	CAccount* acc = Players.FindAccountFromClientID(iClientID);
 	wstring wscDir;
 	HkGetAccountDirName(acc, wscDir);
 	string scUserFile = scAcctPath + wstos(wscDir) + "\\flhookuser.ini";
@@ -312,18 +317,18 @@ void UnDetour(void* pOFunc, unsigned char* originalData)
 
 bool InitHookExports()
 {
-	char	*pAddress;
+	char* pAddress;
 
 	GetShipInspect = (_GetShipInspect)SRV_ADDR(ADDR_SRV_GETINSPECT);
 
 	mdataPlayerMap = (FlMap<uint, MPlayerDataSaveStruct*>*)((char*)hModContent + 0x130BBC);
 
 	// install IServerImpl callbacks in remoteclient.dll
-	char *pServer = (char*)&Server;
+	char* pServer = (char*)&Server;
 	memcpy(&pServer, pServer, 4);
 	for (uint i = 0; (i < sizeof(HkIServerImpl::hookEntries) / sizeof(HOOKENTRY)); i++)
 	{
-		char *pAddress = pServer + HkIServerImpl::hookEntries[i].dwRemoteAddress;
+		char* pAddress = pServer + HkIServerImpl::hookEntries[i].dwRemoteAddress;
 		ReadProcMem(pAddress, &HkIServerImpl::hookEntries[i].fpOldProc, 4);
 		WriteProcMem(pAddress, &HkIServerImpl::hookEntries[i].fpProc, 4);
 	}
@@ -375,19 +380,19 @@ bool InitHookExports()
 
 	{
 		// Radiation patch, stop the division math
-		BYTE patch[] = { 0x75, 0x2C, 0xE9, 0x3B, 0x01, 0x00, 0x00};
+		BYTE patch[] = { 0x75, 0x2C, 0xE9, 0x3B, 0x01, 0x00, 0x00 };
 		WriteProcMem((char*)hModServer + 0x2118A, patch, sizeof(patch));
 		BYTE patch2[] = { 0xBC };
 		WriteProcMem((char*)hModServer + 0x211BE, patch2, 1);
 		WriteProcMem((char*)hModServer + 0x211C4, patch2, 1);
 
-		BYTE patch3[] = { 
-			0xEB, 0x15};
+		BYTE patch3[] = {
+			0xEB, 0x15 };
 		WriteProcMem((char*)hModServer + 0x211C8, patch3, sizeof(patch3));
 
 
-		BYTE patch4[] = { 
-			0x8B, 0x07, 0xEB, 0x21};
+		BYTE patch4[] = {
+			0x8B, 0x07, 0xEB, 0x21 };
 		WriteProcMem((char*)hModServer + 0x211F0, patch4, sizeof(patch4));
 
 		// Override damage applying logic with our own
@@ -410,7 +415,7 @@ bool InitHookExports()
 	// Optimize Server.dll sub_6CE61D0 that is called A LOT and crashes if it fails anwyay
 	pAddress = SRV_ADDR(0x61D0);
 	BYTE szOptimize[] = { 0x8B, 0x41, 0x10, 0x8b, 0x80, 0xb0, 0x00, 0x00, 0x00, 0xc3,
-	0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+	0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90, 0x90 };
 	WriteProcMem(pAddress, szOptimize, sizeof(szOptimize));
 
 	// Optimize Server.dll sub_6CF4F00, also called a lot
@@ -443,7 +448,7 @@ bool InitHookExports()
 
 	//Fix solar targeting causing projectile desync
 	pAddress = SRV_ADDR(0x6B39);
-	BYTE fixPlanetPatch[] = {0xE8, 0x00, 0x00, 0x00, 0x00, 0x90};
+	BYTE fixPlanetPatch[] = { 0xE8, 0x00, 0x00, 0x00, 0x00, 0x90 };
 	WriteProcMem(pAddress, fixPlanetPatch, sizeof(fixPlanetPatch));
 	PatchCallAddr((char*)hModServer, 0x6B39, (char*)HkIEngine::FixPlanetSpin);
 
@@ -478,7 +483,7 @@ bool InitHookExports()
 
 	// get client proxy array, used to retrieve player pings/ips
 	pAddress = (char*)hModRemoteClient + ADDR_CPLIST;
-	char *szTemp;
+	char* szTemp;
 	ReadProcMem(pAddress, &szTemp, 4);
 	szTemp += 0x10;
 	memcpy(&g_cClientProxyArray, &szTemp, 4);
@@ -494,6 +499,9 @@ bool InitHookExports()
 		ClientInfo[i].iConnects = 0; // only set to 0 on start
 		ClearClientInfo(i);
 	}
+
+	HkIEngine::HookCPlayerGroupAddMember();
+	HkIEngine::HookCPlayerGroupDelMember();
 
 	return true;
 }
@@ -515,15 +523,15 @@ uninstall the callback hooks
 
 void UnloadHookExports()
 {
-	char *pAddress;
+	char* pAddress;
 
 	// uninstall IServerImpl callbacks in remoteclient.dll
-	char *pServer = (char*)&Server;
+	char* pServer = (char*)&Server;
 	if (pServer) {
 		memcpy(&pServer, pServer, 4);
 		for (uint i = 0; (i < sizeof(HkIServerImpl::hookEntries) / sizeof(HOOKENTRY)); i++)
 		{
-			void *pAddress = (void*)((char*)pServer + HkIServerImpl::hookEntries[i].dwRemoteAddress);
+			void* pAddress = (void*)((char*)pServer + HkIServerImpl::hookEntries[i].dwRemoteAddress);
 			WriteProcMem(pAddress, &HkIServerImpl::hookEntries[i].fpOldProc, 4);
 		}
 	}
@@ -570,7 +578,7 @@ sometimes adjustments need to be made after a rehash
 
 void HookRehashed()
 {
-	char *pAddress;
+	char* pAddress;
 
 	// anti-deathmsg
 	if (set_bDieMsg) { // disables the "old" "A Player has died: ..." messages

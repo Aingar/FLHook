@@ -1391,9 +1391,11 @@ namespace HkIServerImpl
 	/**************************************************************************************************************
 	**************************************************************************************************************/
 
-	void __stdcall CommComplete(unsigned int p1, unsigned int p2, unsigned int p3, enum CommResult cr)
+	void __stdcall CommComplete(unsigned int senderObjId, unsigned int receiverObjId, unsigned int voiceLineId, enum CommResult commResult)
 	{
-		return; // not used
+		CALL_PLUGINS_V(PLUGIN_HkIServerImpl_CommComplete, __stdcall,
+			(unsigned int senderObjId, unsigned int receiverObjId, unsigned int voiceLineId, enum CommResult commResult),
+			(senderObjId, receiverObjId, voiceLineId, commResult));
 	}
 
 	/**************************************************************************************************************

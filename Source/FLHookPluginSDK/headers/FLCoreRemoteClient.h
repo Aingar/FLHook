@@ -36,6 +36,17 @@ class CDPServer;
 ///// FL PACKET STRUCTS ///////
 ///////////////////////////////
 
+struct MissionAcceptance
+{
+	uint index;
+	uint base;
+	// acceptanceData:
+	// 1 byte:  bool accepted
+	// 2 bytes: ushort rejectedResourceId;
+	// 4 bytes: unknown
+	char acceptanceData[7];
+};
+
 struct PACKET_COSTUME
 {
 	uint head;
@@ -97,7 +108,7 @@ struct FLPACKET_LAUNCH
 {
 	uint iShip;
 	uint iBase;
-	uint iState;
+	uint iDock;
 	float fRotate[4];
 	float fPos[3];
 };
@@ -215,9 +226,9 @@ public:
 	virtual void unknown_37(uint iClientID, uint iDunno, uint iDunno2);
 	virtual bool Send_FLPACKET_SERVER_GFCOMPLETEAMBIENTSCRIPTLIST(uint iClientID, uint iDunno);
 	virtual bool Send_FLPACKET_SERVER_GFDESTROYMISSIONCOMPUTER(uint iClientID, uint iDunno, uint iDunno2);
-	virtual bool Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(uint iClientID, uint iDunno, uint iDunno2);
+	virtual bool Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(uint iClientID, void* data, uint dataSize);
 	virtual bool Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(uint iClientID, uint iDunno);
-	virtual bool Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(uint iClientID, uint iDunno, uint iDunno2);
+	virtual bool Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(uint iClientID, MissionAcceptance& iDunno, uint iDunno2);
 	virtual bool Send_FLPACKET_SERVER_GFMISSIONVENDORWHYEMPTY(uint iClientID, uint iReason);
 	virtual void unknown_44(uint iClientID, uint iDunno, uint iDunno2);
 	virtual bool Send_FLPACKET_SERVER_GFUPDATENEWSBROADCAST(uint iClientID, uint iDunno, uint iDunno2);
@@ -270,7 +281,7 @@ public:
 	virtual void unknown_91(uint iClientID, uint iDunno);
 	virtual bool Send_FLPACKET_COMMON_SET_WEAPON_GROUP(uint iClientID, unsigned char *p2, int p3);
 	virtual bool Send_FLPACKET_COMMON_SET_VISITED_STATE(uint iClientID, unsigned char *p2, int p3);
-	virtual bool Send_FLPACKET_COMMON_REQUEST_BEST_PATH(uint iClientID, unsigned char *p2, int p3);
+	virtual bool Send_FLPACKET_COMMON_REQUEST_BEST_PATH(uint iClientID, const XRequestBestPath& data, int size);
 	virtual bool Send_FLPACKET_COMMON_REQUEST_PLAYER_STATS(uint iClientID, unsigned char *p2, int p3);
 	virtual void unknown_96(uint iClientID, uint iDunno, uint iDunno2, uint iDunno3);
 	virtual bool Send_FLPACKET_COMMON_REQUEST_GROUP_POSITIONS(uint iClientID, unsigned char *p2, int p3);

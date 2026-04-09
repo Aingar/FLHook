@@ -128,6 +128,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ForceEquipment", "Plugins\P
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ducktales", "..\..\DiscoPrivate\FLHookPrivAingar\Plugins\Private\ducktales\ducktales.vcxproj", "{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FLSR Plugin", "Plugins\Public\flsr_plugin\FLSR Plugin.vcxproj", "{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -315,6 +317,12 @@ Global
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Release|Win32.ActiveCfg = Release|Win32
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531}.Release|Win32.Build.0 = Release|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Debug|Win32.ActiveCfg = Debug|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Debug|Win32.Build.0 = Debug|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Release|Win32.ActiveCfg = Release|Win32
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -352,6 +360,7 @@ Global
 		{5F5B6544-16BA-4F89-991D-8CABEBA2613D} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{C7809793-1350-4C9F-A40E-2EEA101080DA} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
+		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}
@@ -378,6 +387,7 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{91e8438d-f413-4a2c-8a9b-6ce3544116db}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{985915af-e158-45e7-bbdd-bcd4642e5574}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{9e084a9e-a8b9-4f64-8048-f3357839683e}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{aa1bcb95-1f75-4d89-b11f-ea8b098222f3}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{b92d0fa9-093b-4db0-9afd-3af72bd87aae}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c26da99f-10f7-421b-ac31-eed1623e7b04}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c7809793-1350-4c9f-a40e-2eea101080da}*SharedItemsImports = 4

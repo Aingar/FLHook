@@ -109,8 +109,8 @@ struct SETEQUIPMENT_ITEM
 	float fHealth;
 	int iArchID;
 	ushort sID;
-	byte bMounted;
-	byte bMission;
+	BYTE bMounted;
+	BYTE bMission;
 	ushort szHardPointLen;
 };
 #pragma pack(pop)
@@ -118,7 +118,7 @@ struct SETEQUIPMENT_ITEM
 struct FLPACKET_SETEQUIPMENT
 {
 	ushort count;
-	byte items[1];
+	BYTE items[1];
 };
 
 #endif

@@ -1680,7 +1680,7 @@ namespace Universe
 		bool pathLabel; // & 0xFF, always zero
 		uint iCountMaxFaction; // & 0xFF, appears related to the max number of factions in a given encounter line
 		st6::list<FactionSpawn> factionSpawns;
-		byte visit;
+		BYTE visit;
 		uint idsName;
 		uint idsInfo;
 		uint iDunno6[2];
@@ -1696,7 +1696,7 @@ namespace Universe
 		uint   id;				// ID_String
 		CacheString nickname;		// CacheString
 		st6::vector<Universe::ISystem*> connections;	// std::vector
-		byte   visit;
+		BYTE   visit;
 		uint   strid_name;
 		uint   ids_info;
 		CacheString file;			// CacheString
@@ -4331,6 +4331,13 @@ public:
 
 struct IMPORT FmtStr
 {
+	struct NavMarker
+	{
+		uint system;
+		uint unk = 1;
+		Vector pos;
+	};
+
 	struct IMPORT Val
 	{
 		Val(struct Val const &);
@@ -4669,7 +4676,7 @@ namespace pub
 			virtual bool validate();
 
 			OP_TYPE op_type;
-			int x08;
+			int fireWeapons; // Probably a bool, anything non-zero turns it on
 		};
 
 		struct IMPORT ContentCallback
@@ -4708,7 +4715,7 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			unsigned char data[OBJECT_DATA_SIZE];
+			float DelayTime;
 		};
 
 		class IMPORT DirectiveDockOp : public pub::AI::BaseOp
@@ -4719,13 +4726,14 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			uint dock_spaceobj;
-			uint zero1;
-			uint zero2;
-			int minusone;
-			uint zero3;
-			float twohundred;
-			float fivehundred;
+			uint dockTargetObjId;
+			uint dockTargetDirectionObjId;   // 0, unless using a TLR and giving the direction by the end ring of the TLR
+			uint x12; // 0
+			int dockPortIndex; // -1
+			uint x1C;   // 0
+			float x20;  // 200
+			float x24;  // 500
+			uint x28;   // 0
 		};
 
 		class IMPORT DirectiveDrasticEvadeOp : public pub::AI::BaseOp
@@ -4769,10 +4777,10 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			UINT   leader;       // 0
-			float  max_distance; // 150
-			Vector ofs;          // 0, 0, 0; copy constructor indicates Vector
-			float  unknown;      // 400
+			uint followSpaceObj;
+			float maxDistance;
+			Vector offset;
+			float dunno2; // 400
 		};
 
 		class IMPORT DirectiveFormationOp : public pub::AI::BaseOp
@@ -4786,6 +4794,14 @@ namespace pub
 			unsigned char data[OBJECT_DATA_SIZE];
 		};
 
+		enum class GotoOpType
+		{
+			Ship = 0,
+			Vec = 1,
+			Spline = 2,
+			Undefined = 3
+		};
+
 		class IMPORT DirectiveGotoOp : public pub::AI::BaseOp
 		{
 		public:
@@ -4794,31 +4810,31 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			int iGotoType; // 1 = Vec, 0 = Ship, 2 = spline, 3 = undefined
-			// The target position if iGotoType is 1.
-			Vector vPos;
-			// If iGotoType is 0 then move to this spaceobj. Do not set a vPos if you
+			GotoOpType gotoType; // 1 = Vec, 0 = Ship, 2 = spline, 3 = undefined
+			// The target position if GotoType is 1.
+			Vector pos;
+			// If GotoType is 0 then move to this spaceobj. Do not set a pos if you
 			// set this.
-			uint iTargetID;
-			// The 4 points to fly to if iGotoType is 2
-			Vector vSpline[4];
+			uint targetId;
+			// The 4 points to fly to if GotoType is 2
+			Vector spline[4];
 			// This specifies how close the NPC will attempt to get to the position
-			float fRange;
+			float range;
 			// This specifies the thrust in the range from 0-100. Use -1 for maximum.
-			float fThrust;
+			float thrust;
+			// This specifies if the ship should move (*not* always set to true)
+			bool shipMoves;
 			// This specifies if the ship should move (always set to true)
-			bool x58;
-			// This specifies if the ship should move (always set to true)
-			bool x59;
+			bool shipMoves2;
 			// Set the follow to control if the ship will cruise or not. Do not set
 			// both to true.
-			bool goto_cruise;
-			bool goto_no_cruise;
-			int x5C;
-			float x60; // 200
-			float x64; // 500
+			bool goToCruise;
+			bool goToNoCruise;
+			int objIdToWaitFor;
+			float startWaitDistance; // 200
+			float endWaitDistance; // 500
 			int x68;
-			int x6C;
+			float x6C;
 		};
 
 		class IMPORT DirectiveGuideOp : public pub::AI::BaseOp
@@ -4838,9 +4854,6 @@ namespace pub
 			DirectiveIdleOp(class DirectiveIdleOp const &);
 			DirectiveIdleOp(void);
 			virtual bool validate(void);
-
-		public:
-			unsigned char data[OBJECT_DATA_SIZE];
 		};
 
 		class IMPORT DirectiveInstantTradelaneOp : public pub::AI::BaseOp
@@ -4851,7 +4864,9 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			unsigned char data[OBJECT_DATA_SIZE];
+			uint tradelaneRingFrom;
+			uint tradelaneRingTo;
+			float dunno; // 3750
 		};
 
 		class IMPORT DirectiveLaunchOp : public pub::AI::BaseOp
@@ -4862,7 +4877,9 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			unsigned char data[OBJECT_DATA_SIZE];
+			uint launchFromObject;
+			uint dockIndex;
+			uint x14; // 1, cannot be 0, defaults to 0
 		};
 
 		class IMPORT DirectiveRamOp : public pub::AI::BaseOp
@@ -5334,8 +5351,8 @@ namespace pub
 			virtual bool validate();
 
 			int state_graph;
-			void* x10; // -1
-			void* x14; // -1
+			ContentCallback* contentCallback;
+			DirectiveCallback* directiveCallback;
 			bool state_id; // true - state_graph_id, false - state_graph
 			Personality personality;
 		};
@@ -5347,7 +5364,13 @@ namespace pub
 			virtual bool validate(void);
 
 		public:
-			unsigned char data[OBJECT_DATA_SIZE];
+			uint iZoneType;     // 0 = position, 1 = cuboid 2 = spaceobj
+			uint iDunno_0x10;   // 0=?? 1=?? 2=delete user zone
+			Vector vPosition;   // only used for iZoneType 0
+			uint iSpaceObj;     // only used for iZoneType 2
+			Vector vBoxCorner1; // only used for iZoneType 1
+			Vector vBoxCorner2; // only used for iZoneType 1
+			float fRadius;      // not used for iZoneType 1
 		};
 
 	};
@@ -5356,7 +5379,8 @@ namespace pub
 	{
 		enum Type
 		{
-			TYPE_STANDARD = 0
+			TYPE_LEADER = 0,
+			TYPE_ESCORT = 1
 		};
 
 		IMPORT  int  get_state_graph(int, enum Type);
@@ -5791,37 +5815,37 @@ struct CShipAbstract
 // Hex numbers behind dunno variables or in a comment indicate hex offset
 struct IObjRW : public IObjRWAbstract, public CShipAbstract, public CBase
 {
-	byte bDunno_0x14;
+	BYTE bDunno_0x14;
 	void* pDunno_0x18; // struct size: 12 bytes
 	int iDunnos_0x1C;  // length of 0x1C
 	double timer;
 	struct StarSystem* starSystem; // has something to do with fuses
-	byte bDunno_0x2C;
+	BYTE bDunno_0x2C;
 	void* pDunno_0x30;   // struct size: 20 bytes
 	int iDunno_0x34;     // length of 0x30
-	byte isInvulnerable; // not entirely sure on those two
-	byte isPlayerVulnerable;
+	BYTE isInvulnerable; // not entirely sure on those two
+	BYTE isPlayerVulnerable;
 	float maxHpLoss; // hitpoint related?
-	byte bDunno_0x40;  // is alive? Used when fetching IObjRW via sub_6D00670
-	byte bDunno_041;
-	byte bAlign_0x42; // probably not used
-	byte bAlign_0x43; // probably not used
-	byte bDunno_0x44;
+	BYTE bDunno_0x40;  // is alive? Used when fetching IObjRW via sub_6D00670
+	BYTE bDunno_041;
+	BYTE bAlign_0x42; // probably not used
+	BYTE bAlign_0x43; // probably not used
+	BYTE bDunno_0x44;
 	void* pDunno_0x48; // struct size: 20 bytes
 	int iDunno_0x4C;   // size of 0x48
-	byte bDunno_0x50;
+	BYTE bDunno_0x50;
 	int iDunnos_0x54[3];
-	byte bDunno_0x60;
+	BYTE bDunno_0x60;
 	void* pDunno_0x64; // struct size: 16 bytes
 	int iDunnos_0x68;  // 0x64 size
 	float fdunno_0x6C;
-	byte bDunno_0x70;
+	BYTE bDunno_0x70;
 	void* pDunno_0x74; // struct size: 12 bytes twodirectional list that loops
 	int iDunno_0x78;   // length of 0x74 chain
-	byte bDunno_0x7C;
+	BYTE bDunno_0x7C;
 	void* pDunno_0x80; // struct size: 68 bytes list of fuses?
 	int iDunno_0x84;   // 0x80 length
-	byte bDunno_0x88;  // flagged on ShipDestroyed
+	BYTE bDunno_0x88;  // flagged on ShipDestroyed
 	int iDunno_0x8C;
 	int iDunno_0x90;
 	int iDunno_0x94;
@@ -5901,7 +5925,11 @@ namespace Loadout
 		struct Map & operator=(struct Map const &);
 
 	public:
-		unsigned char data[OBJECT_DATA_SIZE];
+		uint id;
+		char cdunno; // -1
+		EquipDesc* first;
+		EquipDesc* last;
+		EquipDesc* end;
 	};
 
 	IMPORT  void  Free(void);

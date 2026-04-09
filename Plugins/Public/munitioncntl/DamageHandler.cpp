@@ -674,20 +674,6 @@ void __stdcall SolarHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg)
 	armorEnabled = DmgLogicNone;
 }
 
-__declspec(naked) void SolarHullDamageNaked()
-{
-	__asm {
-		push ecx
-		push[esp + 0xC]
-		lea eax, [esp + 0xC]
-		push eax
-		push ecx
-		call SolarHullDamage
-		pop ecx
-		jmp[SolarHullDmgFunc]
-	}
-}
-
 void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
 	if (armorEnabled == DmgLogicNone)
@@ -732,21 +718,6 @@ void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, D
 	armorEnabled = DmgLogicNone;
 }
 
-__declspec(naked) void SolarColGrpDamageNaked()
-{
-	__asm {
-		push ecx
-		push[esp + 0x10]
-		lea eax, [esp + 0x10]
-		push eax
-		push[esp + 0x10]
-		push ecx
-		call SolarColGrpDmg
-		pop ecx
-		jmp[SolarColGrpDmgFunc]
-	}
-}
-
 void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
 	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
@@ -788,20 +759,6 @@ void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, Da
 	armorEnabled = DmgLogicNone;
 }
 
-__declspec(naked) void ShipColGrpDmgNaked()
-{
-	__asm {
-		push ecx
-		push [esp+0x10]
-		lea eax, [esp + 0x10]
-		push eax
-		push[esp + 0x10]
-		push ecx
-		call ShipColGrpDmg
-		pop ecx
-		jmp [ShipColGrpDmgFunc]
-	}
-}
 
 void __stdcall ShipFuseLight(IObjRW* ship, uint fuseCause, uint* fuseId, ushort sId, float radius, float fuseLifetime)
 {
@@ -857,10 +814,7 @@ void __fastcall ShipEnergyDamage(IObjRW* iobj, void* edx, float incDmg, DamageLi
 	ShipEnergyDamageFunc(iobj, incDmg, dmg);
 }
 
-
-using ShipEquipDamageType = void(__thiscall*)(IObjRW*, CEquip*, float incDmg, DamageList* dmg);
-ShipEquipDamageType ShipEquipDamageFunc = ShipEquipDamageType(0x6CEA4A0);
-void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg)
+void __stdcall ShipEquipDamage(IObjRW* iobj, CAttachedEquip* equip, float& incDmg, DamageList* dmg)
 {
 	if ((armorEnabled & DmgLogicPercDmg) && weaponMunitionData && weaponMunitionData->percentageHullDmg)
 	{
@@ -869,7 +823,6 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 
 	if (!iobj->is_player())
 	{
-		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 		return;
 	}
 
@@ -877,22 +830,17 @@ void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, 
 	auto invulData = invulMap.find(cship->id);
 	if (invulData == invulMap.end() || invulData->second.invulType == InvulType::HULLONLY)
 	{
-		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
 		return;
 	}
 	float minHpAllowed = invulData->second.minHpPerc * equip->archetype->fHitPoints;
 	if (equip->hitPts <= minHpAllowed)
 	{
+		incDmg = 0.f;
 		return;
 	}
 
 	float hpPercPostDamage = equip->hitPts - incDmg;
 	incDmg = min(incDmg, equip->hitPts - minHpAllowed);
-
-	if (incDmg > 0.0f)
-	{
-		ShipEquipDamageFunc(iobj, equip, incDmg, dmg);
-	}
 }
 
 void __fastcall CShipInit(CShip* ship, void* edx, CShip::CreateParms& parms)

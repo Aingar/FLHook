@@ -553,10 +553,10 @@ namespace MiscCmds
 		pub::SpaceObj::GetLocation(adminPlyr.iShip, vFromShipLoc, mFromShipDir);
 
 		pub::Audio::Tryptich music;
-		music.iDunno = 0;
-		music.iDunno2 = 0;
-		music.iDunno3 = 0;
-		music.iMusicID = set_iSmiteMusicID;
+		music.spaceMusic = 0;
+		music.dangerMusic = 0;
+		music.battleMusic = 0;
+		music.overrideMusic = set_iSmiteMusicID;
 		pub::Audio::SetMusic(adminPlyr.iClientID, music);
 
 		// For all players in system...
@@ -586,10 +586,10 @@ namespace MiscCmds
 				continue;
 
 			pub::Audio::Tryptich music;
-			music.iDunno = 0;
-			music.iDunno2 = 0;
-			music.iDunno3 = 0;
-			music.iMusicID = set_iSmiteMusicID;
+			music.spaceMusic = 0;
+			music.dangerMusic = 0;
+			music.battleMusic = 0;
+			music.overrideMusic = set_iSmiteMusicID;
 			pub::Audio::SetMusic(iClientID, music);
 
 			mapInfo[iClientID].bShieldsUp = true;
@@ -804,10 +804,10 @@ namespace MiscCmds
 		pub::SpaceObj::GetLocation(adminPlyr.iShip, vFromShipLoc, mFromShipDir);
 
 		pub::Audio::Tryptich music;
-		music.iDunno = 0;
-		music.iDunno2 = 0;
-		music.iDunno3 = 0;
-		music.iMusicID = MusictoID;
+		music.spaceMusic = 0;
+		music.dangerMusic = 0;
+		music.battleMusic = 0;
+		music.overrideMusic = MusictoID;
 		pub::Audio::SetMusic(adminPlyr.iClientID, music);
 
 		// For all players in system...
@@ -837,10 +837,10 @@ namespace MiscCmds
 				continue;
 
 			pub::Audio::Tryptich music;
-			music.iDunno = 0;
-			music.iDunno2 = 0;
-			music.iDunno3 = 0;
-			music.iMusicID = MusictoID;
+			music.spaceMusic = 0;
+			music.dangerMusic = 0;
+			music.battleMusic = 0;
+			music.overrideMusic = MusictoID;
 			pub::Audio::SetMusic(iClientID, music);
 
 		}

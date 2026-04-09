@@ -8,16 +8,17 @@
 
 void GuidedExplosionHitNaked();
 void SolarExplosionHitNaked();
-void ShipColGrpDmgNaked();
-void SolarColGrpDamageNaked();
-void SolarHullDamageNaked();
 void ShipFuseLightNaked();
 void __fastcall SolarMunitionHit(IObjRW* solar, void* edx, MunitionImpactData* data, DamageList* dmg);
-void __fastcall ShipEquipDamage(IObjRW* iobj, void* edx, CAttachedEquip* equip, float incDmg, DamageList* dmg);
+void __stdcall ShipEquipDamage(IObjRW* iobj, CAttachedEquip* equip, float& incDmg, DamageList* dmg);
 void __fastcall ShipEnergyDamage(IObjRW* iobj, void* edx, float incDmg, DamageList* dmg);
 void __fastcall ShipMunitionHit(IObjRW* iShip, void* edx, MunitionImpactData* data, DamageList* dmg);
 bool __stdcall ShipExplosionHit(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg);
 void __stdcall ShipShieldDamage(IObjRW* iobj, CEShield* shield, float& incDmg, DamageList* dmg);
+void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg);
+void __stdcall ShipColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg);
+void __stdcall SolarHullDamage(IObjRW* iobj, float& incDmg, DamageList* dmg);
+
 void ShipEquipmentDestroyedNaked();
 void LoadHookOverrides();
 float __fastcall GetWeaponModifier(CEShield* shield, void* edx, uint& weaponType);

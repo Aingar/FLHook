@@ -31,6 +31,13 @@
 #define POPUPDIALOG_BUTTONS_RIGHT_LATER 4
 #define POPUPDIALOG_BUTTONS_CENTER_OK 8
 
+enum PopupDialogButton
+{
+	LEFT_YES = 1,
+	CENTER_NO = 2,
+	RIGHT_LATER = 4,
+	CENTER_OK = 8 // Also adds a X button to the window
+};
 
 struct CHAT_ID
 {
@@ -51,7 +58,7 @@ enum MissionMessageType
 	MissionMessageType_Failure, // mission failure
 	MissionMessageType_Type1, // objective
 	MissionMessageType_Type2, // objective
-	MissionMessageType_Type3, // mission success
+	MissionMessageType_Success, // mission success
 };
 
 struct SSPUseItem
@@ -198,6 +205,21 @@ enum ConnectionType
 	JUMPHOLE
 };
 
+struct XRequestBestPathEntry
+{
+	Vector position;
+	uint objId; // Ignored for Server.RequestBestPath
+	uint systemId;
+};
+
+struct XRequestBestPath
+{
+	int repId; // PlayerData.iReputation
+	int waypointCount; // Ignored for Server.RequestBestPath
+	bool noPathFound; // Ignored for Server.RequestBestPath
+	XRequestBestPathEntry entries[2]; // Server.RequestBestPath requires exactly 2, otherwise variable length
+};
+
 class IMPORT CAccount
 {
 public:
@@ -278,7 +300,7 @@ struct StarSystemMock
 
 namespace SysDB
 {
-	IMPORT  std::map<uint, StarSystem, std::less<uint>, std::allocator<StarSystem>> SysMap;
+	//IMPORT  std::map<uint, StarSystem, std::less<uint>, std::allocator<StarSystem>> SysMap;
 };
 
 class IMPORT CPlayerGroup
@@ -822,10 +844,12 @@ namespace pub
 	namespace Audio
 	{
 		struct Tryptich {
-			uint iDunno;
-			uint iDunno2;
-			uint iDunno3;
-			uint iMusicID;
+			uint spaceMusic = 0;
+			uint dangerMusic = 0;
+			uint battleMusic = 0;
+			uint overrideMusic = 0;
+			bool playOnce = false;
+			float crossFadeDurationInS = 0.0f;
 		};
 
 		IMPORT  int CancelMusic(unsigned int);
@@ -851,6 +875,17 @@ namespace pub
 
 	namespace GF
 	{
+		enum class MissionType : uint
+		{
+			Unknown = 0,
+			DestroyShips = 1,
+			DestroyInstallation = 2,
+			Assassinate = 3,
+			DestroyContraband = 4,
+			CapturePrisoner = 5,
+			RetrieveContraband = 6
+		};
+
 		IMPORT  unsigned long AmbientScriptCreate(struct AmbientScriptDescription const &);
 		IMPORT  void AmbientScriptDestroy(unsigned long *);
 		IMPORT  unsigned long CharacterBehaviorCreate(struct CharacterBehaviorDescription const &);
@@ -912,6 +947,20 @@ namespace pub
 
 	namespace Player
 	{
+		enum MissionObjectiveType : uint
+		{
+			SimpleEntry = 0,               // Non-objective entry, without waypoint on map
+			IntermediateWaypoint = (1 << 3) | (1 << 0), // No entry, with intermediate waypoint on map
+			ObjectiveWaypoint = (1 << 3) | (1 << 1), // Objective entry, with numbered waypoint on map
+			MissionText = 1 << 4,          // Displays message on screen
+			ActiveLog = 1 << 5           // Puts message as log entry
+		}; // Bits 3, 7 and 8 are unused.
+
+		struct MissionObjective
+		{
+			uint type = MissionObjectiveType::IntermediateWaypoint;
+			FmtStr message = FmtStr(0, 0);
+		};
 		IMPORT  int AddCargo(unsigned int const &, unsigned int const &, unsigned int, float, bool);
 		IMPORT  int AdjustCash(unsigned int const &, int);
 		IMPORT  int CfgInterfaceNotification(unsigned int, unsigned int, bool, int);
@@ -1012,34 +1061,21 @@ namespace pub
 			uint iSystem;
 			uint iShipArchetype;
 			Vector vPos;
-			Vector vUnk1; // all 0
-			Vector vUnk2; // all 0
+			Vector vAngularVelocity;
+			Vector vLinearVelocity;
 			Matrix mOrientation;
-			uint iUnk1; // 0
+			uint iGroupId; // 0
 			uint iLoadout;
 			OwnerList<pub::SpaceObj::CargoDesc> cargoDesc;
 			uint unk1; // 0
 			uint unk2; // 0
-			float fUnk1;
+			OwnerList<pub::SpaceObj::CargoDesc>* cargoDesc2;
 			uint unk3; // 0
-			uint iLook1;
-			uint iLook2;
-			uint unk4; // 0
-			uint unk5; // 0
-			uint iComm;
-			float fUnk2;
-			float fUnk3;
-			float fUnk4;
-			float fUnk5;
-			float fUnk6;
-			float fUnk7;
-			float fUnk8;
-			uint iUnk2;
-
-			int iRep; // increases for each NPC spawned, starts at 0 or 1
+			Costume Costume;
+			int iRep;
 			uint iPilotVoice;
-			uint unk6; // 0
-			int iHealth; // -1 = max health
+			uint DockTargetId; // 0
+			int iHitPointsLeft; // -1 = max health
 			uint unk7; // 0
 			uint unk8; // 0
 			uint iLevel;

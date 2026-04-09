@@ -7,12 +7,12 @@ class FLPACKET
 private:
 	uint Size;
 
-	byte kind;
-	byte type;
+	BYTE kind;
+	BYTE type;
 
 public:
 	// This is content of your packet. You may want to reinterpretate it as pointer to packet data struct for convenience.
-	byte content[1];
+	BYTE content[1];
 
 	enum COMMON
 	{
@@ -259,7 +259,7 @@ public:
 		CDPClientProxy *cdpClient = g_cClientProxyArray[iClientID - 1];
 
 		// We don't include first 4 bytes directly in packet, it is info about size. Type and kind are already included.
-		bool result = cdpClient->Send((byte*)this + 4, Size);
+		bool result = cdpClient->Send((BYTE*)this + 4, Size);
 
 		// No mistakes, free allocated memory.
 		free(this);

@@ -177,12 +177,14 @@ bool HkIClientImpl::Send_FLPACKET_COMMON_PLAYER_TRADE(uint iClientID, uint iDunn
 /**************************************************************************************************************
 **************************************************************************************************************/
 
-bool HkIClientImpl::Send_FLPACKET_COMMON_REQUEST_BEST_PATH(uint iClientID, unsigned char *p2, int p3)
+bool HkIClientImpl::Send_FLPACKET_COMMON_REQUEST_BEST_PATH(uint iClientID, const XRequestBestPath& data, int size)
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_CLIENT_METHOD(Send_FLPACKET_COMMON_REQUEST_BEST_PATH(iClientID, p2, p3));
+	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_COMMON_REQUEST_BEST_PATH, bool, __stdcall, (uint, const XRequestBestPath&, int), (iClientID, data, size));
+
+	CALL_CLIENT_METHOD(Send_FLPACKET_COMMON_REQUEST_BEST_PATH(iClientID, data, size));
 	return reinterpret_cast<bool>(vRet);
 }
 
@@ -515,12 +517,14 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_GFCOMPLETECHARLIST(uint iClientID, uint
 /**************************************************************************************************************
 **************************************************************************************************************/
 
-bool HkIClientImpl::Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(uint iClientID, uint iDunno)
+bool HkIClientImpl::Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(uint iClientID, uint base)
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(iClientID, iDunno));
+	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST, bool, __stdcall, (uint, uint), (iClientID, base));
+
+	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(iClientID, base));
 	return reinterpret_cast<bool>(vRet);
 }
 
@@ -576,12 +580,12 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_GFDESTROYSCRIPTBEHAVIOR(uint iClientID,
 /**************************************************************************************************************
 **************************************************************************************************************/
 
-bool HkIClientImpl::Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(uint iClientID, uint iDunno, uint iDunno2)
+bool HkIClientImpl::Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(uint iClientID, MissionAcceptance& ma, uint size)
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(iClientID, iDunno, iDunno2));
+	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(iClientID, ma, size));
 	return reinterpret_cast<bool>(vRet);
 }
 
@@ -624,12 +628,14 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_GFUPDATECHAR(uint iClientID, uint iDunn
 /**************************************************************************************************************
 **************************************************************************************************************/
 
-bool HkIClientImpl::Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(uint iClientID, uint iDunno, uint iDunno2)
+bool HkIClientImpl::Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(uint iClientID, void* data, uint dataSize)
 {
 	ISERVER_LOG();
 	ISERVER_LOGARG_UI(iClientID);
 
-	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(iClientID, iDunno, iDunno2));
+	CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER, bool, __stdcall, (uint, void*, uint), (iClientID, data, dataSize));
+
+	CALL_CLIENT_METHOD(Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(iClientID, data, dataSize));
 	return reinterpret_cast<bool>(vRet);
 }
 
@@ -1188,6 +1194,7 @@ bool HkIClientImpl::Startup(uint iDunno, uint iDunno2)
 		char* szBaseName = "";
 		bi.scBasename = base->cNickname;
 		bi.iBaseID = solar->dockTargetId;
+		bi.iSystemID = solar->system;
 		lstBases[bi.iBaseID] = bi;
 
 		solar = reinterpret_cast<CSolar*>(CObject::FindNext());

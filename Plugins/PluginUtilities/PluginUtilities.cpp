@@ -166,11 +166,11 @@ bool HkSetEquip(uint iClientID, const st6::list<EquipDesc>& equip)
 		}
 		pSetEquipment->count++;
 
-		byte* buf = (byte*)&setEquipItem;
+		BYTE* buf = (BYTE*)&setEquipItem;
 		for (int i = 0; i < sizeof(SETEQUIPMENT_ITEM); i++)
 			pSetEquipment->items[index++] = buf[i];
 
-		byte* szHardPoint = (byte*)item->szHardPoint.value;
+		BYTE* szHardPoint = (BYTE*)item->szHardPoint.value;
 		for (int i = 0; i < setEquipItem.szHardPointLen; i++)
 			pSetEquipment->items[index++] = szHardPoint[i];
 	}
@@ -360,7 +360,7 @@ HK_ERROR HkFMsgEncodeMsg(const wstring &wscMessage, char *szBuf, uint iSize, uin
 
 float HkGetOnLineTime(uint client)
 {
-	auto& data = mdataPlayerMap->find(client);
+	auto data = mdataPlayerMap->find(client);
 	return (*data.value())->totalTimePlayed;
 }
 
@@ -621,7 +621,7 @@ void HkRelocateClient(uint iClientID, Vector vDestination, Matrix mOrientation)
 	FLPACKET_LAUNCH pLaunch;
 	pLaunch.iShip = ClientInfo[iClientID].iShip;
 	pLaunch.iBase = 0;
-	pLaunch.iState = 0xFFFFFFFF;
+	pLaunch.iDock = 0xFFFFFFFF;
 	pLaunch.fRotate[0] = qRotation.w;
 	pLaunch.fRotate[1] = qRotation.x;
 	pLaunch.fRotate[2] = qRotation.y;
@@ -854,14 +854,14 @@ wstring VectorToSectorCoord(uint iSystemID, Vector vPos)
 	wstring wscXPos = L"X";
 	if (gridRefX >= 0 && gridRefX < 8)
 	{
-		wchar_t* gridXLabel[] = { L"A", L"B", L"C", L"D", L"E", L"F", L"G", L"H" };
+		static wchar_t gridXLabel[] = { L'A', L'B', L'C', L'D', L'E', L'F', L'G', L'H' };
 		wscXPos = gridXLabel[gridRefX];
 	}
 
 	wstring wscZPos = L"X";
 	if (gridRefZ >= 0 && gridRefZ < 8)
 	{
-		wchar_t* gridZLabel[] = { L"1", L"2", L"3", L"4", L"5", L"6", L"7", L"8" };
+		static wchar_t gridZLabel[] = { L'1', L'2', L'3', L'4', L'5', L'6', L'7', L'8'};
 		wscZPos = gridZLabel[gridRefZ];
 	}
 

@@ -1559,8 +1559,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	// calls load settings on FLHook startup and .rehash.
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
-		shutdownBasePlugin = true;
-
 		if (!patched)
 		{
 			patched = true;
@@ -1594,6 +1592,8 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		shutdownBasePlugin = true;
+
 		if (patched)
 		{
 			{

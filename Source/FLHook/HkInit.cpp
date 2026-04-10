@@ -59,8 +59,8 @@ PATCH_INFO piServerDLL =
 		{0x6D67334,		&ShipColGrpDmgNaked,		4, &ShipColGrpDmgFunc, false},
 		{0x6D67684,		&SolarColGrpDmgNaked,		4, &SolarColGrpDmgFunc,	false},
 		{0x6D6732C,		&ShipEquipDamageNaked,		        4, &ShipEquipDamageOrigFunc,	false},
-		{0x6D6767C,		&SolarEquipDamageNaked,             4, &SolarEquipDamageOrigFunc,	false},
-		{0x6D67680,		&SolarShieldDamageNaked,		4, &SolarShieldDamageOrigFunc,	false},
+		//{0x6D6767C,		&SolarEquipDamageNaked,             4, &SolarEquipDamageOrigFunc,	false},
+		//{0x6D67680,		&SolarShieldDamageNaked,		4, &SolarShieldDamageOrigFunc,	false},
 		{0x6D6420C,		&HkIEngine::_LaunchPos,				4, &HkIEngine::fpOldLaunchPos,	false},
 		{0x6D648E0,		&HkIEngine::FreeReputationVibe,		4, 0,							false},
 

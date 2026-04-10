@@ -360,7 +360,7 @@ FARPROC SolarShieldDamageOrigFunc;
 
 void __stdcall SolarShieldDamage(IObjRW* iobj, CEShield* shieldHit, float& incDmg, DamageList* dmg)
 {
-	CALL_PLUGINS_V(PLUGIN_SolarShieldDmg, __stdcall, (IObjRW * iobj, CEShield * shieldHit, float& incDmg, DamageList * dmg), (iobj, shieldHit, incDmg, dmg));
+	CALL_PLUGINS_V(PLUGIN_SolarShieldDmg, __stdcall, (IObjRW*, CEShield*, float& incDmg, DamageList*), (iobj, shieldHit, incDmg, dmg));
 }
 
 __declspec(naked) void SolarShieldDamageNaked()
@@ -382,7 +382,7 @@ FARPROC SolarColGrpDmgFunc;
 
 void __stdcall SolarColGrpDmg(IObjRW* iobj, CArchGroup* colGrp, float& incDmg, DamageList* dmg)
 {
-	CALL_PLUGINS_V(PLUGIN_SolarColGrpDmg, __stdcall, (IObjRW * iobj, CArchGroup*, float& incDmg, DamageList * dmg), (iobj, colGrp, incDmg, dmg));
+	CALL_PLUGINS_V(PLUGIN_SolarColGrpDmg, __stdcall, (IObjRW*, CArchGroup*, float&, DamageList*), (iobj, colGrp, incDmg, dmg));
 }
 
 __declspec(naked) void SolarColGrpDmgNaked()
@@ -406,7 +406,7 @@ void __stdcall ShipEquipDamage(IObjRW* iobj, CEquip* equipHit, float& incDmg, Da
 {
 	CSimple* simple = reinterpret_cast<CSimple*>(iobj->cobj);
 
-	CALL_PLUGINS_V(PLUGIN_ShipEquipDmg, __stdcall, (IObjRW * iobj, CEquip * equipHit, float& incDmg, DamageList * dmg), (iobj, equipHit, incDmg, dmg));
+	CALL_PLUGINS_V(PLUGIN_ShipEquipDmg, __stdcall, (IObjRW *, CEquip *, float&, DamageList*), (iobj, equipHit, incDmg, dmg));
 	if (simple->ownerPlayer)
 	{
 		ClientInfo[simple->ownerPlayer].dmgLastCause = dmg->damageCause;

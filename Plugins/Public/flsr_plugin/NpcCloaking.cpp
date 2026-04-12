@@ -98,7 +98,7 @@ namespace NpcCloaking
 			return;
 
 		ObjectData data;
-		const auto& object = dynamic_cast<CEqObj*>(inspect->cobj);
+		const auto& object = reinterpret_cast<CEqObj*>(inspect->cobj);
 		data.systemId = object->system;
 		EquipDescVector equipList;
 		object->get_equip_desc_list(equipList);
@@ -108,13 +108,13 @@ namespace NpcCloaking
 				continue;
 
 			if (entry.iArchID == instantCloakingDeviceArchId)
-				data.instantCloak = dynamic_cast<CECloakingDevice*>(object->equip_manager.FindByID(entry.sID));
+				data.instantCloak = reinterpret_cast<CECloakingDevice*>(object->equip_manager.FindByID(entry.sID));
 			else if (entry.iArchID == objDefinition->second.cloakingDeviceArchId)
-				data.mainCloak = dynamic_cast<CECloakingDevice*>(object->equip_manager.FindByID(entry.sID));
+				data.mainCloak = reinterpret_cast<CECloakingDevice*>(object->equip_manager.FindByID(entry.sID));
 			else if (proxyArchetypeIds.contains(entry.iArchID))
 				data.proxyEquip = (object->equip_manager.FindByID(entry.sID));
 		}
-		data.shield = dynamic_cast<CEShield*>(object->equip_manager.FindByID(SHIELD_SLOT_ID));
+		data.shield = reinterpret_cast<CEShield*>(object->equip_manager.FindByID(SHIELD_SLOT_ID));
 
 		if (data.instantCloak && data.mainCloak && data.proxyEquip && data.systemId)
 			objData.insert({ objId, data });
@@ -281,7 +281,7 @@ namespace NpcCloaking
 		StarSystem* system;
 		if (!GetShipInspect(objId, inspect, system) || !(inspect->cobj->objectClass & CObject::CEQOBJ_MASK))
 			return;
-		const auto& object = dynamic_cast<CEqObj*>(inspect->cobj);
+		const auto& object = reinterpret_cast<CEqObj*>(inspect->cobj);
 
 		for (const auto& entry : equipList.equip)
 		{
@@ -307,7 +307,7 @@ namespace NpcCloaking
 		StarSystem* system;
 		if (!GetShipInspect(objId, inspect, system) || !(inspect->cobj->objectClass & CObject::CEQOBJ_MASK))
 			return;
-		const auto& object = dynamic_cast<CEqObj*>(inspect->cobj);
+		const auto& object = reinterpret_cast<CEqObj*>(inspect->cobj);
 		const auto& equip = object->equip_manager.FindByID(SHIELD_SLOT_ID);
 		if (equip && !equip->IsActive())
 			SendEquipmentActivationState(clientId, objId, SHIELD_SLOT_ID, equip->IsActive());

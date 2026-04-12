@@ -68,7 +68,7 @@ bool UserCmd_BountyScan(uint iClientID, const wstring &wscCmd, const wstring &ws
 	{
 		if (equip->bMounted)
 		{
-			itemPtr = dynamic_cast<Archetype::Tractor*>(Archetype::GetEquipment(equip->iArchID));
+			itemPtr = reinterpret_cast<Archetype::Tractor*>(Archetype::GetEquipment(equip->iArchID));
 			if (itemPtr)
 			{
 				break;

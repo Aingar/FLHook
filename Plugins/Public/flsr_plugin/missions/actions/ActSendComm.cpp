@@ -23,7 +23,7 @@ namespace Missions
 			mission.ongoingComms.insert({ action.id, comm });
 		}
 
-		const auto& object = dynamic_cast<CEqObj*>(inspect->cobj);
+		const auto& object = reinterpret_cast<CEqObj*>(inspect->cobj);
 		pub::SpaceObj::SendComm(object->id, receiverObjId, object->voiceId, &object->commCostume, 0, (uint*)(action.lines.data()), action.lines.size(), 0, std::fmaxf(0.0f, action.delay), action.global);
 	}
 

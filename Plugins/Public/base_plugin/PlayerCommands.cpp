@@ -2846,8 +2846,8 @@ namespace PlayerCommands
 
 		// Solars
 		bool foundSystemMatch = false;
-		for (CSolar* solar = dynamic_cast<CSolar*>(CObject::FindFirst(CObject::CSOLAR_OBJECT)); solar;
-			solar = dynamic_cast<CSolar*>(CObject::FindNext()))
+		for (CSolar* solar = reinterpret_cast<CSolar*>(CObject::FindFirst(CObject::CSOLAR_OBJECT)); solar;
+			solar = reinterpret_cast<CSolar*>(CObject::FindNext()))
 		{
 			//solars are iterated on per system, we can stop once we're done scanning the last solar in the system we're looking for.
 			if (solar->system != systemID)

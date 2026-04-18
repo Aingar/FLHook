@@ -337,11 +337,29 @@ void LoadSettings()
 					}
 					else if (ini.is_value("flhookstartbase"))
 					{
-						te.pobStartBase.insert(CreateID(ini.get_value_string()));
+						uint id = CreateID(ini.get_value_string());
+						CUSTOM_BASE_IS_IT_POB_STRUCT data;
+						data.iBase = id;
+						data.bAnswer = false;
+						Plugin_Communication(CUSTOM_IS_IT_POB, &data);
+						if (!data.bAnswer)
+						{
+							ConPrint(L"EVENT: for event %s flhook start base %s not found!\n", stows(te.sEventName).c_str(), stows(ini.get_value_string()).c_str());
+						}
+						te.pobStartBase.insert(id);
 					}
 					else if (ini.is_value("flhookendbase"))
 					{
-						te.pobEndBase.insert(CreateID(ini.get_value_string()));
+						uint id = CreateID(ini.get_value_string());
+						CUSTOM_BASE_IS_IT_POB_STRUCT data;
+						data.iBase = id;
+						data.bAnswer = false;
+						Plugin_Communication(CUSTOM_IS_IT_POB, &data);
+						if (!data.bAnswer)
+						{
+							ConPrint(L"EVENT: for event %s flhook end base %s not found!\n", stows(te.sEventName).c_str(), stows(ini.get_value_string()).c_str());
+						}
+						te.pobEndBase.insert(id);
 					}
 					else if (ini.is_value("starttime"))
 					{

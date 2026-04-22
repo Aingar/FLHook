@@ -2372,6 +2372,14 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 		return;
 	}
 
+	auto banIter = base->purchase_banned_items.find(gsi.iArchID);
+	if ( banIter != base->purchase_banned_items.end())
+	{
+		PrintUserCmdText(client, L"ERR: %s", banIter->second.c_str());
+		clients[client].reverse_sell = true;
+		return;
+	}
+
 	MARKET_ITEM& item = base->market_items[gsi.iArchID];
 
 	int count = gsi.iCount;
@@ -3974,6 +3982,24 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 
 		returncode = SKIPPLUGINS;
 		return;
+	}
+	else if (msg == CUSTOM_POB_ADD_PURCHASE_BAN)
+	{
+		POB_ADD_PURCHASE_BAN_STRUCT* info = reinterpret_cast<POB_ADD_PURCHASE_BAN_STRUCT*>(data);
+		auto base = GetPlayerBase(info->baseId);
+		if (base)
+		{
+			base->purchase_banned_items[info->goodId] = info->msg;
+		}
+	}
+	else if (msg == CUSTOM_POB_REMOVE_PURCHASE_BAN)
+	{
+		POB_REMOVE_PURCHASE_BAN_STRUCT* info = reinterpret_cast<POB_REMOVE_PURCHASE_BAN_STRUCT*>(data);
+		auto base = GetPlayerBase(info->baseId);
+		if (base)
+		{
+			base->purchase_banned_items.erase(info->goodId);
+		}
 	}
 	return;
 }

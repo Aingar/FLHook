@@ -102,7 +102,7 @@ struct TRADE_EVENT : public EVENT {
 	unordered_set<uint> uEndBase;
 	unordered_set<uint> pobEndBase;
 	unordered_set<uint> commodityList;
-	bool bLimited = false; //Whether or not this is limited to a specific set of IDs
+	bool launderyBan = true;
 	unordered_set<uint> lAllowedIDs;
 	map<uint, market_map_t> eventEconOverride;
 };
@@ -319,10 +319,6 @@ void LoadSettings()
 						pub::GetGoodID(goodId, ini.get_value_string(0));
 						te.commodityList.insert(goodId);
 					}
-					else if (ini.is_value("limited"))
-					{
-						te.bLimited = ini.get_value_bool(0);
-					}
 					else if (ini.is_value("allowedid"))
 					{
 						uint idHash = CreateID(ini.get_value_string(0));
@@ -360,6 +356,10 @@ void LoadSettings()
 							ConPrint(L"EVENT: for event %s flhook end base %s not found!\n", stows(te.sEventName).c_str(), stows(ini.get_value_string()).c_str());
 						}
 						te.pobEndBase.insert(id);
+					}
+					else if (ini.is_value("launderyban"))
+					{
+						te.launderyBan = ini.get_value_bool(0);
 					}
 					else if (ini.is_value("starttime"))
 					{
@@ -757,19 +757,17 @@ void LoadSettings()
 	ConPrint(L"EVENT DEBUG: Loaded %u event player data\n", iLoaded3);
 
 	CUSTOM_POB_EVENT_NOTIFICATION_INIT_STRUCT info;
-	unordered_map<uint, unordered_set<uint>> pobData;
 	for (auto& te : mapTradeEvents)
 	{
 		for (auto& pobEntry : te.second.pobStartBase)
 		{
-			pobData[pobEntry].insert(te.second.commodityList.begin(), te.second.commodityList.end());
+			info.data[pobEntry].insert(te.second.commodityList.begin(), te.second.commodityList.end());
 		}
 		for (auto& pobExit : te.second.pobEndBase)
 		{
-			pobData[pobExit].insert(te.second.commodityList.begin(), te.second.commodityList.end());
+			info.data[pobExit].insert(te.second.commodityList.begin(), te.second.commodityList.end());
 		}
 	}
-	info.data = pobData;
 	Plugin_Communication(CUSTOM_POB_EVENT_NOTIFICATION_INIT, &info);
 
 }
@@ -902,7 +900,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			continue;
 		}
 
-		if (i->second.bLimited)
+		if (!i->second.lAllowedIDs.empty())
 		{
 			uint pID = GetPlayerId(iClientID);
 			bool bFoundID = false;
@@ -1346,10 +1344,13 @@ void CheckActiveEvent()
 		auto& te = event.second;
 		if (te.isActive)
 		{
-			if (!te.suppressEnd && te.endTime && te.endTime <= currTime)
+			if (te.endTime && te.endTime <= currTime)
 			{
 				te.isActive = false;
-				HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
+				if (te.suppressEnd)
+				{
+					HkMsgU(ReplaceStr(L"The event '%eventName' has concluded. Thanks to all participants!", L"%eventName", stows(te.sEventName)));
+				}
 				if (!te.endMessage.empty())
 				{
 					HkMsgU(te.endMessage);
@@ -1357,6 +1358,20 @@ void CheckActiveEvent()
 				if (!te.eventEconOverride.empty())
 				{
 					SendEconOverride();
+				}
+
+				if (te.launderyBan && !te.pobStartBase.empty())
+				{
+					for (auto& base : te.pobStartBase)
+					{
+						POB_REMOVE_PURCHASE_BAN_STRUCT data;
+						data.baseId = base;
+						for (auto good : te.commodityList)
+						{
+							data.goodId = good;
+							Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_REMOVE_PURCHASE_BAN, &data);
+						}
+					}
 				}
 
 				continue;
@@ -1369,10 +1384,13 @@ void CheckActiveEvent()
 		}
 		else
 		{
-			if (!te.suppressStart && te.startTime && te.startTime <= currTime && te.endTime > currTime)
+			if (te.startTime && te.startTime <= currTime && te.endTime > currTime)
 			{
 				te.isActive = true;
-				HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
+				if (te.suppressStart)
+				{
+					HkMsgU(ReplaceStr(L"The event '%eventName' has begun! For more details, look up our website. Best of luck!", L"%eventName", stows(te.sEventName)));
+				}
 				if (!te.startMessage.empty())
 				{
 					HkMsgU(te.startMessage);
@@ -1380,6 +1398,22 @@ void CheckActiveEvent()
 				if (!te.eventEconOverride.empty())
 				{
 					SendEconOverride();
+				}
+
+
+				if (te.launderyBan && !te.pobStartBase.empty())
+				{
+					for (auto& base : te.pobStartBase)
+					{
+						POB_ADD_PURCHASE_BAN_STRUCT data;
+						data.baseId = base;
+						data.msg = L"This base cannot buy this good for the duration of the event!";
+						for (auto good : te.commodityList)
+						{
+							data.goodId = good;
+							Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+						}
+					}
 				}
 			}
 		}
@@ -1390,6 +1424,30 @@ void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
 	uint curr_time_events = (uint)time(0);
+	
+	static bool firstRun = true;
+	if (firstRun)
+	{
+		firstRun = false;
+		for (auto& tradeEvent : mapTradeEvents)
+		{
+			auto& te = tradeEvent.second;
+			if (te.launderyBan && !te.pobStartBase.empty())
+			{
+				for (auto& base : te.pobStartBase)
+				{
+					POB_ADD_PURCHASE_BAN_STRUCT data;
+					data.baseId = base;
+					data.msg = L"This base cannot buy this good for the duration of the event!";
+					for (auto good : te.commodityList)
+					{
+						data.goodId = good;
+						Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+					}
+				}
+			}
+		}
+	}
 
 	if ((curr_time_events % 30) == 0)
 	{

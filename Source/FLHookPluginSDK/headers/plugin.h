@@ -309,6 +309,8 @@ enum PLUGIN_MESSAGE
 	CUSTOM_BEAM_LAST_BASE = 69,
 	CUSTOM_CHECK_POB_SRP_ACCESS = 70,
 	CUSTOM_CHECK_EQUIP_VOLUME = 71,
+	CUSTOM_POB_ADD_PURCHASE_BAN = 72,
+	CUSTOM_POB_REMOVE_PURCHASE_BAN = 73,
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -559,6 +561,19 @@ struct EQUIP_VOLUME_STRUCT
 	uint shipArch = 0;
 	uint equipArch = 0;
 	float volume;
+};
+
+struct POB_REMOVE_PURCHASE_BAN_STRUCT
+{
+	uint baseId;
+	uint goodId;
+};
+
+struct POB_ADD_PURCHASE_BAN_STRUCT
+{
+	uint baseId;
+	uint goodId;
+	wstring msg;
 };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////

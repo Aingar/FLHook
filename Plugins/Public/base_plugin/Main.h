@@ -444,6 +444,8 @@ public:
 
 	unordered_set<uint> public_market_items;
 
+	unordered_map<uint, wstring> purchase_banned_items;
+
 	bool pinned_item_updated;
 
 	// The money this base has

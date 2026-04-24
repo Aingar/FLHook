@@ -300,8 +300,13 @@ namespace RepFixer
 		LoadFactionReps();
 
 		LoadTagRephacks();
-	}
 
+		BYTE jmp = 0xEB;
+		WriteProcMem((void*)0x631FEE0, &jmp, 1);
+
+		BYTE nop[] = {0x90, 0x90, 0x90, 0x90, 0x90, 0x90};
+		WriteProcMem((void*)0x6321678, nop, 6);
+	}
 	/// For the specified client ID check and reset any factions that have reputations
 	/// that are greater than the allowed value.
 	void CheckReps(unsigned int iClientID)
@@ -350,6 +355,55 @@ namespace RepFixer
 				pub::Reputation::SetReputation(playerVibe, tag.hash, tag.fRep);
 			}
 		}
+
+		struct RepGroup
+		{
+			uint affil;
+			uint dunno;
+			uint clientId;
+			uint dunno2[14];
+			wchar_t name[24];
+			uint dunno3;
+			st6::vector<std::pair<uint, float>> feelingsVector;
+			uint dunno4;
+		};
+
+		st6::map<uint, RepGroup>* repMap = (st6::map<uint, RepGroup>*)0x64018C4;
+		auto vibe = repMap->find(playerVibe);
+		uint affilCopy = vibe->second.affil;
+
+		float rep;
+		Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, affilCopy, rep);
+		if (rep < 0.65f)
+		{
+
+			float maxRepFound = -1.0f;
+			uint maxAffil = -1;
+
+			for (auto& grp : vibe->second.feelingsVector)
+			{
+				if (Reputation::IsStoryFaction(grp.first))
+				{
+					continue;
+				}
+				if (grp.second > maxRepFound)
+				{
+					maxAffil = grp.first;
+					maxRepFound = grp.second;
+				}
+			}
+
+			if (maxRepFound >= 0.65f)
+			{
+				pub::Reputation::SetAffiliation(playerVibe, maxAffil);
+			}
+			else
+			{
+				pub::Reputation::SetAffiliation(playerVibe, -1);
+			}
+		}
+
+
 		return;
 	}
 

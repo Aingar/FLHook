@@ -1290,7 +1290,7 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 	}
 
 	// if a player has no standing at all, be neutral otherwise newbies all get shot
-	return hostile_rep;
+	return no_access_rep;
 }
 
 // For all players in the base's system, resync their reps towards all objects

@@ -480,11 +480,6 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 
 	if(base->base_health <= incoming_damage)
 	{
-		base->base_health -= incoming_damage;
-		return incoming_damage;
-	}
-	else
-	{
 		bool shouldRespawn = base->archetype ? base->archetype->respawnWithRestart : true;
 		bool suppressDeath = base->archetype ? base->archetype->suppressDeathAnnouncement : true;
 		if (shouldRespawn)
@@ -494,6 +489,11 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		}
 		SpaceObjDestroyed(space_obj, !shouldRespawn, !suppressDeath);
 		return 0.0f;
+	}
+	else
+	{
+		base->base_health -= incoming_damage;
+		return incoming_damage;
 	}
 }
 

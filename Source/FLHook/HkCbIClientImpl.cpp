@@ -431,6 +431,16 @@ bool HkIClientImpl::Send_FLPACKET_SERVER_CREATESHIP(uint iClientID, FLPACKET_CRE
 		CALL_PLUGINS(PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, bool, , (uint, FLPACKET_CREATESHIP&), (iClientID, pShip));
 	}
 
+	IObjRW* inspect;
+	StarSystem* system;
+	if (GetShipInspect(pShip.iSpaceID, inspect, system) && inspect->cobj->objectClass & CObject::CSHIP_OBJECT && reinterpret_cast<CShip*>(inspect->cobj)->is_cruise_active())
+	{
+		XActivateCruise activate;
+		activate.iShip = pShip.iSpaceID;
+		activate.bActivate = true;
+		GetClientInterface()->Send_FLPACKET_COMMON_ACTIVATECRUISE(iClientID, activate);
+	}
+
 	return reinterpret_cast<bool>(vRet);
 }
 

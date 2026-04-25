@@ -34,6 +34,8 @@ PLUGIN_RETURNCODE returncode;
 
 void LoadSettings();
 
+unordered_set<uint> npcs;
+
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
 	srand((uint)time(0));
@@ -47,6 +49,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		for (uint npc : npcs)
+		{
+			pub::SpaceObj::Destroy(npc, DestroyType::VANISH);
+		}
 	}
 	return true;
 }
@@ -62,10 +68,9 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 //STRUCTURES AND DEFINITIONS
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-vector<const char*> listgraphs;
+vector<const char*> listgraphs{"FIGHTER", "TRANSPORT", "GUNBOAT", "CRUISER"};
 
 vector<uint> npcnames;
-unordered_set<uint> npcs;
 map<wstring, vector<uint>> npcsGroups;
 
 int ailoot = 0;
@@ -280,6 +285,95 @@ pub::AI::SetPersonalityParams HkMakePersonality(int graphid)
 	return p;
 }
 
+
+void LoadExtraLoadouts()
+{
+	INI_Reader ini;
+
+	if (!ini.open("./flhook_plugins/serversideLoadouts.cfg", false))
+	{
+		return;
+	}
+
+	struct LoadoutStruct
+	{
+		uint nickname;
+		EquipDescVector eqVector;
+		SubObjectID::EquipIdMaker idMaker;
+	};
+
+	st6::map<uint, LoadoutStruct>* loadoutMap = reinterpret_cast<st6::map<uint, LoadoutStruct>*>(0x63FD2A8);
+	static std::unordered_set<std::string> stringSet;
+	static CacheString bayHp;
+	bayHp.value = "BAY";
+	while (ini.read_header())
+	{
+		if (!ini.is_header("Loadout"))
+		{
+			continue;
+		}
+
+		LoadoutStruct loadout;
+		loadout.idMaker.Reset();
+
+		bool valid = false;
+		while (ini.read_value())
+		{
+			if (ini.is_value("nickname"))
+			{
+				valid = true;
+				loadout.nickname = CreateID(ini.get_value_string(0));
+			}
+			else if (ini.is_value("equip"))
+			{
+				EquipDesc eqDesc;
+				eqDesc.bMission = false;
+				eqDesc.bMounted = true;
+				eqDesc.fHealth = 1.0f;
+				eqDesc.iArchID = CreateID(ini.get_value_string(0));
+				if (ini.is_value_empty(1))
+				{
+					eqDesc.make_internal();
+				}
+				else
+				{
+					auto ret = stringSet.insert(ini.get_value_string(1));
+					const auto hpPtr = ret.first->c_str();
+					eqDesc.set_hardpoint(*reinterpret_cast<const CacheString*>(&hpPtr));
+				}
+				eqDesc.sID = loadout.idMaker.CreateEquipID();
+				loadout.eqVector.equip.push_back(eqDesc);
+			}
+			else if (ini.is_value("cargo"))
+			{
+				EquipDesc eqDesc;
+				eqDesc.bMission = false;
+				eqDesc.bMounted = false;
+				eqDesc.fHealth = 1.0f;
+				eqDesc.iArchID = CreateID(ini.get_value_string(0));
+				eqDesc.set_hardpoint(bayHp);
+				eqDesc.sID = loadout.idMaker.CreateEquipID();
+				if (ini.is_value_empty(1))
+				{
+					eqDesc.iCount = 1;
+				}
+				else
+				{
+					eqDesc.iCount = ini.get_value_int(1);
+				}
+				loadout.eqVector.equip.push_back(eqDesc);
+			}
+		}
+
+		if (valid)
+		{
+			loadoutMap->insert({ loadout.nickname, loadout });
+		}
+	}
+
+	ini.close();
+}
+
 float rand_FloatRange(float a, float b)
 {
 	return ((b - a) * ((float)rand() / RAND_MAX)) + a;
@@ -297,6 +391,10 @@ uint rand_name()
 
 void LoadNPCInfo()
 {
+	mapNPCArchtypes.clear();
+	mapNPCFleets.clear();
+	npcnames.clear();
+
 	// The path to the configuration file.
 	char szCurDir[MAX_PATH];
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
@@ -368,9 +466,6 @@ void LoadNPCInfo()
 		}
 		ini.close();
 	}
-
-
-
 }
 
 void LoadSettings()
@@ -378,11 +473,7 @@ void LoadSettings()
 	returncode = DEFAULT_RETURNCODE;
 
 	LoadNPCInfo();
-
-	listgraphs.push_back("FIGHTER"); // 0
-	listgraphs.push_back("TRANSPORT"); // 1
-	listgraphs.push_back("GUNBOAT"); // 2
-	listgraphs.push_back("CRUISER"); // 3, doesn't seem to do anything
+	LoadExtraLoadouts();
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -461,9 +552,15 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	IsFLHookNPC(reinterpret_cast<CShip*>(iobj->cobj));
 }
 
-void CreateNPC(const wstring& name, Vector pos, Matrix& rot, uint iSystem, const wstring& groupName, const wstring& coordName)
+void CreateNPC(CCmds* cmds, const wstring& name, Vector pos, Matrix& rot, uint iSystem, const wstring& groupName, const wstring& coordName)
 {
-	NPC_ARCHTYPESSTRUCT arch = mapNPCArchtypes[name];
+	const NPC_ARCHTYPESSTRUCT& arch = mapNPCArchtypes[name];
+
+	if (!Loadout::Get(arch.Loadout))
+	{
+		cmds->Print(L"Failed to fetch loadout for %s\n", name.c_str());
+		return;
+	}
 
 	if (coordList.count(coordName))
 	{
@@ -565,14 +662,14 @@ void AdminCmd_AIMake(CCmds* cmds, int Amount, const wstring& NpcType, const wstr
 
 	if (clientId == -1)
 	{
-		cmds->Print(L"ERR Not usable from console");
+		cmds->Print(L"ERR Not usable from console\n");
 		return;
 	}
 
 	CShip* cship = ClientInfo[clientId].cship;
 	if (!cship)
 	{
-		cmds->Print(L"ERR Must be alive and in space");
+		cmds->Print(L"ERR Must be alive and in space\n");
 		return;
 	}
 
@@ -584,7 +681,7 @@ void AdminCmd_AIMake(CCmds* cmds, int Amount, const wstring& NpcType, const wstr
 	//Creation counter
 	for (int i = 0; i < Amount; i++)
 	{
-		CreateNPC(NpcType, pos, rot, iSystem, groupName, coordName);
+		CreateNPC(cmds, NpcType, pos, rot, iSystem, groupName, coordName);
 		Log_CreateNPC(NpcType);
 	}
 
@@ -595,31 +692,31 @@ void AdminCmd_AIKill(CCmds* cmds, const wstring& groupName)
 {
 	RIGHT_CHECK(RIGHT_AICONTROL)
 
-		if (groupName == L"all")
+	if (groupName == L"all")
+	{
+		for (uint npc : npcs)
 		{
-			for (uint npc : npcs)
-			{
-				pub::SpaceObj::Destroy(npc, DestroyType::VANISH);
-			}
-			npcs.clear();
-			cmds->Print(L"OK\n");
+			pub::SpaceObj::Destroy(npc, DestroyType::VANISH);
 		}
-		else if (npcsGroups.count(groupName))
-		{
-			const auto& fleet = npcsGroups.at(groupName);
-			for (uint npc : fleet)
-			{
-				pub::SpaceObj::Destroy(npc, DestroyType::VANISH);
-				npcs.erase(npc);
-			}
-			npcsGroups.erase(groupName);
-		}
-		else
-		{
-			cmds->Print(L"Invalid group name provided\n");
-		}
+		npcs.clear();
+		cmds->Print(L"OK\n");
+		return;
+	}
 
-	return;
+	auto npcIter = npcsGroups.find(groupName);
+	if (npcIter != npcsGroups.end())
+	{
+		const auto& fleet = npcIter->second;
+		for (uint npc : fleet)
+		{
+			pub::SpaceObj::Destroy(npc, DestroyType::VANISH);
+			npcs.erase(npc);
+		}
+		npcsGroups.erase(npcIter);
+		return;
+	}
+	
+	cmds->Print(L"Invalid group name provided\n");
 }
 
 /* Make AI come to your position */
@@ -1083,6 +1180,12 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring& wscCmd)
 	else if (IS_CMD("aiclearcoords"))
 	{
 		AdminCmd_ClearCoords(cmds, cmds->ArgStr(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("aireload"))
+	{
+		LoadSettings();
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

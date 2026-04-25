@@ -574,10 +574,21 @@ void PlayerBase::Load()
 					}
 					else if (ini.is_value("infocardpara"))
 					{
-						ini_get_wstring(ini, infocard_para[++paraindex]);
+						++paraindex;
+						if (paraindex > MAX_PARAGRAPHS)
+						{
+							ConPrint(L"TOO MANY 'infocardpara' tags in the base file %s!\n", stows(path).c_str());
+							continue;
+						}
+						ini_get_wstring(ini, infocard_para[paraindex]);
 					}
 					else if (ini.is_value("infocardpara2"))
 					{
+						if (paraindex > MAX_PARAGRAPHS)
+						{
+							ConPrint(L"TOO MANY 'infocardpara' tags in the base file %s!\n", stows(path).c_str());
+							continue;
+						}
 						wstring infopara2;
 						ini_get_wstring(ini, infopara2);
 						infocard_para[paraindex] += infopara2;

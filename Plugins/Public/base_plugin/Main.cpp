@@ -796,7 +796,6 @@ void LoadSettingsActual()
 	}
 
 	EquipmentUtilities::ReadIniNicknames();
-	CreateSolar::LoadExtraLoadouts();
 
 	// The path to the configuration file.
 	char szCurDir[MAX_PATH];

@@ -1401,17 +1401,30 @@ void CheckActiveEvent()
 				}
 
 
-				if (te.launderyBan && !te.pobStartBase.empty())
+				if (!te.pobStartBase.empty())
 				{
 					for (auto& base : te.pobStartBase)
 					{
-						POB_ADD_PURCHASE_BAN_STRUCT data;
-						data.baseId = base;
-						data.msg = L"This base cannot buy this good for the duration of the event!";
-						for (auto good : te.commodityList)
+						if (te.launderyBan)
 						{
-							data.goodId = good;
-							Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+							POB_ADD_PURCHASE_BAN_STRUCT data;
+							data.baseId = base;
+							data.msg = L"This base cannot buy this good for the duration of the event!";
+							for (auto good : te.commodityList)
+							{
+								data.goodId = good;
+								Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+							}
+						}
+						else
+						{
+							POB_REMOVE_PURCHASE_BAN_STRUCT data;
+							data.baseId = base;
+							for (auto good : te.commodityList)
+							{
+								data.goodId = good;
+								Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_REMOVE_PURCHASE_BAN, &data);
+							}
 						}
 					}
 				}
@@ -1432,17 +1445,30 @@ void HkTimerCheckKick()
 		for (auto& tradeEvent : mapTradeEvents)
 		{
 			auto& te = tradeEvent.second;
-			if (te.launderyBan && !te.pobStartBase.empty())
+			if (!te.pobStartBase.empty())
 			{
 				for (auto& base : te.pobStartBase)
 				{
-					POB_ADD_PURCHASE_BAN_STRUCT data;
-					data.baseId = base;
-					data.msg = L"This base cannot buy this good for the duration of the event!";
-					for (auto good : te.commodityList)
+					if (te.launderyBan)
 					{
-						data.goodId = good;
-						Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+						POB_ADD_PURCHASE_BAN_STRUCT data;
+						data.baseId = base;
+						data.msg = L"This base cannot buy this good for the duration of the event!";
+						for (auto good : te.commodityList)
+						{
+							data.goodId = good;
+							Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_ADD_PURCHASE_BAN, &data);
+						}
+					}
+					else
+					{
+						POB_REMOVE_PURCHASE_BAN_STRUCT data;
+						data.baseId = base;
+						for (auto good : te.commodityList)
+						{
+							data.goodId = good;
+							Plugin_Communication(PLUGIN_MESSAGE::CUSTOM_POB_REMOVE_PURCHASE_BAN, &data);
+						}
 					}
 				}
 			}

@@ -812,7 +812,7 @@ namespace PlayerCommands
 			factionSet = &base->srp_factions;
 			tagList = &base->srp_tags;
 		}
-		if (type == L"nodock")
+		else if (type == L"nodock")
 		{
 			nameSet = &base->nodock_names;
 			factionSet = &base->nodock_factions;

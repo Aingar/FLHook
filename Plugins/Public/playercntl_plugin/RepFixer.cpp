@@ -374,7 +374,7 @@ namespace RepFixer
 
 		float rep;
 		Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, affilCopy, rep);
-		if (rep < 0.65f)
+		if (rep < 0.65f || Reputation::IsStoryFaction(affilCopy))
 		{
 
 			float maxRepFound = -1.0f;
@@ -400,6 +400,7 @@ namespace RepFixer
 			else
 			{
 				pub::Reputation::SetAffiliation(playerVibe, -1);
+				vibe->second.affil = -1;
 			}
 		}
 

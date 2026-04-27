@@ -615,7 +615,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
     }
     if (fdwReason == DLL_PROCESS_DETACH)
     {
-        for (auto item : miningNodeMap)
+        for (auto& item : miningNodeMap)
         {
             DESPAWN_SOLAR_STRUCT info;
             info.spaceObjId = item.first;

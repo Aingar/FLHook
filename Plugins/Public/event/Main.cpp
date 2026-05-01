@@ -108,10 +108,16 @@ struct TRADE_EVENT : public EVENT {
 };
 
 struct COMBAT_EVENT : public EVENT {
+
+	struct SystemData
+	{
+		vector<const Universe::IZone*> zones;
+	};
+
 	//Combat event data
 	unordered_set<uint> lAllowedIDs;
 	unordered_set<uint> lTargetIDs;
-	unordered_set<uint> lSystems;
+	unordered_map<uint, SystemData> systems;
 	unordered_set<uint> lNPCTargetReputation;
 	multimap<uint, DropData> eventNPCDropData;
 	//Rewards
@@ -251,7 +257,7 @@ void LoadSettings()
 				string id;
 
 				set<uint> addedIds;
-				
+
 				bool invalidData = false;
 				string invalidDataReason;
 				while (ini.read_value())
@@ -396,7 +402,7 @@ void LoadSettings()
 
 						if (iSellPrice > static_cast<int>(fPrice))
 						{
-							ConPrint(L"ERROR: Event %s has invalid pricing for base %s commmodity %s allowing infinite money printing: %d %d\n", 
+							ConPrint(L"ERROR: Event %s has invalid pricing for base %s commmodity %s allowing infinite money printing: %d %d\n",
 								stows(te.sEventName).c_str(), stows(ini.get_value_string(0)).c_str(), stows(ini.get_value_string(1)).c_str(), iSellPrice, static_cast<int>(fPrice));
 							ConPrint(L"Increasing right-side price to match the left: %u\n", iSellPrice);
 							fPrice = static_cast<float>(iSellPrice);
@@ -494,7 +500,7 @@ void LoadSettings()
 					}
 					else if (ini.is_value("system"))
 					{
-						uint sysHash = CreateID(ini.get_value_string());
+						uint sysHash = CreateID(ini.get_value_string(0));
 						auto sysInfo = Universe::get_system(sysHash);
 						if (!sysInfo)
 						{
@@ -502,7 +508,20 @@ void LoadSettings()
 							invalidDataReason = ini.get_value_string(0);
 							break;
 						}
-						ce.lSystems.insert(CreateID(ini.get_value_string(0)));
+						vector<const Universe::IZone*> zones;
+						int i = 0;
+						while (!ini.is_value_empty(++i))
+						{
+							string name = ini.get_value_string(i);
+							auto zone = Universe::get_zone(CreateID(name.c_str()));
+							if (!zone)
+							{
+								invalidData = true;
+								invalidDataReason = name;
+							}
+							zones.emplace_back(zone);
+						}
+						ce.systems[CreateID(ini.get_value_string(0))] = { zones };
 					}
 					else if (ini.is_value("npcdrop"))
 					{
@@ -777,13 +796,13 @@ void LoadSettings()
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 uint GetPlayerId(uint clientId)
-{	
+{
 	return ClientInfo[clientId].playerID;
 }
 
-FILE *Logfile = fopen("./flhook_logs/event_log.log", "at");
+FILE* Logfile = fopen("./flhook_logs/event_log.log", "at");
 
-void Logging(const char *szString, ...)
+void Logging(const char* szString, ...)
 {
 	char szBufString[1024];
 	va_list marker;
@@ -792,7 +811,7 @@ void Logging(const char *szString, ...)
 
 	char szBuf[64];
 	time_t tNow = time(0);
-	struct tm *t = localtime(&tNow);
+	struct tm* t = localtime(&tNow);
 	strftime(szBuf, sizeof(szBuf), "%Y/%m/%d %H:%M:%S", t);
 	fprintf(Logfile, "%s %s\n", szBuf, szBufString);
 	fflush(Logfile);
@@ -851,7 +870,7 @@ void Notify_CombatEvent_PlayerKill(uint iClientIDKiller, uint iClientIDVictim, s
 	Logging("%s", scText.c_str());
 }
 
-void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned int iClientID)
+void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const& cId, unsigned int iClientID)
 {
 	playerData[iClientID].eventName.clear();
 	playerData[iClientID].quantity = 0;
@@ -883,7 +902,7 @@ void __stdcall CharacterSelect_AFTER(struct CHARACTER_ID const & cId, unsigned i
 	}
 }
 
-void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iClientID)
+void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const& gbi, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -905,7 +924,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 			uint pID = GetPlayerId(iClientID);
 			bool bFoundID = false;
 
-			if(!i->second.lAllowedIDs.count(pID))
+			if (!i->second.lAllowedIDs.count(pID))
 			{
 				continue;
 			}
@@ -953,7 +972,7 @@ void __stdcall GFGoodBuy_AFTER(struct SGFGoodBuyInfo const &gbi, unsigned int iC
 	}
 }
 
-void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const &gsi, unsigned int iClientID)
+void __stdcall GFGoodSell_AFTER(struct SGFGoodSellInfo const& gsi, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1175,7 +1194,7 @@ void ProcessEventData()
 	writer.close();
 
 	//dump to a file
-	FILE *filejson = fopen("c:/stats/event_status.json", "w");
+	FILE* filejson = fopen("c:/stats/event_status.json", "w");
 	if (filejson)
 	{
 		fprintf(filejson, stream.str().c_str());
@@ -1190,7 +1209,7 @@ void ProcessEventData()
 	///////////////////////////////////////////////////////////////////////////////////////
 
 	//dump to a file
-	FILE *fileini = fopen("..\\exe\\flhook_plugins\\events_status.cfg", "w");
+	FILE* fileini = fopen("..\\exe\\flhook_plugins\\events_status.cfg", "w");
 	if (fileini)
 	{
 		fprintf(fileini, siegedump.c_str());
@@ -1266,7 +1285,7 @@ void ProcessEventPlayerInfo()
 	writer.close();
 
 	//dump to a file
-	FILE *filejson = fopen("c:/stats/event_tracker.json", "w");
+	FILE* filejson = fopen("c:/stats/event_tracker.json", "w");
 	if (filejson)
 	{
 		fprintf(filejson, stream.str().c_str());
@@ -1281,7 +1300,7 @@ void ProcessEventPlayerInfo()
 	///////////////////////////////////////////////////////////////////////////////////////
 
 	//dump to a file
-	FILE *fileini = fopen("..\\exe\\flhook_plugins\\events_tracker.cfg", "w");
+	FILE* fileini = fopen("..\\exe\\flhook_plugins\\events_tracker.cfg", "w");
 	if (fileini)
 	{
 		fprintf(fileini, siegedump.c_str());
@@ -1289,7 +1308,7 @@ void ProcessEventPlayerInfo()
 	}
 
 	fileini = fopen("..\\exe\\flhook_plugins\\suhl_tracker.cfg", "w");
-	if(fileini)
+	if (fileini)
 	{
 		fprintf(fileini, "[SuhlData]\nSuhlKills = %u", SuhlDeathCounter);
 		fclose(fileini);
@@ -1437,7 +1456,7 @@ void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
 	uint curr_time_events = (uint)time(0);
-	
+
 	static bool firstRun = true;
 	if (firstRun)
 	{
@@ -1489,7 +1508,7 @@ void HkTimerCheckKick()
 
 
 /// Hook for ship distruction. It's easier to hook this than the PlayerDeath one.
-void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, uint& iClientIDKiller, DamageCause& dmgCause)
+void SendDeathMsg(const wstring& wscMsg, uint& iSystem, uint& iClientIDVictim, uint& iClientIDKiller, DamageCause& dmgCause)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -1498,8 +1517,8 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 		return;
 	}
 
-	const wchar_t *victim = (const wchar_t*)Players.GetActiveCharacterName(iClientIDVictim);
-	const wchar_t *killer = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
+	const wchar_t* victim = (const wchar_t*)Players.GetActiveCharacterName(iClientIDVictim);
+	const wchar_t* killer = (const wchar_t*)Players.GetActiveCharacterName(iClientIDKiller);
 
 
 	if (playerData[iClientIDVictim].eventEnabled)
@@ -1528,11 +1547,6 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 			continue;
 		}
 
-		if (!i->second.lSystems.count(iSystem))
-		{
-			continue;
-		}
-
 		if (!i->second.lAllowedIDs.count(pIDKiller))
 		{
 			continue;
@@ -1542,6 +1556,30 @@ void SendDeathMsg(const wstring &wscMsg, uint& iSystem, uint& iClientIDVictim, u
 		{
 			continue;
 		}
+
+		auto sysIter = i->second.systems.find(iSystem);
+		if (sysIter == i->second.systems.end())
+		{
+			continue;
+		}
+
+		if (!sysIter->second.zones.empty())
+		{
+			auto iship = HkGetInspect(iClientIDKiller);
+			if (!iship) { continue; }
+			auto cship = iship->cobj;
+			if (!cship) { continue; }
+			for (auto zone : sysIter->second.zones)
+			{
+				if (zone->is_within_zone(cship->vPos, cship->fRadius))
+				{
+					goto passedZoneCheck;
+				}
+			}
+			continue;
+		}
+		passedZoneCheck:
+
 		//If we reach this point we have a winner
 		//Check event status first
 		if ((i->second.iObjectiveCurrent + i->second.iObjectivePlayerReward) >= i->second.iObjectiveMax)
@@ -1588,7 +1626,7 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	if (cship->ownerPlayer)
 	{
-		if (!permadeathItems.empty() )
+		if (!permadeathItems.empty())
 		{
 			CEquipTraverser tr(Cargo);
 			CEquip* eq;
@@ -1644,11 +1682,24 @@ void __stdcall ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			continue;
 		}
 
-		if (!event.lSystems.count(cship->system))
+		auto sysIter = event.systems.find(cship->system);
+		if (sysIter == event.systems.end())
 		{
 			continue;
 		}
 
+		if (!sysIter->second.zones.empty())
+		{
+			for (auto zone : sysIter->second.zones)
+			{
+				if (zone->is_within_zone(cship->vPos, cship->fRadius))
+				{
+					goto passedZoneCheck;
+				}
+			}
+			continue;
+		}
+	passedZoneCheck:
 
 		uint killerFactionId = GetPlayerId(killerPlayerId);
 
@@ -1777,7 +1828,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 			return true;
 		}
-		uint memberCount = playerGroup->GetMemberCount(); 
+		uint memberCount = playerGroup->GetMemberCount();
 		if (!memberCount)
 		{
 			cmd->Print(L"Group is empty\n");

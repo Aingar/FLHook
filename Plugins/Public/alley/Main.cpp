@@ -219,41 +219,6 @@ void UnSetFuse(uint iClientID, uint fuse)
 	}
 }
 
-
-/*bool UserCmd_ShowRestrictions(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
-	{
-		struct PlayerData *pPD = 0;
-		while(pPD = Players.traverse_active(pPD))
-		{
-			uint iClientsID = HkGetClientIdFromPD(pPD);
-
-			wstring wscMsg = L"<TRA data=\"0xfffc3b5b\" mask=\"-1\"/><TEXT>%p</TEXT>";
-			wscMsg = ReplaceStr(wscMsg, L"%p", wscParam);
-			HkFMsg(iClientsID, wscMsg);
-		}
-		return true;
-	}*/
-
-bool PirateCmd(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
-{
-	uint iBaseID;
-	pub::Player::GetBase(iClientID, iBaseID);
-	if (!iBaseID)
-	{
-		PrintUserCmdText(iClientID, L"ERR Not in base");
-		return true;
-	}
-
-	wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-	HkSetRep(wscCharname, L"fc_pirate", 1.0f);
-
-	PrintUserCmdText(iClientID, L"Do what you want cause a pirate is free, you are a pirate!");
-	pub::Audio::PlaySoundEffect(iClientID, CreateID("ui_gain_level"));
-	pub::Audio::PlaySoundEffect(iClientID, CreateID("dx_s070x_0801_Jacobi"));
-
-	return true;
-}
-
 void AdminCmd_GenerateID(CCmds* cmds, wstring argument)
 {
 	uint thegeneratedid = CreateID(wstos(argument).c_str());
@@ -580,9 +545,6 @@ USERCMD UserCmds[] =
 	{ L"/nodock*", ADOCK::NoDockCommand, L"Usage: /nodock"},
 	{ L"/police", ADOCK::PoliceCmd, L"Usage: /nodock" },
 	{ L"/police*", ADOCK::PoliceCmd, L"Usage: /nodock" },
-	{ L"/pirate", PirateCmd, L"Usage: /pirate"},
-	{ L"/pirate*", PirateCmd, L"Usage: /pirate"},
-	{ L"/racestart", AP::RacestartCmd, L"Usage: /racestart" },
 	{ L"/chase", AP::AlleyCmd_Chase, L"Usage: /chase <charname>"},
 	{ L"/chase*", AP::AlleyCmd_Chase, L"Usage: /chase <charname>"},
 	{ L"/marktarget",	UserCmd_MarkObjGroup, L"Usage: /marktarget"},

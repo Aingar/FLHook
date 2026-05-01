@@ -374,7 +374,7 @@ namespace RepFixer
 
 		float rep;
 		Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, affilCopy, rep);
-		if (rep < 0.65f || Reputation::IsStoryFaction(affilCopy))
+		if (rep < 0.75f)
 		{
 
 			float maxRepFound = -1.0f;
@@ -382,7 +382,7 @@ namespace RepFixer
 
 			for (auto& grp : vibe->second.feelingsVector)
 			{
-				if (Reputation::IsStoryFaction(grp.first))
+				if (Reputation::IsStoryFaction(grp.first) && grp.second != 1.0f)
 				{
 					continue;
 				}
@@ -393,7 +393,7 @@ namespace RepFixer
 				}
 			}
 
-			if (maxRepFound >= 0.65f)
+			if (maxRepFound >= 0.9f)
 			{
 				pub::Reputation::SetAffiliation(playerVibe, maxAffil);
 			}
@@ -511,9 +511,9 @@ namespace RepFixer
 
 		const auto& targetFactionName = factionNameMap.find(searchedAffil)->second;
 
-		if (currRep < 0.8)
+		if (currRep < 0.9f)
 		{
-			PrintUserCmdText(client, L"Insufficient reputation with %s", targetFactionName.c_str());
+			PrintUserCmdText(client, L"Insufficient reputation with %s, 0.9 is needed", targetFactionName.c_str());
 			return false;
 		}
 

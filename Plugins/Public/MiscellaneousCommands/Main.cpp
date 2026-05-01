@@ -381,6 +381,20 @@ bool UserCmd_WayPointPlayer(uint iClientID, const wstring& wscCmd, const wstring
 	return true;
 }
 
+struct RepGroup
+{
+	ushort affil;
+	uint dunno;
+	uint clientId;
+	uint dunno2[14];
+	wchar_t name[24];
+	uint dunno3;
+	st6::vector<std::pair<uint, float>> feelingsVector;
+	uint dunno4;
+};
+
+st6::map<uint, RepGroup>* repMap = (st6::map<uint, RepGroup>*)0x64018C4;
+
 // /frelancer - gives the user a freelancer IFF
 bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
@@ -388,14 +402,48 @@ bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring 
 	if (!CheckIsInBase(iClientID))
 		return true;
 
-	HK_ERROR err;
-	if ((err = HkSetRep(reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(iClientID)), L"fc_freelancer", 1.0f)) != HKE_OK)
+	auto playerVibe = Players[iClientID].iReputation;
+	auto static fcAffil = MakeId("fc_freelancer");
+	pub::Reputation::SetReputation(playerVibe, fcAffil, 1.0f);
+	pub::Reputation::SetAffiliation(playerVibe, fcAffil);
+
+	auto vibe = repMap->find(playerVibe);
+
+	float rep = 0;
+	Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, fcAffil, rep);
+	if (vibe == repMap->end() || vibe->second.affil != fcAffil || rep < 0.9f)
 	{
-		PrintUserCmdText(iClientID, L"ERROR: %s", HkErrGetText(err).c_str());
+		PrintUserCmdText(iClientID, L"Freelancer IFF could not be granted, likely due to rephack limits on your currently equipped ID.");
 		return true;
 	}
 
-	PrintUserCmdText(iClientID, L"Freelancer IFF granted. You may need to /droprep if your old IFF exists after logging out/in and undocking.");
+	PrintUserCmdText(iClientID, L"Freelancer IFF granted.");
+	return true;
+}
+
+// /frelancer - gives the user a freelancer IFF
+bool UserCmd_PirateIFF(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+
+	if (!CheckIsInBase(iClientID))
+		return true;
+
+	auto playerVibe = Players[iClientID].iReputation;
+	auto static fcAffil = MakeId("fc_pirate");
+	pub::Reputation::SetReputation(playerVibe, fcAffil, 1.0f);
+	pub::Reputation::SetAffiliation(playerVibe, fcAffil);
+
+	auto vibe = repMap->find(playerVibe);
+	
+	float rep = 0;
+	Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, fcAffil, rep);
+	if (vibe == repMap->end() || vibe->second.affil != fcAffil || rep < 0.9f)
+	{
+		PrintUserCmdText(iClientID, L"Pirate IFF could not be granted, likely due to rephack limits on your currently equipped ID.");
+		return true;
+	}
+
+	PrintUserCmdText(iClientID, L"Pirate IFF granted.");
 	return true;
 }
 
@@ -425,6 +473,7 @@ struct USERCMD
 USERCMD UserCmds[] =
 {
 	{ L"/freelancer", UserCmd_FreelancerIFF, L"" },
+	{ L"/pirate", UserCmd_PirateIFF, L"" },
 	{ L"/wp", UserCmd_WayPoint, L"" },
 	{ L"/wpp", UserCmd_WayPointPlayer, L"" },
 	{ L"/rally", UserCmd_WayPointRally, L"" },

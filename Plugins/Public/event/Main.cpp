@@ -1849,7 +1849,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 			pub::Player::DisplayMissionMessage(memberId, caption, MissionMessageType::MissionMessageType_Type2, true);
 		}
 
-		cmd->Print(L"Objective sent\n");
+		cmd->Print(L"Objective sent to group %u: '%s'\n", groupId, objectiveText.c_str());
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

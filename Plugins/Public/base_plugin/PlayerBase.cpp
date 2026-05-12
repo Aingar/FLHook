@@ -296,7 +296,7 @@ void PlayerBase::SetupDefaults()
 
 	if (vulnerabilityWindow1.start == -1 || vulnerabilityWindow2.start == -1)
 	{
-		vulnerabilityWindow1 = { 10 * 60, ((10 * 60) + vulnerability_window_length) % (60 * 24) };
+		vulnerabilityWindow1 = { 19 * 60, ((19 * 60) + vulnerability_window_length) % (60 * 24) };
 		vulnerabilityWindow2 = { 20 * 60, ((20 * 60) + vulnerability_window_length) % (60 * 24) };
 	}
 	CheckVulnerabilityWindow((uint)time(nullptr));

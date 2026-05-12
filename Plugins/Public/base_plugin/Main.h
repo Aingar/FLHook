@@ -376,7 +376,7 @@ public:
 	wstring BuildBaseDescription();
 	void UpdateBaseInfoText();
 
-	ARCHTYPE_STRUCT* archetype;
+	ARCHTYPE_STRUCT* archetype = nullptr;
 
 	bool isFreshlyBuilt;
 

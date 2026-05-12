@@ -18,6 +18,8 @@ namespace HookExt
 	IMPORT void IniSetB(const wstring &charname, const string &name, bool value);
 	IMPORT void IniSetF(const wstring &charname, const string &name, float value);
 
+	IMPORT void IniClearKey(const wstring& charname, const string& name);
+
 	IMPORT void AddPOBEventData(uint client, string eventid, int count);
 	IMPORT void ClearPOBEventData();
 	IMPORT map<uint, EVENT_PLUGIN_POB_TRANSFER> RequestPOBEventData();

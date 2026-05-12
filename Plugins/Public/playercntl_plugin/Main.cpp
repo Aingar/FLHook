@@ -544,6 +544,12 @@ namespace HkIServerImpl
 		MiscCmds::PlayerLaunch(iClientID);
 		PlayerInfo::PlayerLaunch(iClientID);
 		returncode = DEFAULT_RETURNCODE;
+
+		if (Rename::IsRenameFlagged(iClientID))
+		{
+			HkBeamById(iClientID, Players[iClientID].iLastBaseID);
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		}
 	}
 
 	void __stdcall BaseEnter(unsigned int iBaseID, unsigned int iClientID)
@@ -1557,6 +1563,18 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	else if (IS_CMD("setaccmovecode"))
 	{
 		Rename::AdminCmd_SetAccMoveCode(cmds, cmds->ArgCharname(1), cmds->ArgStr(2));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("flagrenameoff"))
+	{
+		Rename::AdminCmd_UnsetRenameFlag(cmds, cmds->ArgCharname(1));
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		return true;
+	}
+	else if (IS_CMD("flagrename"))
+	{
+		Rename::AdminCmd_SetRenameFlag(cmds, cmds->ArgCharname(1), cmds->ArgStrToEnd(2));
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}

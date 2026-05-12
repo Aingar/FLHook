@@ -60,6 +60,8 @@ namespace Rename
 	bool UserCmd_SetMoveCharCode(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	bool UserCmd_MoveChar(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage);
 	void AdminCmd_SetAccMoveCode(CCmds* cmds, const wstring &wscCharname, const wstring &wscCode);
+	void AdminCmd_SetRenameFlag(CCmds* cmds, const wstring& wscCharname, const wstring& reason);
+	void AdminCmd_UnsetRenameFlag(CCmds* cmds, const wstring& wscCharname);
 	void AdminCmd_ShowTags(CCmds* cmds);
 	void AdminCmd_AddTag(CCmds* cmds, const wstring &wscTag, const wstring &wscPassword, const wstring &description);
 	void AdminCmd_DropTag(CCmds* cmds, const wstring &wscTag);
@@ -75,6 +77,7 @@ namespace Rename
 	void ReloadLockedShips();
 	bool DestroyCharacter(struct CHARACTER_ID const &cId, unsigned int iClientID);
 	bool IsLockedShip(uint iClientID, int PermissionLevel);
+	bool IsRenameFlagged(uint client);
 }
 
 namespace MiscCmds

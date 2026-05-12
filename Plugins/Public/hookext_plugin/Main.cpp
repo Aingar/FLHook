@@ -308,6 +308,28 @@ namespace HookExt
 		clients[client].lines[name] = value;
 	}
 
+	EXPORT void IniClearKey(const wstring& charname, const string& name)
+	{
+		// If the player is online then update the in memory cache.
+		string charfilename = GetCharfilename(charname) + ".fl";
+		for (map<uint, FLHOOK_PLAYER_DATA>::iterator i = clients.begin(); i != clients.end(); ++i)
+		{
+			if (i->second.charfilename == charfilename)
+			{
+				clients[i->first].lines.erase(name);
+				return;
+			}
+		}
+
+		// Otherwise write directly to the character file if it exists.
+		CAccount* acc = HkGetAccountByCharname(charname);
+		if (acc)
+		{
+			string charpath = scAcctPath + GetCharfilename(acc->wszAccID) + "\\" + charfilename;
+			WritePrivateProfileString("flhook", name.c_str(), nullptr, charpath.c_str());
+		}
+	}
+
 	EXPORT void IniSetWS(uint client, const string &name, const wstring &value)
 	{
 		string svalue = "";

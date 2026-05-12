@@ -18,6 +18,7 @@
 #include <set>
 
 #include <PluginUtilities.h>
+#include <hookext_exports.h>
 #include "Main.h"
 
 #include <FLCoreServer.h>
@@ -65,9 +66,16 @@ namespace Rename
 		bool isLocked = true;
 	};
 
-	map<wstring, LockedShipsStruct> MapLockedShips;
+	unordered_map<wstring, LockedShipsStruct> MapLockedShips;
 
-	void LoadSettings(const string &scPluginCfgFile)
+	struct RenameFlag
+	{
+		wstring reason;
+		wstring originalName;
+	};
+	unordered_map<wstring, RenameFlag> RenameFlaggedShips;
+
+	void LoadSettings(const string& scPluginCfgFile)
 	{
 		set_iRenameCost = IniGetI(scPluginCfgFile, "Rename", "RenameCost", 5000000);
 		set_iRenameTimeLimit = IniGetI(scPluginCfgFile, "Rename", "RenameTimeLimit", 3600);
@@ -129,7 +137,7 @@ namespace Rename
 		GetUserDataPath(szDataPath);
 		string scPath = string(szDataPath) + "\\Accts\\MultiPlayer\\tags.ini";
 
-		FILE *file = fopen(scPath.c_str(), "w");
+		FILE* file = fopen(scPath.c_str(), "w");
 		if (file)
 		{
 			for (auto& tag : mapTagToPassword)
@@ -145,7 +153,7 @@ namespace Rename
 		}
 	}
 
-	bool CreateNewCharacter(struct SCreateCharacterInfo const &si, unsigned int iClientID)
+	bool CreateNewCharacter(struct SCreateCharacterInfo const& si, unsigned int iClientID)
 	{
 		if (set_bCharnameTags)
 		{
@@ -185,7 +193,7 @@ namespace Rename
 
 	// Update the tag list when a character is selected update the tag list to indicate that this tag
 	// is in use. If a tag is not used after 60 days, remove it.
-	void CharacterSelect_AFTER(struct CHARACTER_ID const &charId, unsigned int iClientID)
+	void CharacterSelect_AFTER(struct CHARACTER_ID const& charId, unsigned int iClientID)
 	{
 		if (set_bCharnameTags)
 		{
@@ -197,6 +205,15 @@ namespace Rename
 					i->second.last_access = (uint)time(0);
 				}
 			}
+		}
+
+		auto renameFlagReason = HookExt::IniGetS(iClientID, "renameFlagReason");
+		if (!renameFlagReason.empty())
+		{
+			auto renameFlagName = HookExt::IniGetS(iClientID, "renameFlagName");
+			wstring charname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
+			RenameFlaggedShips[charname] = { stows(renameFlagReason), stows(renameFlagName)};
+			PrintUserCmdText(iClientID, L"NOTICE: This character is flagged for rename via /rename command. Reason for flagging: %s", stows(renameFlagReason).c_str());
 		}
 	}
 
@@ -244,7 +261,7 @@ namespace Rename
 		return true;
 	}
 
-	bool UserCmd_MakeTag(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool UserCmd_MakeTag(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		if (set_bCharnameTags)
 		{
@@ -336,7 +353,7 @@ namespace Rename
 		return false;
 	}
 
-	bool UserCmd_DropTag(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool UserCmd_DropTag(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		if (set_bCharnameTags)
 		{
@@ -373,7 +390,7 @@ namespace Rename
 	}
 
 	// Make tag password
-	bool UserCmd_SetTagPass(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool UserCmd_SetTagPass(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		if (set_bCharnameTags)
 		{
@@ -446,7 +463,7 @@ namespace Rename
 
 			pendingRenames.pop_front();
 
-			CAccount *acc = HkGetAccountByCharname(o.wscCharname);
+			CAccount* acc = HkGetAccountByCharname(o.wscCharname);
 
 			// Delete the character from the existing account, create a new character with the
 			// same name in this account and then copy over it with the save character file.
@@ -499,7 +516,7 @@ namespace Rename
 				//resetrep cooldown
 				wstring wscCharFileName2;
 				HkGetCharFileName(o.wscNewCharname, wscCharFileName2);
-				wstring wscDir;	
+				wstring wscDir;
 				HK_ERROR err;
 				if ((err = HkGetAccountDirName(o.wscNewCharname, wscDir)) != HKE_OK)
 				{
@@ -516,7 +533,7 @@ namespace Rename
 					}
 				}
 			}
-			catch (char *err)
+			catch (char* err)
 			{
 				AddLog("ERROR: User rename failed (%s) from %s to %s (%s)", err, wstos(o.wscCharname).c_str(), wstos(o.wscNewCharname).c_str(), wstos(HkGetAccountID(acc)).c_str());
 			}
@@ -532,8 +549,8 @@ namespace Rename
 
 			pendingMoves.pop_front();
 
-			CAccount *acc = HkGetAccountByCharname(o.wscDestinationCharname);
-			CAccount *oldAcc = HkGetAccountByCharname(o.wscMovingCharname);
+			CAccount* acc = HkGetAccountByCharname(o.wscDestinationCharname);
+			CAccount* oldAcc = HkGetAccountByCharname(o.wscMovingCharname);
 
 			// Delete the character from the existing account, create a new character with the
 			// same name in this account and then copy over it with the save character file.
@@ -580,7 +597,7 @@ namespace Rename
 					MiscCmds::Resetrep_save_Time_limits_to_player_account(o.scDestDir, ResetListDest);
 				}
 			}
-			catch (char *err)
+			catch (char* err)
 			{
 				AddLog("ERROR: Character %s move failed (%s) from %s to %s",
 					wstos(o.wscMovingCharname).c_str(), err,
@@ -590,7 +607,7 @@ namespace Rename
 		}
 	}
 
-	bool UserCmd_RenameMe(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool UserCmd_RenameMe(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		HK_ERROR err;
 
@@ -697,6 +714,8 @@ namespace Rename
 		if (!HkIsValidClientID(iClientID))
 			return true;
 
+		bool isFlaggedForRename = RenameFlaggedShips.count(wscCharname);
+
 		// Read the current number of credits for the player
 		// and check that the character has enough cash.
 		int iCash = 0;
@@ -705,7 +724,7 @@ namespace Rename
 			PrintUserCmdText(iClientID, L"ERR " + HkErrGetText(err));
 			return true;
 		}
-		if (set_iRenameCost > 0 && iCash < set_iRenameCost)
+		if (!isFlaggedForRename && set_iRenameCost > 0 && iCash < set_iRenameCost)
 		{
 			PrintUserCmdText(iClientID, L"ERR Insufficient credits");
 			return true;
@@ -724,7 +743,7 @@ namespace Rename
 		// If a rename was done recently by this player then reject the request.
 		// I know that time() returns time_t...shouldn't matter for a few years
 		// yet.
-		if ((lastRenameTime + 7200) < (int)time(0))
+		if (!isFlaggedForRename && (lastRenameTime + 7200) < (int)time(0))
 		{
 			if ((lastRenameTime + set_iRenameTimeLimit) > (int)time(0))
 			{
@@ -751,9 +770,18 @@ namespace Rename
 		}
 
 		// Remove cash if we're charging for it.
-		if (set_iRenameCost > 0)
+		if (!isFlaggedForRename && set_iRenameCost > 0)
 			HkAddCash(wscCharname, 0 - set_iRenameCost);
 
+		if (isFlaggedForRename)
+		{
+			auto& data = RenameFlaggedShips[wscCharname];
+			AddLog("Rename-flagged character originally named '%s' renamed to '%s'. Flag reason: %s",
+				wstos(data.originalName).c_str(), wstos(wscNewCharname).c_str(), wstos(data.reason).c_str());
+			RenameFlaggedShips.erase(wscCharname);
+			HookExt::IniClearKey(wscCharname, "renameFlagReason");
+			HookExt::IniClearKey(wscCharname, "renameFlagName");
+		}
 
 		RENAME o;
 		o.wscCharname = wscCharname;
@@ -770,7 +798,7 @@ namespace Rename
 	}
 
 	/** Process a set the move char code command */
-	bool Rename::UserCmd_SetMoveCharCode(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool Rename::UserCmd_SetMoveCharCode(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		// Don't indicate an error if moving is disabled.
 		if (!set_bEnableMoveChar)
@@ -816,7 +844,7 @@ namespace Rename
 		string banfile = string(datapath) + "\\Accts\\MultiPlayer\\" + wstos(dir) + "\\banned";
 
 		// Prevent ships from banned accounts from being moved.
-		FILE *f = fopen(banfile.c_str(), "r");
+		FILE* f = fopen(banfile.c_str(), "r");
 		if (f)
 		{
 			fclose(f);
@@ -828,7 +856,7 @@ namespace Rename
 	/**
 	 Move a character from a remote account into this one.
 	*/
-	bool Rename::UserCmd_MoveChar(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+	bool Rename::UserCmd_MoveChar(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 	{
 		HK_ERROR err;
 
@@ -910,7 +938,7 @@ namespace Rename
 		}
 
 		// Check there is room in this account.
-		CAccount *acc = Players.FindAccountFromClientID(iClientID);
+		CAccount* acc = Players.FindAccountFromClientID(iClientID);
 		if (acc->iNumberOfCharacters >= 7)
 		{
 			PrintUserCmdText(iClientID, L"ERR Too many characters in account");
@@ -966,8 +994,106 @@ namespace Rename
 		return true;
 	}
 
+	void Rename::AdminCmd_SetRenameFlag(CCmds* cmds, const wstring& wscCharname, const wstring& reason)
+	{
+		if (!(cmds->rights & RIGHT_KICK))
+		{
+			cmds->Print(L"ERR No permission\n");
+			return;
+		}
+
+		if (reason.empty())
+		{
+			cmds->Print(L"ERR No rename reason provided\n");
+			return;
+		}
+
+		auto iter = RenameFlaggedShips.find(wscCharname);
+
+		if (iter != RenameFlaggedShips.end())
+		{
+			cmds->Print(L"Rename flag already present on this character\n", wscCharname.c_str());
+			return;
+		}
+
+		wstring newName = L"_rename" + stows(std::to_string((uint)time(0)));
+
+		wstring wscDir;
+		wstring wscSourceFile;
+		wstring wscDestFile;
+		HK_ERROR err;
+		if ((err = HkGetAccountDirName(wscCharname, wscDir)) != HKE_OK)
+		{
+			cmds->Print(L"ERR " + HkErrGetText(err));
+			return;
+		}
+		if ((err = HkGetCharFileName(newName, wscDestFile)) != HKE_OK)
+		{
+			cmds->Print(L"ERR " + HkErrGetText(err));
+			return;
+		}
+		if ((err = HkGetCharFileName(wscCharname, wscSourceFile)) != HKE_OK)
+		{
+			cmds->Print(L"ERR " + HkErrGetText(err));
+			return;
+		}
+
+		AddLog("Rename flag added to '%s' with reason: '%s'", wstos(wscCharname).c_str(), wstos(reason).c_str());
+		cmds->Print(L"Rename flag added to '%s' with reason: '%s'", wscCharname.c_str(), reason.c_str());
+
+		auto targetClient = HkGetClientIdFromCharname(wscCharname);
+		if (targetClient != -1)
+		{
+			if (!Players[targetClient].iBaseID)
+			{
+				HkBeamById(targetClient, Players[targetClient].iLastBaseID);
+				HkSaveChar(targetClient);
+			}
+			HkKickReason(wscCharname, L"You have been flagged for a rename");
+		}
+		HookExt::IniSetS(wscCharname, "renameFlagReason", wstos(reason));
+		HookExt::IniSetS(wscCharname, "renameFlagName", wstos(wscCharname));
+
+		RENAME o;
+		o.wscCharname = wscCharname;
+		o.wscNewCharname = newName;
+		o.scSourceFile = scAcctPath + wstos(wscDir) + "\\" + wstos(wscSourceFile) + ".fl";
+		o.scDestFile = scAcctPath + wstos(wscDir) + "\\" + wstos(wscDestFile) + ".fl";
+		o.scDestFileTemp = scAcctPath + wstos(wscDir) + "\\" + wstos(wscSourceFile) + ".fl.renaming";
+		o.scDir = scAcctPath + wstos(wscDir);
+		pendingRenames.push_back(o);
+	}
+
+	void Rename::AdminCmd_UnsetRenameFlag(CCmds* cmds, const wstring& wscCharname)
+	{
+		if (!(cmds->rights & RIGHT_KICK))
+		{
+			cmds->Print(L"ERR No permission\n");
+			return;
+		}
+
+		auto targetClient = HkGetClientIdFromCharname(wscCharname);
+		if (targetClient != -1)
+		{
+			if (!RenameFlaggedShips.count(wscCharname))
+			{
+				cmds->Print(L"ERR Target player is online and not flagged for rename!\n");
+				return;
+			}
+
+			cmds->Print(L"Removing rename flag\n");
+		}
+		else
+		{
+			cmds->Print(L"Target player is not online, attempting to remove the rename flag\n");
+		}
+
+		HookExt::IniClearKey(wscCharname, "renameFlagReason");
+		HookExt::IniClearKey(wscCharname, "renameFlagName");
+	}
+
 	/// Set the move char code for all characters in the account
-	void Rename::AdminCmd_SetAccMoveCode(CCmds* cmds, const wstring &wscCharname, const wstring &wscCode)
+	void Rename::AdminCmd_SetAccMoveCode(CCmds* cmds, const wstring& wscCharname, const wstring& wscCode)
 	{
 		// Don't indicate an error if moving is disabled.
 		if (!set_bEnableMoveChar)
@@ -1048,7 +1174,7 @@ namespace Rename
 		cmds->Print(L"OK\n");
 	}
 
-	void AdminCmd_AddTag(CCmds* cmds, const wstring &tag, const wstring &password, const wstring &description)
+	void AdminCmd_AddTag(CCmds* cmds, const wstring& tag, const wstring& password, const wstring& description)
 	{
 		if (cmds->rights != RIGHT_SUPERADMIN)
 		{
@@ -1092,7 +1218,7 @@ namespace Rename
 		SaveSettings();
 	}
 
-	void AdminCmd_DropTag(CCmds* cmds, const wstring &tag)
+	void AdminCmd_DropTag(CCmds* cmds, const wstring& tag)
 	{
 		if (cmds->rights != RIGHT_SUPERADMIN)
 		{
@@ -1184,7 +1310,7 @@ void Rename::ReloadLockedShips()
 	return;
 }
 
-bool Rename::DestroyCharacter(struct CHARACTER_ID const &cId, unsigned int iClientID)
+bool Rename::DestroyCharacter(struct CHARACTER_ID const& cId, unsigned int iClientID)
 {
 	// Copy character file into this account with a temp name.
 	char szDataPath[MAX_PATH];
@@ -1195,7 +1321,7 @@ bool Rename::DestroyCharacter(struct CHARACTER_ID const &cId, unsigned int iClie
 	// Get the character name for this connection.
 	//wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
 
-	for (map<wstring, LockedShipsStruct>::iterator i = MapLockedShips.begin(); i != MapLockedShips.end(); ++i)
+	for (auto i = MapLockedShips.begin(); i != MapLockedShips.end(); ++i)
 	{
 		if ((i->second.AccountName == file) && (i->second.LockLevel > 0))
 		{
@@ -1225,4 +1351,18 @@ bool Rename::IsLockedShip(uint iClientID, int PermissionLevel)
 	}
 
 	return false;
+}
+
+bool Rename::IsRenameFlagged(uint client)
+{
+	wstring wsccharname = (const wchar_t*)Players.GetActiveCharacterName(client);
+	auto renameFlagIter = RenameFlaggedShips.find(wsccharname);
+	if (renameFlagIter == RenameFlaggedShips.end())
+	{
+		return false;
+	}
+
+	PrintUserCmdText(client, L"You are currently flagged for rename, reason: %s", renameFlagIter->second.reason.c_str());
+	PrintUserCmdText(client, L"You can rename for free with /rename command");
+	return true;
 }

@@ -171,7 +171,7 @@ void HyperJump::InitJumpHoleConfig()
 			completedLoad = true;
 			InitJumpHole(base.first, pbase->destSystem, pbase->destObject);
 		}
-		
+
 		if (!completedLoad)
 		{
 			invalidJumpHoles.emplace_back(pbase);
@@ -329,19 +329,12 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 						uint baseId = CreateID(ini.get_value_string());
 						auto baseIter = player_bases.find(baseId);
 						auto timerIter = deepRegionTimerMap.find(dr.name);
-						if (timerIter != deepRegionTimerMap.end() && time(0) < timerIter->second.second + dr.cooldown 
+						if (timerIter != deepRegionTimerMap.end() && time(0) < timerIter->second.second + dr.cooldown
 							&& (baseIter == player_bases.end()))
 						{
 							continue;
 						}
-						if (baseIter->first == timerIter->second.first)
-						{
-							baseIter->second->baseloadout = dr.closeLoadout;
-							baseIter->second->basesolar = dr.closeArch;
-							baseIter->second->Save();
-							continue;
-						}
-						dr.entriesToRandomize.push_back(CreateID(ini.get_value_string()));
+						dr.entriesToRandomize.push_back(baseId);
 					}
 				}
 				deepRegionVector.push_back(dr);
@@ -506,16 +499,34 @@ void HyperJump::LoadHyperspaceHubConfig(const string& configPath)
 		auto timerIter = deepRegionTimerMap.find(dr.name);
 		if (timerIter != deepRegionTimerMap.end() && currTime < timerIter->second.second + dr.cooldown)
 		{
+			ConPrint(L"deep1 %s\n", stows(dr.name).c_str()); //remove
 			continue;
 		}
 
-		int entry = GetRandom() % dr.entriesToRandomize.size();
+		if (dr.entriesToRandomize.size() <= 1)
+		{
+			continue;
+		}
+		int currEntry = 0;
+		int initCounter = 0;
+
+		for (auto entry : dr.entriesToRandomize)
+		{
+			if (entry == timerIter->second.first)
+			{
+				currEntry = initCounter;
+				break;
+			}
+			initCounter++;
+		}
+
+		int entry = GetRandom() % (dr.entriesToRandomize.size() - 1);
+		if (entry >= currEntry)
+		{
+			entry++;
+		}
 		int counter = -1;
 		uint baseID = dr.entriesToRandomize.at(entry);
-		if (timerIter->second.first == baseID)
-		{
-			entry = (entry + 1) % dr.entriesToRandomize.size();
-		}
 
 		for (uint baseID : dr.entriesToRandomize)
 		{

@@ -425,16 +425,26 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 			return 0.0f;
 		}
 	}
+
 	base->shield_timeout = (int)time(nullptr) + 60;
 	if (!base->isShieldOn)
 	{
 		base->isShieldOn = true;
 		EnableShieldFuse(true);
 	}
+
 	if ((base->use_vulnerability_window && base->vulnerableWindowStatus != PlayerBase::BASE_VULNERABILITY_STATE::VULNERABLE) || base->shield_strength_multiplier >= 1.0f)
 	{
 		// base invulnerable, keep current health value
 		return 0;
+	}
+
+	if (!base->attacked_during_vuln_window)
+	{
+		base->attacked_during_vuln_window = true;
+		wstring str = L"Base siege of 'BASENAME' confirmed";
+		str = ReplaceStr(str, L"BASENAME", base->basename);
+		HkMsgS(base->system, str);
 	}
 
 	if (base->siege_gun_only)

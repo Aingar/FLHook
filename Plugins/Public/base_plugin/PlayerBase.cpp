@@ -1,6 +1,6 @@
 #include "Main.h"
 
-PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_basename)
+PlayerBase::PlayerBase(uint client, const wstring& password, const wstring& the_basename)
 	: basename(the_basename),
 	base(0), money(0), base_health(0), baseCSolar(nullptr), preferred_food(0), preferred_repair(0),
 	base_level(1), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
@@ -36,7 +36,7 @@ PlayerBase::PlayerBase(uint client, const wstring &password, const wstring &the_
 
 }
 
-PlayerBase::PlayerBase(const string &the_path)
+PlayerBase::PlayerBase(const string& the_path)
 	: path(the_path), base(0), money(0), baseCSolar(nullptr), preferred_food(0), preferred_repair(0),
 	base_health(0), base_level(0), defense_mode(DEFENSE_MODE::NODOCK_NEUTRAL), proxy_base(0), affiliation(DEFAULT_AFFILIATION), vulnerableWindowStatus(BASE_VULNERABILITY_STATE::INVULNERABLE),
 	shield_timeout(0), isShieldOn(false), isFreshlyBuilt(false), pinned_item_updated(false),
@@ -99,23 +99,22 @@ void PlayerBase::Spawn()
 	}
 }
 
-PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(BASE_VULNERABILITY_WINDOW window, int timeOfDay, int startOffset)
+PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(PlayerBase* pb, BASE_VULNERABILITY_WINDOW window, int timeOfDay, int startOffset)
 {
 	if ((window.start < window.end
 		&& window.start <= timeOfDay && window.end > timeOfDay)
 		|| (window.start > window.end
 			&& (window.start <= timeOfDay || window.end > timeOfDay)))
 	{
+		if (no_show_protection_window && !pb->attacked_during_vuln_window &&
+			!((window.start < window.end
+				&& window.start+ no_show_protection_window <= timeOfDay && window.end > timeOfDay)
+				|| (window.start+ no_show_protection_window > window.end
+					&& (window.start+ no_show_protection_window <= timeOfDay || window.end > timeOfDay))))
+		{
+			return PlayerBase::BASE_VULNERABILITY_STATE::INVULNERABLE;
+		}
 		return PlayerBase::BASE_VULNERABILITY_STATE::VULNERABLE;
-	}
-
-	window.start -= startOffset;
-	if ((window.start < window.end
-		&& window.start <= timeOfDay && window.end > timeOfDay)
-		|| (window.start > window.end
-			&& (window.start <= timeOfDay || window.end > timeOfDay)))
-	{
-		return PlayerBase::BASE_VULNERABILITY_STATE::PREVULNERABLE;
 	}
 
 	return PlayerBase::BASE_VULNERABILITY_STATE::INVULNERABLE;
@@ -130,23 +129,24 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 
 	int timeOfDay = (currTime % (3600 * 24)) / 60;
 
-	auto currVulnState = IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay, defense_platform_activation_offset);
+	auto currVulnState = IsVulnerabilityWindowActive(this, vulnerabilityWindow1, timeOfDay, defense_platform_activation_offset);
 	if (!single_vulnerability_window)
 	{
-		currVulnState = max(currVulnState, IsVulnerabilityWindowActive(vulnerabilityWindow1, timeOfDay, 60));
+		currVulnState = max(currVulnState, IsVulnerabilityWindowActive(this, vulnerabilityWindow1, timeOfDay, 60));
 	}
 
 	if (currVulnState == vulnerableWindowStatus)
 	{
 		return;
 	}
-	
+
 	switch (currVulnState)
 	{
 	case BASE_VULNERABILITY_STATE::VULNERABLE:
 	{
 		shield_strength_multiplier = base_shield_strength;
 		damage_taken_since_last_threshold = 0;
+		attacked_during_vuln_window = false;
 		if (shield_reinforcement_threshold_map.count(base_level))
 		{
 			base_shield_reinforcement_threshold = shield_reinforcement_threshold_map[base_level];
@@ -161,7 +161,6 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 		}
 		break;
 	}
-	case BASE_VULNERABILITY_STATE::PREVULNERABLE: break;
 	case BASE_VULNERABILITY_STATE::INVULNERABLE:
 	{
 		if (baseCSolar && base_health <= max_base_health)
@@ -175,7 +174,7 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 
 	vulnerableWindowStatus = currVulnState;
 	SyncReputationForBase();
-	
+
 }
 
 void PlayerBase::LogDamageDealers()
@@ -563,6 +562,10 @@ void PlayerBase::Load()
 					{
 						lastVulnerabilityWindowChange = ini.get_value_int(0);
 					}
+					else if (ini.is_value("attacked_during_vuln_window"))
+					{
+						attacked_during_vuln_window = ini.get_value_bool(0);
+					}
 					else if (ini.is_value("vulnerability_windows"))
 					{
 						vulnerabilityWindow1 = { ini.get_value_int(0) * 60, ((ini.get_value_int(0) * 60) + vulnerability_window_length) % (60 * 24) };
@@ -600,7 +603,7 @@ void PlayerBase::Load()
 					else if (ini.is_value("preferred_food"))
 					{
 						preferred_food = ini.get_value_int(0);
-						}
+					}
 					else if (ini.is_value("preferred_repair"))
 					{
 						preferred_repair = ini.get_value_int(0);
@@ -926,10 +929,12 @@ void PlayerBase::Save()
 		fprintf(file, "last_vulnerability_change = %u\n", lastVulnerabilityWindowChange);
 		fprintf(file, "vulnerability_windows = %u, %u\n", vulnerabilityWindow1.start / 60, vulnerabilityWindow2.start / 60);
 
+		fprintf(file, "attacked_during_vuln_window = %u\n", (uint)attacked_during_vuln_window);
 		if (isRearmamentAvailable)
 		{
 			fprintf(file, "rearmament_margin = %0.3f\n", rearmamentCostPerCredit);
 		}
+		
 		fprintf(file, "money = %I64d\n", money);
 		auto sysInfo = Universe::get_system(system);
 		fprintf(file, "system = %s\n", sysInfo->nickname.value);
@@ -983,7 +988,7 @@ void PlayerBase::Save()
 		{
 			fprintf(file, "faction_srp_tag = %d\n", i);
 		}
-		for(const auto& i : ally_tags)
+		for (const auto& i : ally_tags)
 		{
 			ini_write_wstring(file, "ally_tag", i);
 		}
@@ -1011,7 +1016,7 @@ void PlayerBase::Save()
 		{
 			fprintf(file, "faction_hostile_tag = %d\n", i);
 		}
-		for(const auto& i : hostile_tags)
+		for (const auto& i : hostile_tags)
 		{
 			ini_write_wstring(file, "hostile_tag", i);
 		}
@@ -1255,7 +1260,7 @@ float PlayerBase::GetAttitudeTowardsClient(uint client)
 
 	float hostile_rep =
 		vulnerableWindowStatus != BASE_VULNERABILITY_STATE::INVULNERABLE ? -1.f : -0.59f;
-	if(temp_hostile_names.count(charname))
+	if (temp_hostile_names.count(charname))
 	{
 		return hostile_rep;
 	}

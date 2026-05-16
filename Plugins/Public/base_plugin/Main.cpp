@@ -185,6 +185,9 @@ float siege_mode_damage_trigger_level = 8000000;
 //the distance between bases to share siege mod activation
 float siege_mode_chain_reaction_trigger_distance = 8000;
 
+//time in seconds after which vulnerability window ends prematurely if no player attacked the base
+int no_show_protection_window = 900;
+
 unordered_set<uint> customSolarList;
 
 //siege weaponry definitions
@@ -920,6 +923,10 @@ void LoadSettingsActual()
 					else if (ini.is_value("base_vulnerability_window_length"))
 					{
 						vulnerability_window_length = ini.get_value_int(0);
+					}
+					else if (ini.is_value("no_show_protection_window"))
+					{
+						no_show_protection_window = ini.get_value_int(0);
 					}
 					else if (ini.is_value("single_vulnerability_window"))
 					{

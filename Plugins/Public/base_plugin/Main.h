@@ -491,6 +491,8 @@ public:
 
 	bool use_vulnerability_window = false;
 
+	bool attacked_during_vuln_window = true;
+
 	uint failed_update_counter = 0;
 
 	unordered_map<wstring, float> damageTakenMap;
@@ -572,7 +574,6 @@ public:
 	enum class BASE_VULNERABILITY_STATE
 	{
 		INVULNERABLE,
-		PREVULNERABLE,
 		VULNERABLE
 	};
 
@@ -900,3 +901,4 @@ namespace EquipmentUtilities
 #endif
 
 extern bool shutdownBasePlugin;
+extern int no_show_protection_window;

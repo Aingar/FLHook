@@ -912,30 +912,20 @@ void __stdcall ShipEquipmentDestroyed(IObjRW* ship, CEquip* eq, DamageEntry::Sub
 		return;
 	}
 
-	CShip* cship = reinterpret_cast<CShip*>(ship->cobj);
-	CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(EquipmentClass::Shield));
+	CEShieldGenerator* gen = reinterpret_cast<CEShieldGenerator*>(eq);
+	float genCapacity = gen->ShieldGenArch()->fMaxCapacity;
+	if (!genCapacity)
+	{
+		return;
+	}
+
+	CEShield* shield = gen->mainShield;
 	if (!shield)
 	{
 		return;
 	}
 
-	int validShieldCount = 0;
-	bool foundShield = false;
-	for (auto linkedShield : shield->linkedShieldGen)
-	{
-		if (linkedShield == eq)
-		{
-			foundShield = true;
-			continue;
-		}
-
-		if (linkedShield->ShieldGenArch()->fMaxCapacity > 0.f || linkedShield->ShieldGenArch()->fRegenerationRate > 0.f)
-		{
-			validShieldCount++;
-		}
-	}
-
-	if (validShieldCount <= 0 && foundShield)
+	if(genCapacity == shield->maxShieldHitPoints)
 	{
 		ship->cequip_death(shield, fate, dmgList);
 	}

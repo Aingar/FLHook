@@ -498,6 +498,31 @@ void InitCloakInfo(uint client, uint distance)
 	HkFMsg(client, L"<TEXT>" + XMLText(buf) + L"</TEXT>");
 }
 
+void SendCloakAdminIds(uint targetClient, uint adminClient)
+{
+	wchar_t buf[50];
+	_snwprintf(buf, sizeof(buf), L" AddCloakAdminId %u", adminClient);
+	HkFMsg(targetClient, L"<TEXT>" + XMLText(buf) + L"</TEXT>");
+}
+
+void BroadcastCloakAdminIds(uint adminClient)
+{
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd)) {
+		SendCloakAdminIds(pd->iOnlineID, adminClient);
+	}
+}
+
+void ClearCloakAdminIds(uint adminClient)
+{
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd)) {
+		wchar_t buf[50];
+		_snwprintf(buf, sizeof(buf), L" RemCloakAdminId %u", adminClient);
+		HkFMsg(pd->iOnlineID, L"<TEXT>" + XMLText(buf) + L"</TEXT>");
+	}
+}
+
 void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -506,6 +531,15 @@ void __stdcall PlayerLaunch_AFTER(unsigned int iShip, unsigned int iClientID)
 	if (!cship)
 	{
 		return;
+	}
+
+	ClearCloakAdminIds(iClientID);
+	for (auto& cloakData : mapClientsCloak)
+	{
+		if (cloakData.second.bAdmin)
+		{
+			SendCloakAdminIds(iClientID, cloakData.first);
+		}
 	}
 
 	jumpingPlayers[iClientID] = 0;
@@ -1006,12 +1040,14 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		switch (cloakData->second.iState)
 		{
 		case STATE_CLOAK_OFF:
+			BroadcastCloakAdminIds(iClientID);
 			cloakData->second.bAdmin = true;
 			InitCloakInfo(iClientID, 0);
 			SetState(iClientID, iShip, STATE_CLOAK_ON);
 			break;
 		case STATE_CLOAK_CHARGING:
 		case STATE_CLOAK_ON:
+			ClearCloakAdminIds(iClientID);
 			cloakData->second.bAdmin = true;
 			InitCloakInfo(iClientID, 0);
 			SetState(iClientID, iShip, STATE_CLOAK_OFF);

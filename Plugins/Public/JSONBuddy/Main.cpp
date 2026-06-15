@@ -183,6 +183,8 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 	}
 	else if (IS_CMD("kick"))
 	{
+		RIGHT_CHECK(RIGHT_KICK);
+
 		// Find by charname. If this fails, fall through to default behaviour.
 		CAccount *acc = HkGetAccountByCharname(cmds->ArgCharname(1));
 		if (!acc)

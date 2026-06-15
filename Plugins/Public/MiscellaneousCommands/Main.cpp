@@ -140,7 +140,7 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 	{
 		if (group)
 		{
-			PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));
+			PrintUserCmdText(iClientID, L"Your group(%u) size: %u (%u in space)", group->GetID(), group->GetMemberCount(), GetMembersInSpace(group));
 		}
 		else
 		{
@@ -157,10 +157,10 @@ bool UserCmd_GroupSize(uint iClientID, const wstring& wscCmd, const wstring& wsc
 		return false;
 	}
 
-	PrintUserCmdText(iClientID, L"Target group size: %u (%u in space)", targetGroupIter->second->GetMemberCount(), GetMembersInSpace(targetGroupIter->second));
+	PrintUserCmdText(iClientID, L"Target group(%u) size: %u (%u in space)", targetGroupIter->second->GetID(), targetGroupIter->second->GetMemberCount(), GetMembersInSpace(targetGroupIter->second));
 	if (group && group->GetID() != targetGroupId)
 	{
-		PrintUserCmdText(iClientID, L"Your group size: %u (%u in space)", group->GetMemberCount(), GetMembersInSpace(group));
+		PrintUserCmdText(iClientID, L"Your group(%u) size: %u (%u in space)", group->GetID(), group->GetMemberCount(), GetMembersInSpace(group));
 	}
 	return true;
 }

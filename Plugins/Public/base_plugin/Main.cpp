@@ -2178,7 +2178,7 @@ PlayerBase* player_launch_base = nullptr;
 bool __stdcall LaunchPosHook(uint space_obj, const CEqObj& p1, const Vector& pos, const Matrix& rot, int dockId, uint client)
 {
 	returncode = DEFAULT_RETURNCODE;
-	if (player_launch_base)
+	if (player_launch_base && player_launch_base->baseCSolar)
 	{
 		unprocessedLaunchComms[client] = { dockId, player_launch_base->baseCSolar };
 	}
@@ -2237,6 +2237,11 @@ static uint GetShipMessageId(uint shipId)
 
 static void SendLaunchWellWishes(uint shipId, LaunchComm& launchComm)
 {
+	if (!launchComm.solar)
+	{
+		return;
+	}
+
 	try
 	{
 		int vecSize = launchComm.solar->solararch()->dockInfo.size();

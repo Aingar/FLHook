@@ -52,7 +52,7 @@ void RearmamentModule::Rearm(uint clientId)
     float sumToPay = 0;
     for (auto& item : itemCart.cartItems)
     {
-        if (item.iCount == 0)
+        if (item.iCount == 0 || blockedRestockGoods.count(item.iArchID))
         {
             continue;
         }
@@ -89,15 +89,14 @@ void RearmamentModule::Rearm(uint clientId)
             PrintUserCmdText(clientId, L"ERR Insufficient munition supplies!");
             return;
         }
+        actualToPay *= base->rearmamentCostPerCredit;
     }
     else
     {
         actualToPay = itemCart.creditCost;
     }
 
-    int creditCost = static_cast<int>(base->rearmamentCostPerCredit * actualToPay);
-
-    if (Players[clientId].iInspectCash < creditCost)
+    if (Players[clientId].iInspectCash < actualToPay)
     {
         PrintUserCmdText(clientId, L"ERR Insufficient money for a resupply!");
         return;
@@ -108,7 +107,7 @@ void RearmamentModule::Rearm(uint clientId)
     Server.LocationExit(location, clientId);
     Server.BaseExit(baseId, clientId);
 
-    int cost = static_cast<int>(creditCost);
+    int cost = static_cast<int>(actualToPay);
     pub::Player::AdjustCash(clientId, -cost);
     base->ChangeMoney(cost);
 
@@ -127,7 +126,7 @@ void RearmamentModule::Rearm(uint clientId)
 
     for (auto& item : itemCart.cartItems)
     {
-        if (item.iCount == 0)
+        if (item.iCount == 0 || blockedRestockGoods.count(item.iArchID))
         {
             continue;
         }

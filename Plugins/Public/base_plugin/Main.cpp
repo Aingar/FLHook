@@ -195,6 +195,8 @@ unordered_map<uint, float> siegeWeaponryMap;
 
 vector<pair<uint, float>> rearmamentCreditRatio;
 
+unordered_set<uint> blockedRestockGoods;
+
 int GetRandom(int min, int max)
 {
 	return (rand() % (max - min)) + min;
@@ -1095,6 +1097,11 @@ void LoadSettingsActual()
 							creditValue = gi->fPrice;
 						}
 						rearmamentCreditRatio.push_back({ goodId, creditValue });
+					}
+					else if (ini.is_value("banned_rearmament_ammo"))
+					{
+						ValidateItem(ini.get_value_string(0));
+						blockedRestockGoods.insert(CreateID(ini.get_value_string(0)));
 					}
 				}
 			}

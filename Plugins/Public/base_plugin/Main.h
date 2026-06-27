@@ -902,3 +902,4 @@ namespace EquipmentUtilities
 
 extern bool shutdownBasePlugin;
 extern int no_show_protection_window;
+extern unordered_set<uint> blockedRestockGoods;

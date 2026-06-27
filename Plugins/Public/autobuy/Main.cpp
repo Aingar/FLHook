@@ -1254,7 +1254,7 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 		auto commData = reinterpret_cast<CUSTOM_AUTOBUY_CARTITEMS*>(data);
 		float creditCost;
 
-		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize, false, creditCost);
+		commData->cartItems = GetShoppingCart(commData->clientId, commData->remHoldSize, true, creditCost);
 		commData->creditCost = creditCost;
 	}
 }

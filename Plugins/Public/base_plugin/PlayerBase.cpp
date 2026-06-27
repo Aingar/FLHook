@@ -616,6 +616,7 @@ void PlayerBase::Load()
 					{
 						MARKET_ITEM mi;
 						UINT good = ini.get_value_int(0);
+						mi.archId = good;
 						mi.quantity = ini.get_value_int(1);
 						mi.price = ini.get_value_int(2);
 						mi.min_stock = ini.get_value_int(3);
@@ -1075,14 +1076,24 @@ bool PlayerBase::AddMarketGood(uint good, uint quantity)
 		return false;
 	}
 
-	market_items[good].quantity += quantity;
-	const GoodInfo* gi = GoodList::find_by_id(good);
-
-	if (gi->iType == GOODINFO_TYPE_SHIP)
+	auto marketIter = market_items.find(good);
+	if(marketIter == market_items.end())
 	{
-		market_items[good].shipHullId = gi->iHullGoodID;
+		const GoodInfo* gi = GoodList::find_by_id(good);
+
+		MARKET_ITEM& item = market_items[good];
+		if (gi->iType == GOODINFO_TYPE_SHIP)
+		{
+			item.shipHullId = gi->iHullGoodID;
+		}
+		item.archId = good;
+		SendMarketGoodUpdated(this, good, item);
 	}
-	SendMarketGoodUpdated(this, good, market_items[good]);
+	else
+	{
+		marketIter->second.quantity += quantity;
+		SendMarketGoodUpdated(this, good, marketIter->second);
+	}
 	return true;
 }
 

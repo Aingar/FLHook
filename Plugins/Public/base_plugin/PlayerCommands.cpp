@@ -2652,7 +2652,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"ERROR: invalid commodity nickname");
 				return;
 			}
-			base->market_items[goodId];
+			base->AddMarketGood(goodId, 0);
 			ShowShopStatus(client, base, L"", 0);
 			PrintUserCmdText(client, L"OK");
 		}

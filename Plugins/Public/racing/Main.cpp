@@ -35,6 +35,7 @@ struct RaceArch
 	uint startingSystem;
 	vector<Transform> startingPositions;
 	float waypointDistance = 70.f;
+	vector<uint> racingWeaponPlatforms;
 };
 
 enum class RaceType
@@ -183,8 +184,18 @@ void UnfreezePlayer(uint client)
 	SendCommand(client, L" Unfreeze cruise");
 }
 
-void ToggleRaceMode(uint client, bool newState, float waypointDistance)
+void ToggleRaceMode(uint client, RaceArch* race, bool newState, float waypointDistance)
 {
+	if (race)
+	{
+		for (auto platform : race->racingWeaponPlatforms)
+		{
+			int obj_rep;
+			pub::SpaceObj::GetRep(platform, obj_rep);
+			pub::Reputation::SetAttitude(obj_rep, Players[client].iReputation, newState ? -1.f : 1.f);
+		}
+	}
+
 	wchar_t buf[50];
 	_snwprintf(buf, sizeof(buf), L" RaceMode %s %0.0f", newState ? L"on" : L"off", waypointDistance);
 	SendCommand(client, buf);
@@ -428,7 +439,7 @@ void BeamPlayers(shared_ptr<Race> race, float freezeTime)
 			FreezePlayer(player, freezeTime, true);
 		}
 
-		ToggleRaceMode(player, true, race->raceArch->waypointDistance);
+		ToggleRaceMode(player, race->raceArch, true, race->raceArch->waypointDistance);
 	}
 }
 
@@ -524,7 +535,7 @@ void DisbandRace(shared_ptr<Race> race, bool abruptEnd)
 				PrintUserCmdText(participant.first, L"Race disbanded, $%d credits refunded", poolEntry);
 				pub::Player::AdjustCash(participant.first, poolEntry);
 			}
-			ToggleRaceMode(participant.first, false, 510.f);
+			ToggleRaceMode(participant.first, race->raceArch, false, 510.f);
 			racersMap.erase(participant.first);
 		}
 	}
@@ -568,7 +579,7 @@ void DisqualifyPlayer(uint client)
 
 	auto& race = racer->race;
 
-	ToggleRaceMode(client, false, 510.f);
+	ToggleRaceMode(client, race->raceArch, false, 510.f);
 	racersMap.erase(client);
 
 	for (auto& participant : race->participants)
@@ -829,6 +840,10 @@ void LoadSettings()
 				Transform startingPos = { startPos, startObjRot };
 				race.startingPositions.push_back(startingPos);
 			}
+			else if (ini.is_value("weapon_platform"))
+			{
+				race.racingWeaponPlatforms.push_back(CreateID(ini.get_value_string()));
+			}
 		}
 		if (race.startingPositions.empty())
 		{
@@ -1027,7 +1042,7 @@ bool UserCmd_RaceWithdraw(uint clientID, const wstring& cmd, const wstring& para
 	{
 		racer->race->participants.erase(racer->clientId);
 	}
-	ToggleRaceMode(clientID, false, 510.f);
+	ToggleRaceMode(clientID, race->raceArch, false, 510.f);
 	racersMap.erase(regIter);
 
 
@@ -1417,7 +1432,7 @@ void ProcessWaypoint(shared_ptr<Racer> racer, mstime currTime)
 			ProcessWinner(racer, false, currTime);
 		}
 
-		ToggleRaceMode(racer->clientId, false, 510.f);
+		ToggleRaceMode(racer->clientId, racer->race->raceArch, false, 510.f);
 		return;
 	}
 
@@ -1552,7 +1567,7 @@ void Timer()
 		{
 			if (--client->second)
 			{
-				ToggleRaceMode(client->first, false, 510.f);
+				ToggleRaceMode(client->first, nullptr, false, 510.f);
 				client++;
 				continue;
 			}

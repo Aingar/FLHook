@@ -585,6 +585,7 @@ IMPORT void ReadProcMem(void *pAddress, void *pMem, int iSize);
 IMPORT wstring ToLower(const wstring &wscStr);
 IMPORT string ToLower(const string &scStr);
 IMPORT int ToInt(const wstring &wscStr);
+EXPORT void ErrorBox(string title, string text, ...);
 IMPORT void ConPrint(wstring wscText, ...);
 IMPORT wstring XMLText(const wstring &wscText);
 IMPORT wstring GetParam(const wstring &wscLine, wchar_t wcSplitChar, uint iPos);

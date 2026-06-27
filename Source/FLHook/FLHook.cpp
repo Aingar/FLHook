@@ -3,6 +3,7 @@
 #include "hook.h"
 #include "CConsole.h"
 #include "CSocket.h"
+#include <cstdarg>
 
 st6_malloc_t st6_malloc;
 st6_free_t st6_free;
@@ -711,6 +712,17 @@ bool ProcessSocketCmd(SOCKET_CONNECTION *sc, wstring wscCmd)
 /**************************************************************************************************************
 write text to console
 **************************************************************************************************************/
+
+void ErrorBox(string title, string text, ...)
+{
+	char wszBuf[1024 * 8] = "";
+	va_list marker;
+	va_start(marker, text);
+
+	_vsnprintf(wszBuf, (sizeof(wszBuf) / 2) - 1, text.c_str(), marker);
+
+	MessageBoxA(nullptr, wszBuf, title.c_str(), MB_OK | MB_ICONERROR);
+}
 
 void ConPrint(wstring wscText, ...)
 {

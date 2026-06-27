@@ -112,6 +112,7 @@ EXPORT wstring ToLower(const wstring &wscStr);
 EXPORT string ToLower(const string &scStr);
 EXPORT int ToInt(const wstring &wscStr);
 EXPORT uint ToUInt(const wstring &wscStr);
+EXPORT void ErrorBox(string title, string text, ...);
 EXPORT void ConPrint(wstring wscText, ...);
 EXPORT void AddPerfTimer(const char* szString, ...);
 EXPORT void PrintCorePerf();

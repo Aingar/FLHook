@@ -347,6 +347,7 @@ void LoadSettings()
 						if (!data.bAnswer)
 						{
 							ConPrint(L"EVENT: for event %s flhook start base %s not found!\n", stows(te.sEventName).c_str(), stows(ini.get_value_string()).c_str());
+							ErrorBox("Event Config Error", "EVENT: for event %s flhook start base %s not found!\n", te.sEventName.c_str(), ini.get_value_string());
 						}
 						te.pobStartBase.insert(id);
 					}
@@ -360,6 +361,7 @@ void LoadSettings()
 						if (!data.bAnswer)
 						{
 							ConPrint(L"EVENT: for event %s flhook end base %s not found!\n", stows(te.sEventName).c_str(), stows(ini.get_value_string()).c_str());
+							ErrorBox("Event Config Error", "EVENT: for event %s flhook end base %s not found!\n", te.sEventName.c_str(), ini.get_value_string());
 						}
 						te.pobEndBase.insert(id);
 					}
@@ -405,6 +407,8 @@ void LoadSettings()
 							ConPrint(L"ERROR: Event %s has invalid pricing for base %s commmodity %s allowing infinite money printing: %d %d\n",
 								stows(te.sEventName).c_str(), stows(ini.get_value_string(0)).c_str(), stows(ini.get_value_string(1)).c_str(), iSellPrice, static_cast<int>(fPrice));
 							ConPrint(L"Increasing right-side price to match the left: %u\n", iSellPrice);
+							ErrorBox("Event Config Error", "ERROR: Event %s has invalid pricing for base %s commmodity %s allowing infinite money printing: %d %d\n",
+								te.sEventName.c_str(), ini.get_value_string(0), ini.get_value_string(1), iSellPrice, static_cast<int>(fPrice));
 							fPrice = static_cast<float>(iSellPrice);
 						}
 
@@ -426,6 +430,7 @@ void LoadSettings()
 				if (invalidData)
 				{
 					ConPrint(L"ERROR Event '%ls' failed to load due to nickname '%ls'\n", stows(te.sEventName).c_str(), stows(invalidDataReason).c_str());
+					ErrorBox("ERROR Event '%s' failed to load due to nickname '%ls'\n", te.sEventName.c_str(), invalidDataReason.c_str());
 				}
 				else
 				{
@@ -613,6 +618,7 @@ void LoadSettings()
 				if (invalidData)
 				{
 					ConPrint(L"ERROR Event '%ls' failed to load due to nickname '%ls'\n", stows(ce.sEventName).c_str(), stows(invalidDataReason).c_str());
+					ErrorBox("ERROR Event '%s' failed to load due to nickname '%ls'\n", ce.sEventName.c_str(), invalidDataReason.c_str());
 				}
 				else
 				{

@@ -471,7 +471,13 @@ namespace RepFixer
 			return false;
 		}
 
-		auto loweredCaseName = ToLower(GetParamToEnd(wscParam, ' ', 0));
+		auto loweredCaseName = Trim(ToLower(GetParamToEnd(wscParam, ' ', 0)));
+		if (loweredCaseName.empty())
+		{
+			PrintUserCmdText(client, L"You've provided no Faction name");
+			return false;
+		}
+
 		uint searchedAffil = 0;
 		for (auto& faction : factionNameMap)
 		{

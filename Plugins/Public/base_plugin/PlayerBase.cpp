@@ -1087,6 +1087,7 @@ bool PlayerBase::AddMarketGood(uint good, uint quantity)
 			item.shipHullId = gi->iHullGoodID;
 		}
 		item.archId = good;
+		item.quantity = quantity;
 		SendMarketGoodUpdated(this, good, item);
 	}
 	else

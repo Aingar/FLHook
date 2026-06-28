@@ -130,6 +130,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Ducktales", "..\..\DiscoPri
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FLSR Plugin", "Plugins\Public\flsr_plugin\FLSR Plugin.vcxproj", "{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisableDock", "..\..\DiscoPrivate\FLHookPrivAingar\Plugins\Private\disabledock\DisableDock.vcxproj", "{A816E1AD-905D-4C24-99EF-C6876828B47B}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -323,6 +325,12 @@ Global
 		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
 		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Release|Win32.ActiveCfg = Release|Win32
 		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3}.Release|Win32.Build.0 = Release|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Debug|Win32.ActiveCfg = Debug|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Debug|Win32.Build.0 = Debug|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Release|Win32.ActiveCfg = Release|Win32
+		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -361,6 +369,7 @@ Global
 		{C7809793-1350-4C9F-A40E-2EEA101080DA} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
 		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
+		{A816E1AD-905D-4C24-99EF-C6876828B47B} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}

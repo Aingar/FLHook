@@ -427,6 +427,13 @@ void LoadSettings()
 						te.suppressStart = ini.get_value_bool(0);
 					}
 				}
+
+				if (mapTradeEvents.count(id) || mapCombatEvents.count(id))
+				{
+					invalidData = true;
+					invalidDataReason = "Event under this name already exists!";
+				}
+
 				if (invalidData)
 				{
 					ConPrint(L"ERROR Event '%ls' failed to load due to nickname '%ls'\n", stows(te.sEventName).c_str(), stows(invalidDataReason).c_str());
@@ -613,6 +620,12 @@ void LoadSettings()
 					{
 						ce.suppressStart = ini.get_value_bool(0);
 					}
+				}
+
+				if (mapTradeEvents.count(id) || mapCombatEvents.count(id))
+				{
+					invalidData = true;
+					invalidDataReason = "Event under this name already exists!";
 				}
 
 				if (invalidData)

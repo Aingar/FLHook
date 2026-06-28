@@ -409,6 +409,24 @@ namespace Message
 			wscMsg = ReplaceStr(wscMsg, L"#r", wscParam);
 		}
 
+		if (wscMsg.find(L"#f") != -1)
+		{
+		    wstring wscFaction = L"Unknown";
+		    uint iTargetClientID = clientData.uTargetClientID;
+		    if (iTargetClientID != -1 && HkIsValidClientID(iTargetClientID))
+		    {
+		        wstring wscRepGroup;
+		        if (HKHKSUCCESS(HkGetRepGroup(iTargetClientID, wscRepGroup)))
+		        {
+		            uint iGroupID = CreateID(wstos(wscRepGroup).c_str());
+		            const char* szName = pub::Reputation::GetName(iGroupID);
+		            if (szName)
+		                wscFaction = stows(szName);
+		        }
+		    }
+		    wscMsg = ReplaceStr(wscMsg, L"#f", wscFaction);
+		}
+
 		return true;
 	}
 

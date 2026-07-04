@@ -328,6 +328,7 @@ struct PLUGIN_SORTCRIT {
 				continue; \
 			if(itplugin->pFunc) { \
 				TRY_HOOK { \
+					*itplugin->ePluginReturnCode = DEFAULT_RETURNCODE; \
 					vPluginRetTemp = ((ret_type (calling_convention*) arg_types )itplugin->pFunc) args; \
 				} CATCH_HOOK({ AddLog("ERROR: Exception in plugin '%s' in %s", itplugin->sName.c_str(), __FUNCTION__);}) \
 			} else  \
@@ -357,6 +358,7 @@ struct PLUGIN_SORTCRIT {
 				continue; \
 			if(itplugin->pFunc) { \
 				TRY_HOOK { \
+					*itplugin->ePluginReturnCode = DEFAULT_RETURNCODE; \
 					((void (calling_convention*) arg_types )itplugin->pFunc) args; \
 				} CATCH_HOOK ({ AddLog("ERROR: Exception in plugin '%s' in %s", itplugin->sName.c_str(), __FUNCTION__); } ) \
 			} else  \
@@ -383,6 +385,7 @@ struct PLUGIN_SORTCRIT {
 				continue; \
 			if(itplugin->pFunc) { \
 				TRY_HOOK { \
+					*itplugin->ePluginReturnCode = DEFAULT_RETURNCODE; \
 					((void (calling_convention*) arg_types )itplugin->pFunc) args; \
 				} CATCH_HOOK({ AddLog("ERROR: Exception in plugin '%s' in %s", itplugin->sName.c_str(), __FUNCTION__); } ) \
 			} else  \

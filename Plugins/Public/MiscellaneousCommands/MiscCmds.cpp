@@ -645,7 +645,7 @@ does we try to process it.
 */
 bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
 {
-	
+	returncode = DEFAULT_RETURNCODE;
 
 	wstring wscCmdLineLower = ToLower(wscCmd);
 

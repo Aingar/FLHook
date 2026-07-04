@@ -121,10 +121,10 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="Main.cpp" />
+    <ClCompile Include="MiscCmds.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="Main.h" />
+    <ClInclude Include="MiscCmds.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Source\FLHook.vcxproj">

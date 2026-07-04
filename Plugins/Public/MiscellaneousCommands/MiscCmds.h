@@ -13,3 +13,10 @@
 #include <PluginUtilities.h>
 
 using namespace std;
+
+struct SpaceBuy
+{
+	uint goodId;
+	int amount;
+	int price;
+};

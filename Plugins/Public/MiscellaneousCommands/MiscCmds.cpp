@@ -9,7 +9,7 @@
 //Includes
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-#include "Main.h"
+#include "MiscCmds.h"
 
 // A return code to indicate to FLHook if we want the hook processing to continue.
 PLUGIN_RETURNCODE returncode;
@@ -24,11 +24,12 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	// calls load settings on FLHook startup and .rehash.
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
-		if (set_scCfgFile.length() > 0)
-			LoadSettings();
+		HkLoadStringDLLs();
+		LoadSettings();
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
+		HkUnloadStringDLLs();
 	}
 	return true;
 }
@@ -47,6 +48,8 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 // See Main.h for any struct/class defs.
 // This is just for declarations
 
+unordered_map<uint, vector<SpaceBuy>> spaceBuyData;
+float range = 2500.f;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Loading Settings
@@ -54,8 +57,53 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 
 void LoadSettings()
 {
-	returncode = DEFAULT_RETURNCODE;
-	// Reserved for future use
+	
+
+
+	// The path to the configuration file.
+	char szCurDir[MAX_PATH];
+	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+	string scPluginCfgFile = string(szCurDir) + "\\flhook_plugins\\spacebuyorder.cfg";
+
+	INI_Reader ini;
+	if (!ini.open(scPluginCfgFile.c_str(), false))
+	{
+		return;
+	}
+
+	while (ini.read_header())
+	{
+		if (!ini.is_header("space_buy_commodities"))
+		{
+			continue;
+		}
+
+		while (ini.read_value())
+		{
+			if (ini.is_value("space_buy"))
+			{
+
+				int counter = 3;
+				uint baseId = CreateID(ini.get_value_string(0));
+				vector<SpaceBuy> spaceBuyMap;
+				while (!ini.is_value_empty(counter))
+				{
+					SpaceBuy spaceBuy;
+					spaceBuy.goodId = CreateID(ini.get_value_string(counter - 2));
+					spaceBuy.amount = ini.get_value_int(counter - 1);
+					spaceBuy.price = ini.get_value_int(counter);
+					spaceBuyMap.emplace_back(spaceBuy);
+					counter += 3;
+				}
+
+				spaceBuyData[baseId] = spaceBuyMap;
+			}
+			else if (ini.is_value("range"))
+			{
+				range = ini.get_value_float(0);
+			}
+		}
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -80,6 +128,111 @@ bool CheckIsInBase(uint iClientID)
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 // /refresh - Updates the timestamps of the character file for all the ships on the account.
+
+bool UserCmd_OrderSpaceBuy(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
+{
+	auto cship = ClientInfo[iClientID].cship;
+	if (!cship)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not in space");
+		return false;
+	}
+
+	IObjRW* target = cship->get_target();
+
+	if (!target)
+	{
+		PrintUserCmdText(iClientID, L"ERR No target");
+		return false;
+	}
+
+	auto cobj = target->cobj;
+	if (!cobj || cobj->objectClass != CObject::CSOLAR_OBJECT)
+	{
+		PrintUserCmdText(iClientID, L"ERR Not a solar");
+		return false;
+	}
+
+	auto iter = spaceBuyData.find(cobj->id);
+	if (iter == spaceBuyData.end() || iter->second.empty())
+	{
+		PrintUserCmdText(iClientID, L"ERR Target not providing services of this kind");
+		return false;
+	}
+
+	if (HkDistance3D(cobj->vPos, cship->vPos) > 3000.f)
+	{
+		PrintUserCmdText(iClientID, L"ERR Out of range");
+		return false;
+	}
+
+	auto param = GetParam(wscParam, ' ', 0);
+	if (!param.empty())
+	{
+		uint nr = ToInt(param);
+		if (!nr || nr > iter->second.size())
+		{
+			PrintUserCmdText(iClientID, L"ERR Invalid selection");
+			return false;
+		}
+
+		auto& buy = iter->second[nr-1];
+
+		if (Players[iClientID].iInspectCash < buy.price)
+		{
+			PrintUserCmdText(iClientID, L"ERR Not enough money");
+			return false;
+		}
+
+		auto equipArch = Archetype::GetEquipment(Good2Arch(buy.goodId));
+		if (!equipArch)
+		{
+			PrintUserCmdText(iClientID, L"ERR Invalid configuration, contact administration");
+			return false;
+		}
+
+		int spaceTaken = cship->get_space_for_cargo_type(equipArch);
+		if (spaceTaken < buy.amount)
+		{
+			PrintUserCmdText(iClientID, L"ERR Insufficient Cargo Space");
+			static uint insufficientCargoHold = CreateID("insufficient_cargo_space");
+			pub::Player::SendNNMessage(iClientID, insufficientCargoHold);
+			return false;
+		}
+
+		pub::Player::AddCargo(iClientID, buy.goodId, buy.amount, 1.0, false);
+		pub::Player::AdjustCash(iClientID, -buy.price);
+		static uint ui_buy_commodity = CreateID("ui_buy_commodity");
+		pub::Audio::PlaySoundEffect(iClientID, ui_buy_commodity);
+
+		PrintUserCmdText(iClientID, L"OK Good(s) purchased");
+		return true;
+	}
+
+	PrintUserCmdText(iClientID, L"Available goods:");
+	int counter = 0;
+	for (auto& buy : iter->second)
+	{
+		auto gi = GoodList::find_by_id(buy.goodId);
+		if (!gi)
+		{
+			continue;
+		}
+
+		auto name = HkGetWStringFromIDS(gi->iIDSName);
+
+		if (buy.amount == 1)
+		{
+			PrintUserCmdText(iClientID, L"%d: %s - $%d", ++counter, name.c_str(), buy.price);
+		}
+		else
+		{
+			PrintUserCmdText(iClientID, L"%d: %s (x%d) - $%d", ++counter, name.c_str(), buy.amount, buy.price);
+		}
+	}
+
+	return true;
+}
 
 bool UserCmd_ForceAbortMission(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
@@ -454,7 +607,7 @@ bool UserCmd_PirateIFF(uint iClientID, const wstring& wscCmd, const wstring& wsc
 /** Clean up when a client disconnects */
 void ClearClientInfo(uint iClientID)
 {
-	returncode = DEFAULT_RETURNCODE;
+	
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -482,6 +635,7 @@ USERCMD UserCmds[] =
 	{ L"/gs", UserCmd_GroupSize, L""},
 	{ L"/fleetcomp", UserCmd_FleetComp, L""},
 	{ L"/fc", UserCmd_FleetComp, L""},
+	{ L"/order", UserCmd_OrderSpaceBuy, L""},
 };
 
 /**
@@ -491,7 +645,7 @@ does we try to process it.
 */
 bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
 {
-	returncode = DEFAULT_RETURNCODE;
+	
 
 	wstring wscCmdLineLower = ToLower(wscCmd);
 

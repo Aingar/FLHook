@@ -132,6 +132,8 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FLSR Plugin", "Plugins\Publ
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DisableDock", "..\..\DiscoPrivate\FLHookPrivAingar\Plugins\Private\disabledock\DisableDock.vcxproj", "{A816E1AD-905D-4C24-99EF-C6876828B47B}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "DamageBalancer", "Plugins\Public\damagebalancer\damagebalancer.vcxproj", "{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Win32 = Debug|Win32
@@ -331,6 +333,12 @@ Global
 		{A816E1AD-905D-4C24-99EF-C6876828B47B}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
 		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Release|Win32.ActiveCfg = Release|Win32
 		{A816E1AD-905D-4C24-99EF-C6876828B47B}.Release|Win32.Build.0 = Release|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.Debug|Win32.ActiveCfg = Debug|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.Debug|Win32.Build.0 = Debug|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.DebugDONOTUSE|Win32.ActiveCfg = Debug|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.DebugDONOTUSE|Win32.Build.0 = Debug|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.Release|Win32.ActiveCfg = Release|Win32
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE}.Release|Win32.Build.0 = Release|Win32
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -370,6 +378,7 @@ Global
 		{FA235C53-8951-4ACD-9B3A-C6ED49BFE531} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
 		{AA1BCB95-1F75-4D89-B11F-EA8B098222F3} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 		{A816E1AD-905D-4C24-99EF-C6876828B47B} = {BBFB4FED-5E58-48D4-AAA4-D2BACA26CDD4}
+		{D2DC3C80-E76F-4639-B753-FE6B8A644FBE} = {F77D3998-A163-4D75-95E3-88C3C6B2DCFA}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {393C1DF6-B2DC-4FF2-8100-36DD1F304E10}
@@ -400,6 +409,7 @@ Global
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{b92d0fa9-093b-4db0-9afd-3af72bd87aae}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c26da99f-10f7-421b-ac31-eed1623e7b04}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{c7809793-1350-4c9f-a40e-2eea101080da}*SharedItemsImports = 4
+		Plugins\PluginUtilities\PluginUtilities.vcxitems*{d2dc3c80-e76f-4639-b753-fe6b8a644fbe}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{db39d53f-d243-4c8c-95cd-2101cca7d20f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7008ba7-4f75-4af7-b25c-3a9a3287a88f}*SharedItemsImports = 4
 		Plugins\PluginUtilities\PluginUtilities.vcxitems*{e7eb5672-90cc-4b88-a8a0-55bb6bbae7f7}*SharedItemsImports = 4

@@ -2070,7 +2070,7 @@ namespace HkIServerImpl
 	**************************************************************************************************************/
 
 	/// Called when ship starts jump gate/hole acceleration but before system switch out.
-	void __stdcall SPRequestInvincibility(unsigned int iShip, bool p2, enum InvincibilityReason p3, unsigned int iClientID)
+	void __stdcall SPRequestInvincibility(unsigned int iShip, bool p2, InvincibilityReason p3, unsigned int iClientID)
 	{
 		ISERVER_LOG();
 		ISERVER_LOGARG_UI(iShip);

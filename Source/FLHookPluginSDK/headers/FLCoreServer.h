@@ -341,6 +341,7 @@ public:
 	unsigned char data[OBJECT_DATA_SIZE];
 };
 
+enum InvincibilityReason;
 struct IMPORT IServerImpl
 {
 	IServerImpl(struct IServerImpl const &);
@@ -418,7 +419,7 @@ struct IMPORT IServerImpl
 	virtual void SPMunitionCollision(struct SSPMunitionCollisionInfo const &, unsigned int);
 	virtual void SPObjCollision(struct SSPObjCollisionInfo const &, unsigned int);
 	virtual void SPObjUpdate(struct SSPObjUpdateInfo const &, unsigned int);
-	virtual void SPRequestInvincibility(unsigned int, bool, enum InvincibilityReason, unsigned int);
+	virtual void SPRequestInvincibility(unsigned int, bool, InvincibilityReason, unsigned int);
 	virtual void SPRequestUseItem(struct SSPUseItem const &, unsigned int);
 	virtual void SPScanCargo(unsigned int const &, unsigned int const &, unsigned int);
 	virtual void SaveGame(struct CHARACTER_ID const &, unsigned short const *, unsigned int);

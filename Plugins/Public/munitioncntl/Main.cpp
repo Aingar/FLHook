@@ -1333,7 +1333,7 @@ void Timer()
 				HookClient->Send_FLPACKET_SERVER_DAMAGEOBJECT(iter->client, cship->id, dmg);
 			}
 
-			for (auto sid : *sids)
+			for (auto& sid : *sids)
 			{
 				eq.sID = sid.first;
 				eq.bActivate = sid.second;
@@ -1350,7 +1350,7 @@ void Timer()
 			iter++;
 		}
 	}
-	for (auto iter : eqSids)
+	for (auto& iter : eqSids)
 	{
 		delete iter.second;
 	}

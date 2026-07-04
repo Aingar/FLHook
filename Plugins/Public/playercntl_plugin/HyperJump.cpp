@@ -857,7 +857,7 @@ namespace HyperJump
 				const Universe::ISystem* systemData = Universe::get_system(allowed_sys);
 				sysList += L" [" + HkGetWStringFromIDS(systemData->strid_name) + L"]";
 			}
-			PrintUserCmdText(iClientID, sysList.c_str());
+			PrintUserCmdText(iClientID, L"%s", sysList.c_str());
 		}
 
 	}

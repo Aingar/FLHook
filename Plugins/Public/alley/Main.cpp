@@ -440,7 +440,7 @@ bool  UserCmd_MarkObjGroup(uint iClientID, const wstring &wscCmd, const wstring 
 		if (iClientShip == targetShip)
 			continue;
 
-		PrintUserCmdText(gm->iClientID, wscMsg2.c_str());
+		PrintUserCmdText(gm->iClientID, L"%s", wscMsg2.c_str());
 		HkChangeIDSString(gm->iClientID, 526999, wscMsg);
 
 		//Register all players informed of the mark

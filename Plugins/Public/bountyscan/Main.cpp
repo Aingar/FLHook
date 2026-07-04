@@ -112,8 +112,8 @@ bool UserCmd_BountyScan(uint iClientID, const wstring &wscCmd, const wstring &ws
 	wstring wscTargetCharName = (const wchar_t*)Players.GetActiveCharacterName(iClientIDTarget);
 
 	// output
-	PrintUserCmdText(iClientID, wscTargetCharName + L" - " + wscTargetShip);
-	PrintUserCmdText(iClientID, wscTargetID + L" - " + wscTargetAffiliation);
+	PrintUserCmdText(iClientID, L"%s", wscTargetCharName + L" - " + wscTargetShip);
+	PrintUserCmdText(iClientID, L"%s", wscTargetID + L" - " + wscTargetAffiliation);
 	PrintUserCmdText(iClientID, L"System - " + systemName);
 	PrintUserCmdText(iClientID, L"Finished bounty scan at " + GetTimeString(false));
 	return true;

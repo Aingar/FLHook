@@ -237,7 +237,7 @@ static bool IsDockingAllowed(uint iShip, uint iDockTarget, uint iClientID)
 			L"Access Denied! Docking request rejected. Your papers are no good.",
 			L"Access Denied! You can't dock here. Your reputation stinks."
 		};
-		PrintUserCmdText(iClientID, wscMsg[rand() % 3]);
+		PrintUserCmdText(iClientID, L"%s", wscMsg[rand() % 3]);
 		return false;
 	}
 
@@ -562,7 +562,7 @@ namespace HkIServerImpl
 			wscMsg = ReplaceStr(wscMsg, L"%time", GetTimeString(set_bLocalTime));
 			wscMsg = ReplaceStr(wscMsg, L"%player", (const wchar_t*)Players.GetActiveCharacterName(iClientID));
 			PrintLocalMsgPos(wscMsg, Players[iClientID].iSystemID, ClientInfo[iClientID].dockPosition, set_iDockBroadcastRange);
-			PrintUserCmdText(iClientID, wscMsg.c_str());
+			PrintUserCmdText(iClientID, L"%s", wscMsg.c_str());
 		}
 
 		IPBans::BaseEnter(iBaseID, iClientID);

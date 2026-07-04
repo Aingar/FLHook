@@ -3361,28 +3361,28 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		if (!archtype.length())
 		{
 			PrintUserCmdText(client, L"ERR No archtype");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 		wstring loadout = cmd->ArgStr(2);
 		if (!loadout.length())
 		{
 			PrintUserCmdText(client, L"ERR No loadout");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 		wstring type = cmd->ArgStr(3);
 		if (!type.length())
 		{
 			PrintUserCmdText(client, L"ERR No type");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 		wstring destobject = cmd->ArgStr(4);
 		if (!destobject.length())
 		{
 			PrintUserCmdText(client, L"ERR No destination object");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 
@@ -3390,7 +3390,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		if (!theaffiliation.length())
 		{
 			PrintUserCmdText(client, L"ERR No affiliation");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 
@@ -3399,7 +3399,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		if (!basename.length())
 		{
 			PrintUserCmdText(client, L"ERR No name entered");
-			PrintUserCmdText(client, usage.c_str());
+			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
 

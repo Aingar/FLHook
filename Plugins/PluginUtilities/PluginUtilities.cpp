@@ -1192,7 +1192,7 @@ void PrintLocalMsgPos(const wstring& msg, uint system, Vector& pos, float distan
 			continue;
 		}
 
-		PrintUserCmdText(pPD->iOnlineID, msg.c_str());
+		PrintUserCmdText(pPD->iOnlineID, L"%s", msg.c_str());
 	}
 }
 

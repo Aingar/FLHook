@@ -1491,7 +1491,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"Modules available in %ls category:", cmd.c_str());
 				for (const auto& infoString : modules_recipe_map[*moduleList])
 				{
-					PrintUserCmdText(client, infoString);
+					PrintUserCmdText(client, L"%s", infoString.c_str());
 				}
 			}
 			return;
@@ -1878,7 +1878,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"Available recipes for %ls crafting list:", craftList.c_str());
 				for (wstring& infoLine : factory_recipe_map[craftList])
 				{
-					PrintUserCmdText(client, infoLine);
+					PrintUserCmdText(client, L"%s", infoLine.c_str());
 				}
 			}
 			return;

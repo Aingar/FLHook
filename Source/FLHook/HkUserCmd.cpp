@@ -618,7 +618,7 @@ void UserCmd_Help(uint iClientID, const wstring &wscParam)
 
 	if (singleCommandHelp) {
 		set_wscUserCmdStyle = boldHelp;
-		PrintUserCmdText(iClientID, wscParam);
+		PrintUserCmdText(iClientID, L"%s", wscParam.c_str());
 		set_wscUserCmdStyle = normal;
 
 		if (!UserCmd_Process(iClientID, wscParam))

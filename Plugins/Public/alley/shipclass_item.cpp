@@ -395,7 +395,7 @@ void SCI::CheckOwned(unsigned int iClientID)
 	//else = found
 	else
 	{
-		PrintUserCmdText(iClientID, owned.find(iClientID)->second.c_str());
+		PrintUserCmdText(iClientID, L"%s", owned.find(iClientID)->second.c_str());
 		MoveClient(iClientID, player_last_base[iClientID]);
 		//PrintUserCmdText(iClientID, L"DEBUG: Owned. Sending you back to base.");
 		owned.erase(iClientID);
@@ -477,7 +477,7 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		auto iter = idData.affiliationBlacklist.find(affiliation);
 		if (iter != idData.affiliationBlacklist.end() && iter->second.exceptions.count(dockTarget))
 		{
-			PrintUserCmdText(iClientID, iter->second.message.c_str());
+			PrintUserCmdText(iClientID, L"%s", iter->second.message.c_str());
 			return false;
 		}
 	}
@@ -488,7 +488,7 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		auto iter = idData.affiliationWhitelist.find(affiliation);
 		if (iter != idData.affiliationWhitelist.end() && !iter->second.exceptions.count(dockTarget))
 		{
-			PrintUserCmdText(iClientID, iter->second.message.c_str());
+			PrintUserCmdText(iClientID, L"%s", iter->second.message.c_str());
 			return false;
 		}
 	}
@@ -554,7 +554,7 @@ bool SCI::CanDock(uint iDockTarget, uint iClientID)
 		{
 			if (!idData.dockMessage.empty())
 			{
-				PrintUserCmdText(iClientID, idData.dockMessage.c_str());
+				PrintUserCmdText(iClientID, L"%s", idData.dockMessage.c_str());
 			}
 			return false;
 		}

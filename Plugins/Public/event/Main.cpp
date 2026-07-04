@@ -1837,6 +1837,26 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	}
 	else if (IS_CMD("eventobjective"))
 	{
+		wstring charName = cmd->ArgCharname(1);
+		if (!charName.empty())
+		{
+			uint client = HkGetClientIdFromCharname(charName);
+			if (client && client != -1)
+			{
+				wstring objectiveText = cmd->ArgStrToEnd(2);
+
+				FmtStr caption(0, 0);
+				caption.begin_mad_lib(526999);
+				caption.end_mad_lib();
+				HkChangeIDSString(client, 526999, objectiveText);
+				pub::Player::DisplayMissionMessage(client, caption, MissionMessageType::MissionMessageType_Type2, true);
+				cmd->Print(L"Objective sent to %s: '%s'\n", charName.c_str(), objectiveText.c_str());
+
+				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+				return true;
+			}
+		}
+
 		uint groupId = cmd->ArgUInt(1);
 
 		auto playerGroup = CPlayerGroup::FromGroupID(groupId);

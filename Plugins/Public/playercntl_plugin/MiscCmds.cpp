@@ -189,46 +189,7 @@ namespace MiscCmds
 	/** A command to help remove any affiliation that you might have */
 	bool MiscCmds::UserCmd_DropRep(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 	{
-		HK_ERROR err;
-
-		wstring wscCharname = (const wchar_t*)Players.GetActiveCharacterName(iClientID);
-
-		wstring wscRepGroupNick;
-		if (HkFLIniGet(wscCharname, L"rep_group", wscRepGroupNick) != HKE_OK || wscRepGroupNick.length() == 0)
-		{
-			PrintUserCmdText(iClientID, L"ERR No affiliation");
-			return true;
-		}
-
-		// Read the current number of credits for the player
-		// and check that the character has enough cash.
-		int iCash = 0;
-		if ((err = HkGetCash(wscCharname, iCash)) != HKE_OK)
-		{
-			PrintUserCmdText(iClientID, L"ERR %s", HkErrGetText(err).c_str());
-			return true;
-		}
-		if (set_iRepdropCost > 0 && iCash < set_iRepdropCost)
-		{
-			PrintUserCmdText(iClientID, L"ERR Insufficient credits");
-			return true;
-		}
-
-		float fValue = 0.0f;
-		if ((err = HkGetRep(wscCharname, wscRepGroupNick, fValue)) != HKE_OK)
-		{
-			PrintUserCmdText(iClientID, L"ERR %s", HkErrGetText(err).c_str());
-			return true;
-		}
-
-		HkSetRep(wscCharname, wscRepGroupNick, 0.599f);
-		PrintUserCmdText(iClientID, L"OK Reputation dropped, logout for change to take effect.");
-
-		// Remove cash if we're charging for it.
-		if (set_iRepdropCost > 0)
-		{
-			HkAddCash(wscCharname, 0 - set_iRepdropCost);
-		}
+		PrintUserCmdText(iClientID, L"INFO: droprep command is no longer available, use /setiff command to change your affiliation instead");
 
 		return true;
 	}

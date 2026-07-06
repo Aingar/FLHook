@@ -367,26 +367,26 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 
     if (connInfo[client].clientState == TRANSFER)
     {
+        connInfo[client].clientState = NONE;
         if (!ValidateCargo(client))
         {
             PrintUserCmdText(client, STR_INFO2);
             return;
         }
 
-        connInfo[client].clientState = NONE;
         MoveClient(client, set_iTargetBaseID);
         return;
     }
 
     if (connInfo[client].clientState == RETURN)
     {
+        connInfo[client].clientState = NONE;
         if (!ValidateCargo(client))
         {
             PrintUserCmdText(client, STR_INFO2);
             return;
         }
 
-        connInfo[client].clientState = NONE;
         unsigned int returnPoint = connInfo[client].retBase;
 
         if (!returnPoint)

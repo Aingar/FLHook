@@ -300,7 +300,7 @@ void PrintRaceStatus(shared_ptr<Race> race)
 			str << L" - DISQUALIFIED";
 		}
 
-		NotifyPlayers(race, 0, str.str());
+		NotifyPlayers(race, 0, L"%s", str.str());
 	}
 
 }

@@ -1110,7 +1110,7 @@ namespace Message
 		if (iter->second.uTargetClientID != -1 && HkIsValidClientID(iter->second.uTargetClientID))
 			wscTargetCharname = (const wchar_t*)Players.GetActiveCharacterName(iter->second.uTargetClientID);
 
-		PrintUserCmdText(iClientID, L"OK sender=" + wscSenderCharname + L" target=" + wscTargetCharname);
+		PrintUserCmdText(iClientID, L"%s", L"OK sender=" + wscSenderCharname + L" target=" + wscTargetCharname);
 		return true;
 	}
 

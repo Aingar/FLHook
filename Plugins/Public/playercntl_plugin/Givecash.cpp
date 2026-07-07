@@ -489,7 +489,7 @@ namespace GiveCash
 		else
 		{
 			IniWriteW(scFile, "Settings", "Code", wscCode);
-			PrintUserCmdText(iClientID, L"OK Account code set to " + wscCode);
+			PrintUserCmdText(iClientID, L"%s", L"OK Account code set to " + wscCode);
 		}
 		return true;
 	}
@@ -539,7 +539,7 @@ namespace GiveCash
 			return true;
 		}
 
-		PrintUserCmdText(iClientID, L"OK Account " + wscTargetCharname + L" has " + ToMoneyStr(iCash) + L" credits");
+		PrintUserCmdText(iClientID, L"%s", L"OK Account " + wscTargetCharname + L" has " + ToMoneyStr(iCash) + L" credits");
 		return true;
 	}
 

@@ -828,7 +828,7 @@ namespace Rename
 		else
 		{
 			IniWriteW(scFile, "Settings", "Code", wscCode);
-			PrintUserCmdText(iClientID, L"%s", L"OK Movechar code set to " + wscCode);
+			PrintUserCmdText(iClientID, L"%s", L"OK Movechar code set to %s", wscCode.c_str());
 		}
 		return true;
 	}

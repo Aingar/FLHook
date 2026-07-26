@@ -59,6 +59,11 @@ PlayerBase::~PlayerBase()
 			delete module;
 		}
 	}
+
+	if (archetype && archetype->isjump && !destObject)
+	{
+		pub::SpaceObj::Destroy(CreateID(wstos(basename + L"_return").c_str()), DestroyType::VANISH);
+	}
 }
 
 bool PlayerBase::IsDefaultAffiliation()
@@ -87,15 +92,7 @@ void PlayerBase::Spawn()
 
 	if (archetype && archetype->isjump)
 	{
-		if (destObject)
-		{
-			auto obj = HkGetInspectObj(destObject);
-			if (obj)
-			{
-				destSystem = obj->cobj->system;
-				HyperJump::InitJumpHole(base, destSystem, destObject);
-			}
-		}
+		HyperJump::InitJumpHole(this, destSystem, destObject);
 	}
 }
 
@@ -574,6 +571,7 @@ void PlayerBase::Load()
 					else if (ini.is_value("infoname"))
 					{
 						ini_get_wstring(ini, basename);
+						basename = Trim(basename);
 					}
 					else if (ini.is_value("infocardpara"))
 					{
@@ -943,7 +941,7 @@ void PlayerBase::Save()
 
 		Vector vRot = MatrixToEuler(rotation);
 		fprintf(file, "rot = %0.0f, %0.0f, %0.0f\n", vRot.x, vRot.y, vRot.z);
-		if (archetype && archetype->ishubreturn)
+		if (archetype && archetype->isjump && !destObject)
 		{
 			const auto& destSystemInfo = Universe::get_system(destSystem);
 			fprintf(file, "destsystem = %s\n", destSystemInfo->nickname.value);

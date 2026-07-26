@@ -88,7 +88,6 @@ struct ARCHTYPE_STRUCT
 	int shipclassrestriction;
 	unordered_set<uint> allowedshipclasses;
 	bool isjump = false;
-	bool ishubreturn = false;
 	bool display = false;
 	bool hasShield = false;
 	bool siegeGunOnly = false;
@@ -587,7 +586,7 @@ public:
 	uint destSystem;
 
 	//the destination vector
-	uint destObject;
+	uint destObject = 0;
 	string destObjectName;
 
 	//return hub JHs only, destination data
@@ -682,8 +681,9 @@ namespace ExportData
 namespace HyperJump
 {
 	void InitJumpHole(uint baseId, uint destSystem, uint destObject);
+	void InitJumpHole(PlayerBase* pb, uint destSystem, uint destObject);
 	void LoadHyperspaceHubConfig(const string& configPath);
-	void InitJumpHoleConfig();
+	void ValidateJumpHoleConfig();
 	void CheckForUnchartedDisconnect(uint client, uint ship);
 	void ClearClientInfo(uint iClientID);
 	void CharacterSelect_AFTER(uint client);

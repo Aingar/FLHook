@@ -1139,10 +1139,6 @@ void LoadSettingsActual()
 					{
 						archstruct.isjump = ini.get_value_int(0);
 					}
-					else if (ini.is_value("ishubreturn"))
-					{
-						archstruct.ishubreturn = ini.get_value_int(0);
-					}
 					else if (ini.is_value("shipclassrestriction"))
 					{
 						archstruct.shipclassrestriction = ini.get_value_int(0);
@@ -1274,7 +1270,7 @@ void LoadSettingsActual()
 		}
 	}
 
-	HyperJump::InitJumpHoleConfig();
+	HyperJump::ValidateJumpHoleConfig();
 
 	// Load and sync player state
 	struct PlayerData* pd = 0;
@@ -3140,11 +3136,12 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 
 			uint client = HkGetClientIdFromCharname(cmd->GetAdminName());
 		wstring baseName = cmd->ArgStrToEnd(1);
+		string baseNameStr = wstos(baseName);
 
 		PlayerBase* base = nullptr;
 		for (auto& i : player_bases)
 		{
-			if (i.second->basename == baseName)
+			if (i.second->basename == baseName || i.second->path == baseNameStr)
 			{
 				base = i.second;
 				break;
@@ -3438,7 +3435,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		newbase->Spawn();
 		newbase->Save();
 
-		HyperJump::InitJumpHoleConfig();
+		HyperJump::ValidateJumpHoleConfig();
 
 		PrintUserCmdText(client, L"OK: Solar deployed");
 		//PrintUserCmdText(client, L"Default administration password is %s", password.c_str());

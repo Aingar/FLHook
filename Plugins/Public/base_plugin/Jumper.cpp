@@ -84,27 +84,35 @@ void HyperJump::CheckForUnchartedDisconnect(uint client, uint ship)
 	}
 }
 
-void HyperJump::InitJumpHole(uint baseId, uint destSystem, uint destObject)
+bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJumpHoleLoadout, uint exitJumpHoleArchetype, bool twoWay = false)
 {
-	StarSystem* dunno;
-	IObjRW* inspect;
-	GetShipInspect(baseId, inspect, dunno);
-	CSolar* solar = (CSolar*)inspect->cobject();
+	static bool init = false;
+	static string cfg_filehyperspaceHub;
+	if (!init)
+	{
+		init = true;
+		char szCurDir[MAX_PATH];
+		GetCurrentDirectory(sizeof(szCurDir), szCurDir);
+		cfg_filehyperspaceHub = (string)szCurDir + R"(\flhook_plugins\base_hyperspacehub.cfg)";
+	}
+	static uint exitJumpHoleArchetypeDef = CreateID(IniGetS(cfg_filehyperspaceHub, "general", "exitJumpHoleArchetype", "jumphole_noentry").c_str());
+	static uint exitJumpHoleLoadoutDef = CreateID(IniGetS(cfg_filehyperspaceHub, "general", "exitJumpHoleLoadout", "wormhole_unstable").c_str());
 
-	solar->jumpDestSystem = destSystem;
-	solar->jumpDestObj = destObject;
-}
+	if (!exitJumpHoleLoadout)
+	{
+		exitJumpHoleLoadout = exitJumpHoleLoadoutDef;
+	}
+	if (!exitJumpHoleArchetype)
+	{
+		exitJumpHoleArchetype = exitJumpHoleArchetypeDef;
+	}
 
-bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJumpHoleLoadout, uint exitJumpHoleArchetype)
-{
-	static uint counter = 0;
 	auto systemInfo = Universe::get_system(coords.system);
 	if (!systemInfo)
 	{
 		return false;
 	}
-	string baseNickName = "custom_return_hole_exit_" + (string)systemInfo->nickname.value + itos(counter);
-	counter++;
+	string baseNickName = wstos(pb->basename) + "_return";
 
 	if (pub::SpaceObj::ExistsAndAlive(CreateID(baseNickName.c_str())) == 0) //0 means alive, -2 dead
 	{
@@ -116,13 +124,21 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	info.pos = coords.pos;
 	info.ori = coords.ornt;
 	info.nickname = baseNickName;
-	info.loadoutArchetypeId = exitJumpHoleLoadout;
-	info.solarArchetypeId = exitJumpHoleArchetype;
+	if (twoWay)
+	{
+		info.loadoutArchetypeId = CreateID(pb->baseloadout.c_str());
+		info.solarArchetypeId = pb->baseCSolar->archetype->iArchID;
+	}
+	else
+	{
+		info.loadoutArchetypeId = exitJumpHoleLoadout;
+		info.solarArchetypeId = exitJumpHoleArchetype;
+	}
 	info.solar_ids = 267199;
 
 	CreateSolar::CreateSolarCallout(&info);
 
-	pb->destObject = info.iSpaceObjId;
+	//pb->destObject = info.iSpaceObjId;
 	pb->destObjectName = baseNickName;
 	pb->destSystem = coords.system;
 
@@ -132,7 +148,7 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	CSolar* solar = (CSolar*)inspect->cobject();
 
 	solar->jumpDestSystem = pb->destSystem;
-	solar->jumpDestObj = pb->destObject;
+	solar->jumpDestObj = info.iSpaceObjId;
 
 	pb->baseCSolar->jumpDestSystem = solar->system;
 	pb->baseCSolar->jumpDestObj = solar->id;
@@ -141,16 +157,37 @@ bool SetupCustomExitHole(PlayerBase* pb, SYSTEMJUMPCOORDS& coords, uint exitJump
 	return true;
 }
 
-void HyperJump::InitJumpHoleConfig()
+void HyperJump::InitJumpHole(uint baseId, uint destSystem, uint destObject)
 {
-	char szCurDir[MAX_PATH];
-	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
-	string cfg_filehyperspaceHub = (string)szCurDir + R"(\flhook_plugins\base_hyperspacehub.cfg)";
-	uint exitJumpHoleArchetype = CreateID("jumphole_noentry");
-	uint exitJumpHoleLoadout = CreateID("wormhole_unstable");
-	exitJumpHoleArchetype = CreateID(IniGetS(cfg_filehyperspaceHub, "general", "exitJumpHoleArchetype", "jumphole_noentry").c_str());
-	exitJumpHoleLoadout = CreateID(IniGetS(cfg_filehyperspaceHub, "general", "exitJumpHoleLoadout", "wormhole_unstable").c_str());
+	StarSystem* dunno;
+	IObjRW* inspect;
+	GetShipInspect(baseId, inspect, dunno);
+	CSolar* solar = (CSolar*)inspect->cobject();
 
+	solar->jumpDestSystem = destSystem;
+	solar->jumpDestObj = destObject;
+}
+
+void HyperJump::InitJumpHole(PlayerBase* pb, uint destSystem, uint destObject)
+{
+	if (!pb->destObject)
+	{
+		SYSTEMJUMPCOORDS coords = { pb->destSystem, pb->destPos, pb->destOri };
+		SetupCustomExitHole(pb, coords, 0, 0);
+		return;
+	}
+
+	StarSystem* dunno;
+	IObjRW* inspect;
+	GetShipInspect(pb->base, inspect, dunno);
+	CSolar* solar = (CSolar*)inspect->cobject();
+
+	solar->jumpDestSystem = destSystem;
+	solar->jumpDestObj = destObject;
+}
+
+void HyperJump::ValidateJumpHoleConfig()
+{
 	vector<PlayerBase*> invalidJumpHoles;
 	for (auto& base : player_bases)
 	{
@@ -161,18 +198,11 @@ void HyperJump::InitJumpHoleConfig()
 			continue;
 		}
 
-		if (pbase->archetype->ishubreturn)
+		if (pbase->destObject && pub::SpaceObj::ExistsAndAlive(pbase->destObject) != 0)
 		{
-			SYSTEMJUMPCOORDS coords = { pbase->destSystem, pbase->destPos, pbase->destOri };
-			completedLoad = SetupCustomExitHole(pbase, coords, exitJumpHoleLoadout, exitJumpHoleArchetype);
+			invalidJumpHoles.emplace_back(pbase);
 		}
-		else if (pub::SpaceObj::ExistsAndAlive(pbase->destObject) == 0) // method returns 0 for alive, -2 otherwise
-		{
-			completedLoad = true;
-			InitJumpHole(base.first, pbase->destSystem, pbase->destObject);
-		}
-
-		if (!completedLoad)
+		else if (!pbase->destObject && pub::SpaceObj::ExistsAndAlive(CreateID(wstos(pbase->basename + L"_return").c_str())) != 0)
 		{
 			invalidJumpHoles.emplace_back(pbase);
 		}

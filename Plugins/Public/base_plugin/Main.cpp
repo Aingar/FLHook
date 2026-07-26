@@ -3625,7 +3625,10 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		else
 		{
 			PrintUserCmdText(client, L"ERR Not in a player base!");
+			return true;
 		}
+
+		HkAddAdminCmdLog("", string("baselogin ") + base->nickname, 0);
 
 		return true;
 	}

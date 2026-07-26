@@ -1063,7 +1063,7 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 		else
 		{
 			if (set_bLogAdminCmds)
-				HkAddAdminCmdLog("%s: %s", wstos(wscAdminName).c_str(), wstos(wscCmdStr).c_str());
+				HkAddAdminCmdLog(wstos(wscAdminName), wstos(wscCmdStr), HkGetClientIdFromCharname(GetAdminName()));
 		}
 
 		bID = false;
@@ -1310,7 +1310,7 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 		else
 		{
 			if (set_bLogAdminCmds)
-				HkAddAdminCmdLog("exception");
+				HkAddAdminCmdLog("", "exception", 0);
 		}
 		Print(L"ERR exception occured\n");
 	}

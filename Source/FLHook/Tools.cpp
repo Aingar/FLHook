@@ -304,6 +304,20 @@ wstring ReplaceStr(const wstring &wscSource, const wstring &wscSearchFor, const 
 	return wscResult;
 }
 
+string ReplaceStr(const string& wscSource, const string& wscSearchFor, const string& wscReplaceWith)
+{
+	uint lPos, sPos = 0;
+
+	string wscResult = wscSource;
+	while ((lPos = (uint)wscResult.find(wscSearchFor, sPos)) != -1)
+	{
+		wscResult.replace(lPos, wscSearchFor.length(), wscReplaceWith);
+		sPos = lPos + wscReplaceWith.length();
+	}
+
+	return wscResult;
+}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 mstime timeInMS()

@@ -1,4 +1,5 @@
 #include "hook.h"
+#include <sstream>
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -250,18 +251,51 @@ static void AddLog(FILE* fLog, const char *szString, ...)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-void HkAddAdminCmdLog(const char *szString, ...)
+void HkAddAdminCmdLog(const string& adminName, const string& msg, uint clientId)
 {
-	char szBufString[1024];
-	va_list marker;
-	va_start(marker, szString);
-	_vsnprintf(szBufString, sizeof(szBufString) - 1, szString, marker);
+	if (msg.empty())
+	{
+		return;
+	}
 
 	FILE *f = fopen(("./flhook_logs/flhook_admincmds.log"), "at");
 	if (!f)
 		return;
 
-	AddLog(f, "%s", szBufString);
+	stringstream ss;
+
+	ss << adminName;
+	if (clientId && clientId != -1)
+	{
+		ss << " (" << Universe::get_system(Players[clientId].iSystemID)->nickname.value;
+		if (Players[clientId].iBaseID)
+		{
+			ss << ", " << Universe::get_base(Players[clientId].iBaseID)->cNickname;
+		}
+		else if (ClientInfo[clientId].cship)
+		{
+			ss << ", " << (int)ClientInfo[clientId].cship->vPos.x << ", " << (int)ClientInfo[clientId].cship->vPos.y << ", " << (int)ClientInfo[clientId].cship->vPos.z;
+		}
+		ss << ")";
+	}
+
+	string msgCopy = msg;
+
+	if (clientId && clientId != -1 && (msgCopy.find(" >t") == msgCopy.size() - 3 || msgCopy.find(" >t ") != string::npos) && ClientInfo[clientId].cship)
+	{
+		auto target = ClientInfo[clientId].cship->get_target();
+		if (target && target->is_player())
+		{
+			uint targetClient = target->cobj->ownerPlayer;
+			string targetName = wstos(wstring((const wchar_t*)Players.GetActiveCharacterName(targetClient)));
+
+			msgCopy = ReplaceStr(msgCopy, ">t", targetName);
+		}
+	}
+
+	ss << " " << msgCopy;
+
+	AddLog(f, "%s", ss.str().c_str());
 
 	fclose(f);
 	return;

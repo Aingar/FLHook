@@ -542,7 +542,7 @@ IMPORT bool HkAddCheaterLog(const wstring &wscCharname, const wstring &wscReason
 IMPORT bool HkAddCheaterLog(const uint &iClientID, const wstring &wscReason);
 IMPORT bool HkAddKickLog(uint iClientID, wstring wscReason, ...);
 IMPORT bool HkAddConnectLog(uint iClientID, wstring wscReason, ...);
-IMPORT void HkAddAdminCmdLog(const char *szString, ...);
+IMPORT void HkAddAdminCmdLog(const string&, const string&, uint clientId);
 IMPORT void HkAddUserCmdLog(const char *szString, ...);
 IMPORT void HkAddPerfTimerLog(const char *szString, ...);
 
@@ -590,6 +590,7 @@ IMPORT void ConPrint(wstring wscText, ...);
 IMPORT wstring XMLText(const wstring &wscText);
 IMPORT wstring GetParam(const wstring &wscLine, wchar_t wcSplitChar, uint iPos);
 IMPORT wstring ReplaceStr(const wstring &wscSource, const wstring &wscSearchFor, const wstring &wscReplaceWith);
+IMPORT string ReplaceStr(const string& wscSource, const string& wscSearchFor, const string& wscReplaceWith);
 IMPORT void IniDelSection(const string &scFile, const string &scApp);
 IMPORT void IniWriteW(const string &scFile, const string &scApp, const string &scKey, const wstring &wscValue);
 IMPORT wstring IniGetWS(const string &scFile, const string &scApp, const string &scKey, const wstring &wscDefault);

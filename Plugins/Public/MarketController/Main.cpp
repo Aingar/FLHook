@@ -334,6 +334,10 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 	LoadMarketGoodsIni("..\\data\\equipment\\market_commodities.ini", mapOldBaseMarket);
 	LoadMarketGoodsIni("..\\data\\equipment\\market_misc.ini", mapOldBaseMarket);
 
+	WORD* version = (WORD*)(0x431508);
+
+	int versionTotal = version[0] + 100 * version[1] + 1000 * version[2] + 10000 * version[3];
+
 	// Read the prices.ini and add all goods in [Price] section in this file to the market.
 	// Before this remove all goods in the [NoSale] section from the market.
 	INI_Reader ini;
@@ -374,6 +378,11 @@ void LoadMarketOverrides(map<uint, market_map_t>* eventMarketData)
 				{
 					if (ini.is_value("MarketGood"))
 					{
+						if (!ini.is_value_empty(5) && ini.get_value_int(5) < versionTotal)
+						{
+							ConPrint(L"WARN: Outdated prices.cfg line found for version %d, skipping\n", ini.get_value_int(5));
+							continue;
+						}
 						uint baseId = CreateID(ini.get_value_string(0));
 						uint iGoodID = CreateID(ini.get_value_string(1));
 						uint iSellPrice = ini.get_value_int(2);

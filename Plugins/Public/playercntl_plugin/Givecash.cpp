@@ -489,7 +489,7 @@ namespace GiveCash
 		else
 		{
 			IniWriteW(scFile, "Settings", "Code", wscCode);
-			PrintUserCmdText(iClientID, L"%s", L"OK Account code set to %s", wscCode.c_str());
+			PrintUserCmdText(iClientID, L"OK Account code set to %s", wscCode.c_str());
 		}
 		return true;
 	}

@@ -153,13 +153,21 @@ namespace Rename
 		}
 	}
 
+	wstring charList = LR"(!"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~)";
 	bool CreateNewCharacter(struct SCreateCharacterInfo const& si, unsigned int iClientID)
 	{
+		wstring wscCharname(si.wszCharname);
+
+		auto allowedCharIter = find_if(wscCharname.begin(), wscCharname.end(), [](wchar_t c) {return charList.find(c) == wstring::npos;});
+		if (allowedCharIter != wscCharname.end())
+		{
+			return true;
+		}
+
 		if (set_bCharnameTags)
 		{
 			// If this ship name starts with a restricted tag then the ship may only be
 			// created using rename and the faction password
-			wstring wscCharname(si.wszCharname);
 			for (auto i = mapTagToPassword.begin(); i != mapTagToPassword.end(); ++i)
 			{
 				if (WstrInsensitiveFind(wscCharname, i->first) == 0 && i->second.rename_password != L"open")
@@ -828,7 +836,7 @@ namespace Rename
 		else
 		{
 			IniWriteW(scFile, "Settings", "Code", wscCode);
-			PrintUserCmdText(iClientID, L"%s", L"OK Movechar code set to %s", wscCode.c_str());
+			PrintUserCmdText(iClientID, L"OK Movechar code set to %s", wscCode.c_str());
 		}
 		return true;
 	}

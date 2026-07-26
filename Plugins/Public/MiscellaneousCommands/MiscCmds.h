@@ -20,3 +20,10 @@ struct SpaceBuy
 	int amount;
 	int price;
 };
+
+struct SpaceBuyData
+{
+	uint affiliation;
+	float minRep = 0.0f;
+	vector<SpaceBuy> goods;
+};

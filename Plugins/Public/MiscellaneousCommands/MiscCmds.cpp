@@ -25,7 +25,6 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	if (fdwReason == DLL_PROCESS_ATTACH)
 	{
 		HkLoadStringDLLs();
-		LoadSettings();
 	}
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
@@ -48,7 +47,7 @@ EXPORT PLUGIN_RETURNCODE Get_PluginReturnCode()
 // See Main.h for any struct/class defs.
 // This is just for declarations
 
-unordered_map<uint, vector<SpaceBuy>> spaceBuyData;
+unordered_map<uint, SpaceBuyData> spaceBuyData;
 float range = 2500.f;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -57,8 +56,6 @@ float range = 2500.f;
 
 void LoadSettings()
 {
-	
-
 
 	// The path to the configuration file.
 	char szCurDir[MAX_PATH];
@@ -85,18 +82,23 @@ void LoadSettings()
 
 				int counter = 3;
 				uint baseId = CreateID(ini.get_value_string(0));
-				vector<SpaceBuy> spaceBuyMap;
+				SpaceBuyData& spaceBuyMap = spaceBuyData[baseId];
+				pub::Reputation::GetAffiliation(baseId, spaceBuyMap.affiliation);
+				float minRep = ini.get_value_float(1);
+				if (minRep != 0.0f)
+				{
+					spaceBuyMap.minRep = minRep;
+					++counter;
+				}
 				while (!ini.is_value_empty(counter))
 				{
 					SpaceBuy spaceBuy;
 					spaceBuy.goodId = CreateID(ini.get_value_string(counter - 2));
 					spaceBuy.amount = ini.get_value_int(counter - 1);
 					spaceBuy.price = ini.get_value_int(counter);
-					spaceBuyMap.emplace_back(spaceBuy);
+					spaceBuyMap.goods.emplace_back(spaceBuy);
 					counter += 3;
 				}
-
-				spaceBuyData[baseId] = spaceBuyMap;
 			}
 			else if (ini.is_value("range"))
 			{
@@ -121,6 +123,29 @@ bool CheckIsInBase(uint iClientID)
 	}
 
 	return true;
+}
+
+void __stdcall SetTarget(unsigned int client, struct XSetTarget const& target)
+{
+	if (target.iSlot || !(target.iSpaceID & 0x80000000))
+	{
+		return;
+	}
+
+	auto iter = spaceBuyData.find(target.iSpaceID);
+	if (iter == spaceBuyData.end())
+	{
+		return;
+	}
+
+	int rep = Players[client].iReputation;
+	float attitude;
+	pub::Reputation::GetGroupFeelingsTowards(rep, iter->second.affiliation, attitude);
+
+	if (attitude > iter->second.minRep)
+	{
+		PrintUserCmdText(client, L"Special commodities can be purchased here. Use /order command for more info.");
+	}
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -154,7 +179,7 @@ bool UserCmd_OrderSpaceBuy(uint iClientID, const wstring& wscCmd, const wstring&
 	}
 
 	auto iter = spaceBuyData.find(cobj->id);
-	if (iter == spaceBuyData.end() || iter->second.empty())
+	if (iter == spaceBuyData.end() || iter->second.goods.empty())
 	{
 		PrintUserCmdText(iClientID, L"ERR Target not providing services of this kind");
 		return false;
@@ -166,17 +191,28 @@ bool UserCmd_OrderSpaceBuy(uint iClientID, const wstring& wscCmd, const wstring&
 		return false;
 	}
 
+	int rep = Players[iClientID].iReputation;
+	float attitude;
+	pub::Reputation::GetGroupFeelingsTowards(rep, iter->second.affiliation, attitude);
+
+	if (attitude < iter->second.minRep)
+	{
+		PrintUserCmdText(iClientID, L"ERR Insufficient reputation");
+		return false;
+	}
+
+	auto& goodsList = iter->second.goods;
 	auto param = GetParam(wscParam, ' ', 0);
 	if (!param.empty())
 	{
 		uint nr = ToInt(param);
-		if (!nr || nr > iter->second.size())
+		if (!nr || nr > goodsList.size())
 		{
 			PrintUserCmdText(iClientID, L"ERR Invalid selection");
 			return false;
 		}
 
-		auto& buy = iter->second[nr-1];
+		auto& buy = goodsList[nr - 1];
 
 		if (Players[iClientID].iInspectCash < buy.price)
 		{
@@ -211,7 +247,7 @@ bool UserCmd_OrderSpaceBuy(uint iClientID, const wstring& wscCmd, const wstring&
 
 	PrintUserCmdText(iClientID, L"Available goods:");
 	int counter = 0;
-	for (auto& buy : iter->second)
+	for (auto& buy : goodsList)
 	{
 		auto gi = GoodList::find_by_id(buy.goodId);
 		if (!gi)
@@ -549,7 +585,7 @@ struct RepGroup
 st6::map<uint, RepGroup>* repMap = (st6::map<uint, RepGroup>*)0x64018C4;
 
 // /frelancer - gives the user a freelancer IFF
-bool UserCmd_FreelancerIFF(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
+bool UserCmd_FreelancerIFF(uint iClientID, const wstring& wscCmd, const wstring& wscParam, const wchar_t* usage)
 {
 
 	if (!CheckIsInBase(iClientID))
@@ -587,7 +623,7 @@ bool UserCmd_PirateIFF(uint iClientID, const wstring& wscCmd, const wstring& wsc
 	pub::Reputation::SetAffiliation(playerVibe, fcAffil);
 
 	auto vibe = repMap->find(playerVibe);
-	
+
 	float rep = 0;
 	Reputation::Vibe::GetGroupFeelingsTowards(playerVibe, fcAffil, rep);
 	if (vibe == repMap->end() || vibe->second.affil != fcAffil || rep < 0.9f)
@@ -607,20 +643,20 @@ bool UserCmd_PirateIFF(uint iClientID, const wstring& wscCmd, const wstring& wsc
 /** Clean up when a client disconnects */
 void ClearClientInfo(uint iClientID)
 {
-	
+
 }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //Client command processing
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-typedef bool(*_UserCmdProc)(uint, const wstring &, const wstring &, const wchar_t*);
+typedef bool(*_UserCmdProc)(uint, const wstring&, const wstring&, const wchar_t*);
 
 struct USERCMD
 {
-	wchar_t *wszCmd;
+	wchar_t* wszCmd;
 	_UserCmdProc proc;
-	wchar_t *usage;
+	wchar_t* usage;
 };
 
 USERCMD UserCmds[] =
@@ -643,7 +679,7 @@ This function is called by FLHook when a user types a chat string. We look at th
 string they've typed and see if it starts with one of the above commands. If it
 does we try to process it.
 */
-bool UserCmd_Process(uint iClientID, const wstring &wscCmd)
+bool UserCmd_Process(uint iClientID, const wstring& wscCmd)
 {
 	returncode = DEFAULT_RETURNCODE;
 
@@ -692,9 +728,10 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->bMayUnload = true;
 	p_PI->ePluginReturnCode = &returncode;
 
-	//p_PI->lstHooks.emplace_back(reinterpret_cast<FARPROC*>(&LoadSettings), PLUGIN_LoadSettings, 0);
+	p_PI->lstHooks.emplace_back(reinterpret_cast<FARPROC*>(&LoadSettings), PLUGIN_LoadSettings, 0);
 	p_PI->lstHooks.emplace_back(reinterpret_cast<FARPROC*>(&ClearClientInfo), PLUGIN_ClearClientInfo, 0);
 	p_PI->lstHooks.emplace_back(reinterpret_cast<FARPROC*>(&UserCmd_Process), PLUGIN_UserCmd_Process, 0);
+	p_PI->lstHooks.emplace_back(reinterpret_cast<FARPROC*>(&SetTarget), PLUGIN_HkIServerImpl_SetTarget, 0);
 
 	return p_PI;
 }

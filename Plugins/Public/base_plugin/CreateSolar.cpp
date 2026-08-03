@@ -108,6 +108,15 @@ void CreateSolar::SpawnSolar(unsigned int& spaceID, pub::SpaceObj::SolarInfo con
 	{
 		CSolar* solar = (CSolar*)inspect->cobject();
 
+		if (solar->archetype->iArchType & (JumpGate | JumpHole | DestructibleDepot))
+		{
+			st6::map<uint, Reputation::ReputationEntry>* repMap = (st6::map<uint, Reputation::ReputationEntry>*)0x64018C4;
+			auto iter = repMap->find(solar->repVibe);
+			if (iter != repMap->end())
+			{
+				iter->second.affliation = -1;
+			}
+		}
 		// for every player in the same system, send solar creation packet
 		struct SOLAR_STRUCT
 		{

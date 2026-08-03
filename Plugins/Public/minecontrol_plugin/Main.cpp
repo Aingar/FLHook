@@ -1088,8 +1088,7 @@ void __stdcall BaseEnter(uint base, uint iClientID)
     {
         return;
     }
-    if (clientInfo->second.deployedContainerId
-        && mapMiningContainers[clientInfo->second.deployedContainerId].systemId != Players[iClientID].iSystemID)
+    if (clientInfo->second.deployedContainerId)
     {
         DestroyContainer(iClientID);
     }
@@ -1097,6 +1096,7 @@ void __stdcall BaseEnter(uint base, uint iClientID)
 
 void PlayerLaunch_AFTER(uint shipID, uint clientID)
 {
+    DestroyContainer(clientID);
     mapClients.erase(clientID);
 }
 

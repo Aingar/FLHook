@@ -775,18 +775,6 @@ void CCmds::CmdUnpausePlugin(const wstring &wscPlugin)
 		PrintError();
 }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-void CCmds::CmdRehash()
-{
-	RIGHT_CHECK(RIGHT_SETTINGS);
-
-	LoadSettings();
-	CALL_PLUGINS_NORET(PLUGIN_LoadSettings, , (), ());
-
-	HookRehashed();
-	Print(L"OK\n");
-}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -886,7 +874,6 @@ void CCmds::CmdHelp()
 		L"unloadplugin <plugin shortname>\n"
 		L"pauseplugin <plugin shortname>\n"
 		L"unpauseplugin <plugin shortname>\n"
-		L"rehash\n"
 		;
 
 	Print(L"%s", wszHelpMsg);
@@ -1265,9 +1252,6 @@ void CCmds::ExecuteCommandString(const wstring &wscCmdStr)
 			}
 			else if (IS_CMD("unpauseplugin")) {
 				CmdUnpausePlugin(ArgStrToEnd(1));
-			}
-			else if (IS_CMD("rehash")) {
-				CmdRehash();
 			}
 			else if (IS_CMD("help")) {
 				CmdHelp();

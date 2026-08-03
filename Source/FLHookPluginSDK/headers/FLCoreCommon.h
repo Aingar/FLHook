@@ -493,7 +493,7 @@ namespace Archetype
 		/*  1x4 */ uint vtable;
 		/*  2x4 */ uint iArchID;
 		/*  3x4 */ char* szName;
-		/*  4x4 */ AClassType iArchType;
+		/*  4x4 */ ObjectType iArchType;
 		/*  5x4 */ uint iIdsName;
 		/*  6x4 */ uint iIdsInfo;
 		/*  7x4 */ float fHitPoints;
@@ -6505,7 +6505,22 @@ public:
 
 namespace Reputation
 {
-	struct Relation;
+	struct Relation
+	{
+		unsigned hash;
+		float reputation;
+	};
+
+	struct ReputationEntry
+	{
+		unsigned affliation;
+		unsigned dunno;
+		unsigned clientId;
+		unsigned dunno2[14];
+		wchar_t name[24];
+		unsigned rank;
+		st6::vector<Reputation::Relation> reputations;
+	};
 
 	namespace Vibe
 	{

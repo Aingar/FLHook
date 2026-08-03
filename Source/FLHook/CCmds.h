@@ -103,7 +103,6 @@ public:
 	void CmdSetAdmin(const wstring &wscCharname, const wstring &wscRights);
 	void CmdGetAdmin(const wstring &wscCharname);
 	void CmdDelAdmin(const wstring &wscCharname);
-	void CmdRehash();
 	void CmdSetPerfTimer(int time);
 	void CmdSetHookPerfTimer(string hookName, int time);
 	void CmdDumpCorePerfTimers(int time);

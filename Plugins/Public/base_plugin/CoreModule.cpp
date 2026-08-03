@@ -483,7 +483,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 
 	base->SpaceObjDamaged(space_obj, attacking_space_obj, incoming_damage);
 
-	if (base->base_health <= incoming_damage)
+	if (base->base_health <= incoming_damage && base->baseCSolar)
 	{
 		base->base_health = base->baseCSolar->hitPoints;
 	}

@@ -96,18 +96,20 @@ void PlayerBase::Spawn()
 	}
 }
 
-PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(PlayerBase* pb, BASE_VULNERABILITY_WINDOW window, int timeOfDay, int startOffset)
+PlayerBase::BASE_VULNERABILITY_STATE IsVulnerabilityWindowActive(PlayerBase* pb, BASE_VULNERABILITY_WINDOW window, int timeOfDay)
 {
 	if ((window.start < window.end
 		&& window.start <= timeOfDay && window.end > timeOfDay)
 		|| (window.start > window.end
 			&& (window.start <= timeOfDay || window.end > timeOfDay)))
 	{
+		BASE_VULNERABILITY_WINDOW windowCopy = window;
+		windowCopy.start += no_show_protection_window;
 		if (no_show_protection_window && !pb->attacked_during_vuln_window &&
-			!((window.start < window.end
-				&& window.start+ no_show_protection_window <= timeOfDay && window.end > timeOfDay)
-				|| (window.start+ no_show_protection_window > window.end
-					&& (window.start+ no_show_protection_window <= timeOfDay || window.end > timeOfDay))))
+			((windowCopy.start < windowCopy.end
+				&& windowCopy.start <= timeOfDay && windowCopy.end > timeOfDay)
+				|| (windowCopy.start > windowCopy.end
+					&& (windowCopy.start <= timeOfDay || windowCopy.end > timeOfDay))))
 		{
 			return PlayerBase::BASE_VULNERABILITY_STATE::INVULNERABLE;
 		}
@@ -126,10 +128,10 @@ void PlayerBase::CheckVulnerabilityWindow(uint currTime)
 
 	int timeOfDay = (currTime % (3600 * 24)) / 60;
 
-	auto currVulnState = IsVulnerabilityWindowActive(this, vulnerabilityWindow1, timeOfDay, defense_platform_activation_offset);
+	auto currVulnState = IsVulnerabilityWindowActive(this, vulnerabilityWindow1, timeOfDay);
 	if (!single_vulnerability_window)
 	{
-		currVulnState = max(currVulnState, IsVulnerabilityWindowActive(this, vulnerabilityWindow1, timeOfDay, 60));
+		currVulnState = max(currVulnState, IsVulnerabilityWindowActive(this, vulnerabilityWindow2, timeOfDay));
 	}
 
 	if (currVulnState == vulnerableWindowStatus)
@@ -1062,6 +1064,11 @@ bool PlayerBase::AddMarketGood(uint good, uint quantity)
 {
 	if (quantity == 0)
 	{
+		if (market_items.count(good))
+		{
+			return true;
+		}
+		market_items[good] = MARKET_ITEM();
 		return true;
 	}
 

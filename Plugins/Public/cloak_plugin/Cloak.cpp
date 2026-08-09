@@ -475,6 +475,7 @@ static bool ProcessFuel(uint iClientID, CLOAK_INFO &info, uint iShipID)
 			currFuelUsage += fuelUsage->usageLinear * vecLength;
 			currFuelUsage += fuelUsage->usageSquare * vecLength * vecLength;
 		}
+		currFuelUsage = min(currFuelUsage, 100);
 		info.fuelUsageCounter += currFuelUsage;
 		uint totalFuelUsage = static_cast<uint>(max(info.fuelUsageCounter, 0.0f));
 		if (cargo->count >= totalFuelUsage)

@@ -16,7 +16,10 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <algorithm>
+#include <cctype>
+#include <cstdlib>
 #include <random>
+#include <vector>
 
 #include <FLHook.h>
 #include <plugin.h>
@@ -47,6 +50,25 @@ struct stWarzone {
 	uint uFaction1;
 	uint uFaction2;
 	float fMultiplier;
+};
+
+struct stManagedLootProperties {
+	string nickname;
+	float baseChance;
+	uint maximumDropNPC;
+	uint maximumDropPlayer;
+};
+
+struct stPityRecipient {
+	string accountDirectory;
+	string characterName;
+	float weight;
+};
+
+struct stAccountPityState {
+	string filePath;
+	unordered_map<uint, float> lootFailures;
+	bool dirty = false;
 };
 
 unordered_map<uint, stBountyBasePayout> mapBountyPayouts;
@@ -80,6 +102,96 @@ bool set_bDropsEnabled = true;
 int iLoadedNPCDropClasses = 0;
 void LoadSettingsNPCDrops(void);
 
+constexpr float DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE = 0.01f;
+constexpr uint DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL = 15;
+bool set_bLootDropPityEnabled = false;
+float set_fLootDropPityChanceScale = DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE;
+uint set_uLootDropPityFlushInterval = DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
+mstime lootDropPityLastFlush = 0;
+unordered_map<uint, stManagedLootProperties> mapManagedLootProperties;
+unordered_map<uint, string> mapShipArchetypeNicknames;
+unordered_map<string, stAccountPityState> mapAccountPityStates;
+uint managedLootShipId = 0;
+mstime managedLootTimestamp = 0;
+unordered_set<uint> managedLootArchetypes;
+bool lootControllerLogOpenErrorReported = false;
+void LoadSettingsLootDropPity(void);
+void FlushDirtyLootDropPityStates(void);
+
+extern "C" BOOL __cdecl PvEControllerOwnsManagedLoot(uint shipId, uint itemId)
+{
+	return set_bLootDropPityEnabled && shipId == managedLootShipId && timeInMS() - managedLootTimestamp <= 1000 && managedLootArchetypes.count(itemId);
+}
+
+#pragma comment(linker, "/EXPORT:PvEControllerOwnsManagedLoot=_PvEControllerOwnsManagedLoot")
+
+void LootControllerLog(bool forceConsole, const char* format, ...)
+{
+	char message[4096] = "";
+	va_list marker;
+	va_start(marker, format);
+	_vsnprintf(message, sizeof(message) - 1, format, marker);
+	va_end(marker);
+	message[sizeof(message) - 1] = 0;
+
+	FILE* log = fopen("./flhook_logs/lootcontroller.log", "at");
+	if (log)
+	{
+		time_t now = time(nullptr);
+		struct tm localTime;
+		localtime_s(&localTime, &now);
+		char timestamp[32];
+		strftime(timestamp, sizeof(timestamp), "%Y/%m/%d %H:%M:%S", &localTime);
+		fprintf(log, "%s %s\n", timestamp, message);
+		fclose(log);
+		lootControllerLogOpenErrorReported = false;
+	}
+	else if (!lootControllerLogOpenErrorReported)
+	{
+		lootControllerLogOpenErrorReported = true;
+		ConPrint(L"PVECONTROLLER: Could not open flhook_logs/lootcontroller.log.\n");
+	}
+
+	if (forceConsole || set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE)
+		ConPrint(L"PVECONTROLLER LOOT: %s\n", stows(message).c_str());
+}
+
+string GetActiveCharacterName(uint clientId)
+{
+	const wchar_t* characterName = reinterpret_cast<const wchar_t*>(Players.GetActiveCharacterName(clientId));
+	return characterName ? wstos(characterName) : "unknown";
+}
+
+string GetShipArchetypeNickname(uint shipArchetypeId)
+{
+	auto nickname = mapShipArchetypeNicknames.find(shipArchetypeId);
+	return nickname == mapShipArchetypeNicknames.end() ? "unknown" : nickname->second;
+}
+
+string GetSystemNickname(uint systemId)
+{
+	wstring nickname = HkGetSystemNickByID(systemId);
+	return nickname.empty() ? "unknown" : wstos(nickname);
+}
+
+string GetPityRecipientDescription(const vector<stPityRecipient>& recipients)
+{
+	if (recipients.empty())
+		return "none";
+
+	string description;
+	for (const auto& recipient : recipients)
+	{
+		char entry[512];
+		_snprintf(entry, sizeof(entry) - 1, "%s:%.3f", recipient.characterName.c_str(), recipient.weight);
+		entry[sizeof(entry) - 1] = 0;
+		if (!description.empty())
+			description += ",";
+		description += entry;
+	}
+	return description;
+}
+
 /// Load settings.
 void LoadSettings()
 {
@@ -98,6 +210,7 @@ void LoadSettings()
 	// Load settings blocks
 	LoadSettingsNPCBounties();
 	LoadSettingsNPCDrops();
+	LoadSettingsLootDropPity();
 
 	//stop NPCs from disabling thrusters when faced by the player
 	BYTE nop[] = { 0x90 ,0x90 ,0x90 };
@@ -281,6 +394,242 @@ void LoadSettingsNPCDrops()
 	ConPrint(L"PVECONTROLLER: Loaded %u NPC drops by class.\n", iLoadedNPCDropClasses);
 }
 
+bool GetLootDropPityAccountDirectory(uint clientId, string& accountDirectory)
+{
+	CAccount* account = Players.FindAccountFromClientID(clientId);
+	if (!account)
+		return false;
+
+	wstring directory;
+	if (HkGetAccountDirName(account, directory) != HKE_OK || directory.empty())
+		return false;
+
+	accountDirectory = wstos(directory);
+	return !accountDirectory.empty();
+}
+
+stAccountPityState& GetLootDropPityState(const string& accountDirectory)
+{
+	auto existing = mapAccountPityStates.find(accountDirectory);
+	if (existing != mapAccountPityStates.end())
+		return existing->second;
+
+	stAccountPityState state;
+	state.filePath = scAcctPath + accountDirectory + "\\pvecontroller.ini";
+	list<INISECTIONVALUE> values;
+	IniGetSection(state.filePath, "LootDropPity", values);
+	for (const auto& value : values)
+	{
+		float failures = static_cast<float>(atof(value.scValue.c_str()));
+		if (failures > 0.0f && isfinite(failures))
+			state.lootFailures[CreateID(value.scKey.c_str())] = failures;
+	}
+
+	return mapAccountPityStates.emplace(accountDirectory, move(state)).first->second;
+}
+
+void FlushLootDropPityState(stAccountPityState& state)
+{
+	if (!state.dirty)
+		return;
+
+	IniDelSection(state.filePath, "LootDropPity");
+	vector<pair<string, float>> values;
+	for (const auto& score : state.lootFailures)
+	{
+		auto properties = mapManagedLootProperties.find(score.first);
+		if (properties != mapManagedLootProperties.end() && score.second > 0.0f)
+			values.emplace_back(properties->second.nickname, score.second);
+	}
+	std::sort(values.begin(), values.end(), [](const pair<string, float>& left, const pair<string, float>& right) {
+		return left.first < right.first;
+	});
+	for (const auto& value : values)
+		IniWrite(state.filePath, "LootDropPity", value.first, to_string(value.second));
+
+	state.dirty = false;
+}
+
+void FlushDirtyLootDropPityStates()
+{
+	for (auto& state : mapAccountPityStates)
+		FlushLootDropPityState(state.second);
+}
+
+void LoadSettingsLootDropPity()
+{
+	FlushDirtyLootDropPityStates();
+	char currentDirectory[MAX_PATH];
+	GetCurrentDirectory(sizeof(currentDirectory), currentDirectory);
+	string currentDirectoryString = currentDirectory;
+	string pluginConfig = currentDirectoryString + "\\flhook_plugins\\pvecontroller.cfg";
+	string freelancerIniFile = currentDirectoryString + "\\freelancer.ini";
+	string gameDirectory = currentDirectoryString.substr(0, currentDirectoryString.length() - 4) + "\\DATA\\";
+
+	string enabledSetting = IniGetS(pluginConfig, "LootDropPity", "enabled", "");
+	bool enabledDefaulted = enabledSetting.empty();
+	bool enabledValid = true;
+	if (enabledDefaulted)
+	{
+		set_bLootDropPityEnabled = false;
+	}
+	else
+	{
+		char* settingEnd = nullptr;
+		long enabledValue = strtol(enabledSetting.c_str(), &settingEnd, 10);
+		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
+			settingEnd++;
+		enabledValid = settingEnd != enabledSetting.c_str() && settingEnd && !*settingEnd && (enabledValue == 0 || enabledValue == 1);
+		set_bLootDropPityEnabled = enabledValid && enabledValue == 1;
+		if (!enabledValid)
+			ConPrint(L"PVECONTROLLER: Managed loot drops disabled; invalid [LootDropPity] enabled=\"%s\".\n", stows(enabledSetting).c_str());
+	}
+	string chanceScaleSetting = IniGetS(pluginConfig, "LootDropPity", "chance_scale", "");
+	bool chanceScaleDefaulted = chanceScaleSetting.empty();
+	bool chanceScaleValid = true;
+	if (chanceScaleDefaulted)
+	{
+		set_fLootDropPityChanceScale = DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE;
+	}
+	else
+	{
+		char* settingEnd = nullptr;
+		set_fLootDropPityChanceScale = strtof(chanceScaleSetting.c_str(), &settingEnd);
+		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
+			settingEnd++;
+		chanceScaleValid = settingEnd != chanceScaleSetting.c_str() && settingEnd && !*settingEnd && isfinite(set_fLootDropPityChanceScale) && set_fLootDropPityChanceScale >= 0.0f;
+		if (!chanceScaleValid)
+		{
+			set_bLootDropPityEnabled = false;
+			set_fLootDropPityChanceScale = DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE;
+			ConPrint(L"PVECONTROLLER: Managed loot drops disabled; invalid [LootDropPity] chance_scale=\"%s\".\n", stows(chanceScaleSetting).c_str());
+		}
+	}
+	string flushIntervalSetting = IniGetS(pluginConfig, "LootDropPity", "flush_interval", "");
+	bool flushIntervalDefaulted = flushIntervalSetting.empty();
+	bool flushIntervalValid = true;
+	if (flushIntervalDefaulted)
+	{
+		set_uLootDropPityFlushInterval = DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
+	}
+	else
+	{
+		char* settingEnd = nullptr;
+		long flushIntervalValue = strtol(flushIntervalSetting.c_str(), &settingEnd, 10);
+		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
+			settingEnd++;
+		flushIntervalValid = settingEnd != flushIntervalSetting.c_str() && settingEnd && !*settingEnd && flushIntervalValue > 0;
+		set_uLootDropPityFlushInterval = flushIntervalValid ? static_cast<uint>(flushIntervalValue) : DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
+		if (!flushIntervalValid)
+			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] flush_interval=\"%s\"; using default %u seconds.\n",
+				stows(flushIntervalSetting).c_str(), DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL);
+	}
+	mapManagedLootProperties.clear();
+	mapShipArchetypeNicknames.clear();
+	lootControllerLogOpenErrorReported = false;
+
+	INI_Reader ini;
+	vector<string> equipmentFiles;
+	vector<string> shipFiles;
+	if (ini.open(freelancerIniFile.c_str(), false))
+	{
+		while (ini.read_header())
+		{
+			if (!ini.is_header("Data"))
+				continue;
+			while (ini.read_value())
+			{
+				if (ini.is_value("equipment"))
+					equipmentFiles.emplace_back(ini.get_value_string());
+				else if (ini.is_value("ships"))
+					shipFiles.emplace_back(ini.get_value_string());
+			}
+		}
+		ini.close();
+
+		for (const auto& shipFile : shipFiles)
+		{
+			string shipPath = gameDirectory + shipFile;
+			if (!ini.open(shipPath.c_str(), false))
+				continue;
+
+			while (ini.read_header())
+			{
+				if (!ini.is_header("Ship"))
+					continue;
+
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+					{
+						string nickname = ini.get_value_string(0);
+						mapShipArchetypeNicknames[CreateID(nickname.c_str())] = nickname;
+						break;
+					}
+				}
+			}
+			ini.close();
+		}
+
+		for (const auto& equipmentFile : equipmentFiles)
+		{
+			string equipmentPath = gameDirectory + equipmentFile;
+			if (!ini.open(equipmentPath.c_str(), false))
+				continue;
+
+			while (ini.read_header())
+			{
+				string nickname;
+				float chance = 0.0f;
+				uint maximumDropNPC = 5000;
+				uint maximumDropPlayer = 5000;
+				while (ini.read_value())
+				{
+					if (ini.is_value("nickname"))
+						nickname = ini.get_value_string(0);
+					else if (ini.is_value("drop_chance_npc_unmounted"))
+						chance = ini.get_value_float(0);
+					else if (ini.is_value("max_drop_npc"))
+						maximumDropNPC = ini.get_value_int(0);
+					else if (ini.is_value("max_drop_player"))
+						maximumDropPlayer = ini.get_value_int(0);
+				}
+
+				if (!nickname.empty() && chance > 0.0f && chance < 1.0f)
+				{
+					stManagedLootProperties properties;
+					properties.nickname = nickname;
+					properties.baseChance = chance;
+					properties.maximumDropNPC = maximumDropNPC;
+					properties.maximumDropPlayer = maximumDropPlayer;
+					mapManagedLootProperties[CreateID(nickname.c_str())] = properties;
+				}
+			}
+			ini.close();
+		}
+	}
+	else
+	{
+		set_bLootDropPityEnabled = false;
+		ConPrint(L"PVECONTROLLER: Managed loot drops disabled; could not open %s.\n", stows(freelancerIniFile).c_str());
+	}
+	if (mapManagedLootProperties.empty())
+		set_bLootDropPityEnabled = false;
+
+	ConPrint(L"PVECONTROLLER: Managed loot drops and pity are %s; loaded %u managed loot rows.\n",
+		set_bLootDropPityEnabled ? L"enabled" : L"disabled",
+		mapManagedLootProperties.size());
+	ConPrint(L"PVECONTROLLER: Loot drop pity settings: enabled=%u (%s), chance_scale=%.6f (%s), flush_interval=%u (%s).\n",
+		set_bLootDropPityEnabled ? 1 : 0,
+		enabledDefaulted ? L"default; enabled missing" : enabledValid ? L"configured" : L"invalid; disabled",
+		set_fLootDropPityChanceScale,
+		chanceScaleDefaulted ? L"default; chance_scale missing" : chanceScaleValid ? L"configured" : L"invalid; disabled",
+		set_uLootDropPityFlushInterval,
+		flushIntervalDefaulted ? L"default; flush_interval missing" : flushIntervalValid ? L"configured" : L"invalid; default used");
+	ConPrint(L"PVECONTROLLER: Loot events log to flhook_logs/lootcontroller.log; per-event console output is %s.\n",
+		set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE ? L"enabled" : L"disabled");
+}
+
 
 BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 {
@@ -311,6 +660,197 @@ void NPCBountyPayout(uint iClientID, int cash) {
 	
 }
 
+float GetLootDropPityScore(const string& accountDirectory, uint itemId)
+{
+	stAccountPityState& state = GetLootDropPityState(accountDirectory);
+	auto score = state.lootFailures.find(itemId);
+	return score == state.lootFailures.end() ? 0.0f : score->second;
+}
+
+void ResetLootDropPityScore(const vector<stPityRecipient>& recipients, uint itemId)
+{
+	for (const auto& recipient : recipients)
+	{
+		stAccountPityState& state = GetLootDropPityState(recipient.accountDirectory);
+		if (state.lootFailures.erase(itemId))
+			state.dirty = true;
+	}
+}
+
+void IncrementLootDropPityScore(const vector<stPityRecipient>& recipients, uint itemId)
+{
+	for (const auto& recipient : recipients)
+	{
+		stAccountPityState& state = GetLootDropPityState(recipient.accountDirectory);
+		state.lootFailures[itemId] += recipient.weight;
+		state.dirty = true;
+	}
+}
+
+uint CreateManagedLootDrop(CShip* ship, uint itemId, uint count)
+{
+	Vector dropPosition = ship->vPos;
+	Vector randomVector = RandomVector(static_cast<float>(rand() % 60) + 20.0f);
+	dropPosition.x += randomVector.x;
+	dropPosition.y += randomVector.y;
+	dropPosition.z += randomVector.z;
+	return CreateLootSimple(ship->system, ship->id, itemId, count, dropPosition, false);
+}
+
+unordered_map<uint, uint> GetManagedLootCargo(CShip* ship)
+{
+	unordered_map<uint, uint> lootCargo;
+	CEquipTraverser traverser(EquipmentClass::Cargo);
+	CECargo* cargo = nullptr;
+	while (cargo = reinterpret_cast<CECargo*>(ship->equip_manager.Traverse(traverser)))
+	{
+		if (mapManagedLootProperties.find(cargo->archetype->iArchID) != mapManagedLootProperties.end())
+			lootCargo[cargo->archetype->iArchID] += cargo->count;
+	}
+	return lootCargo;
+}
+
+void BeginManagedLootDrop(CShip* ship)
+{
+	managedLootShipId = ship->id;
+	managedLootTimestamp = 0;
+	managedLootArchetypes.clear();
+}
+
+void ProcessManagedPlayerLootDrops(CShip* ship, uint killerId)
+{
+	if (!set_bLootDropPityEnabled)
+		return;
+
+	string victimName = GetActiveCharacterName(ship->ownerPlayer);
+	uint killerClientId = HkGetClientIDByShip(killerId);
+	string killerName = killerClientId == static_cast<uint>(-1) ? "npc_or_environment" : GetActiveCharacterName(killerClientId);
+	uint shipArchetypeId = ship->archetype->iArchID;
+	string shipNickname = GetShipArchetypeNickname(shipArchetypeId);
+	string systemNickname = GetSystemNickname(ship->system);
+
+	for (const auto& lootCargo : GetManagedLootCargo(ship))
+	{
+		uint itemId = lootCargo.first;
+		const stManagedLootProperties& properties = mapManagedLootProperties.find(itemId)->second;
+		managedLootArchetypes.insert(itemId);
+		uint dropCount = min(lootCargo.second, properties.maximumDropPlayer);
+		if (!dropCount)
+			continue;
+		uint lootId = CreateManagedLootDrop(ship, itemId, dropCount);
+		LootControllerLog(!lootId,
+			"event=%s victim=\"%s\" killer=\"%s\" player_ship=\"%s\" player_object=%u player_arch=0x%08X system=\"%s\" loot=\"%s\" count=%u loot_object=%u",
+			lootId ? "player_drop" : "player_drop_failed", victimName.c_str(), killerName.c_str(), shipNickname.c_str(), ship->id,
+			shipArchetypeId, systemNickname.c_str(), properties.nickname.c_str(), dropCount, lootId);
+	}
+}
+
+void ProcessManagedNPCLootDrops(CShip* ship, uint killerClientId, const vector<stPityRecipient>& recipients)
+{
+	if (!set_bLootDropPityEnabled)
+		return;
+
+	string killerName = GetActiveCharacterName(killerClientId);
+	string recipientDescription = GetPityRecipientDescription(recipients);
+	uint shipArchetypeId = ship->archetype->iArchID;
+	string shipNickname = GetShipArchetypeNickname(shipArchetypeId);
+	string systemNickname = GetSystemNickname(ship->system);
+	float progressIncrement = 0.0f;
+	for (const auto& recipient : recipients)
+		progressIncrement += recipient.weight;
+
+	for (const auto& lootCargo : GetManagedLootCargo(ship))
+	{
+		uint itemId = lootCargo.first;
+		const stManagedLootProperties& properties = mapManagedLootProperties.find(itemId)->second;
+		managedLootArchetypes.insert(itemId);
+		uint rollCount = min(lootCargo.second, properties.maximumDropNPC);
+		if (!rollCount)
+			continue;
+		for (uint rollIndex = 1; rollIndex <= rollCount; rollIndex++)
+		{
+			float combinedFailures = 0.0f;
+			for (const auto& recipient : recipients)
+				combinedFailures += GetLootDropPityScore(recipient.accountDirectory, itemId);
+			float conditionalPityChance = 0.0f;
+			if (!recipients.empty())
+			{
+				if (combinedFailures > 0.0f && set_fLootDropPityChanceScale > 0.0f)
+					conditionalPityChance = 1.0f - powf(1.0f - properties.baseChance, combinedFailures * set_fLootDropPityChanceScale);
+				conditionalPityChance = max(0.0f, min(1.0f, conditionalPityChance));
+			}
+			float totalChance = 1.0f - (1.0f - properties.baseChance) * (1.0f - conditionalPityChance);
+			if (totalChance >= 0.99f)
+				totalChance = 1.0f;
+			float pityAddedChance = totalChance - properties.baseChance;
+			float roll = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) + 1.0f);
+
+			if (roll < totalChance)
+			{
+				uint lootId = CreateManagedLootDrop(ship, itemId, 1);
+				if (lootId)
+				{
+					ResetLootDropPityScore(recipients, itemId);
+					LootControllerLog(false,
+						"event=npc_drop killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress_before=%.3f progress_after=0.000 loot_object=%u",
+						killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
+						properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures, lootId);
+					continue;
+				}
+				LootControllerLog(true,
+					"event=npc_drop_failed killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress=%.3f",
+					killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
+					properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures);
+				continue;
+			}
+
+			if (recipients.empty())
+			{
+				LootControllerLog(false,
+					"event=npc_miss_no_recipients killer=\"%s\" recipients=\"none\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f pity_added_chance=0.0000 total_chance=%.4f roll=%.4f",
+					killerName.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(), properties.nickname.c_str(),
+					rollIndex, rollCount, properties.baseChance, totalChance, roll);
+				continue;
+			}
+
+			IncrementLootDropPityScore(recipients, itemId);
+			LootControllerLog(false,
+				"event=npc_miss killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress_before=%.3f progress_after=%.3f",
+				killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
+				properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures,
+				combinedFailures + progressIncrement);
+		}
+	}
+}
+
+void LootDropPityTimer()
+{
+	returncode = DEFAULT_RETURNCODE;
+	mstime now = timeInMS();
+	if (now - lootDropPityLastFlush >= static_cast<mstime>(set_uLootDropPityFlushInterval) * 1000)
+	{
+		lootDropPityLastFlush = now;
+		FlushDirtyLootDropPityStates();
+	}
+}
+
+void __stdcall LootDropPityDisconnect(uint clientId, enum EFLConnection connection)
+{
+	returncode = DEFAULT_RETURNCODE;
+	string accountDirectory;
+	if (!GetLootDropPityAccountDirectory(clientId, accountDirectory))
+		return;
+	auto state = mapAccountPityStates.find(accountDirectory);
+	if (state != mapAccountPityStates.end())
+		FlushLootDropPityState(state->second);
+}
+
+void LootDropPityShutdown()
+{
+	returncode = DEFAULT_RETURNCODE;
+	FlushDirtyLootDropPityStates();
+}
+
 bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -319,8 +859,9 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		return false;
 
 	if (!(cmds->rights & RIGHT_PLUGINS)) { cmds->Print(L"ERR No permission\n"); return false; }
+	wstring action = ToLower(cmds->ArgStr(1));
 
-	if (!cmds->ArgStrToEnd(1).compare(L"reloadall"))
+	if (action == L"reloadall")
 	{
 		cmds->Print(L"PVECONTROLLER: COMPLETE LIVE RELOAD requested by %s.\n", cmds->GetAdminName());
 		LoadSettings();
@@ -328,7 +869,7 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		cmds->Print(L"PVECONTROLLER: Live reload completed.\n");
 		return true;
 	}
-	else if (!cmds->ArgStrToEnd(1).compare(L"reloadnpcbounties"))
+	else if (action == L"reloadnpcbounties")
 	{
 		cmds->Print(L"PVECONTROLLER: Live NPC bounties reload requested by %s.\n", cmds->GetAdminName());
 		LoadSettingsNPCBounties();
@@ -336,12 +877,58 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		cmds->Print(L"PVECONTROLLER: Live NPC bounties reload completed.\n");
 		return true;
 	}
-	else if (!cmds->ArgStrToEnd(1).compare(L"reloadnpcdrops"))
+	else if (action == L"reloadnpcdrops")
 	{
 		cmds->Print(L"PVECONTROLLER: Live NPC drops reload requested by %s.\n", cmds->GetAdminName());
 		LoadSettingsNPCDrops();
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		cmds->Print(L"PVECONTROLLER: Live NPC drops reload completed.\n");
+		return true;
+	}
+	else if (action == L"reloadlootpity")
+	{
+		LoadSettingsLootDropPity();
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		cmds->Print(L"PVECONTROLLER: Live loot drop pity reload completed.\n");
+		return true;
+	}
+	else if (action == L"pitystatus" || action == L"pityreset")
+	{
+		wstring characterName = cmds->ArgStrToEnd(2);
+		uint clientId = HkGetClientIdFromCharname(characterName);
+		string accountDirectory;
+		if (characterName.empty() || clientId == static_cast<uint>(-1) || !GetLootDropPityAccountDirectory(clientId, accountDirectory))
+		{
+			cmds->Print(L"ERR Target character must be online.\n");
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			return true;
+		}
+
+		stAccountPityState& state = GetLootDropPityState(accountDirectory);
+		if (action == L"pityreset")
+		{
+			state.lootFailures.clear();
+			state.dirty = true;
+			FlushLootDropPityState(state);
+			cmds->Print(L"PVECONTROLLER: Loot drop pity reset.\n");
+		}
+		else
+		{
+			vector<pair<string, float>> scores;
+			for (const auto& score : state.lootFailures)
+			{
+				auto properties = mapManagedLootProperties.find(score.first);
+				if (properties != mapManagedLootProperties.end())
+					scores.emplace_back(properties->second.nickname, score.second);
+			}
+			std::sort(scores.begin(), scores.end(), [](const pair<string, float>& left, const pair<string, float>& right) {
+				return left.first < right.first;
+			});
+			cmds->Print(L"PVECONTROLLER: %u loot pity entries.\n", scores.size());
+			for (const auto& score : scores)
+				cmds->Print(L"  %s = %.3f\n", stows(score.first).c_str(), score.second);
+		}
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
 	else
@@ -350,6 +937,9 @@ bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
 		cmds->Print(L"  .pvecontroller reloadall -- Reloads ALL settings on the fly.\n");
 		cmds->Print(L"  .pvecontroller reloadnpcbounties -- Reloads NPC bounty settings on the fly.\n");
 		cmds->Print(L"  .pvecontroller reloadnpcdrops -- Reloads NPC drop settings on the fly.\n");
+		cmds->Print(L"  .pvecontroller reloadlootpity -- Reloads loot drop pity settings and equipment data.\n");
+		cmds->Print(L"  .pvecontroller pitystatus <character> -- Shows account loot pity state.\n");
+		cmds->Print(L"  .pvecontroller pityreset <character> -- Clears account loot pity state.\n");
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
@@ -367,6 +957,18 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	returncode = DEFAULT_RETURNCODE;
 
 	CShip* cship = (CShip*)iobj->cobj;
+	if (cship->id == lastProcessedId)
+		return;
+	lastProcessedId = cship->id;
+	BeginManagedLootDrop(cship);
+
+	if (cship->ownerPlayer)
+	{
+		ProcessManagedPlayerLootDrops(cship, killerId);
+		managedLootTimestamp = timeInMS();
+		return;
+	}
+
 	auto killerData = npcToDropLoot.find(cship->id);
 	if (killerData == npcToDropLoot.end())
 	{
@@ -377,12 +979,6 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 
 	if (!iKillerClientId)
 		return;
-
-	if (cship->id == lastProcessedId)
-	{
-		return;
-	}
-	lastProcessedId = cship->id;
 
 	Archetype::Ship* victimShiparch = reinterpret_cast<Archetype::Ship*>(cship->archetype);
 	uint uArchID = victimShiparch->iArchID;
@@ -398,12 +994,11 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 	Reputation::Vibe::GetAffiliation(iTargetRep, uTargetAffiliation, false);
 	Reputation::Vibe::GetAffiliation(iPlayerRep, uKillerAffiliation, false);
 	pub::Reputation::GetGroupFeelingsTowards(iPlayerRep, uTargetAffiliation, fAttitude);
-	if (fAttitude > set_fMaximumRewardRep) {
-		return;
-	}
+	bool eligibleForRewards = fAttitude <= set_fMaximumRewardRep;
+	vector<stPityRecipient> pityRecipients;
 
 	// Process bounties if enabled.
-	if (set_bBountiesEnabled) {
+	if (eligibleForRewards && set_bBountiesEnabled) {
 		float fBountyPayout = 0;
 
 		// Determine bounty payout.
@@ -449,6 +1044,9 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 			if (!playerGroup)
 			{
 				NPCBountyPayout(iKillerClientId, static_cast<int>(fBountyPayout));
+				string accountDirectory;
+				if (GetLootDropPityAccountDirectory(iKillerClientId, accountDirectory))
+					pityRecipients.push_back({ accountDirectory, GetActiveCharacterName(iKillerClientId), 1.0f });
 			}
 			else
 			{
@@ -467,25 +1065,49 @@ void __stdcall HkCb_ShipDestroyed(IObjRW* iobj, bool isKill, uint killerId)
 						inSystemMembers.emplace_back(memberId);
 					}
 				}
-				auto groupScale = mapBountyGroupScale.find(inSystemMembers.size());
-				if (groupScale != mapBountyGroupScale.end())
+				if (!inSystemMembers.empty())
 				{
-					fBountyPayout *= groupScale->second;
-				}
-				else
-				{
-					fBountyPayout /= inSystemMembers.size();
-				}
-				for (auto member : inSystemMembers)
-				{
-					NPCBountyPayout(member, static_cast<int>(fBountyPayout));
+					float pityWeight = 1.0f / inSystemMembers.size();
+					auto groupScale = mapBountyGroupScale.find(inSystemMembers.size());
+					if (groupScale != mapBountyGroupScale.end())
+					{
+						pityWeight = groupScale->second;
+						fBountyPayout *= pityWeight;
+					}
+					else
+					{
+						fBountyPayout /= inSystemMembers.size();
+					}
+					unordered_map<string, stPityRecipient> accountRecipients;
+					for (auto member : inSystemMembers)
+					{
+						NPCBountyPayout(member, static_cast<int>(fBountyPayout));
+						string accountDirectory;
+						if (GetLootDropPityAccountDirectory(member, accountDirectory))
+						{
+							auto existing = accountRecipients.find(accountDirectory);
+							if (existing == accountRecipients.end() || pityWeight > existing->second.weight)
+								accountRecipients[accountDirectory] = { accountDirectory, GetActiveCharacterName(member), pityWeight };
+						}
+					}
+					for (const auto& accountRecipient : accountRecipients)
+						pityRecipients.push_back(accountRecipient.second);
 				}
 			}
 		}
 	}
 
+	if (eligibleForRewards)
+	{
+		std::sort(pityRecipients.begin(), pityRecipients.end(), [](const stPityRecipient& left, const stPityRecipient& right) {
+			return left.characterName < right.characterName;
+		});
+		ProcessManagedNPCLootDrops(cship, iKillerClientId, pityRecipients);
+		managedLootTimestamp = timeInMS();
+	}
+
 	// Process drops if enabled.
-	if (!set_bDropsEnabled || mapDropExcludedArchetypes.count(uArchID))
+	if (!eligibleForRewards || !set_bDropsEnabled || mapDropExcludedArchetypes.count(uArchID))
 	{
 		return;
 	}
@@ -537,6 +1159,9 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_ShipDestroyed, PLUGIN_ShipDestroyed, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityTimer, PLUGIN_HkTimerCheckKick, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityDisconnect, PLUGIN_HkIServerImpl_DisConnect, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityShutdown, PLUGIN_HkIServerImpl_Shutdown, 0));
 	
 	return p_PI;
 }

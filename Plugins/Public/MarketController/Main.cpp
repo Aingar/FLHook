@@ -920,6 +920,15 @@ void __stdcall BaseEnter_AFTER(unsigned int baseId, unsigned int client)
 
 const LootData defaults;
 
+bool IsPvEControllerManagedLoot(uint shipId, uint itemId)
+{
+	HMODULE module = GetModuleHandleA("pvecontroller.dll");
+	if (!module)
+		return false;
+	auto ownsManagedLoot = reinterpret_cast<BOOL(__cdecl*)(uint, uint)>(GetProcAddress(module, "PvEControllerOwnsManagedLoot"));
+	return ownsManagedLoot && ownsManagedLoot(shipId, itemId);
+}
+
 void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -950,6 +959,9 @@ void __stdcall ShipDestroyed(IObjRW* ship, bool isKill, uint killerId)
 	CECargo* cargo = nullptr;
 	while (cargo = reinterpret_cast<CECargo*>(cship->equip_manager.Traverse(tr)))
 	{
+		if (IsPvEControllerManagedLoot(cship->id, cargo->archetype->iArchID))
+			continue;
+
 		auto lootIter = lootData.find(cargo->archetype->iArchID);
 
 		const LootData& ld = lootIter == lootData.end() ? defaults : lootIter->second;

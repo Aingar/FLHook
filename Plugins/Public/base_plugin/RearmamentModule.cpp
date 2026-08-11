@@ -67,6 +67,7 @@ void RearmamentModule::Rearm(uint clientId)
 
     float creditCount = 0;
     float actualToPay = 0;
+    float actualToPayPreArmamentCost = 0;
 
 
     if (!base->archetype || !base->archetype->hasUnlimitedResupply)
@@ -89,11 +90,13 @@ void RearmamentModule::Rearm(uint clientId)
             PrintUserCmdText(clientId, L"ERR Insufficient munition supplies!");
             return;
         }
+        actualToPayPreArmamentCost = actualToPay;
         actualToPay *= base->rearmamentCostPerCredit;
     }
     else
     {
         actualToPay = itemCart.creditCost;
+        actualToPayPreArmamentCost = actualToPay;
     }
 
     if (Players[clientId].iInspectCash < actualToPay)
@@ -113,12 +116,12 @@ void RearmamentModule::Rearm(uint clientId)
 
     for (auto& item : rearmamentCreditRatio)
     {
-        float itemsToConsume = ceilf(actualToPay / item.second);
+        float itemsToConsume = ceilf(actualToPayPreArmamentCost / item.second);
         uint itemCount = base->HasMarketItem(item.first);
         itemsToConsume = min(itemsToConsume, itemCount);
         base->RemoveMarketGood(item.first, static_cast<uint>(itemsToConsume));
-        actualToPay -= itemsToConsume * item.second;
-        if (actualToPay <= 0.0f)
+        actualToPayPreArmamentCost -= itemsToConsume * item.second;
+        if (actualToPayPreArmamentCost <= 0.0f)
         {
             break;
         }
@@ -214,12 +217,13 @@ void RearmamentModule::CheckPlayerInventory(uint clientId, PlayerBase* base)
         return;
     }
 
-    if (Players[clientId].iInspectCash < actualToPay)
+    int intActualToPay = static_cast<int>(base->rearmamentCostPerCredit * actualToPay);
+    if (Players[clientId].iInspectCash < intActualToPay)
     {
-        PrintUserCmdText(clientId, L"Rearmament available but you don't have enough credits (%u needed)", static_cast<int>(base->rearmamentCostPerCredit * actualToPay));
+        PrintUserCmdText(clientId, L"Rearmament available but you don't have enough credits (%u needed)", intActualToPay);
         return;
     }
 
     PrintUserCmdText(clientId, L"Rearmament available (type /restock), cost %d credits. (%0.0f%% of normal repair cost)", 
-        static_cast<int>(base->rearmamentCostPerCredit * actualToPay), (base->rearmamentCostPerCredit * 100.f));
+        intActualToPay, (base->rearmamentCostPerCredit * 100.f));
 }

@@ -3392,6 +3392,12 @@ namespace PlayerCommands
 			return;
 		}
 
+		if (base->archetype && base->archetype->hasUnlimitedResupply)
+		{
+			PrintUserCmdText(client, L"ERR Margin cannot be changed on bases with unlimited resupplies");
+			return;
+		}
+
 		auto inputStr = GetParam(cmd, ' ', 2);
 		if (inputStr.empty())
 		{

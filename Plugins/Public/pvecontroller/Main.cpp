@@ -103,20 +103,18 @@ int iLoadedNPCDropClasses = 0;
 void LoadSettingsNPCDrops(void);
 
 constexpr float DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE = 0.01f;
-constexpr uint DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL = 15;
 bool set_bLootDropPityEnabled = false;
 float set_fLootDropPityChanceScale = DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE;
-uint set_uLootDropPityFlushInterval = DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
-mstime lootDropPityLastFlush = 0;
+bool set_bLootControllerLogEnabled = true;
 unordered_map<uint, stManagedLootProperties> mapManagedLootProperties;
 unordered_map<uint, string> mapShipArchetypeNicknames;
 unordered_map<string, stAccountPityState> mapAccountPityStates;
+unordered_map<uint, string> mapDisconnectingPityAccounts;
 uint managedLootShipId = 0;
 mstime managedLootTimestamp = 0;
 unordered_set<uint> managedLootArchetypes;
 bool lootControllerLogOpenErrorReported = false;
 void LoadSettingsLootDropPity(void);
-void FlushDirtyLootDropPityStates(void);
 
 extern "C" BOOL __cdecl PvEControllerOwnsManagedLoot(uint shipId, uint itemId)
 {
@@ -127,6 +125,10 @@ extern "C" BOOL __cdecl PvEControllerOwnsManagedLoot(uint shipId, uint itemId)
 
 void LootControllerLog(bool forceConsole, const char* format, ...)
 {
+	bool consoleEnabled = forceConsole || set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE;
+	if (!set_bLootControllerLogEnabled && !consoleEnabled)
+		return;
+
 	char message[4096] = "";
 	va_list marker;
 	va_start(marker, format);
@@ -134,25 +136,28 @@ void LootControllerLog(bool forceConsole, const char* format, ...)
 	va_end(marker);
 	message[sizeof(message) - 1] = 0;
 
-	FILE* log = fopen("./flhook_logs/lootcontroller.log", "at");
-	if (log)
+	if (set_bLootControllerLogEnabled)
 	{
-		time_t now = time(nullptr);
-		struct tm localTime;
-		localtime_s(&localTime, &now);
-		char timestamp[32];
-		strftime(timestamp, sizeof(timestamp), "%Y/%m/%d %H:%M:%S", &localTime);
-		fprintf(log, "%s %s\n", timestamp, message);
-		fclose(log);
-		lootControllerLogOpenErrorReported = false;
-	}
-	else if (!lootControllerLogOpenErrorReported)
-	{
-		lootControllerLogOpenErrorReported = true;
-		ConPrint(L"PVECONTROLLER: Could not open flhook_logs/lootcontroller.log.\n");
+		FILE* log = fopen("./flhook_logs/lootcontroller.log", "at");
+		if (log)
+		{
+			time_t now = time(nullptr);
+			struct tm localTime;
+			localtime_s(&localTime, &now);
+			char timestamp[32];
+			strftime(timestamp, sizeof(timestamp), "%Y/%m/%d %H:%M:%S", &localTime);
+			fprintf(log, "%s %s\n", timestamp, message);
+			fclose(log);
+			lootControllerLogOpenErrorReported = false;
+		}
+		else if (!lootControllerLogOpenErrorReported)
+		{
+			lootControllerLogOpenErrorReported = true;
+			ConPrint(L"PVECONTROLLER: Could not open flhook_logs/lootcontroller.log.\n");
+		}
 	}
 
-	if (forceConsole || set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE)
+	if (consoleEnabled)
 		ConPrint(L"PVECONTROLLER LOOT: %s\n", stows(message).c_str());
 }
 
@@ -433,8 +438,8 @@ void FlushLootDropPityState(stAccountPityState& state)
 	if (!state.dirty)
 		return;
 
-	IniDelSection(state.filePath, "LootDropPity");
 	vector<pair<string, float>> values;
+	values.reserve(state.lootFailures.size());
 	for (const auto& score : state.lootFailures)
 	{
 		auto properties = mapManagedLootProperties.find(score.first);
@@ -444,21 +449,25 @@ void FlushLootDropPityState(stAccountPityState& state)
 	std::sort(values.begin(), values.end(), [](const pair<string, float>& left, const pair<string, float>& right) {
 		return left.first < right.first;
 	});
+	string section;
 	for (const auto& value : values)
-		IniWrite(state.filePath, "LootDropPity", value.first, to_string(value.second));
+	{
+		section += value.first + "=" + to_string(value.second);
+		section.push_back('\0');
+	}
+	if (!section.empty())
+		section.push_back('\0');
+	if (!WritePrivateProfileSectionA("LootDropPity", section.empty() ? nullptr : section.c_str(), state.filePath.c_str()))
+	{
+		ConPrint(L"PVECONTROLLER: Could not write loot drop pity state to %s.\n", stows(state.filePath).c_str());
+		return;
+	}
 
 	state.dirty = false;
 }
 
-void FlushDirtyLootDropPityStates()
-{
-	for (auto& state : mapAccountPityStates)
-		FlushLootDropPityState(state.second);
-}
-
 void LoadSettingsLootDropPity()
 {
-	FlushDirtyLootDropPityStates();
 	char currentDirectory[MAX_PATH];
 	GetCurrentDirectory(sizeof(currentDirectory), currentDirectory);
 	string currentDirectoryString = currentDirectory;
@@ -505,24 +514,23 @@ void LoadSettingsLootDropPity()
 			ConPrint(L"PVECONTROLLER: Managed loot drops disabled; invalid [LootDropPity] chance_scale=\"%s\".\n", stows(chanceScaleSetting).c_str());
 		}
 	}
-	string flushIntervalSetting = IniGetS(pluginConfig, "LootDropPity", "flush_interval", "");
-	bool flushIntervalDefaulted = flushIntervalSetting.empty();
-	bool flushIntervalValid = true;
-	if (flushIntervalDefaulted)
+	string logEnabledSetting = IniGetS(pluginConfig, "LootDropPity", "log_enabled", "");
+	bool logEnabledDefaulted = logEnabledSetting.empty();
+	bool logEnabledValid = true;
+	if (logEnabledDefaulted)
 	{
-		set_uLootDropPityFlushInterval = DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
+		set_bLootControllerLogEnabled = true;
 	}
 	else
 	{
 		char* settingEnd = nullptr;
-		long flushIntervalValue = strtol(flushIntervalSetting.c_str(), &settingEnd, 10);
+		long logEnabledValue = strtol(logEnabledSetting.c_str(), &settingEnd, 10);
 		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
 			settingEnd++;
-		flushIntervalValid = settingEnd != flushIntervalSetting.c_str() && settingEnd && !*settingEnd && flushIntervalValue > 0;
-		set_uLootDropPityFlushInterval = flushIntervalValid ? static_cast<uint>(flushIntervalValue) : DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL;
-		if (!flushIntervalValid)
-			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] flush_interval=\"%s\"; using default %u seconds.\n",
-				stows(flushIntervalSetting).c_str(), DEFAULT_LOOT_DROP_PITY_FLUSH_INTERVAL);
+		logEnabledValid = settingEnd != logEnabledSetting.c_str() && settingEnd && !*settingEnd && (logEnabledValue == 0 || logEnabledValue == 1);
+		set_bLootControllerLogEnabled = logEnabledValid ? logEnabledValue == 1 : true;
+		if (!logEnabledValid)
+			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] log_enabled=\"%s\"; using default 1.\n", stows(logEnabledSetting).c_str());
 	}
 	mapManagedLootProperties.clear();
 	mapShipArchetypeNicknames.clear();
@@ -619,14 +627,15 @@ void LoadSettingsLootDropPity()
 	ConPrint(L"PVECONTROLLER: Managed loot drops and pity are %s; loaded %u managed loot rows.\n",
 		set_bLootDropPityEnabled ? L"enabled" : L"disabled",
 		mapManagedLootProperties.size());
-	ConPrint(L"PVECONTROLLER: Loot drop pity settings: enabled=%u (%s), chance_scale=%.6f (%s), flush_interval=%u (%s).\n",
+	ConPrint(L"PVECONTROLLER: Loot drop pity settings: enabled=%u (%s), chance_scale=%.6f (%s), log_enabled=%u (%s).\n",
 		set_bLootDropPityEnabled ? 1 : 0,
 		enabledDefaulted ? L"default; enabled missing" : enabledValid ? L"configured" : L"invalid; disabled",
 		set_fLootDropPityChanceScale,
 		chanceScaleDefaulted ? L"default; chance_scale missing" : chanceScaleValid ? L"configured" : L"invalid; disabled",
-		set_uLootDropPityFlushInterval,
-		flushIntervalDefaulted ? L"default; flush_interval missing" : flushIntervalValid ? L"configured" : L"invalid; default used");
-	ConPrint(L"PVECONTROLLER: Loot events log to flhook_logs/lootcontroller.log; per-event console output is %s.\n",
+		set_bLootControllerLogEnabled ? 1 : 0,
+		logEnabledDefaulted ? L"default" : logEnabledValid ? L"configured" : L"invalid; default used");
+	ConPrint(L"PVECONTROLLER: Loot event file logging is %s at flhook_logs/lootcontroller.log; per-event console output is %s.\n",
+		set_bLootControllerLogEnabled ? L"enabled" : L"disabled",
 		set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE ? L"enabled" : L"disabled");
 }
 
@@ -681,6 +690,8 @@ void IncrementLootDropPityScore(const vector<stPityRecipient>& recipients, uint 
 {
 	for (const auto& recipient : recipients)
 	{
+		if (recipient.weight == 0.0f)
+			continue;
 		stAccountPityState& state = GetLootDropPityState(recipient.accountDirectory);
 		state.lootFailures[itemId] += recipient.weight;
 		state.dirty = true;
@@ -823,32 +834,73 @@ void ProcessManagedNPCLootDrops(CShip* ship, uint killerClientId, const vector<s
 	}
 }
 
-void LootDropPityTimer()
+void FlushLootDropPityClient(uint clientId)
+{
+	string accountDirectory;
+	if (!GetLootDropPityAccountDirectory(clientId, accountDirectory))
+		return;
+	auto state = mapAccountPityStates.find(accountDirectory);
+	if (state != mapAccountPityStates.end() && state->second.dirty)
+		FlushLootDropPityState(state->second);
+}
+
+bool __stdcall LootDropPityLand(uint clientId, FLPACKET_LAND& packet)
 {
 	returncode = DEFAULT_RETURNCODE;
-	mstime now = timeInMS();
-	if (now - lootDropPityLastFlush >= static_cast<mstime>(set_uLootDropPityFlushInterval) * 1000)
-	{
-		lootDropPityLastFlush = now;
-		FlushDirtyLootDropPityStates();
-	}
+	FlushLootDropPityClient(clientId);
+	return true;
+}
+
+void __stdcall LootDropPityBaseExit(uint baseId, uint clientId)
+{
+	returncode = DEFAULT_RETURNCODE;
+	FlushLootDropPityClient(clientId);
+}
+
+void __stdcall LootDropPitySystemSwitchOut(uint shipId, uint clientId)
+{
+	returncode = DEFAULT_RETURNCODE;
+	FlushLootDropPityClient(clientId);
+}
+
+void __stdcall LootDropPityCharacterInfoReq(uint clientId, bool p2)
+{
+	returncode = DEFAULT_RETURNCODE;
+	if (!p2)
+		FlushLootDropPityClient(clientId);
 }
 
 void __stdcall LootDropPityDisconnect(uint clientId, enum EFLConnection connection)
 {
 	returncode = DEFAULT_RETURNCODE;
 	string accountDirectory;
-	if (!GetLootDropPityAccountDirectory(clientId, accountDirectory))
-		return;
-	auto state = mapAccountPityStates.find(accountDirectory);
-	if (state != mapAccountPityStates.end())
-		FlushLootDropPityState(state->second);
+	if (GetLootDropPityAccountDirectory(clientId, accountDirectory))
+	{
+		auto state = mapAccountPityStates.find(accountDirectory);
+		if (state != mapAccountPityStates.end())
+		{
+			if (state->second.dirty)
+				mapDisconnectingPityAccounts[clientId] = accountDirectory;
+			else
+				mapAccountPityStates.erase(state);
+		}
+	}
 }
 
-void LootDropPityShutdown()
+void __stdcall LootDropPityDisconnectAfter(uint clientId, enum EFLConnection connection)
 {
 	returncode = DEFAULT_RETURNCODE;
-	FlushDirtyLootDropPityStates();
+	auto account = mapDisconnectingPityAccounts.find(clientId);
+	if (account == mapDisconnectingPityAccounts.end())
+		return;
+	auto state = mapAccountPityStates.find(account->second);
+	if (state != mapAccountPityStates.end())
+	{
+		FlushLootDropPityState(state->second);
+		if (!state->second.dirty)
+			mapAccountPityStates.erase(state);
+	}
+	mapDisconnectingPityAccounts.erase(account);
 }
 
 bool ExecuteCommandString_Callback(CCmds* cmds, const wstring &wscCmd)
@@ -1159,9 +1211,12 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LoadSettings, PLUGIN_LoadSettings, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&ExecuteCommandString_Callback, PLUGIN_ExecuteCommandString_Callback, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&HkCb_ShipDestroyed, PLUGIN_ShipDestroyed, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityTimer, PLUGIN_HkTimerCheckKick, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityLand, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_LAND, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityBaseExit, PLUGIN_HkIServerImpl_BaseExit_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPitySystemSwitchOut, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityCharacterInfoReq, PLUGIN_HkIServerImpl_CharacterInfoReq_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityDisconnect, PLUGIN_HkIServerImpl_DisConnect, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityShutdown, PLUGIN_HkIServerImpl_Shutdown, 0));
+	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&LootDropPityDisconnectAfter, PLUGIN_HkIServerImpl_DisConnect_AFTER, 0));
 	
 	return p_PI;
 }

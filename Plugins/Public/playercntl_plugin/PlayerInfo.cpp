@@ -380,6 +380,11 @@ void WriteInfoFile(uint clientId, string filePath)
 
 bool PlayerInfo::UserCmd_SetInfo(uint iClientID, const wstring &wscCmd, const wstring &wscParam, const wchar_t *usage)
 {
+	if (GetParam(wscParam, ' ', 1) == L"self")
+	{
+		return UserCmd_ShowInfoSelf(iClientID, wscCmd, wscParam, usage);
+	}
+
 	uint iPara = ToInt(GetParam(wscParam, ' ', 0));
 	const wstring &wscCommand = GetParam(wscParam, ' ', 1);
 	wstring &wscMsg = GetParamToEnd(wscParam, ' ', 2);

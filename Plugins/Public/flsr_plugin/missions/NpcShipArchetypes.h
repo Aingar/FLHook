@@ -10,7 +10,7 @@ namespace NpcShipArchetypes
 		uint loadoutId = 0;
 		std::string stateGraph = "";
 		uint pilotId = 0;
-		byte level = 0;
+		BYTE level = 0;
 	};
 
 	bool GetNpcShipArch(const uint id, NpcShipArch& result);

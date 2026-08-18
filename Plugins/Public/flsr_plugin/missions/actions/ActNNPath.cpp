@@ -39,9 +39,9 @@ namespace Missions
 				{
 					for (const auto& base : lstBases)
 					{
-						if (base.iBaseID == baseId && base.iObjectID)
+						if (base.second.iBaseID == baseId && base.second.iObjectID)
 						{
-							objId = base.iObjectID;
+							objId = base.second.iObjectID;
 							break;
 						}
 					}

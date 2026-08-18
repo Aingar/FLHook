@@ -83,7 +83,7 @@ namespace Missions
 					if (observedCndLaunchComplete.contains(condition) &&
 						GetShipInspect(launchObjId, inspect, system) &&
 						(inspect->cobj->objectClass & CObject::CEQOBJ_MASK) &&
-						condition->Matches(clientId, static_cast<CEqObj*>(inspect->cobj)->dockWithBaseId))
+						condition->Matches(clientId, static_cast<CEqObj*>(inspect->cobj)->dockTargetId))
 					{
 						condition->ExecuteTrigger();
 					}

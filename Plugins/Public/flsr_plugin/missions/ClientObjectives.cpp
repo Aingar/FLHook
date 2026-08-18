@@ -117,9 +117,9 @@ namespace Missions
 					{
 						for (const auto& base : lstBases)
 						{
-							if (base.iBaseID == baseId && base.iObjectID)
+							if (base.second.iBaseID == baseId && base.second.iObjectID)
 							{
-								playerObjectId = base.iObjectID;
+								playerObjectId = base.second.iObjectID;
 								break;
 							}
 						}
@@ -179,7 +179,7 @@ namespace Missions
 
 			for (const auto& base : lstBases)
 			{
-				if (base.iBaseID == baseId && base.iObjectID)
+				if (base.second.iBaseID == baseId && base.second.iObjectID)
 				{
 					pub::Player::MissionObjective objective;
 					objective.type = pub::Player::MissionObjectiveType::MissionText;
@@ -188,10 +188,10 @@ namespace Missions
 					FmtStr::NavMarker marker;
 					IObjRW* inspect;
 					StarSystem* starSystem;
-					if (GetShipInspect(base.iObjectID, inspect, starSystem))
+					if (GetShipInspect(base.second.iObjectID, inspect, starSystem))
 					{
 						marker.pos = inspect->cobj->vPos;
-						marker.system = base.iSystemID;
+						marker.system = base.second.iSystemID;
 					}
 					else
 					{

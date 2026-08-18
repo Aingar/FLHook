@@ -9,6 +9,9 @@
 #include "ClientObjectives.h"
 #include "actions/ActActMsnTrig.h"
 #include "actions/ActActTrig.h"
+#include "../../../../Source/FLHook/CInGame.h"
+#include "../../../../Source/FLHook/CCmds.h"
+
 
 namespace Missions
 {	

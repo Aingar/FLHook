@@ -1,6 +1,7 @@
 #include "CndDistObj.h"
 #include "../Mission.h"
 #include "../../Plugin.h"
+#include <PluginUtilities.h>
 
 namespace Missions
 {

@@ -56,24 +56,24 @@ namespace MissionBoard
 
 	static void SendOfferAcceptance(const uint clientId, const uint boardIndex, const uint base)
 	{
-		MissionAcceptance data;
+		::MissionAcceptance data;
 		data.index = boardIndex;
 		data.base = base;
 		std::memset(&data.acceptanceData, 0, sizeof(data.acceptanceData));
 		data.acceptanceData[0] = 1; // TRUE, accepted
-		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, &data, sizeof(MissionAcceptance));
+		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, data, sizeof(MissionAcceptance));
 	}
 
 	static void SendOfferRejection(const uint clientId, const uint boardIndex, const uint base, const ushort rejectionResourceId)
 	{
-		MissionAcceptance data;
+		::MissionAcceptance data;
 		data.index = boardIndex;
 		data.base = base;
 		std::memset(&data.acceptanceData, 0, sizeof(data.acceptanceData));
 		data.acceptanceData[0] = 0; // FALSE, rejected
 		ushort* rejectedText = (ushort*)& data.acceptanceData[1];
 		*rejectedText = rejectionResourceId;
-		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, &data, sizeof(MissionAcceptance));
+		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, data, sizeof(MissionAcceptance));
 	}
 
 	std::unordered_map<uint, Offer> offers;
@@ -144,18 +144,23 @@ namespace MissionBoard
 			return;
 		}
 
-		st6::vector<uint> groupMembers;
-		pub::Player::GetGroupMembers(clientId, groupMembers);
+		auto group = Players[clientId].PlayerGroup;
+		std::vector<uint> groupMembers;
+		for (int i = 0; i < group->GetMemberCount();++i)
+		{
+			groupMembers.push_back(group->GetMember(i));
+		}
+
 		// Usually this check is enough on one player of a group. But just make sure it really does not overlook anything.
-		for (const auto memberId : groupMembers)
+		for (auto member : groupMembers)
 		{
 			uint missionId;
-			pub::Player::GetMsnID(clientId, missionId);
-			if (missionId > 0 || Missions::IsPartOfOfferedJob(clientId))
+			pub::Player::GetMsnID(member, missionId);
+			if (missionId > 0 || Missions::IsPartOfOfferedJob(member))
 			{
 				uint base;
-				pub::Player::GetBase(clientId, base);
-				SendOfferRejection(clientId, boardIndex, base, 1840);
+				pub::Player::GetBase(member, base);
+				SendOfferRejection(member, boardIndex, base, 1840);
 				returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 				return;
 			}
@@ -179,7 +184,7 @@ namespace MissionBoard
 					if (const auto& offerEntry = offers.find(boardEntry.offerId); offerEntry != offers.end())
 					{
 						SendOfferAcceptance(clientId, boardIndex, base);
-						Missions::StartMissionByOfferId(boardEntry.offerId, clientId, std::vector<uint>(groupMembers.begin(), groupMembers.end()));
+						Missions::StartMissionByOfferId(boardEntry.offerId, clientId, groupMembers);
 						DeleteOffer(boardEntry.offerId);
 					}
 					// Someone already removed it from the pool

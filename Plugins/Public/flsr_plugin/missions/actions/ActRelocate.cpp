@@ -1,4 +1,5 @@
 #include "ActRelocate.h"
+#include <PluginUtilities.h>
 
 namespace Missions
 {

@@ -95,7 +95,7 @@ namespace Missions
 				return false;
 		}
 
-		byte foundObjectType = 0;
+		BYTE foundObjectType = 0;
 		if (killedObject->is_player() && objNameOrLabel == Stranger && !mission.clientIds.contains(killedObject->cobj->ownerPlayer))
 		{
 			foundObjectType = 1;

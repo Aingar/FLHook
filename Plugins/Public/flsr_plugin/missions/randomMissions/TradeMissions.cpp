@@ -160,8 +160,8 @@ namespace RandomMissions
 		CSolar* solar = static_cast<CSolar*>(CObject::FindFirst(CObject::CSOLAR_OBJECT));
 		while (solar != nullptr)
 		{
-			if ((solar->get_type() == ObjectType::Station || solar->get_type() == ObjectType::DockingRing) && solar->dockWithBaseId)
-				dockablesByBaseId[solar->dockWithBaseId].insert(solar);
+			if ((solar->get_type() == ObjectType::Station || solar->get_type() == ObjectType::DockingRing) && solar->dockTargetId)
+				dockablesByBaseId[solar->dockTargetId].insert(solar);
 			solar = static_cast<CSolar*>(solar->FindNext());
 		}
 	}
@@ -234,9 +234,9 @@ namespace RandomMissions
 		uint startSystemId = 0;
 		for (const auto& base : lstBases)
 		{
-			if (base.iBaseID == startBaseId)
+			if (base.second.iBaseID == startBaseId)
 			{
-				startSystemId = base.iSystemID;
+				startSystemId = base.second.iSystemID;
 				break;
 			}
 		}

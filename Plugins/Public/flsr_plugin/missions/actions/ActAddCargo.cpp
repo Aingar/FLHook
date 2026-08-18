@@ -12,7 +12,7 @@ namespace Missions
 			const GoodInfo* good = GoodList::find_by_id(action.itemId);
 			if (!good)
 				return;
-			if (good->multiCount)
+			if (good->combinable)
 				pub::Player::AddCargo(clientId, action.itemId, action.count, 1.0f, action.missionFlagged);
 			else
 				for (uint index = 0; index < action.count; index++)

@@ -1,9 +1,9 @@
 #include "ActSpawnSolar.h"
 #include "../MsnSolar.h"
 #include "../SolarDocking.h"
-#include "../../../../Pilots.h"
-#include "../../../../NpcCloaking.h"
-#include "../../../../Cloak.h"
+#include "../../Pilots.h"
+#include "../../NpcCloaking.h"
+#include "../../Cloak.h"
 
 namespace Missions
 {
@@ -43,7 +43,7 @@ namespace Missions
 			// for every player in the same system, send solar creation packet
 			struct SOLAR_STRUCT
 			{
-				byte starSystem[0x100];
+				BYTE starSystem[0x100];
 			};
 
 			SOLAR_STRUCT packetSolar;
@@ -112,10 +112,10 @@ namespace Missions
 		solarInfo.iSystemID = solar.systemId;
 		solarInfo.mOrientation = orientation.data[0][0] != std::numeric_limits<float>::infinity() ? orientation : solar.orientation;
 		solarInfo.vPos = position.x != std::numeric_limits<float>::infinity() ? position : solar.position;
-		solarInfo.Costume.head = solar.costume.headId;
-		solarInfo.Costume.body = solar.costume.bodyId;
-		std::copy(solar.costume.accessoryIds.begin(), solar.costume.accessoryIds.end(), solarInfo.Costume.accessory);
-		solarInfo.Costume.accessories = solar.costume.accessoryIds.size();
+		solarInfo.costume.head = solar.costume.headId;
+		solarInfo.costume.body = solar.costume.bodyId;
+		std::copy(solar.costume.accessoryIds.begin(), solar.costume.accessoryIds.end(), solarInfo.costume.accessory);
+		solarInfo.costume.accessories = solar.costume.accessoryIds.size();
 		solarInfo.iVoiceID = solar.voiceId;
 		solarInfo.baseId = solar.baseId;
 		strncpy_s(solarInfo.cNickName, (mission.name + ':' + solar.name).c_str(), sizeof(solarInfo.cNickName));
@@ -139,7 +139,7 @@ namespace Missions
 		pub::AI::SubmitState(objId, &personality);
 
 		const auto& solarArchetype = Archetype::GetSolar(solar.archetypeId);
-		if (solarArchetype && !solarArchetype->bDestructible)
+		if (solarArchetype && !solarArchetype->bDestrutible)
 			// Invincibility kicks in at 99.999% hitpoints loss. This also prevents complete destruction of equipment.
 			pub::SpaceObj::SetInvincible2(objId, true, true, 0.999f);
 

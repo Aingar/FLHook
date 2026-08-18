@@ -375,7 +375,7 @@ namespace Missions
 		{
 			const auto& val = ToLower(ini.get_value_string(argNum));
 			if (val == "explode")
-				action.destroyType = DestroyType::EXPLODE;
+				action.destroyType = DestroyType::FUSE;
 			else if (val == "silent")
 				action.destroyType = DestroyType::VANISH;
 			else
@@ -501,7 +501,7 @@ namespace Missions
 		action.senderIdsName = ini.get_value_int(argNum++);
 		action.costume.head = CreateIdOrNull(ini.get_value_string(argNum++));
 		action.costume.body = CreateIdOrNull(ini.get_value_string(argNum++));
-		byte count = 0;
+		BYTE count = 0;
 		while (count < 8)
 		{
 			const auto val = ini.get_value_string(argNum++);

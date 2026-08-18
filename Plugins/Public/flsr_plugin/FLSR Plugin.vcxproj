@@ -111,9 +111,13 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="bugfixes\MissionAbortFix.cpp" />
     <ClCompile Include="Cloak.cpp" />
+    <ClCompile Include="Empathies.cpp" />
     <ClCompile Include="missions\actions\ActDisplayMsg.cpp" />
+    <ClCompile Include="missions\actions\ActIniReader.cpp" />
     <ClCompile Include="missions\actions\ActLeaveGroup.cpp" />
+    <ClCompile Include="missions\actions\ActLockDock.cpp" />
     <ClCompile Include="missions\actions\ActPlayNN.cpp" />
     <ClCompile Include="missions\actions\ActPopUpDialog.cpp" />
     <ClCompile Include="missions\actions\ActRemoveCargo.cpp" />
@@ -128,6 +132,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClCompile Include="missions\conditions\CndLeaveMsn.cpp" />
     <ClCompile Include="missions\MatrixMath.cpp" />
     <ClCompile Include="missions\MissionIniReader.cpp" />
+    <ClCompile Include="missions\NpcShipArchetypes.cpp" />
     <ClCompile Include="missions\objectives\ObjUtils.cpp" />
     <ClCompile Include="missions\randomMissions\Meta.cpp" />
     <ClCompile Include="missions\randomMissions\TradeMissions.cpp" />
@@ -215,6 +220,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClCompile Include="missions\objectives\ObjSetPriority.cpp" />
     <ClCompile Include="missions\objectives\ObjStayInRange.cpp" />
     <ClCompile Include="missions\ShipSpawning.cpp" />
+    <ClCompile Include="missions\SolarDocking.cpp" />
     <ClCompile Include="missions\Trigger.cpp" />
     <ClCompile Include="missions\randomMissions\Costumes.cpp" />
     <ClCompile Include="missions\randomMissions\Factions.cpp" />
@@ -227,13 +233,16 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClCompile Include="Tools.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="bugfixes\MissionAbortFix.h" />
     <ClInclude Include="Cloah.h" />
     <ClInclude Include="Empathies.h" />
     <ClInclude Include="IFF.h" />
     <ClInclude Include="LootBoxes.h" />
     <ClInclude Include="missions\actions\ActDisplayMsg.h" />
     <ClInclude Include="missions\actions\ActDockInstant.h" />
+    <ClInclude Include="missions\actions\ActIniReader.h" />
     <ClInclude Include="missions\actions\ActLeaveGroup.h" />
+    <ClInclude Include="missions\actions\ActLockDock.h" />
     <ClInclude Include="missions\actions\ActPlayNN.h" />
     <ClInclude Include="missions\actions\ActPopUpDialog.h" />
     <ClInclude Include="missions\actions\ActRemoveCargo.h" />
@@ -246,6 +255,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClInclude Include="missions\conditions\CndLeaveGroup.h" />
     <ClInclude Include="missions\conditions\CndLeaveMsn.h" />
     <ClInclude Include="missions\MissionIniReader.h" />
+    <ClInclude Include="missions\NpcShipArchetypes.h" />
     <ClInclude Include="missions\objectives\ObjUtils.h" />
     <ClInclude Include="missions\randomMissions\Meta.h" />
     <ClInclude Include="missions\randomMissions\TradeMissions.h" />
@@ -343,6 +353,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClInclude Include="missions\objectives\ObjSetPriority.h" />
     <ClInclude Include="missions\objectives\ObjStayInRange.h" />
     <ClInclude Include="missions\ShipSpawning.h" />
+    <ClInclude Include="missions\SolarDocking.h" />
     <ClInclude Include="missions\Trigger.h" />
     <ClInclude Include="missions\randomMissions\Costumes.h" />
     <ClInclude Include="missions\randomMissions\Factions.h" />

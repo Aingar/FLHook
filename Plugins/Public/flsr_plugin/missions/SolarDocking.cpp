@@ -32,10 +32,10 @@ namespace Missions
 
 			bool __stdcall Send_FLPACKET_SERVER_LAUNCH(uint iClientID, FLPACKET_LAUNCH& pLaunch)
 			{
-				if (dockableSolars.contains(pLaunch.iSolarObjId))
+				if (dockableSolars.contains(pLaunch.iBase))
 				{
 					LaunchComm comm;
-					comm.solarObjId = pLaunch.iSolarObjId;
+					comm.solarObjId = pLaunch.iBase;
 					comm.dockId = pLaunch.iDock;
 					unprocessedLaunchComms[iClientID] = comm;
 				}
@@ -50,7 +50,7 @@ namespace Missions
 				auto& playerData = Players[clientId];
 				for (const auto& base : lstBases)
 				{
-					if (base.iBaseID == playerData.exitedBase && pub::SpaceObj::ExistsAndAlive(base.iObjectID) != 0) // 0 -> true
+					if (base.second.iBaseID == playerData.exitedBase && pub::SpaceObj::ExistsAndAlive(base.second.iObjectID) != 0) // 0 -> true
 					{
 						bool solarFound = false;
 						for (const auto& dockable : dockableSolars)
@@ -369,7 +369,7 @@ namespace Missions
 					uint shipId = entry.first;
 					// Check for invulnerability to know if the player is in the dock scene without ship controls.
 					if (GetShipInspect(shipId, inspect, starSystem) && inspect->cobj->ownerPlayer > 0 && inspect->is_invulnerable())
-						pub::Player::ForceLand(inspect->cobj->ownerPlayer, static_cast<CEqObj*>(killedObject->cobj)->dockWithBaseId);
+						pub::Player::ForceLand(inspect->cobj->ownerPlayer, static_cast<CEqObj*>(killedObject->cobj)->dockTargetId);
 				}
 				dockQueues.erase(objId);
 				returncode = DEFAULT_RETURNCODE;

@@ -6,7 +6,7 @@ namespace Missions
 	struct ActSetNNObj : Action
 	{
 		uint label = 0;
-		FmtStr message = FmtStr(0, 0);
+		FmtStr message = FmtStr(1, 0);
 		uint systemId = 0;
 		Vector position;
 		bool bestRoute = false;
@@ -14,5 +14,4 @@ namespace Missions
 
 		void Execute(Mission& mission, const MissionObject& activator) const;
 	};
-	typedef std::shared_ptr<ActSetNNObj> ActSetNNObjPtr;
 }

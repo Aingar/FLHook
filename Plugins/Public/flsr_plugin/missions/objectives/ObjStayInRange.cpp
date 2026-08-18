@@ -30,7 +30,7 @@ namespace Missions
 			return;
 
 		pub::AI::SetZoneBehaviorParams zoneParams;
-		zoneParams.op_type = pub::AI::M_BUZZ;
+		zoneParams.OpType = pub::AI::Buzz;
 		zoneParams.fRadius = range;
 		zoneParams.iDunno_0x10 = active ? ZoneSetup::Create : ZoneSetup::Delete;
 		if (zoneParams.iDunno_0x10 != ZoneSetup::Delete)

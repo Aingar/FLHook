@@ -1,7 +1,6 @@
 #include <FLHook.h>
 #include "../Plugin.h"
 #include "LifeTimes.h"
-#include "PluginUtilities.h"
 
 namespace Missions
 {

@@ -37,9 +37,8 @@ namespace Missions
 				pub::Player::GetBase(clientId, baseId);
 				if (baseId)
 				{
-					for (const auto& baseIter : lstBases)
+					for (const auto& base : lstBases)
 					{
-						auto& base = baseIter.second;
 						if (base.iBaseID == baseId && base.iObjectID)
 						{
 							objId = base.iObjectID;

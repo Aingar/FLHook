@@ -27,6 +27,13 @@ namespace Missions
 		Unregister();
 	}
 
+	ConditionPtr CndDestroyed::Copy(const ConditionParent& newParent, const uint overrideObjNameOrLabel) const
+	{
+		const uint newObjNameOrLabel = destroyedIsActivator && overrideObjNameOrLabel != 0 ? overrideObjNameOrLabel : objNameOrLabel;
+		const uint newKillerNameOrLabel = !destroyedIsActivator && overrideObjNameOrLabel != 0 ? overrideObjNameOrLabel : killerNameOrLabel;
+		return ConditionPtr(new CndDestroyed(newParent, newObjNameOrLabel, condition, newKillerNameOrLabel, targetCount, destroyedIsActivator));
+	}
+
 	void CndDestroyed::Register()
 	{
 		currentCount = 0;
@@ -88,7 +95,7 @@ namespace Missions
 				return false;
 		}
 
-		BYTE foundObjectType = 0;
+		byte foundObjectType = 0;
 		if (killedObject->is_player() && objNameOrLabel == Stranger && !mission.clientIds.contains(killedObject->cobj->ownerPlayer))
 		{
 			foundObjectType = 1;

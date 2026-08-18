@@ -1,7 +1,6 @@
 #include "CndDistObj.h"
 #include "../Mission.h"
 #include "../../Plugin.h"
-#include "PluginUtilities.h"
 
 namespace Missions
 {
@@ -23,6 +22,11 @@ namespace Missions
 	CndDistObj::~CndDistObj()
 	{
 		Unregister();
+	}
+
+	ConditionPtr CndDistObj::Copy(const ConditionParent& newParent, const uint overrideObjNameOrLabel) const
+	{
+		return ConditionPtr(new CndDistObj(newParent, overrideObjNameOrLabel != 0 ? overrideObjNameOrLabel : objNameOrLabel, condition, distance, otherObjNameOrLabel));
 	}
 
 	void CndDistObj::Register()

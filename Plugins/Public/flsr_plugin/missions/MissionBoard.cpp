@@ -43,6 +43,17 @@ namespace MissionBoard
 		GetClientInterface()->Send_FLPACKET_SERVER_GFUPDATEMISSIONCOMPUTER(clientId, buffer, pos);
 	}
 
+	struct MissionAcceptance
+	{
+		uint index;
+		uint base;
+		// acceptanceData:
+		// 1 byte:  bool accepted
+		// 2 bytes: ushort rejectedResourceId;
+		// 4 bytes: unknown
+		char acceptanceData[7];
+	};
+
 	static void SendOfferAcceptance(const uint clientId, const uint boardIndex, const uint base)
 	{
 		MissionAcceptance data;
@@ -50,7 +61,7 @@ namespace MissionBoard
 		data.base = base;
 		std::memset(&data.acceptanceData, 0, sizeof(data.acceptanceData));
 		data.acceptanceData[0] = 1; // TRUE, accepted
-		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, data, sizeof(MissionAcceptance));
+		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, &data, sizeof(MissionAcceptance));
 	}
 
 	static void SendOfferRejection(const uint clientId, const uint boardIndex, const uint base, const ushort rejectionResourceId)
@@ -62,7 +73,7 @@ namespace MissionBoard
 		data.acceptanceData[0] = 0; // FALSE, rejected
 		ushort* rejectedText = (ushort*)& data.acceptanceData[1];
 		*rejectedText = rejectionResourceId;
-		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, data, sizeof(MissionAcceptance));
+		GetClientInterface()->Send_FLPACKET_SERVER_GFMISSIONVENDORACCEPTANCE(clientId, &data, sizeof(MissionAcceptance));
 	}
 
 	std::unordered_map<uint, Offer> offers;
@@ -124,16 +135,17 @@ namespace MissionBoard
 		SendDestroyOfferToAll(offerId);
 	}
 
+	// origin 1 = NPCs, origin 2 = Mission Board
 	void __stdcall MissionResponse(uint boardIndex, uint origin, bool accepted, uint clientId)
 	{
-		if (!accepted)
+		if (!accepted || origin != 2)
 		{
 			returncode = DEFAULT_RETURNCODE;
 			return;
 		}
 
 		st6::vector<uint> groupMembers;
-		pub::Player::GetGroupMembers(clientId, *reinterpret_cast<std::vector<uint>*>(&groupMembers));
+		pub::Player::GetGroupMembers(clientId, groupMembers);
 		// Usually this check is enough on one player of a group. But just make sure it really does not overlook anything.
 		for (const auto memberId : groupMembers)
 		{
@@ -233,7 +245,7 @@ namespace MissionBoard
 
 	bool __stdcall Send_FLPACKET_SERVER_GFCOMPLETEMISSIONCOMPUTERLIST(uint clientId, uint base)
 	{
-		// Before the Complete Packet it sent, add the custom missions to the list.
+		// Before the Complete Packet is sent, add the custom missions to the list.
 
 		uint shipArchetypeId = 0;
 		pub::Player::GetShipID(clientId, shipArchetypeId);
@@ -258,6 +270,7 @@ namespace MissionBoard
 				continue;
 
 			const uint index = ++boardLastIndexByClient[clientId];
+			boardIndicesByClientId.erase(clientId);
 			boardIndicesByClientId[clientId].push_back({ index, offerId });
 			SendOfferToClient(clientId, offerId, offer, base, index);
 		}

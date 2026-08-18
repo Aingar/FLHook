@@ -4,7 +4,8 @@
 #include "MissionOffer.h"
 #include "MsnSolar.h"
 #include "MsnFormation.h"
-#include "Npc.h"
+#include "NpcShipArchetypes.h"
+#include "MsnNpc.h"
 #include "Dialog.h"
 #include <queue>
 #include "Objectives/Objectives.h"
@@ -34,8 +35,8 @@ namespace Missions
 		uint offerId;
 
 		std::unordered_map<uint, Trigger> triggers;
-		std::vector<MsnSolar> solars;
-		std::unordered_map<uint, Npc> npcs;
+		std::unordered_map<uint, MsnSolar> msnSolars;
+		std::unordered_map<uint, NpcShipArchetypes::NpcShipArch> npcShipArchetypes;
 		std::unordered_map<uint, MsnNpc> msnNpcs;
 		std::unordered_map<uint, MsnFormation> formations;
 		std::unordered_map<uint, Objectives> objectives;
@@ -48,6 +49,7 @@ namespace Missions
 		std::unordered_map<Condition*, ConditionPtr> dynamicConditions;
 		std::unordered_map<uint, ConditionPtr> objectiveConditionByObjectId;
 		std::unordered_map<uint, std::unordered_set<uint>> markedObjIdsByClientId;
+		std::unordered_map<uint, std::unordered_set<uint>> lockedDocksByClientId;
 
 		MissionResult missionResult;
 		float reofferRemainingTime;
@@ -67,6 +69,7 @@ namespace Missions
 		std::queue<std::pair<uint, MissionObject>> triggerExecutionQueue;
 
 		void EvaluateCountConditions(const uint label) const;
+		void DeleteTriggerBranch(const MissionObject& activator);
 
 	public:
 		Mission(const std::string name, const uint id, const bool initiallyActive = false, const bool manuallyCrafted = false);

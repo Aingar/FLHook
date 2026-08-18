@@ -18,6 +18,11 @@ namespace Missions
 		Unregister();
 	}
 
+	ConditionPtr CndLaunchComplete::Copy(const ConditionParent& newParent, const uint overrideObjNameOrLabel) const
+	{
+		return ConditionPtr(new CndLaunchComplete(newParent, overrideObjNameOrLabel != 0 ? overrideObjNameOrLabel : label, baseIds));
+	}
+
 	void CndLaunchComplete::Register()
 	{
 		if (observedCndLaunchComplete.insert(this).second)
@@ -78,7 +83,7 @@ namespace Missions
 					if (observedCndLaunchComplete.contains(condition) &&
 						GetShipInspect(launchObjId, inspect, system) &&
 						(inspect->cobj->objectClass & CObject::CEQOBJ_MASK) &&
-						condition->Matches(clientId, static_cast<CEqObj*>(inspect->cobj)->dockTargetId2))
+						condition->Matches(clientId, static_cast<CEqObj*>(inspect->cobj)->dockWithBaseId))
 					{
 						condition->ExecuteTrigger();
 					}

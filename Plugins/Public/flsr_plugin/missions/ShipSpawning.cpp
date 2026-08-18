@@ -474,7 +474,7 @@ namespace ShipSpawning
 		pub::AI::SubmitState(shipId, &personality);
 	}
 
-	static bool GetLaunchPositionAndDock(const uint shipArchetypeId, uint launchObjId, Vector& startPos, Matrix& startOrientation, int& dockIndex)
+	static bool GetLaunchPositionAndDock(const uint shipArchetypeId, const uint launchObjId, Vector& startPos, Matrix& startOrientation, int& dockIndex)
 	{
 		dockIndex = 0;
 		IObjRW* inspect;
@@ -504,7 +504,7 @@ namespace ShipSpawning
 		return false;
 	}
 
-	static bool LaunchNpcFromObject(uint shipId, uint launchObjId, const int dockIndex)
+	static bool LaunchNpcFromObject(const uint shipId, const uint launchObjId, const int dockIndex)
 	{
 		IObjRW* launchObjInspect;
 		StarSystem* starSystem;

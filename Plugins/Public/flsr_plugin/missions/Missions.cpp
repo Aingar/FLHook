@@ -9,9 +9,17 @@
 #include "ClientObjectives.h"
 #include "actions/ActActMsnTrig.h"
 #include "actions/ActActTrig.h"
-#include "../../../../Source/FLHook/CInGame.h"
-#include "../../../../Source/FLHook/CCmds.h"
+#include <FLHook.h>
 
+class CInGame : public CCmds
+{
+public:
+	uint iClientID;
+	wstring wscAdminName;
+	void DoPrint(const wstring& wscText);
+	void ReadRights(const string& scIniFile);
+	wstring GetAdminName();
+};
 
 namespace Missions
 {	

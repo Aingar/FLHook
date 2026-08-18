@@ -111,8 +111,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="bugfixes\MissionAbortFix.cpp" />
-    <ClCompile Include="Empathies.cpp" />
+    <ClCompile Include="Cloak.cpp" />
     <ClCompile Include="missions\actions\ActDisplayMsg.cpp" />
     <ClCompile Include="missions\actions\ActLeaveGroup.cpp" />
     <ClCompile Include="missions\actions\ActPlayNN.cpp" />
@@ -228,6 +227,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\</Comma
     <ClCompile Include="Tools.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Cloah.h" />
     <ClInclude Include="Empathies.h" />
     <ClInclude Include="IFF.h" />
     <ClInclude Include="LootBoxes.h" />

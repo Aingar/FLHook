@@ -92,3 +92,9 @@ namespace Tools {
 
     void HkNewPlayerMessage(uint iClientID, struct CHARACTER_ID const &cId);
 }
+
+namespace Hooks {
+    void __stdcall CharacterSelect(struct CHARACTER_ID const &cId, unsigned int iClientID);
+    void __stdcall LaunchComplete(unsigned int iBaseID, unsigned int iShip);
+    void SendDeathMsg(const std::wstring& wscMsg, uint iSystemID, uint iClientIDVictim, uint iClientIDKiller);
+    }

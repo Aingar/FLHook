@@ -1,4 +1,4 @@
-﻿#include "Main.h"
+#include "Main.h"
 #include "Empathies.h"
 #include "GroupRep.h"
 #include "Mark.h"
@@ -9,12 +9,14 @@
 #include "Missions/ShipSpawning.h"
 #include "Missions/Formations.h"
 #include "Missions/NpcAppearances.h"
+#include "Missions/NpcShipArchetypes.h"
 #include "Missions/BestPath.h"
 #include "Missions/ClientObjectives.h"
 #include "Missions/LifeTimes.h"
 #include "Missions/Missions.h"
 #include "Missions/MissionBoard.h"
 #include "Missions/Mission.h"
+#include "Missions/SolarDocking.h"
 #include "Missions/conditions/CndBaseEnter.h"
 #include "Missions/conditions/CndBaseExit.h"
 #include "Missions/conditions/CndCloaked.h"
@@ -47,6 +49,7 @@ void LoadSettings() {
     Pilots::ReadFiles();
     NpcAppearances::ReadFiles();
     Formations::ReadFiles();
+    NpcShipArchetypes::ReadFiles();
     BestPath::ReadFiles();
     NpcCloaking::ReadFiles();
 

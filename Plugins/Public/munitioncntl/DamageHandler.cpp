@@ -91,7 +91,11 @@ float GetRayHitRange(CSimple* csimple, CArchGroup* colGrp, Vector& explosionPosi
 
 	for (int i = 0; i < collisionCount; i++)
 	{
-		if (reinterpret_cast<CSimple*>(rayHits[i].cobj) != csimple)
+		auto cobj = reinterpret_cast<CObject*>(rayHits[i].cobj);
+		if (reinterpret_cast<CSimple*>(rayHits[i].cobj) != csimple &&
+			(cobj->objectClass != CObject::COBJECT_MASK ||
+				reinterpret_cast<CObject*>(reinterpret_cast<uint*>(cobj->index)[4]) != csimple->index))
+		
 		{
 			continue;
 		}
@@ -317,7 +321,10 @@ bool ShieldAndDistance(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList
 
 	for (int i = 0; i < collisionCount; i++)
 	{
-		if (reinterpret_cast<CSimple*>(rayHits[i].cobj) != iobj->cobj)
+		auto cobj = reinterpret_cast<CObject*>(rayHits[i].cobj);
+		if (cobj != iobj->cobj &&
+			(cobj->objectClass != CObject::COBJECT_MASK ||
+				reinterpret_cast<CObject*>(reinterpret_cast<uint*>(cobj->index)[4]) != iobj->cobj->index))
 		{
 			continue;
 		}

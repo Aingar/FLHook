@@ -77,25 +77,17 @@ float Distance3D(Vector v1, Vector v2)
 float GetRayHitRange(CSimple* csimple, CArchGroup* colGrp, Vector& explosionPosition, float& hullDistance)
 {
 	Vector centerOfMass;
-	float radius;
 	colGrp->GetCenterOfMass(centerOfMass);
-	colGrp->GetRadius(radius);
-
 	PhySys::RayHit rayHits[20];
 	int collisionCount = FindRayCollisions(csimple->system, explosionPosition, centerOfMass, rayHits, 20);
 
 	bool firstHit = true;
-	float centerOfMassDistance = SquaredDistance3D(centerOfMass, explosionPosition, radius);
 	float colGrpDistance = FLT_MAX;
-	float colGrpDistance2 = FLT_MAX;
 
 	for (int i = 0; i < collisionCount; i++)
 	{
-		auto cobj = reinterpret_cast<CObject*>(rayHits[i].cobj);
-		if (reinterpret_cast<CSimple*>(rayHits[i].cobj) != csimple &&
-			(cobj->objectClass != CObject::COBJECT_MASK ||
-				reinterpret_cast<CObject*>(reinterpret_cast<uint*>(cobj->index)[4]) != csimple->index))
-		
+		auto rayCobj = reinterpret_cast<CSimple*>(rayHits[i].cobj);
+		if (rayCobj != csimple)
 		{
 			continue;
 		}
@@ -111,20 +103,24 @@ float GetRayHitRange(CSimple* csimple, CArchGroup* colGrp, Vector& explosionPosi
 			hullDistance = min(hullDistance, rayDistance);
 			firstHit = false;
 		}
+		
+		if (!colGrp->IsInstInGroup(rayCobj->part_to_inst(rayHits[i].subtargetDacomCRC)))
+		{
+			continue;
+		}
 
-		colGrpDistance2 = colGrpDistance;
 		colGrpDistance = rayDistance;
+		break;
 	}
 
-	if (colGrpDistance2 != FLT_MAX)
-	{
-		return colGrpDistance2;
-	}
 	if (colGrpDistance != FLT_MAX)
 	{
 		return colGrpDistance;
 	}
-	return centerOfMassDistance;
+
+	float radius;
+	colGrp->GetRadius(radius);
+	return SquaredDistance3D(centerOfMass, explosionPosition, radius);
 }
 
 void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* explosion, DamageList* dmg, float& rootDistance, ExplosionDamageData* explData)
@@ -204,8 +200,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 		iobj->damage_ext_eq(equip, damageToDeal, dmg);
 	}
 
-
-	float colGrpMultSum = 0;
+	float distanceSum = 0.f;
 
 	vector<pair<CArchGroup*, float>> colGrpMultVector;
 	{
@@ -219,7 +214,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 				continue;
 			}
 
-			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition, rootDistance);
+ 			float distance = GetRayHitRange(iobj->cobj, colGrp, explosion->explosionPosition, rootDistance);
 			distance -= detonationDistance;
 			distance = max(distance, 0.1f);
 
@@ -257,8 +252,8 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 				continue;
 			}
 
-			colGrpMultSum += colGrpDmgMult;
-			colGrpMultVector.push_back({ colGrp, colGrpDmgMult });
+			distanceSum += distance;
+			colGrpMultVector.push_back({ colGrp, distance });
 		}
 	}
 
@@ -282,6 +277,7 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	}
 
 	rootDistance = max(rootDistance, 0.1f);
+	distanceSum += rootDistance;
 	
 	float hullDmgBudget = explosion->explosionArchetype->fHullDamage;
 	if (explData && explData->munitionData.percentageHullDmg)
@@ -290,24 +286,29 @@ void ShipExplosionHandlingExtEqColGrpHull(IObjRW* iobj, ExplosionDamageEvent* ex
 	}
 	hullDmgBudget *= ceqobj->archetype->fExplosionResistance;
 
+	float hullDmgMult = distanceSum / rootDistance;
+
+	float ratioSum = hullDmgMult;
+
 	for (auto& distance : colGrpMultVector)
 	{
-		float dmgMult = colGrpMultSum > 1.0f ? distance.second / colGrpMultSum : distance.second;
-		float damage = dmgMult * explosion->explosionArchetype->fHullDamage;
+		distance.second = distanceSum / distance.second;
+		ratioSum += distance.second;
+	}
+
+	hullDmgBudget /= ratioSum;
+
+	for (auto& distance : colGrpMultVector)
+	{
+		float damage = distance.second * hullDmgBudget;
 		float damageToDeal = damage * distance.first->colGrp->explosionResistance;
 
 		armorEnabled = DmgLogicArmor;
 		iobj->damage_col_grp(distance.first, damageToDeal, dmg);
-		hullDmgBudget -= damageToDeal;
-	}
-
-	if (hullDmgBudget <= 0.0f)
-	{
-		return;
 	}
 
 	armorEnabled = DmgLogicArmor;
-	iobj->damage_hull(hullDmgBudget, dmg);
+	iobj->damage_hull(hullDmgMult* hullDmgBudget, dmg);
 
 	armorEnabled = DmgLogicNone;
 }

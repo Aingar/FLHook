@@ -1758,7 +1758,11 @@ namespace HyperJump
 		// Calculate the expected drift.
 		float drift = (float)(currTime - lastTime);
 		wstring wscRights;
-		HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(iClientID), wscRights);
+		if (HkGetAdmin((const wchar_t*)Players.GetActiveCharacterName(iClientID), wscRights) == HKE_OK)
+		{
+			return;
+		}
+
 		if (drift > MAX_DRIFT)
 			drift = MAX_DRIFT;
 

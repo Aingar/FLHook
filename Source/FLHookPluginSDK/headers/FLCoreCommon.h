@@ -2408,14 +2408,17 @@ public:
 			uint dunno[2];
 			Vector min, max;
 	};
+	struct PartInst
+	{
+		unsigned part;
+		long inst;
+		uint dunno;
+	};
 	SurfaceExtents* surf; // 22
 	
 	uint dunnoCObject2;                                // 23 Parts related
 	uint dunnoCObject3;                                // 24
-	bool dunnoCObject4;                                // 25
-	uint dunnoCObjectShield1;                          // 26 maybe just Parts related
-	uint dunnoCObjectShield2;                          // 27
-	uint dunnoCObject5;                                // 28
+	st6::vector<PartInst> partInstMappingVector;       // 25
 	uint dunnoCObject6;                                // 29
 	bool dunnoCObject7;                                // 30
 	void* unkListCObj;                                 // 31 twodirectional list containing a single value

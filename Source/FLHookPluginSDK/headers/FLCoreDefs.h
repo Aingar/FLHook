@@ -29,6 +29,19 @@ class Vector
 {
 public:
 	float x, y, z;
+
+	Vector& operator-(Vector& a) {
+		this->x -= a.x;
+		this->y -= a.y;
+		this->z -= a.z;
+		return *this;
+	}
+	Vector& operator+(Vector& a) {
+		this->x += a.x;
+		this->y += a.y;
+		this->z += a.z;
+		return *this;
+	}
 };
 
 class Matrix

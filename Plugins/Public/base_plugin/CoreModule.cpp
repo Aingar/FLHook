@@ -140,7 +140,7 @@ void CoreModule::Spawn()
 
 		CreateSolar::SpawnSolar(space_obj, si);
 		spaceobj_modules[space_obj] = this;
-		
+
 		base->baseCSolar = (CSolar*)CObject::Find(space_obj, CObject::CSOLAR_OBJECT);
 		base->baseCSolar->Release();
 
@@ -257,7 +257,7 @@ void CoreModule::RepairDamage()
 		}
 	}
 
-	exitFav:
+exitFav:
 
 	// The bigger the base the more damage can be repaired.
 	for (REPAIR_ITEM& item : set_base_repair_items)
@@ -369,6 +369,7 @@ bool CoreModule::Timer(uint time)
 		// destroy the base unless it is able to repair itself.
 		float damage_taken = set_damage_per_tick * no_crew_penalty;
 		base->base_health -= damage_taken;
+		baseHealthChanged = true;
 	}
 
 	// Repair damage if we have sufficient crew on the base.
@@ -391,7 +392,13 @@ bool CoreModule::Timer(uint time)
 	if (baseHealthChanged && base->baseCSolar)
 	{
 		baseHealthChanged = false;
-		base->baseCSolar->set_hit_pts(base->base_health);
+		auto solarObj = HkGetInspectObj(base->baseCSolar->id);
+		if (solarObj)
+		{
+			DamageList dmgList;
+			dmgList.add_damage_entry(1, base->base_health, (DamageEntry::SubObjFate)0);
+			solarObj->applyDamageList(&dmgList);
+		}
 	}
 
 	return false;
@@ -488,7 +495,7 @@ float CoreModule::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, floa
 		base->base_health = base->baseCSolar->hitPoints;
 	}
 
-	if(base->base_health <= incoming_damage)
+	if (base->base_health <= incoming_damage)
 	{
 		bool shouldRespawn = base->archetype ? base->archetype->respawnWithRestart : true;
 		bool suppressDeath = base->archetype ? base->archetype->suppressDeathAnnouncement : true;
@@ -544,7 +551,7 @@ bool CoreModule::SpaceObjDestroyed(uint space_obj, bool moveFile, bool broadcast
 
 		//Base specific logging
 		string msg = "Base destroyed. Players in system: ";
-		for each (string player in CharsInSystem)
+		for each(string player in CharsInSystem)
 		{
 			msg += (player + "; ");
 		}

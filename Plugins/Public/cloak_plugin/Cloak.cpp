@@ -148,9 +148,34 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	return true;
 }
 
+void __fastcall SendSystemID(PlayerDB* db, void* edx, uint client, uint system)
+{
+	PlayerData* pd = nullptr;
+	while (pd = Players.traverse_active(pd))
+	{
+		if (pd->iOnlineID == client)
+		{
+			continue;
+		}
+
+		auto playerIter = mapClientsCloak.find(pd->iOnlineID);
+		if (playerIter != mapClientsCloak.end() && playerIter->second.iState == STATE_CLOAK_ON)
+		{
+			auto systemIter = mapObscuredSystems.find(Players[pd->iOnlineID].iSystemID);
+			if (systemIter != mapObscuredSystems.end())
+			{
+				db->SendSystemID(pd->iOnlineID, systemIter->second.hash);
+			}
+		}
+	}
+
+	db->SendSystemID(client, system);
+}
 
 void LoadSettings()
 {
+	auto module = GetModuleHandleA("server");
+	PatchCallAddr((char*)module, 0x27ECF, (char*)SendSystemID);
 
 	returncode = DEFAULT_RETURNCODE;
 	// The path to the configuration file.
@@ -1160,17 +1185,6 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	}
 }
 
-void SwitchOutComplete(uint ship, uint clientId)
-{
-	returncode = DEFAULT_RETURNCODE;
-
-	auto& info = mapClientsCloak.find(clientId);
-	if (info != mapClientsCloak.end() && info->second.iState == STATE_CLOAK_ON)
-	{
-		ObscureSystemList(clientId);
-	}
-}
-
 void CreatePlayerShip(uint client, FLPACKET_CREATESHIP& pShip)
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1250,7 +1264,6 @@ EXPORT PLUGIN_INFO* Get_PluginInfo()
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&JumpInComplete_AFTER, PLUGIN_HkIServerImpl_JumpInComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Dock_Call, PLUGIN_HkCb_Dock_Call, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&UseItemRequest, PLUGIN_HkIServerImpl_SPRequestUseItem, 0));
-	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&SwitchOutComplete, PLUGIN_HkIServerImpl_SystemSwitchOutComplete_AFTER, 0));
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&CreatePlayerShip, PLUGIN_HkIClientImpl_Send_FLPACKET_SERVER_CREATESHIP_PLAYER, 0));
 
 	p_PI->lstHooks.push_back(PLUGIN_HOOKINFO((FARPROC*)&Plugin_Communication_CallBack, PLUGIN_Plugin_Communication, 0));

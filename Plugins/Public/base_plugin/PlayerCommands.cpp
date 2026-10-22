@@ -2368,10 +2368,13 @@ namespace PlayerCommands
 					item++;
 					continue;
 				}
+
+				auto sellPrice = UIntToPrettyStr(i.second.sellPrice);
+				auto buyPrice = UIntToPrettyStr(i.second.price);
 				wchar_t buf[1000];
-				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s, buy $%u sell $%u, limits: %u/%u%s</TEXT><PARA/>",
+				_snwprintf(buf, sizeof(buf), L"<TEXT>  %02u:  %ux %s, buy $%s sell $%s, limits: %u/%u%s</TEXT><PARA/>",
 					globalItem, i.second.quantity, HtmlEncode(name).c_str(),
-					i.second.sellPrice, i.second.price, i.second.min_stock, i.second.max_stock, i.second.is_public ? L" (public)" : L"");
+					sellPrice.c_str(), buyPrice.c_str(), i.second.min_stock, i.second.max_stock, i.second.is_public ? L" (public)" : L"");
 				status += buf;
 				item++;
 			}

@@ -116,6 +116,7 @@ struct RecipeCatalog
 	decltype(::craftListNumberModuleMap) craftListNumberModuleMap;
 	decltype(::buildingCraftLists) buildingCraftLists;
 	unordered_set<uint> moduleIds;
+	unordered_map<uint, uint> replacements;
 
 	void Swap()
 	{
@@ -547,16 +548,151 @@ void ValidateRecipeValue(INI_Reader& ini, bool module)
 
 struct RecipeCraftAccess
 {
+	RecipeCraftAccess() = default;
+	RecipeCraftAccess(RecipeCraftAccess&&) = default;
+	RecipeCraftAccess& operator=(RecipeCraftAccess&&) = default;
 	PlayerBase* base;
+	vector<Module*> modules;
+	vector<unique_ptr<Module>> owned;
+	vector<Module*> retired;
+	vector<pair<BuildModule*, RECIPE>> builds;
 	set<wstring> lists;
 	unordered_map<wstring, FactoryModule*> factories;
 
 	void Commit()
 	{
+		for (auto& build : builds) swap(build.first->active_recipe, build.second);
+		base->modules.swap(modules);
 		base->availableCraftList.swap(lists);
 		base->craftTypeTofactoryModuleMap.swap(factories);
+		for (auto& module : owned) module.release();
+		for (Module* module : retired) delete module;
+		base->RecalculateCargoSpace();
 	}
 };
+
+static uint ModuleRecipeId(Module* module)
+{
+	if (module->type == Module::TYPE_FACTORY) return static_cast<FactoryModule*>(module)->factoryNickname;
+	if (module->type == Module::TYPE_STORAGE_CUSTOM) return CreateID(static_cast<StorageModule*>(module)->moduleNickname.c_str());
+	return 0;
+}
+
+static unique_ptr<Module> ConvertedModule(PlayerBase* base, Module* module, const RECIPE& recipe)
+{
+	if (module->type == static_cast<int>(recipe.shortcut_number) && ModuleRecipeId(module) == recipe.nickname) return nullptr;
+	if (module->type == Module::TYPE_FACTORY && recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM
+		&& static_cast<FactoryModule*>(module)->active_recipe.nickname) return nullptr;
+	unique_ptr<Module> replacement;
+	if (recipe.shortcut_number == Module::TYPE_FACTORY)
+	{
+		unique_ptr<FactoryModule> factory(new FactoryModule(base));
+		factory->factoryNickname = recipe.nickname;
+		if (module->type == Module::TYPE_FACTORY)
+		{
+			const auto* previous = static_cast<FactoryModule*>(module);
+			factory->active_recipe = previous->active_recipe;
+			factory->amassedCookingRate = previous->amassedCookingRate;
+			factory->build_queue = previous->build_queue;
+			factory->Paused = previous->Paused;
+			factory->sufficientCatalysts = previous->sufficientCatalysts;
+			factory->errorMessage = previous->errorMessage;
+		}
+		replacement = move(factory);
+	}
+	else if (recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM)
+	{
+		unique_ptr<StorageModule> storage(new StorageModule(base));
+		storage->type = Module::TYPE_STORAGE_CUSTOM;
+		storage->moduleNickname = recipe.nicknameString;
+		replacement = move(storage);
+	}
+	else throw runtime_error("replacement must be a factory or repeatable storage module");
+	replacement->cargoSpace = recipe.moduleCargoStorage;
+	replacement->crew = recipe.moduleCrew;
+	return replacement;
+}
+
+static RecipeCraftAccess PrepareRecipeBase(PlayerBase* base, const decltype(recipeMap)& recipes, const decltype(factoryNicknameToCraftTypeMap)& craftLists)
+{
+	RecipeCraftAccess next;
+	next.base = base;
+	next.modules = base->modules;
+	for (size_t i = 0; i < next.modules.size(); ++i)
+	{
+		Module* module = next.modules[i];
+		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM)) continue;
+		const auto recipe = recipes.find(ModuleRecipeId(module));
+		if (recipe == recipes.end() || recipe->second.nicknameString.empty()) continue;
+		auto replacement = ConvertedModule(base, module, recipe->second);
+		if (replacement)
+		{
+			next.modules[i] = replacement.get();
+			next.owned.push_back(move(replacement));
+			next.retired.push_back(module);
+		}
+		module = next.modules[i];
+		if (module->type != Module::TYPE_FACTORY) continue;
+		auto* factory = static_cast<FactoryModule*>(module);
+		const auto groups = craftLists.find(factory->factoryNickname);
+		if (groups != craftLists.end())
+			for (const auto& group : groups->second)
+			{
+				next.lists.insert(group);
+				next.factories[group] = factory;
+			}
+	}
+	base->modules.swap(next.modules);
+	try { base->GetRequiredCrew(); }
+	catch (...) { base->modules.swap(next.modules); throw; }
+	base->modules.swap(next.modules);
+	return next;
+}
+
+void ApplyModuleReplacements(PlayerBase* base)
+{
+	for (Module* module : base->modules)
+	{
+		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM)) continue;
+		const auto recipe = recipeMap.find(ModuleRecipeId(module));
+		if (recipe == recipeMap.end() || recipe->second.nicknameString.empty()) continue;
+		if (module->type == static_cast<int>(recipe->second.shortcut_number) && ModuleRecipeId(module) == recipe->second.nickname) continue;
+		if (module->type == Module::TYPE_FACTORY && recipe->second.shortcut_number == Module::TYPE_STORAGE_CUSTOM
+			&& static_cast<FactoryModule*>(module)->active_recipe.nickname) continue;
+		try
+		{
+			auto next = PrepareRecipeBase(base, recipeMap, factoryNicknameToCraftTypeMap);
+			next.Commit();
+		}
+		catch (const exception& e)
+		{
+			ConPrint(L"BASE module conversion failed for %ls: %ls\n", base->basename.c_str(), stows(e.what()).c_str());
+		}
+		return;
+	}
+}
+
+static void ResolveModuleReplacements(RecipeCatalog& catalog)
+{
+	for (const auto& replacement : catalog.replacements)
+	{
+		if (catalog.recipeMap.count(replacement.first)) throw runtime_error("replacement nickname duplicates a module recipe");
+		unordered_set<uint> visited;
+		uint target = replacement.first;
+		while (catalog.replacements.count(target))
+		{
+			if (!visited.insert(target).second) throw runtime_error("module replacement cycle");
+			target = catalog.replacements.at(target);
+		}
+		const RECIPE& recipe = catalog.Require(target, true);
+		if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
+			throw runtime_error("replacement must target a factory or repeatable storage module");
+		catalog.recipeMap.emplace(replacement.first, recipe);
+		catalog.moduleIds.insert(replacement.first);
+		const auto lists = catalog.factoryNicknameToCraftTypeMap.find(target);
+		if (lists != catalog.factoryNicknameToCraftTypeMap.end()) catalog.factoryNicknameToCraftTypeMap.emplace(replacement.first, lists->second);
+	}
+}
 
 vector<RecipeCraftAccess> PrepareRecipeReload(const RecipeCatalog& catalog)
 {
@@ -568,39 +704,42 @@ vector<RecipeCraftAccess> PrepareRecipeReload(const RecipeCatalog& catalog)
 	{
 		PlayerBase* base = entry.second;
 		if (!base) continue;
-		RecipeCraftAccess next;
-		next.base = base;
 		for (Module* module : base->modules)
 		{
 			if (!module) continue;
 			if (module->type == Module::TYPE_BUILD)
 			{
 				const RECIPE& active = static_cast<BuildModule*>(module)->active_recipe;
-				if (!active.nickname) continue;
-				const RECIPE& replacement = catalog.Require(active.nickname, true);
-				if (replacement.shortcut_number != active.shortcut_number)
-					throw runtime_error("cannot change the class of a module under construction: " + active.nicknameString);
+				if (active.nickname && catalog.Require(active.nickname, true).shortcut_number != active.shortcut_number
+					&& !catalog.replacements.count(active.nickname)) throw runtime_error("cannot change the class of a module under construction");
 			}
-			else if (module->type == Module::TYPE_STORAGE_CUSTOM)
+			else if (module->type == Module::TYPE_FACTORY || module->type == Module::TYPE_STORAGE_CUSTOM)
 			{
-				const string& name = static_cast<StorageModule*>(module)->moduleNickname;
-				if (catalog.Require(CreateID(name.c_str()), true).shortcut_number != Module::TYPE_STORAGE_CUSTOM)
-					throw runtime_error("cannot change an installed storage module's class: " + name);
+				const uint id = ModuleRecipeId(module);
+				const auto& definition = catalog.Require(id, true);
+				if (definition.shortcut_number != static_cast<uint>(module->type) && !catalog.replacements.count(id)
+					&& !(module->type == Module::TYPE_FACTORY && definition.shortcut_number == Module::TYPE_STORAGE_CUSTOM
+						&& ::recipeMap.count(id) && ::recipeMap.at(id).shortcut_number == Module::TYPE_STORAGE_CUSTOM))
+					throw runtime_error("cannot change an installed module's class without replace_with");
+				if (module->type == Module::TYPE_FACTORY && static_cast<FactoryModule*>(module)->active_recipe.nickname)
+					catalog.Require(static_cast<FactoryModule*>(module)->active_recipe.nickname, false);
 			}
-			else if (module->type == Module::TYPE_FACTORY)
-			{
-				FactoryModule* factory = static_cast<FactoryModule*>(module);
-				if (catalog.Require(factory->factoryNickname, true).shortcut_number != Module::TYPE_FACTORY)
-					throw runtime_error("cannot change an installed factory's class");
-				auto groups = catalog.factoryNicknameToCraftTypeMap.find(factory->factoryNickname);
-				if (groups != catalog.factoryNicknameToCraftTypeMap.end())
-					for (const wstring& group : groups->second)
-					{
-						next.lists.insert(group);
-						next.factories[group] = factory;
-					}
-				if (factory->active_recipe.nickname) catalog.Require(factory->active_recipe.nickname, false);
-			}
+		}
+		auto next = PrepareRecipeBase(base, catalog.recipeMap, catalog.factoryNicknameToCraftTypeMap);
+		for (Module* module : base->modules)
+		{
+			if (!module || module->type != Module::TYPE_BUILD) continue;
+			auto* build = static_cast<BuildModule*>(module);
+			if (!catalog.replacements.count(build->active_recipe.nickname)) continue;
+			RECIPE active = build->active_recipe;
+			const auto& target = catalog.Require(active.nickname, true);
+			active.nickname = target.nickname;
+			active.nicknameString = target.nicknameString;
+			active.infotext = target.infotext;
+			active.shortcut_number = target.shortcut_number;
+			active.moduleCargoStorage = target.moduleCargoStorage;
+			active.moduleCrew = target.moduleCrew;
+			next.builds.emplace_back(build, move(active));
 		}
 		access.push_back(move(next));
 	}
@@ -630,12 +769,19 @@ bool LoadRecipes(string& error, bool live = false)
 			{
 				RECIPE recipe;
 				vector<wstring> craft_types;
+				string replacement;
+				bool replacementOnly = true;
 				wstring build_type;
 				uint recipe_number = 0;
 				while (ini.read_value())
 				{
 					ValidateRecipeValue(ini, true);
-
+					if (!ini.is_value("nickname") && !ini.is_value("replace_with")) replacementOnly = false;
+					if (ini.is_value("replace_with"))
+					{
+						if (ini.get_num_parameters() != 1 || !replacement.empty() || !*ini.get_value_string(0)) throw runtime_error("replace_with needs one module nickname");
+						replacement = ini.get_value_string(0);
+					}
 					if (ini.is_value("nickname"))
 					{
 						recipe.nickname = CreateID(ini.get_value_string(0));
@@ -749,7 +895,12 @@ bool LoadRecipes(string& error, bool live = false)
 						recipe.restricted = ini.get_value_bool(0);
 					}
 				}
-
+				if (!replacement.empty())
+				{
+					if (recipe.nicknameString.empty() || !replacementOnly || !catalog.replacements.emplace(recipe.nickname, CreateID(replacement.c_str())).second)
+						throw runtime_error("replacement block needs only a unique nickname and replace_with");
+					continue;
+				}
 				if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
 					recipe.moduleCrew.clear();
 				if ((recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM || recipe.shortcut_number == Module::TYPE_FACTORY) && recipe.moduleCargoStorage > static_cast<uint>((numeric_limits<int>::max)()))
@@ -762,6 +913,7 @@ bool LoadRecipes(string& error, bool live = false)
 		ini.close();
 	}
 
+	ResolveModuleReplacements(catalog);
 	file = cfg_fileitems;
 	if (catalog.moduleIds.empty()) throw runtime_error("module recipe catalog is empty");
 	if (!ini.open(file.c_str(), false)) throw runtime_error("cannot open recipe file");

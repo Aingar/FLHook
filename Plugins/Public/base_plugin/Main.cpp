@@ -1555,6 +1555,64 @@ __declspec(naked) void HkCb_LandNaked()
 	}
 }
 
+static int __fastcall NpcScanGetType(IObjRWAbstract* object, IObjRWAbstract* owner, uint& type)
+{
+	if (owner && !owner->is_player() && spaceobj_modules.count(object->get_id()))
+	{
+		type = 0;
+		return 0;
+	}
+	return object->get_type(type);
+}
+
+static void __declspec(naked) NpcScanGetTypeNaked()
+{
+	__asm
+	{
+		mov edx, [esp + 0xac]
+		jmp NpcScanGetType
+	}
+}
+
+static bool npcScanPatched = false;
+static unsigned char npcScanOriginal[] = { 0xff, 0x92, 0x88, 0, 0, 0 };
+static unsigned char npcScanHook[6];
+
+static bool SetNpcScanFilter(bool install)
+{
+	if (!install && !npcScanPatched) return true;
+	if (!hModCommon) return false;
+	auto* image = reinterpret_cast<unsigned char*>(hModCommon);
+	const auto* dos = reinterpret_cast<const IMAGE_DOS_HEADER*>(image);
+	if (dos->e_magic != IMAGE_DOS_SIGNATURE || dos->e_lfanew <= 0) return false;
+	const auto* nt = reinterpret_cast<const IMAGE_NT_HEADERS32*>(image + dos->e_lfanew);
+	if (nt->Signature != IMAGE_NT_SIGNATURE || nt->FileHeader.Machine != IMAGE_FILE_MACHINE_I386 || nt->OptionalHeader.Magic != IMAGE_NT_OPTIONAL_HDR32_MAGIC || nt->OptionalHeader.SizeOfImage < 0x877a1) return false;
+	auto* site = image + 0x8778d;
+	if (npcScanPatched == install) return memcmp(site, npcScanHook, sizeof(npcScanHook)) == 0;
+	if (install)
+	{
+		const unsigned char entry[] = { 0x81, 0xec, 0x9c, 0, 0, 0, 0x53, 0x55, 0x56, 0x8b, 0xf1 };
+		const unsigned char owner[] = { 0x89, 0x84, 0x24, 0xa4, 0, 0, 0 };
+		const unsigned char context[] = { 0x8b, 0x11, 0x50, 0xff, 0x92, 0x88, 0, 0, 0, 0x85, 0x5c, 0x24, 0x2c };
+		if (memcmp(image + 0x87580, entry, sizeof(entry)) || memcmp(image + 0x87758, owner, sizeof(owner)) || memcmp(site - 3, context, sizeof(context))) return false;
+		const uint displacement = static_cast<uint>(reinterpret_cast<uintptr_t>(NpcScanGetTypeNaked) - reinterpret_cast<uintptr_t>(site + 5));
+		npcScanHook[0] = 0xe8;
+		memcpy(npcScanHook + 1, &displacement, sizeof(displacement));
+		npcScanHook[5] = 0x90;
+	}
+	if (memcmp(site, install ? npcScanOriginal : npcScanHook, sizeof(npcScanHook))) return false;
+	DWORD protection = 0;
+	if (!VirtualProtect(site, sizeof(npcScanHook), PAGE_EXECUTE_READWRITE, &protection)) return false;
+	memcpy(site, install ? npcScanHook : npcScanOriginal, sizeof(npcScanHook));
+	const bool flushed = FlushInstructionCache(GetCurrentProcess(), site, sizeof(npcScanHook)) != 0;
+	if (!flushed) AddLog("ERROR: Base plugin NPC scan filter cache flush failed");
+	DWORD ignored = 0;
+	const bool restored = VirtualProtect(site, sizeof(npcScanHook), protection, &ignored) != 0;
+	if (!restored) AddLog("ERROR: Base plugin NPC scan filter protection restore failed");
+	npcScanPatched = install;
+	return flushed && restored;
+}
+
 static bool patched = false;
 bool shutdownBasePlugin = false;
 
@@ -1593,6 +1651,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 				WriteProcMem((char*)hModCommon + 0x995b6, patch, sizeof(patch));
 				WriteProcMem((char*)hModCommon + 0x995fc, patch, sizeof(patch));
 			}
+			if (!SetNpcScanFilter(true)) AddLog("ERROR: Base plugin NPC scan filter unavailable");
 		}
 
 		HkLoadStringDLLs();
@@ -1600,6 +1659,7 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 	else if (fdwReason == DLL_PROCESS_DETACH)
 	{
 		shutdownBasePlugin = true;
+		if (!SetNpcScanFilter(false)) AddLog("ERROR: Base plugin NPC scan filter restoration failed");
 
 		if (patched)
 		{

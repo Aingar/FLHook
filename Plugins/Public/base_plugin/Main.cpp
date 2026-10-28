@@ -106,8 +106,39 @@ unordered_map<wstring, RECIPE> moduleNameRecipeMap;
 unordered_map<wstring, map<uint, RECIPE>> craftListNumberModuleMap;
 unordered_set<wstring> buildingCraftLists;
 
-void AddFactoryRecipeToMaps(const RECIPE& recipe);
-void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number);
+struct RecipeCatalog
+{
+	decltype(::recipeMap) recipeMap;
+	decltype(::recipeCraftTypeNumberMap) recipeCraftTypeNumberMap;
+	decltype(::recipeCraftTypeNameMap) recipeCraftTypeNameMap;
+	decltype(::factoryNicknameToCraftTypeMap) factoryNicknameToCraftTypeMap;
+	decltype(::moduleNameRecipeMap) moduleNameRecipeMap;
+	decltype(::craftListNumberModuleMap) craftListNumberModuleMap;
+	decltype(::buildingCraftLists) buildingCraftLists;
+	unordered_set<uint> moduleIds;
+
+	void Swap()
+	{
+		recipeMap.swap(::recipeMap);
+		recipeCraftTypeNumberMap.swap(::recipeCraftTypeNumberMap);
+		recipeCraftTypeNameMap.swap(::recipeCraftTypeNameMap);
+		factoryNicknameToCraftTypeMap.swap(::factoryNicknameToCraftTypeMap);
+		moduleNameRecipeMap.swap(::moduleNameRecipeMap);
+		craftListNumberModuleMap.swap(::craftListNumberModuleMap);
+		buildingCraftLists.swap(::buildingCraftLists);
+	}
+
+	const RECIPE& Require(uint nickname, bool module) const
+	{
+		auto found = recipeMap.find(nickname);
+		if (found == recipeMap.end() || (moduleIds.count(nickname) != 0) != module)
+			throw runtime_error("missing or incompatible referenced recipe: " + to_string(nickname));
+		return found->second;
+	}
+};
+
+void AddFactoryRecipeToMaps(RecipeCatalog& catalog, const RECIPE& recipe);
+void AddModuleRecipeToMaps(RecipeCatalog& catalog, const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number);
 
 /// Map of space obj IDs to base modules to speed up damage algorithms.
 unordered_map<uint, Module*> spaceobj_modules;
@@ -478,29 +509,120 @@ void ValidateItem(const char* goodName)
 	const GoodInfo* gi = GoodList_get()->find_by_name(goodName);
 	if (!gi)
 	{
-		ConPrint(L"\n\nBASE ERROR Invalid good found in config: %ls\n\n", stows((string)goodName).c_str());
+		throw runtime_error(string("unknown recipe item: ") + goodName);
 	}
 }
 
-void LoadRecipes()
+uint RecipeInteger(INI_Reader& ini, uint index = 0)
+{
+	if (index >= ini.get_num_parameters()) throw runtime_error("missing recipe number");
+	const double value = Upkeep::Number(ini.get_value_string(index));
+	if (value < 0 || floor(value) != value || value > (numeric_limits<uint>::max)())
+		throw runtime_error("recipe number must be a nonnegative whole uint");
+	return static_cast<uint>(value);
+}
+
+float RecipeFloat(INI_Reader& ini, uint index = 0)
+{
+	if (index >= ini.get_num_parameters()) throw runtime_error("missing recipe number");
+	const double value = Upkeep::Number(ini.get_value_string(index));
+	if (value < 0 || value > (numeric_limits<float>::max)())
+		throw runtime_error("recipe number must be a nonnegative finite float");
+	return static_cast<float>(value);
+}
+
+void ValidateRecipeValue(INI_Reader& ini, bool module)
+{
+	const string key = ini.get_name_ptr();
+	const uint count = ini.get_num_parameters();
+	if ((key == "consumed" || key == "catalyst" || key == "affiliation_bonus" || (module ? key == "crew" : key == "produced_item")) && count != 2)
+		throw runtime_error(key + " needs two parameters");
+	if (key == "consumed_dynamic" && (count < 2 || count % 2))
+		throw runtime_error(key + " needs item/amount pairs");
+	if (key == "consumed_dynamic_alt" && count < 2)
+		throw runtime_error(key + " needs an amount and items");
+	if (!module && (key == "produced_affiliation" || key == "consumed_affiliation") && (count < 2 || (count - 2) % 3))
+		throw runtime_error(key + " needs a default item/amount and faction/item/amount groups");
+}
+
+struct RecipeCraftAccess
+{
+	PlayerBase* base;
+	set<wstring> lists;
+	unordered_map<wstring, FactoryModule*> factories;
+
+	void Commit()
+	{
+		base->availableCraftList.swap(lists);
+		base->craftTypeTofactoryModuleMap.swap(factories);
+	}
+};
+
+vector<RecipeCraftAccess> PrepareRecipeReload(const RecipeCatalog& catalog)
+{
+	for (const auto& upgrade : core_upgrade_recipes)
+		if (catalog.Require(upgrade.second, true).shortcut_number != Module::TYPE_CORE)
+			throw runtime_error("core upgrade must reference a core recipe");
+	vector<RecipeCraftAccess> access;
+	for (const auto& entry : player_bases)
+	{
+		PlayerBase* base = entry.second;
+		if (!base) continue;
+		RecipeCraftAccess next;
+		next.base = base;
+		for (Module* module : base->modules)
+		{
+			if (!module) continue;
+			if (module->type == Module::TYPE_BUILD)
+			{
+				const RECIPE& active = static_cast<BuildModule*>(module)->active_recipe;
+				if (!active.nickname) continue;
+				const RECIPE& replacement = catalog.Require(active.nickname, true);
+				if (replacement.shortcut_number != active.shortcut_number)
+					throw runtime_error("cannot change the class of a module under construction: " + active.nicknameString);
+			}
+			else if (module->type == Module::TYPE_STORAGE_CUSTOM)
+			{
+				const string& name = static_cast<StorageModule*>(module)->moduleNickname;
+				if (catalog.Require(CreateID(name.c_str()), true).shortcut_number != Module::TYPE_STORAGE_CUSTOM)
+					throw runtime_error("cannot change an installed storage module's class: " + name);
+			}
+			else if (module->type == Module::TYPE_FACTORY)
+			{
+				FactoryModule* factory = static_cast<FactoryModule*>(module);
+				if (catalog.Require(factory->factoryNickname, true).shortcut_number != Module::TYPE_FACTORY)
+					throw runtime_error("cannot change an installed factory's class");
+				auto groups = catalog.factoryNicknameToCraftTypeMap.find(factory->factoryNickname);
+				if (groups != catalog.factoryNicknameToCraftTypeMap.end())
+					for (const wstring& group : groups->second)
+					{
+						next.lists.insert(group);
+						next.factories[group] = factory;
+					}
+				if (factory->active_recipe.nickname) catalog.Require(factory->active_recipe.nickname, false);
+			}
+		}
+		access.push_back(move(next));
+	}
+	return access;
+}
+
+bool LoadRecipes(string& error, bool live = false)
 {
 
 	char szCurDir[MAX_PATH];
 	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
 
-	recipeMap.clear();
-	recipeCraftTypeNumberMap.clear();
-	recipeCraftTypeNameMap.clear();
-	factoryNicknameToCraftTypeMap.clear();
-	moduleNameRecipeMap.clear();
-	craftListNumberModuleMap.clear();
+	RecipeCatalog catalog;
 
 	string cfg_fileitems = string(szCurDir) + R"(\flhook_plugins\base_recipe_items.cfg)";
 	string cfg_filemodules = string(szCurDir) + R"(\flhook_plugins\base_recipe_modules.cfg)";
 
 	INI_Reader ini;
-
-	if (ini.open(cfg_filemodules.c_str(), false))
+	string file = cfg_filemodules;
+	try
+	{
+	if (!ini.open(file.c_str(), false)) throw runtime_error("cannot open recipe file");
 	{
 		while (ini.read_header())
 		{
@@ -508,11 +630,12 @@ void LoadRecipes()
 			{
 				RECIPE recipe;
 				vector<wstring> craft_types;
-				bool validCrew = true;
 				wstring build_type;
 				uint recipe_number = 0;
 				while (ini.read_value())
 				{
+					ValidateRecipeValue(ini, true);
+
 					if (ini.is_value("nickname"))
 					{
 						recipe.nickname = CreateID(ini.get_value_string(0));
@@ -532,24 +655,24 @@ void LoadRecipes()
 					}
 					else if (ini.is_value("recipe_number"))
 					{
-						recipe_number = ini.get_value_int(0);
+						recipe_number = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("module_class"))
 					{
-						recipe.shortcut_number = ini.get_value_int(0);
+						recipe.shortcut_number = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("cooking_rate"))
 					{
-						recipe.cooking_rate = ini.get_value_float(0);
+						recipe.cooking_rate = RecipeFloat(ini, 0);
 					}
 					else if (ini.is_value("credit_cost"))
 					{
-						recipe.credit_cost = ini.get_value_int(0);
+						recipe.credit_cost = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("consumed"))
 					{
 						ValidateItem(ini.get_value_string(0));
-						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), RecipeInteger(ini, 1)));
 					}
 					else if (ini.is_value("consumed_dynamic"))
 					{
@@ -559,9 +682,9 @@ void LoadRecipes()
 						do
 						{
 							itemName = ini.get_value_string(counter * 2);
-							int amount = ini.get_value_int(counter * 2 + 1);
 							if (!itemName.empty())
 							{
+								const uint amount = RecipeInteger(ini, counter * 2 + 1);
 								ValidateItem(itemName.c_str());
 								vector.push_back({ CreateID(itemName.c_str()), amount });
 							}
@@ -572,7 +695,7 @@ void LoadRecipes()
 					else if (ini.is_value("consumed_dynamic_alt"))
 					{
 						DYNAMIC_ITEM items;
-						items.sharedAmount = ini.get_value_int(0);
+						items.sharedAmount = RecipeInteger(ini, 0);
 						string itemName;
 						int counter = 1;
 						do
@@ -593,64 +716,55 @@ void LoadRecipes()
 						uint cargoHash = CreateID(ini.get_value_string(0));
 						if (humanCargoList.count(cargoHash))
 						{
-							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, RecipeInteger(ini, 1)));
 						}
 						else
 						{
-							recipe.catalyst_items.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+							recipe.catalyst_items.emplace_back(make_pair(cargoHash, RecipeInteger(ini, 1)));
 						}
 					}
 					else if (ini.is_value("reqlevel"))
 					{
-						recipe.reqlevel = ini.get_value_int(0);
+						recipe.reqlevel = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("cargo_storage"))
 					{
-						recipe.moduleCargoStorage = ini.get_value_int(0);
+						recipe.moduleCargoStorage = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("crew"))
 					{
-						try
-						{
-							if (ini.get_num_parameters() != 2) throw runtime_error("crew needs an item and amount");
-							const uint good = CreateID(ini.get_value_string(0));
-							const double amount = Upkeep::Number(ini.get_value_string(1));
-							if (!GoodList_get()->find_by_name(ini.get_value_string(0)) || !humanCargoList.count(good)
-								|| amount <= 0 || floor(amount) != amount || amount > (numeric_limits<uint>::max)() - recipe.moduleCrew[good])
-								throw runtime_error("crew must be a configured human cargo item with a positive whole amount");
-							recipe.moduleCrew[good] += static_cast<uint>(amount);
-						}
-						catch (const exception& e)
-						{
-							validCrew = false;
-							ConPrint(L"BASE ERROR Invalid module crew at line %d: %ls\n", ini.get_line_num(), stows(e.what()).c_str());
-						}
+						const uint good = CreateID(ini.get_value_string(0));
+						const uint amount = RecipeInteger(ini, 1);
+						if (!GoodList_get()->find_by_name(ini.get_value_string(0)) || !humanCargoList.count(good)
+							|| !amount || amount > (numeric_limits<uint>::max)() - recipe.moduleCrew[good])
+							throw runtime_error("crew must be a configured human cargo item with a positive whole amount");
+						recipe.moduleCrew[good] += amount;
 					}
 					else if (ini.is_value("affiliation_bonus"))
 					{
-						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
+						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = RecipeFloat(ini, 1);
 					}
 					else if (ini.is_value("restricted"))
 					{
 						recipe.restricted = ini.get_value_bool(0);
 					}
 				}
+
 				if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
 					recipe.moduleCrew.clear();
-				else if (!validCrew)
-					continue;
-				if (recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM && recipe.moduleCargoStorage > static_cast<uint>((numeric_limits<int>::max)()))
+				if ((recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM || recipe.shortcut_number == Module::TYPE_FACTORY) && recipe.moduleCargoStorage > static_cast<uint>((numeric_limits<int>::max)()))
 				{
-					ConPrint(L"BASE ERROR Invalid cargo capacity for module: %ls\n", stows(recipe.nicknameString).c_str());
-					continue;
+					throw runtime_error("invalid cargo capacity for module: " + recipe.nicknameString);
 				}
-				AddModuleRecipeToMaps(recipe, craft_types, build_type, recipe_number);
+				AddModuleRecipeToMaps(catalog, recipe, craft_types, build_type, recipe_number);
 			}
 		}
 		ini.close();
 	}
 
-	if (ini.open(cfg_fileitems.c_str(), false))
+	file = cfg_fileitems;
+	if (catalog.moduleIds.empty()) throw runtime_error("module recipe catalog is empty");
+	if (!ini.open(file.c_str(), false)) throw runtime_error("cannot open recipe file");
 	{
 		while (ini.read_header())
 		{
@@ -659,6 +773,7 @@ void LoadRecipes()
 				RECIPE recipe;
 				while (ini.read_value())
 				{
+					ValidateRecipeValue(ini, false);
 					if (ini.is_value("nickname"))
 					{
 						recipe.nickname = CreateID(ini.get_value_string(0));
@@ -667,19 +782,18 @@ void LoadRecipes()
 					else if (ini.is_value("produced_item"))
 					{
 						ValidateItem(ini.get_value_string(0));
-						int goodAmount = ini.get_value_int(1);
+						uint goodAmount = RecipeInteger(ini, 1);
 						if (!goodAmount)
 						{
-							ConPrint(L"Error: no amount or zero specified in a recipe %ls\n", stows(recipe.nicknameString).c_str());
-							continue;
+							throw runtime_error("produced_item needs a positive amount: " + recipe.nicknameString);
 						}
-						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), RecipeInteger(ini, 1)));
 					}
 					else if (ini.is_value("produced_affiliation"))
 					{
 						unordered_map<uint, pair<uint, uint>> itemMap;
 						ValidateItem(ini.get_value_string(0));
-						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
+						itemMap[0] = { CreateID(ini.get_value_string(0)), RecipeInteger(ini, 1) };
 						int counter = 0;
 
 						string factionName;
@@ -687,9 +801,9 @@ void LoadRecipes()
 						{
 							factionName = ini.get_value_string(counter * 3 + 2);
 							string commodityName = ini.get_value_string(counter * 3 + 3);
-							int amount = ini.get_value_int(counter * 3 + 4);
 							if (!factionName.empty())
 							{
+								const uint amount = RecipeInteger(ini, counter * 3 + 4);
 								ValidateItem(commodityName.c_str());
 								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
 							}
@@ -700,11 +814,11 @@ void LoadRecipes()
 					}
 					else if (ini.is_value("loop_production"))
 					{
-						recipe.loop_production = ini.get_value_int(0);
+						recipe.loop_production = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("shortcut_number"))
 					{
-						recipe.shortcut_number = ini.get_value_int(0);
+						recipe.shortcut_number = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("craft_type"))
 					{
@@ -716,16 +830,16 @@ void LoadRecipes()
 					}
 					else if (ini.is_value("cooking_rate"))
 					{
-						recipe.cooking_rate = ini.get_value_float(0);
+						recipe.cooking_rate = RecipeFloat(ini, 0);
 					}
 					else if (ini.is_value("credit_cost"))
 					{
-						recipe.credit_cost = ini.get_value_int(0);
+						recipe.credit_cost = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("consumed"))
 					{
 						ValidateItem(ini.get_value_string(0));
-						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
+						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), RecipeInteger(ini, 1)));
 					}
 					else if (ini.is_value("consumed_dynamic"))
 					{
@@ -735,9 +849,9 @@ void LoadRecipes()
 						do
 						{
 							itemName = ini.get_value_string(counter * 2);
-							int amount = ini.get_value_int(counter * 2 + 1);
 							if (!itemName.empty())
 							{
+								const uint amount = RecipeInteger(ini, counter * 2 + 1);
 								ValidateItem(itemName.c_str());
 								vector.push_back({ CreateID(itemName.c_str()), amount });
 							}
@@ -748,7 +862,7 @@ void LoadRecipes()
 					else if (ini.is_value("consumed_dynamic_alt"))
 					{
 						DYNAMIC_ITEM items;
-						items.sharedAmount = ini.get_value_int(0);
+						items.sharedAmount = RecipeInteger(ini, 0);
 						string itemName;
 						int counter = 1;
 						do
@@ -767,7 +881,7 @@ void LoadRecipes()
 					{
 						unordered_map<uint, pair<uint, uint>> itemMap;
 						ValidateItem(ini.get_value_string(0));
-						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
+						itemMap[0] = { CreateID(ini.get_value_string(0)), RecipeInteger(ini, 1) };
 						int counter = 0;
 
 						string factionName;
@@ -775,9 +889,9 @@ void LoadRecipes()
 						{
 							factionName = ini.get_value_string(counter * 3 + 2);
 							string commodityName = ini.get_value_string(counter * 3 + 3);
-							int amount = ini.get_value_int(counter * 3 + 4);
 							if (!factionName.empty())
 							{
+								const uint amount = RecipeInteger(ini, counter * 3 + 4);
 								ValidateItem(commodityName.c_str());
 								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
 							}
@@ -792,33 +906,47 @@ void LoadRecipes()
 						uint cargoHash = CreateID(ini.get_value_string(0));
 						if (humanCargoList.count(cargoHash))
 						{
-							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, RecipeInteger(ini, 1)));
 						}
 						else
 						{
-							recipe.catalyst_items.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
+							recipe.catalyst_items.emplace_back(make_pair(cargoHash, RecipeInteger(ini, 1)));
 						}
 					}
 					else if (ini.is_value("reqlevel"))
 					{
-						recipe.reqlevel = ini.get_value_int(0);
+						recipe.reqlevel = RecipeInteger(ini, 0);
 					}
 					else if (ini.is_value("affiliation_bonus"))
 					{
-						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
+						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = RecipeFloat(ini, 1);
 					}
 					else if (ini.is_value("restricted"))
 					{
 						recipe.restricted = ini.get_value_bool(0);
 					}
 				}
-				AddFactoryRecipeToMaps(recipe);
+				AddFactoryRecipeToMaps(catalog, recipe);
 			}
 		}
 		ini.close();
 	}
 
-	PlayerCommands::PopulateHelpMenus();
+	if (catalog.recipeCraftTypeNameMap.empty()) throw runtime_error("item recipe catalog is empty");
+	vector<RecipeCraftAccess> access;
+	if (live) access = PrepareRecipeReload(catalog);
+	catalog.Swap();
+	try { PlayerCommands::PopulateHelpMenus(); }
+	catch (...) { catalog.Swap(); throw; }
+	for (auto& entry : access) entry.Commit();
+	error.clear();
+	return true;
+	}
+	catch (const exception& e)
+	{
+		error = file + ": " + e.what();
+		return false;
+	}
 }
 
 struct CongestionState
@@ -1603,7 +1731,12 @@ void LoadSettingsActual()
 		ini.close();
 	}
 
-	LoadRecipes();
+	string recipeError;
+	if (!LoadRecipes(recipeError))
+	{
+		ConPrint(L"BASE ERROR %ls\n", stows(recipeError).c_str());
+		return;
+	}
 
 	char datapath[MAX_PATH];
 	GetUserDataPath(datapath);
@@ -3359,6 +3492,16 @@ bool HasSRPAccess(uint client, uint baseId)
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (IS_CMD("basereloadrecipes"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (LoadRecipes(error, true)) cmd->Print(L"OK Module and item recipes reloaded\n");
+		else cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		return true;
+	}
+
 	if (IS_CMD("basereloadcongestion"))
 	{
 		RIGHT_CHECK(RIGHT_BASES)
@@ -4451,29 +4594,45 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	return;
 }
 
-void AddFactoryRecipeToMaps(const RECIPE& recipe)
+void AddFactoryRecipeToMaps(RecipeCatalog& catalog, const RECIPE& recipe)
 {
 	wstring recipeNameKey = ToLower(recipe.infotext);
-	recipeMap[recipe.nickname] = recipe;
-	recipeCraftTypeNumberMap[recipe.craft_type][recipe.shortcut_number] = recipe;
-	recipeCraftTypeNameMap[recipe.craft_type][recipeNameKey] = recipe;
+	if (recipe.produced_items.empty() && recipe.affiliation_produced_items.empty())
+		throw runtime_error("item recipe needs produced items: " + recipe.nicknameString);
+	if (recipe.nicknameString.empty() || recipe.infotext.empty() || recipe.cooking_rate <= 0)
+		throw runtime_error("recipe needs a nickname, infotext and positive cooking_rate");
+	if (!catalog.recipeMap.emplace(recipe.nickname, recipe).second)
+		throw runtime_error("duplicate recipe nickname or hash: " + recipe.nicknameString);
+	catalog.recipeCraftTypeNumberMap[recipe.craft_type][recipe.shortcut_number] = recipe;
+	catalog.recipeCraftTypeNameMap[recipe.craft_type][recipeNameKey] = recipe;
 }
 
-void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number)
+void AddModuleRecipeToMaps(RecipeCatalog& catalog, const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number)
 {
 	wstring recipeNameKey = ToLower(recipe.infotext);
+	catalog.moduleIds.insert(recipe.nickname);
+
+	if (recipe.shortcut_number != Module::TYPE_CORE && recipe.shortcut_number != Module::TYPE_FACTORY
+		&& recipe.shortcut_number != Module::TYPE_STORAGE && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM
+		&& recipe.shortcut_number != Module::TYPE_DEFENSE_1 && recipe.shortcut_number != Module::TYPE_DEFENSE_2
+		&& recipe.shortcut_number != Module::TYPE_DEFENSE_3)
+		throw runtime_error("unsupported module class: " + recipe.nicknameString);
+	if (recipe.shortcut_number == Module::TYPE_FACTORY) catalog.factoryNicknameToCraftTypeMap[recipe.nickname];
 
 	for (const wstring& craftType : craft_types)
 	{
 		if (recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
-			factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(ToLower(craftType));
+			catalog.factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(ToLower(craftType));
 	}
-	recipeMap[recipe.nickname] = recipe;
-	moduleNameRecipeMap[recipeNameKey] = recipe;
+	if (recipe.nicknameString.empty() || recipe.infotext.empty() || recipe.cooking_rate <= 0)
+		throw runtime_error("recipe needs a nickname, infotext and positive cooking_rate");
+	if (!catalog.recipeMap.emplace(recipe.nickname, recipe).second)
+		throw runtime_error("duplicate recipe nickname or hash: " + recipe.nicknameString);
+	catalog.moduleNameRecipeMap[recipeNameKey] = recipe;
 	if (!build_type.empty())
 	{
-		craftListNumberModuleMap[build_type][recipe_number] = recipe;
-		buildingCraftLists.insert(build_type);
+		catalog.craftListNumberModuleMap[build_type][recipe_number] = recipe;
+		catalog.buildingCraftLists.insert(build_type);
 	}
 }
 

@@ -298,6 +298,7 @@ public:
 	wstring GetInfo(bool xml);
 	void LoadState(INI_Reader& ini);
 	void SaveState(FILE* file);
+	bool CanStartRecipe(uint product);
 	void SetActiveRecipe(uint product, bool resetAmassedCookingRate);
 	bool Timer(uint time);
 	bool TryConsume(float volumeToProcess);
@@ -362,6 +363,7 @@ public:
 	int GetRemainingCargoSpace();
 	uint CalculateCargoSpace(const Module* excluded = nullptr) const;
 	void RecalculateCargoSpace();
+	void RebuildCraftingAccess();
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);

@@ -186,6 +186,8 @@ public:
 	bool baseHealthChanged;
 	bool undergoingDestruction;
 	double congestionCarry = 0;
+	double intendedRepairDaily = -1;
+	wstring lastUpkeepText;
 
 	CoreModule(PlayerBase* the_base);
 	~CoreModule();
@@ -624,8 +626,8 @@ void SendResetMarketOverride(uint client);
 void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item);
 void SendMarketGoodSync(PlayerBase* base, uint client);
 wstring UIntToPrettyStr(uint value);
-void SendBaseStatus(uint client, PlayerBase* base);
-void SendBaseStatus(PlayerBase* base);
+void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep = nullptr);
+void SendBaseStatus(PlayerBase* base, const wstring* upkeep = nullptr);
 void ForceLaunch(uint client);
 void SendBaseIDSList(uint client, uint solarId, uint ids);
 
@@ -801,6 +803,10 @@ vector<uint> ConfiguredCoreLevels();
 CongestionTotals BuildCongestionSnapshot(const Upkeep::Policy* policy = nullptr);
 double CongestionDaily(PlayerBase* base, const CongestionTotals& totals);
 double CongestionDamagePerBundle();
+wstring ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals);
+void RefreshUpkeepStatus(PlayerBase* base, const CongestionTotals& totals);
+bool SpaceSuppliesEnabled();
+vector<pair<uint, wstring>> ProjectedSystemUpkeep(uint system);
 wstring ConstructionPolicyError(uint system);
 bool ReloadCongestion(string& error, bool fullLoad = false);
 

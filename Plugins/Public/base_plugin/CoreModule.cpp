@@ -355,6 +355,9 @@ bool CoreModule::Timer(uint time)
 		congestionCarry = 0;
 		ConPrint(L"BASE congestion unavailable for %ls: %ls\n", base->basename.c_str(), stows(e.what()).c_str());
 	}
+	intendedRepairDaily = Upkeep::Intended(base->max_base_health - base->base_health,
+		static_cast<double>(repair_per_repair_cycle) * base->base_level, set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
+
 	// Repair damage if we have sufficient crew on the base.
 
 	if (isCrewSufficient && !congestionUnpaid)
@@ -383,6 +386,7 @@ bool CoreModule::Timer(uint time)
 			solarObj->applyDamageList(&dmgList);
 		}
 	}
+	RefreshUpkeepStatus(base, maintenancePressure);
 
 	return false;
 }

@@ -36,6 +36,7 @@ struct Segment
 struct Policy
 {
     bool enabled = false;
+    bool spaceSupplies = true;
     std::string reference = "commodity_basic_alloys";
     std::set<std::string> types = { "legacy" };
     Settings defaults;
@@ -164,10 +165,10 @@ public:
                 if (values[0].empty()) throw std::runtime_error("empty reference_repair_item");
                 policy.reference = values[0];
             }
-            else if (key == "enabled")
+            else if (key == "enabled" || key == "space_upkeep_projection")
             {
                 if (values[0] != "0" && values[0] != "1") throw std::runtime_error(key + " must be 0 or 1");
-                policy.enabled = values[0] == "1";
+                (key == "enabled" ? policy.enabled : policy.spaceSupplies) = values[0] == "1";
             }
             else SetSetting(policy.defaults, key, Number(values[0]));
         }
@@ -281,7 +282,12 @@ inline double Accrue(double daily, double seconds, double& carry)
     return whole;
 }
 
-
+inline double Intended(double deficit, double heal, size_t alternatives)
+{
+    if (!std::isfinite(deficit) || !std::isfinite(heal) || heal <= 0) return std::numeric_limits<double>::quiet_NaN();
+    if (deficit > 0 && alternatives == 0) return std::numeric_limits<double>::quiet_NaN();
+    return (std::min)(static_cast<double>(alternatives), std::ceil((std::max)(0.0, deficit) / heal));
+}
 
 inline double WearInterval(Id tick, Id damageTick)
 {
@@ -308,5 +314,32 @@ std::vector<Id> CoreLevels(Reachable next)
     return levels;
 }
 
-
+inline std::wstring Format(double bundles, const std::vector<Material>& items)
+{
+    if (!std::isfinite(bundles) || bundles < 0) return L"Unavailable";
+    if (bundles == 0) return L"0";
+    struct Group { double amount; std::wstring names; };
+    std::vector<Group> groups;
+    for (const auto& item : items)
+    {
+        const double amount = bundles * item.quantity;
+        if (!std::isfinite(amount)) return L"Unavailable";
+        auto group = std::find_if(groups.begin(), groups.end(), [amount](const Group& g) { return g.amount == amount; });
+        if (group == groups.end()) groups.push_back({ amount, item.name });
+        else group->names += L"/" + item.name;
+    }
+    if (groups.empty()) return L"Unavailable";
+    std::wstring result;
+    for (const auto& group : groups)
+    {
+        if (!result.empty()) result += L" or ";
+        std::wostringstream amount;
+        amount.imbue(std::locale::classic());
+        amount.setf(std::ios::fixed, std::ios::floatfield);
+        amount.precision(0);
+        amount << std::ceil(group.amount);
+        result += amount.str() + L" " + group.names;
+    }
+    return result;
+}
 }

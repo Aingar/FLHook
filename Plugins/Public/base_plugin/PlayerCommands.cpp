@@ -2667,8 +2667,25 @@ namespace PlayerCommands
 		}
 	}
 
-	void GetNecessitiesStatus(uint client, const wstring& args)
+	void GetNecessitiesStatus(uint client, const wstring&)
 	{
+		uint ship = 0;
+		pub::Player::GetShip(client, ship);
+		if (ship)
+		{
+			if (!SpaceSuppliesEnabled())
+			{
+				PrintUserCmdText(client, L"ERR Supplies forecasts in space are disabled");
+				return;
+			}
+			uint system = 0;
+			pub::Player::GetSystem(client, system);
+			PrintUserCmdText(client, L"Projected daily upkeep:");
+
+			for (const auto& quote : ProjectedSystemUpkeep(system))
+				PrintUserCmdText(client, L"|    Core %u: %ls", quote.first, quote.second.c_str());
+			return;
+		}
 		// Check that this player is in a player controlled base
 		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (!base)
@@ -2698,6 +2715,7 @@ namespace PlayerCommands
 			populationCount += base->HasMarketItem(hash);
 		}
 		PrintUserCmdText(client, L"Total population: %u onboard", populationCount);
+		PrintUserCmdText(client, L"Projected daily upkeep: %ls", ProjectedUpkeep(base, BuildCongestionSnapshot()).c_str());
 
 		PrintUserCmdText(client, L"Crew supplies:");
 		for (uint item : set_base_crew_consumption_items)

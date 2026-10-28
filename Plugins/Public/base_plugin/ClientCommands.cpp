@@ -214,7 +214,7 @@ wstring IntToStr(uint iValue)
 	return	buf;
 }
 
-void SendBaseStatus(uint client, PlayerBase* base)
+void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
 {
 	wstring base_status = base->GetBaseHeaderText();
 
@@ -244,6 +244,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	}
 	base_status += L"<TEXT>Crew: " + Int64ToPrettyStr((INT64)base->HasMarketItem(set_base_crew_type)) + L"</TEXT><PARA/>";
 	base_status += L"<TEXT>Total population: " + Int64ToPrettyStr((INT64)population) + L"</TEXT><PARA/>";
+	base_status += L"<TEXT>Daily upkeep: " + XMLText(upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot())) + L"</TEXT><PARA/>";
 
 	if (single_vulnerability_window)
 	{
@@ -315,8 +316,9 @@ void SendBaseStatus(uint client, PlayerBase* base)
 }
 
 // Update the base status and send it to all clients in the base
-void SendBaseStatus(PlayerBase* base)
+void SendBaseStatus(PlayerBase* base, const wstring* upkeep)
 {
+	const wstring projected = upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot());
 	struct PlayerData* pd = 0;
 	while (pd = Players.traverse_active(pd))
 	{
@@ -324,7 +326,7 @@ void SendBaseStatus(PlayerBase* base)
 		{
 			if (clients[pd->iOnlineID].player_base == base->base)
 			{
-				SendBaseStatus(pd->iOnlineID, base);
+				SendBaseStatus(pd->iOnlineID, base, &projected);
 			}
 		}
 	}

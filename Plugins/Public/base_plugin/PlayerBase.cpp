@@ -221,13 +221,15 @@ void PlayerBase::Timer(uint curr_time)
 	{
 		this->CheckVulnerabilityWindow(curr_time);
 	}
-	for (Module* pobModule : modules)
+	const size_t moduleCount = modules.size();
+	for (size_t i = 0; i < moduleCount && i < modules.size(); ++i)
 	{
+		Module* pobModule = modules[i];
 		if (pobModule)
 		{
 			bool is_deleted = pobModule->Timer(curr_time);
 			if (is_deleted)
-				break;
+				return;
 		}
 	}
 	if (curr_time % set_tick_time == 0 && logic)
@@ -1122,6 +1124,8 @@ void PlayerBase::ChangeMoney(INT64 the_money)
 	}
 }
 
+
+
 int PlayerBase::GetRemainingCargoSpace()
 {
 	uint used = 0;
@@ -1138,6 +1142,8 @@ int PlayerBase::GetRemainingCargoSpace()
 	}
 	return storage_space - used;
 }
+
+
 
 void PlayerBase::RecalculateCargoSpace()
 {
@@ -1415,6 +1421,8 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 
 	damageTakenMap[charname] += incoming_damage;
 }
+
+
 
 bool PlayerBase::FeedCrew(uint crewId, uint count)
 {

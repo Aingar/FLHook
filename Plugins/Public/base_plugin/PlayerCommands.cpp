@@ -2989,17 +2989,17 @@ namespace PlayerCommands
 
 	void BaseTestDeploy(uint client, const wstring& args)
 	{
+		uint systemId;
+		pub::Player::GetSystem(client, systemId);
+		const wstring policyError = ConstructionPolicyError(systemId);
+		if (!policyError.empty())
+		{
+			PrintUserCmdText(client, L"%ls", policyError.c_str());
+			return;
+		}
 		if (!enableDistanceCheck)
 		{
 			PrintUserCmdText(client, L"Bases can be deployed anywhere!");
-			return;
-		}
-
-		uint systemId;
-		pub::Player::GetSystem(client, systemId);
-		if (bannedSystemList.count(systemId))
-		{
-			PrintUserCmdText(client, L"ERR Deploying base in this system is not possible");
 			return;
 		}
 
@@ -3070,9 +3070,10 @@ namespace PlayerCommands
 
 		uint systemId;
 		pub::Player::GetSystem(client, systemId);
-		if (bannedSystemList.count(systemId))
+		const wstring policyError = ConstructionPolicyError(systemId);
+		if (!policyError.empty())
 		{
-			PrintUserCmdText(client, L"ERR Deploying base in this system is not possible");
+			PrintUserCmdText(client, L"%ls", policyError.c_str());
 			return;
 		}
 

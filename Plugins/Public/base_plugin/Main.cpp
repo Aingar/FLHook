@@ -13,6 +13,7 @@
 #include <PluginUtilities.h>
 #include "Main.h"
 #include <sstream>
+#include <memory>
 #include <hookext_exports.h>
 
 bool set_SkipUnchartedKill = false;
@@ -31,7 +32,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
-unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
+size_t baseSaveIndex = 0;
 
 vector<ScheduledRespawn> basesToRespawn;
 
@@ -44,8 +45,13 @@ int ExportType = 0;
 int set_plugin_debug = 0;
 int set_plugin_debug_special = 0;
 
-/// List of banned systems
-unordered_set<uint> bannedSystemList;
+
+
+CongestionTotals maintenancePressure;
+
+
+
+
 
 /// The ship used to construct and upgrade bases
 uint set_construction_shiparch = 0;
@@ -787,6 +793,293 @@ void LoadRecipes()
 	PlayerCommands::PopulateHelpMenus();
 }
 
+struct CongestionState
+{
+	Upkeep::Policy policy;
+	map<uint, Upkeep::Settings> systems;
+	unordered_set<uint> bans;
+	double referenceVolume = 0;
+	double damage = 0;
+};
+
+static unique_ptr<CongestionState> congestionState(new CongestionState);
+
+vector<Upkeep::Material> RepairMaterials()
+{
+	vector<Upkeep::Material> result;
+	for (const auto& item : set_base_repair_items)
+	{
+		result.push_back({ item.good, item.quantity, L"" });
+	}
+	return result;
+}
+
+vector<Upkeep::Material> OrderedRepairMaterials(PlayerBase* base)
+{
+	return Upkeep::Ordered(RepairMaterials(), base->preferred_repair, base->disabled_repair);
+}
+
+
+
+vector<uint> ConfiguredCoreLevels()
+{
+	return Upkeep::CoreLevels([](uint level)
+	{
+		const auto edge = core_upgrade_recipes.find(level);
+		if (edge == core_upgrade_recipes.end()) return false;
+		const auto recipe = recipeMap.find(edge->second);
+		return recipe != recipeMap.end() && recipe->second.shortcut_number == Module::TYPE_CORE && recipe->second.reqlevel <= level;
+	});
+}
+
+static Upkeep::Settings CongestionSettings(uint system)
+{
+	const auto found = congestionState->systems.find(system);
+	return found == congestionState->systems.end() ? congestionState->policy.defaults : found->second;
+}
+
+static bool ContributesPressure(PlayerBase* base)
+{
+	return Upkeep::Contributes(congestionState->policy, base->basetype, base->invulnerable != 0, base->logic != 0);
+}
+
+CongestionTotals BuildCongestionSnapshot(const Upkeep::Policy* policy)
+{
+	const auto& active = policy ? *policy : congestionState->policy;
+	CongestionTotals totals;
+	for (const auto& entry : player_bases)
+	{
+		PlayerBase* base = entry.second;
+		if (!Upkeep::Contributes(active, base->basetype, base->invulnerable != 0, base->logic != 0)) continue;
+		const auto weight = active.weights.find(base->base_level);
+		if (weight == active.weights.end()) totals[base->system] = numeric_limits<double>::quiet_NaN();
+		else totals[base->system] += weight->second;
+	}
+	return totals;
+}
+
+static double SystemPressure(uint system, const CongestionTotals& totals, PlayerBase* own = nullptr)
+{
+	const auto settings = CongestionSettings(system);
+	if (settings.fixed >= 0) return settings.fixed;
+	const auto total = totals.find(system);
+	const double sum = total == totals.end() ? 0 : total->second;
+	if (!isfinite(sum)) throw runtime_error("missing core weight or invalid system total");
+	double weight = 0;
+	if (own && ContributesPressure(own)) weight = congestionState->policy.weights.at(own->base_level);
+	return Upkeep::Pressure(settings, sum, weight);
+}
+
+double CongestionDaily(PlayerBase* base, const CongestionTotals& totals)
+{
+	if (!congestionState->policy.enabled || !ContributesPressure(base)) return 0;
+	if (!base->modules.empty() && base->modules[0] && base->modules[0]->type == Module::TYPE_CORE && static_cast<CoreModule*>(base->modules[0])->dont_rust) return 0;
+	const auto settings = CongestionSettings(base->system);
+	const double pressure = settings.flatDailyVolume >= 0 ? 0 : SystemPressure(base->system, totals, base);
+	return Upkeep::DailyBundles(congestionState->policy, settings, base->base_level, pressure, congestionState->referenceVolume);
+}
+
+double CongestionDamagePerBundle()
+{
+	return congestionState->damage;
+}
+
+
+
+
+
+
+
+wstring ConstructionPolicyError(uint system)
+{
+	if (congestionState->bans.count(system)) return L"ERR Deploying base in this system is not possible";
+	if (!congestionState->policy.enabled) return L"";
+	try
+	{
+		const auto settings = CongestionSettings(system);
+		if (settings.ceiling < 0) return L"";
+		if (!Upkeep::BuildAllowed(true, settings, SystemPressure(system, BuildCongestionSnapshot()), false))
+			return L"ERR System congestion is too high to deploy a base";
+	}
+	catch (const exception&) { return L"ERR System congestion is unavailable"; }
+	return L"";
+}
+
+
+
+bool ReloadCongestion(string& error, bool fullLoad)
+{
+	INI_Reader ini;
+	error.clear();
+	string location = "base.cfg";
+	try
+	{
+		char directory[MAX_PATH];
+		GetCurrentDirectory(sizeof(directory), directory);
+		const string path = string(directory) + R"(\flhook_plugins\base.cfg)";
+		if (!ini.open(path.c_str(), false)) throw runtime_error("cannot open base.cfg");
+		if (fullLoad)
+		{
+			unordered_set<uint> bans;
+			while (ini.read_header())
+			{
+				if (!ini.is_header("general")) continue;
+				while (ini.read_value())
+					if (ini.is_value("banned_system") && ini.get_num_parameters() == 1 && ini.get_value_string(0)[0])
+						bans.insert(CreateID(ToLower(ini.get_value_string(0)).c_str()));
+			}
+			ini.close();
+			congestionState->bans.swap(bans);
+			if (!ini.open(path.c_str(), false)) throw runtime_error("cannot reopen base.cfg");
+		}
+		Upkeep::Config config;
+		while (ini.read_header())
+		{
+			location = "base.cfg:" + to_string(ini.get_line_num());
+			config.Header(ini.is_header("congestion") ? "congestion" : ini.is_header("congestion_system") ? "congestion_system" : ini.is_header("general") ? "general" : "");
+			while (ini.read_value())
+			{
+				location = "base.cfg:" + to_string(ini.get_line_num());
+				vector<string> values;
+				const string key = ToLower(ini.get_name_ptr());
+				const bool identifier = key == "system" || key == "banned_system" || key == "reference_repair_item";
+				for (uint i = 0; i < ini.get_num_parameters(); ++i)
+					values.emplace_back(identifier ? ToLower(ini.get_value_string(i)) : string(ini.get_value_string(i)));
+				config.Row(key, values);
+			}
+		}
+		location = "base.cfg congestion policy";
+		unique_ptr<CongestionState> next(new CongestionState);
+		next->policy = config.Finish();
+		auto& candidate = next->policy;
+		auto& systems = next->systems;
+		auto& bans = next->bans;
+		for (const auto& entry : candidate.systems)
+		{
+			const uint system = CreateID(entry.first.c_str());
+			if (!Universe::get_system(system)) throw runtime_error("unknown system: " + entry.first);
+			if (!systems.emplace(system, entry.second).second) throw runtime_error("duplicate system ID: " + entry.first);
+		}
+		for (const auto& name : config.banned)
+		{
+			const uint system = CreateID(name.c_str());
+			if (!Universe::get_system(system)) throw runtime_error("unknown banned system: " + name);
+			bans.insert(system);
+		}
+		for (const auto& type : candidate.types)
+			if (!mapArchs.count(type)) throw runtime_error("unknown counted_type: " + type);
+		auto totals = BuildCongestionSnapshot(&candidate);
+		double& referenceVolume = next->referenceVolume;
+		double& damage = next->damage;
+		if (candidate.enabled)
+		{
+			const auto configuredLevels = ConfiguredCoreLevels();
+			set<uint> levels(configuredLevels.begin(), configuredLevels.end());
+			for (const auto& entry : player_bases)
+				if (Upkeep::Contributes(candidate, entry.second->basetype, entry.second->invulnerable != 0, entry.second->logic != 0)) levels.insert(entry.second->base_level);
+			for (uint level : levels)
+				if (!candidate.weights.count(level)) throw runtime_error("missing core_weight: " + to_string(level));
+			const auto* reference = GoodList_get()->find_by_name(candidate.reference.c_str());
+			if (!reference) throw runtime_error("unknown reference_repair_item: " + candidate.reference);
+			set<uint> goods;
+			for (const auto& item : set_base_repair_items)
+			{
+				if (!GoodList::find_by_id(item.good) || !goods.insert(item.good).second || item.quantity > static_cast<uint>((numeric_limits<int>::max)())) throw runtime_error("invalid or duplicate repair item");
+				if (item.good != CreateID(candidate.reference.c_str())) continue;
+				float volume = 0, mass = 0;
+				pub::GetGoodProperties(item.good, volume, mass);
+				referenceVolume = volume * static_cast<double>(item.quantity);
+			}
+			if (!isfinite(referenceVolume) || referenceVolume <= 0) throw runtime_error("reference repair bundle must have positive volume");
+			const double interval = Upkeep::WearInterval(set_tick_time, set_damage_tick_time);
+			const double maintenance = Upkeep::Maintenance(set_damage_per_tick, repair_per_repair_cycle, set_base_repair_items.size(), interval, set_tick_time);
+			if (!isfinite(maintenance) || maintenance <= 0) throw runtime_error("Core 1 wear has no usable repair reference");
+			damage = set_damage_per_tick * (Upkeep::Day / interval) / maintenance;
+			auto checks = totals;
+			for (const auto& entry : systems) checks.emplace(entry.first, 0);
+			checks.emplace(0, 0);
+			for (const auto& total : checks)
+			{
+				if (!isfinite(total.second)) throw runtime_error("system pressure exceeds numeric range");
+				const auto found = systems.find(total.first);
+				const auto settings = found == systems.end() ? candidate.defaults : found->second;
+				for (uint level : levels)
+				{
+					const double daily = Upkeep::DailyBundles(candidate, settings, level, Upkeep::Pressure(settings, total.second), referenceVolume);
+					for (const auto& item : set_base_repair_items)
+						if (!isfinite(daily * item.quantity)) throw runtime_error("congestion material amount exceeds numeric range");
+					double carry = 0;
+					if (!isfinite(Upkeep::Accrue(daily, set_tick_time, carry) * damage)) throw runtime_error("congestion damage exceeds numeric range");
+				}
+			}
+		}
+		ini.close();
+		congestionState.swap(next);
+		maintenancePressure.swap(totals);
+	}
+	catch (const exception& e)
+	{
+		error = location + ": " + e.what();
+		ini.close();
+		if (fullLoad)
+		{
+			congestionState->policy.enabled = false;
+			congestionState->referenceVolume = congestionState->damage = 0;
+		}
+		return false;
+	}
+	for (const auto& entry : player_bases)
+	{
+		PlayerBase* base = entry.second;
+		CoreModule* core = !base->modules.empty() && base->modules[0] && base->modules[0]->type == Module::TYPE_CORE ? static_cast<CoreModule*>(base->modules[0]) : nullptr;
+		if (core) core->congestionCarry = 0;
+	}
+	return true;
+}
+
+static void RunBaseMaintenance(uint curr_time)
+{
+	vector<uint> ids;
+	ids.reserve(player_bases.size());
+	for (const auto& entry : player_bases) ids.push_back(entry.first);
+	unordered_set<uint> failed;
+	for (uint id : ids)
+	{
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end()) continue;
+		try
+		{
+			found->second->Timer(curr_time);
+		}
+		catch (const exception& e)
+		{
+			failed.insert(id);
+			ConPrint(L"BASE maintenance failed for %u: %ls\n", id, stows(e.what()).c_str());
+		}
+	}
+	if (ids.empty()) { baseSaveIndex = 0; return; }
+	baseSaveIndex %= ids.size();
+	for (size_t checked = 0; checked < ids.size(); ++checked)
+	{
+		const uint id = ids[baseSaveIndex];
+		baseSaveIndex = (baseSaveIndex + 1) % ids.size();
+		if (failed.count(id)) continue;
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end()) continue;
+		PlayerBase* base = found->second;
+		if (base->logic == 1 || base->invulnerable == 0)
+		{
+			if (base->pinned_item_updated && base->baseCSolar)
+			{
+				base->UpdateBaseInfoText();
+				base->pinned_item_updated = false;
+			}
+			base->Save();
+			break;
+		}
+	}
+}
+
 /// Load the configuration
 void LoadSettingsActual()
 {
@@ -1046,10 +1339,6 @@ void LoadSettingsActual()
 					{
 						enableDistanceCheck = ini.get_value_bool(0);
 					}
-					else if (ini.is_value("banned_system"))
-					{
-						bannedSystemList.insert(CreateID(ini.get_value_string(0)));
-					}
 					else if (ini.is_value("randomize_hyperspace_hub_days"))
 					{
 						string typeStr = ToLower(ini.get_value_string(0));
@@ -1256,6 +1545,8 @@ void LoadSettingsActual()
 	}
 
 	PlayerBase::GenerateHashFile();
+	string congestionError;
+	if (!ReloadCongestion(congestionError, true)) ConPrint(L"BASE %ls\n", stows(congestionError).c_str());
 
 	// loadHyperspaceHubConfig is weekday where 0 = sunday, 6 = saturday
 	// if it's today, randomize appropriate 'jump hole' POBs
@@ -1400,6 +1691,7 @@ void HkTimerCheckKick()
 
 	if (curr_time % set_tick_time == 0)
 	{
+		maintenancePressure = BuildCongestionSnapshot();
 		RebuildCSolarSystemList();
 
 		ULARGE_INTEGER freeSpace;
@@ -1416,35 +1708,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	for (auto& iter : player_bases)
-	{
-		PlayerBase* base = iter.second;
-		base->Timer(curr_time);
-	}
-
-	if (!player_bases.empty())
-	{
-		if (baseSaveIterator == player_bases.end())
-		{
-			baseSaveIterator = player_bases.begin();
-		}
-		bool saveSuccessful = false;
-		while (!saveSuccessful && baseSaveIterator != player_bases.end())
-		{
-			auto& pb = baseSaveIterator->second;
-			if (pb->logic == 1 || pb->invulnerable == 0)
-			{
-				if (pb->pinned_item_updated && pb->baseCSolar)
-				{
-					pb->UpdateBaseInfoText();
-					pb->pinned_item_updated = false;
-				}
-				pb->Save();
-				saveSuccessful = true;
-			}
-			baseSaveIterator++;
-		}
-	}
+	RunBaseMaintenance(curr_time);
 
 	if ((curr_time % set_export_cooldown) == 0)
 	{
@@ -2997,6 +3261,15 @@ bool HasSRPAccess(uint client, uint baseId)
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (IS_CMD("basereloadcongestion"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (ReloadCongestion(error)) cmd->Print(L"OK Congestion and prohibited systems reloaded\n");
+		else cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		return true;
+	}
 
 	if (args.find(L"setdebugspecial") == 0)
 	{

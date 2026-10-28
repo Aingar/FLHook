@@ -15,6 +15,7 @@
 #include <PluginUtilities.h>
 #include <unordered_map>
 #include <unordered_set>
+#include "Upkeep.h"
 
 #define POPUPDIALOG_BUTTONS_LEFT_YES 1
 #define POPUPDIALOG_BUTTONS_CENTER_NO 2
@@ -184,6 +185,7 @@ public:
 
 	bool baseHealthChanged;
 	bool undergoingDestruction;
+	double congestionCarry = 0;
 
 	CoreModule(PlayerBase* the_base);
 	~CoreModule();
@@ -756,7 +758,7 @@ extern unordered_map<uint, uint> core_upgrade_storage;
 
 // Map of ingame hash to info
 extern unordered_map<uint, class PlayerBase*> player_bases;
-extern unordered_map<uint, PlayerBase*>::iterator baseSaveIterator;
+extern size_t baseSaveIndex;
 
 extern int set_plugin_debug;
 extern int set_plugin_debug_special;
@@ -788,8 +790,19 @@ extern uint set_crew_check_frequency;
 
 extern unordered_map<string, ARCHTYPE_STRUCT> mapArchs;
 
-/// List of banned systems
-extern unordered_set<uint> bannedSystemList;
+
+
+
+using CongestionTotals = map<uint, double>;
+extern CongestionTotals maintenancePressure;
+vector<Upkeep::Material> RepairMaterials();
+vector<Upkeep::Material> OrderedRepairMaterials(PlayerBase* base);
+vector<uint> ConfiguredCoreLevels();
+CongestionTotals BuildCongestionSnapshot(const Upkeep::Policy* policy = nullptr);
+double CongestionDaily(PlayerBase* base, const CongestionTotals& totals);
+double CongestionDamagePerBundle();
+wstring ConstructionPolicyError(uint system);
+bool ReloadCongestion(string& error, bool fullLoad = false);
 
 /// The ship used to construct and upgrade bases
 extern uint set_construction_shiparch;

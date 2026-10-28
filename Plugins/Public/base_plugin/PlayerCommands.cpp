@@ -2722,7 +2722,11 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"Projected daily upkeep:");
 
 			for (const auto& quote : ProjectedSystemUpkeep(system))
-				PrintUserCmdText(client, L"|    Core %u: %ls", quote.first, quote.second.c_str());
+			{
+				PrintUserCmdText(client, L"|    Core %u:", quote.first);
+				PrintUserCmdText(client, L"|      Repairs: %ls", quote.second.repairs.c_str());
+				PrintUserCmdText(client, L"|      Additional upkeep: %ls", quote.second.additional.c_str());
+			}
 			return;
 		}
 		// Check that this player is in a player controlled base
@@ -2763,7 +2767,10 @@ namespace PlayerCommands
 			populationCount += base->HasMarketItem(hash);
 		}
 		PrintUserCmdText(client, L"Total population: %u onboard", populationCount);
-		PrintUserCmdText(client, L"Projected daily upkeep: %ls", ProjectedUpkeep(base, BuildCongestionSnapshot()).c_str());
+		const auto projected = ProjectedUpkeep(base, BuildCongestionSnapshot());
+		PrintUserCmdText(client, L"Projected daily upkeep:");
+		PrintUserCmdText(client, L"|    Repairs: %ls", projected.repairs.c_str());
+		PrintUserCmdText(client, L"|    Additional upkeep: %ls", projected.additional.c_str());
 
 		PrintUserCmdText(client, L"Crew supplies:");
 		for (uint item : set_base_crew_consumption_items)

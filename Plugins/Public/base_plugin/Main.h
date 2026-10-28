@@ -44,6 +44,13 @@ struct DYNAMIC_ITEM
 	vector<uint> items;
 };
 
+struct UpkeepProjection
+{
+	wstring repairs;
+	wstring additional;
+	wstring total;
+};
+
 struct RECIPE
 {
 	uint nickname = 0;
@@ -635,8 +642,8 @@ void SendResetMarketOverride(uint client);
 void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item);
 void SendMarketGoodSync(PlayerBase* base, uint client);
 wstring UIntToPrettyStr(uint value);
-void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep = nullptr);
-void SendBaseStatus(PlayerBase* base, const wstring* upkeep = nullptr);
+void SendBaseStatus(uint client, PlayerBase* base, const UpkeepProjection* upkeep = nullptr);
+void SendBaseStatus(PlayerBase* base, const UpkeepProjection* upkeep = nullptr);
 void ForceLaunch(uint client);
 void SendBaseIDSList(uint client, uint solarId, uint ids);
 
@@ -813,10 +820,10 @@ vector<uint> ConfiguredCoreLevels();
 CongestionTotals BuildCongestionSnapshot(const Upkeep::Policy* policy = nullptr);
 double CongestionDaily(PlayerBase* base, const CongestionTotals& totals);
 double CongestionDamagePerBundle();
-wstring ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals);
+UpkeepProjection ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals);
 void RefreshUpkeepStatus(PlayerBase* base, const CongestionTotals& totals);
 bool SpaceSuppliesEnabled();
-vector<pair<uint, wstring>> ProjectedSystemUpkeep(uint system);
+vector<pair<uint, UpkeepProjection>> ProjectedSystemUpkeep(uint system);
 wstring ConstructionPolicyError(uint system);
 bool ReloadCongestion(string& error, bool fullLoad = false);
 

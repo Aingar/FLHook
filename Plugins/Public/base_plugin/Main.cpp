@@ -1138,6 +1138,32 @@ static wstring FormatUpkeep(double bundles)
 	return Upkeep::Format(bundles, items);
 }
 
+static wstring FormatAdditionalUpkeep(double bundles)
+{
+	const auto text = FormatUpkeep(bundles);
+	return text == L"0" ? L"None" : text;
+}
+
+static UpkeepProjection FormatUpkeepProjection(double repairs, double additional)
+{
+	const bool valid = isfinite(repairs) && repairs >= 0 && isfinite(additional) && additional >= 0;
+	UpkeepProjection text = { FormatUpkeep(repairs), FormatAdditionalUpkeep(additional), valid ? FormatUpkeep(repairs + additional) : L"Unavailable" };
+	if (text.total != L"Unavailable" && repairs > 0 && additional > 0)
+	{
+		const double percent = additional / repairs * 100;
+		if (isfinite(percent))
+		{
+			wostringstream amount;
+			amount.imbue(locale::classic());
+			amount.setf(ios::fixed, ios::floatfield);
+			amount.precision(0);
+			amount << round(percent);
+			text.total += L" (" + amount.str() + L"% over baseline)";
+		}
+	}
+	return text;
+}
+
 vector<uint> ConfiguredCoreLevels()
 {
 	return Upkeep::CoreLevels([](uint level)
@@ -1201,22 +1227,22 @@ double CongestionDamagePerBundle()
 	return congestionState->damage;
 }
 
-wstring ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals)
+UpkeepProjection ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals)
 {
 	try
 	{
-		if (set_holiday_mode || (!base->logic && base->invulnerable == 1)) return L"0";
+		if (set_holiday_mode || (!base->logic && base->invulnerable == 1)) return { L"0", L"None", L"0" };
 		CoreModule* core = !base->modules.empty() && base->modules[0] && base->modules[0]->type == Module::TYPE_CORE ? static_cast<CoreModule*>(base->modules[0]) : nullptr;
-		if (!core || !set_tick_time) return L"Unavailable";
+		if (!core || !set_tick_time) return { L"Unavailable", L"Unavailable", L"Unavailable" };
 		double repair = core->intendedRepairDaily;
 		if (repair < 0)
 		{
 			const double deficit = base->max_base_health - base->base_health + (core->dont_rust ? 0 : set_damage_per_tick);
 			repair = Upkeep::Intended(deficit, static_cast<double>(repair_per_repair_cycle) * base->base_level, set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
 		}
-		return FormatUpkeep(repair + CongestionDaily(base, totals));
+		return FormatUpkeepProjection(repair, CongestionDaily(base, totals));
 	}
-	catch (const exception&) { return L"Unavailable"; }
+	catch (const exception&) { return { L"Unavailable", L"Unavailable", L"Unavailable" }; }
 }
 
 bool SpaceSuppliesEnabled()
@@ -1224,16 +1250,16 @@ bool SpaceSuppliesEnabled()
 	return congestionState->policy.spaceSupplies;
 }
 
-vector<pair<uint, wstring>> ProjectedSystemUpkeep(uint system)
+vector<pair<uint, UpkeepProjection>> ProjectedSystemUpkeep(uint system)
 {
 	const auto type = mapArchs.find("legacy");
 	const bool paused = set_holiday_mode || (type != mapArchs.end() && !type->second.logic && type->second.invulnerable == 1);
 	const auto totals = paused ? CongestionTotals{} : BuildCongestionSnapshot();
-	vector<pair<uint, wstring>> result;
+	vector<pair<uint, UpkeepProjection>> result;
 	for (uint level : ConfiguredCoreLevels())
 	{
-		if (paused) { result.push_back({ level, L"0" }); continue; }
-		wstring text = L"Unavailable";
+		if (paused) { result.push_back({ level, { L"0", L"None", L"0" } }); continue; }
+		UpkeepProjection text = { L"Unavailable", L"Unavailable", L"Unavailable" };
 		try
 		{
 			double ordinary = Upkeep::Maintenance(set_damage_per_tick, static_cast<double>(repair_per_repair_cycle) * level, set_base_repair_items.size(), Upkeep::WearInterval(set_tick_time, set_damage_tick_time), set_tick_time);
@@ -1244,7 +1270,7 @@ vector<pair<uint, wstring>> ProjectedSystemUpkeep(uint system)
 				const double pressure = settings.flatDailyVolume >= 0 ? 0 : SystemPressure(system, totals);
 				extra = Upkeep::DailyBundles(congestionState->policy, settings, level, pressure, congestionState->referenceVolume);
 			}
-			text = FormatUpkeep(ordinary + extra);
+			text = FormatUpkeepProjection(ordinary, extra);
 		}
 		catch (const exception&) {}
 		result.push_back({ level, text });
@@ -1272,10 +1298,10 @@ void RefreshUpkeepStatus(PlayerBase* base, const CongestionTotals& totals)
 	CoreModule* core = !base->modules.empty() && base->modules[0] && base->modules[0]->type == Module::TYPE_CORE ? static_cast<CoreModule*>(base->modules[0]) : nullptr;
 	try
 	{
-		wstring upkeep = ProjectedUpkeep(base, totals);
-		if (core && core->lastUpkeepText == upkeep) return;
+		UpkeepProjection upkeep = ProjectedUpkeep(base, totals);
+		if (core && core->lastUpkeepText == upkeep.total) return;
 		SendBaseStatus(base, &upkeep);
-		if (core) core->lastUpkeepText = std::move(upkeep);
+		if (core) core->lastUpkeepText = std::move(upkeep.total);
 	}
 	catch (const exception& e)
 	{

@@ -214,7 +214,7 @@ wstring IntToStr(uint iValue)
 	return	buf;
 }
 
-void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
+void SendBaseStatus(uint client, PlayerBase* base, const UpkeepProjection* upkeep)
 {
 	wstring base_status = base->GetBaseHeaderText();
 
@@ -245,7 +245,8 @@ void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
 	}
 	base_status += L"<TEXT>Crew: " + Int64ToPrettyStr((INT64)base->HasMarketItem(set_base_crew_type)) + L"</TEXT><PARA/>";
 	base_status += L"<TEXT>Total population: " + Int64ToPrettyStr((INT64)population) + L"</TEXT><PARA/>";
-	base_status += L"<TEXT>Daily upkeep: " + XMLText(upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot())) + L"</TEXT><PARA/>";
+	const auto projected = upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot());
+	base_status += L"<TEXT>Daily upkeep: " + XMLText(projected.total) + L"</TEXT><PARA/>";
 
 	if (single_vulnerability_window)
 	{
@@ -317,9 +318,9 @@ void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
 }
 
 // Update the base status and send it to all clients in the base
-void SendBaseStatus(PlayerBase* base, const wstring* upkeep)
+void SendBaseStatus(PlayerBase* base, const UpkeepProjection* upkeep)
 {
-	const wstring projected = upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot());
+	const auto projected = upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot());
 	struct PlayerData* pd = 0;
 	while (pd = Players.traverse_active(pd))
 	{

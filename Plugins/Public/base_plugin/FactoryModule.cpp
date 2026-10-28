@@ -14,6 +14,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 	amassedCookingRate = 0;
 	active_recipe.nickname = 0;
 	cargoSpace = recipeMap[nickname].moduleCargoStorage;
+	crew = recipeMap[nickname].moduleCrew;
 	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 	{
 		base->availableCraftList.insert(craftType);
@@ -440,21 +441,21 @@ bool FactoryModule::Timer(uint time)
 	for (const auto& workers : active_recipe.catalyst_workforce)
 	{
 		uint good = workers.first;
-		int quantityNeeded = workers.second;
+		int64_t quantityNeeded = workers.second;
 
-		int currentlyFed = base->HasFedWorkerItem(good);
-		int currentlyOnBase = base->HasMarketItem(good);
+		int64_t currentlyFed = base->HasFedWorkerItem(good);
+		int64_t currentlyOnBase = base->HasMarketItem(good);
 
-		int effectiveCrewCount = min(currentlyFed, currentlyOnBase);
-		int availableWorkingCrew = (effectiveCrewCount - base->reservedCatalystMap[good]);
+		int64_t effectiveCrewCount = min(currentlyFed, currentlyOnBase);
+		int64_t availableWorkingCrew = effectiveCrewCount - static_cast<int64_t>(base->reservedCatalystMap[good]);
 		if (availableWorkingCrew >= quantityNeeded)
 		{
 			continue;
 		}
 		
-		int availableToBeFed = currentlyOnBase - currentlyFed;
-		int missingAmount = -(availableWorkingCrew - quantityNeeded);
-		if (availableToBeFed < missingAmount || !base->FeedCrew(good, missingAmount))
+		int64_t availableToBeFed = currentlyOnBase - currentlyFed;
+		int64_t missingAmount = quantityNeeded - availableWorkingCrew;
+		if (availableToBeFed < missingAmount || !base->FeedCrew(good, static_cast<uint>(missingAmount)))
 		{
 			errorMessage = L"Unable to feed crew to handle this module";
 			sufficientCatalysts = false;
@@ -560,6 +561,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			factoryNickname = CreateID(ini.get_value_string(0));
 
 			cargoSpace = recipeMap[factoryNickname].moduleCargoStorage;
+			crew = recipeMap[factoryNickname].moduleCrew;
 			for (auto& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 			{
 				base->availableCraftList.insert(craftType);

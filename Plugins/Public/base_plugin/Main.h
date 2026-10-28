@@ -66,6 +66,7 @@ struct RECIPE
 	uint reqlevel = 0;
 	unordered_map<uint, float> affiliationBonus;
 	uint moduleCargoStorage = 0;
+	map<uint, uint> moduleCrew;
 };
 
 struct BASE_VULNERABILITY_WINDOW {
@@ -144,6 +145,7 @@ class Module
 public:
 	int type;
 	int cargoSpace = 0;
+	map<uint, uint> crew;
 	static const int TYPE_BUILD = 0;
 	static const int TYPE_CORE = 1;
 	static const int TYPE_FACTORY = 2;
@@ -152,6 +154,7 @@ public:
 	static const int TYPE_DEFENSE_2 = 9;
 	static const int TYPE_DEFENSE_3 = 10;
 	static const int TYPE_REARMAMENT = 11;
+	static const int TYPE_STORAGE_CUSTOM = 12;
 
 
 	Module(uint the_type) : type(the_type){}
@@ -210,8 +213,10 @@ class StorageModule : public Module
 {
 public:
 	PlayerBase* base;
+	string moduleNickname;
 
 	StorageModule(PlayerBase* the_base);
+	StorageModule(PlayerBase* the_base, uint nickname);
 	~StorageModule();
 	wstring GetInfo(bool xml);
 
@@ -355,10 +360,12 @@ public:
 	void RemoveMarketGood(uint good, uint quantity);
 	void ChangeMoney(INT64 quantity);
 	int GetRemainingCargoSpace();
+	uint CalculateCargoSpace(const Module* excluded = nullptr) const;
 	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
+	map<uint, uint> GetRequiredCrew() const;
 	bool IsDefaultAffiliation();
 
 	static void GenerateHashFile();

@@ -237,6 +237,7 @@ void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
 	{
 		base_status += L"<TEXT>Hit Points: Indestructible</TEXT><PARA/>";
 	}
+	const auto requiredCrew = base->GetRequiredCrew();
 	uint population = 0;
 	for (uint hash : humanCargoList)
 	{
@@ -265,7 +266,7 @@ void SendBaseStatus(uint client, PlayerBase* base, const wstring* upkeep)
 	{
 		base_status += L"<TEXT>Crew Status: ALL I WANT FOR CHRISTMAS IS YOU</TEXT><PARA/>";
 	}
-	else if (base->HasMarketItem(set_base_crew_type) < base->base_level * 200)
+	else if (any_of(requiredCrew.begin(), requiredCrew.end(), [base](const pair<const uint, uint>& required) { return base->HasMarketItem(required.first) < required.second; }))
 	{
 		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Insufficient crew onboard</TEXT><PARA/><TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}

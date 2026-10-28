@@ -1752,9 +1752,11 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (base->GetRemainingCargoSpace() < base->modules[index]->cargoSpace)
+		const uint remainingCapacity = base->CalculateCargoSpace(base->modules[index]);
+		const uint lostCapacity = base->storage_space > remainingCapacity ? base->storage_space - remainingCapacity : 0;
+		if (static_cast<uint>(base->GetRemainingCargoSpace()) < lostCapacity)
 		{
-			PrintUserCmdText(client, L"ERR Need %d free space to destroy this module", base->modules[index]->cargoSpace);
+			PrintUserCmdText(client, L"ERR Need %d free space to destroy this module", static_cast<int>(lostCapacity));
 			return;
 		}
 
@@ -2702,12 +2704,21 @@ namespace PlayerCommands
 		}
 
 		uint crewItemCount = base->HasMarketItem(set_base_crew_type);
-		uint crewItemNeed = base->base_level * 200;
-		if (crewItemCount < crewItemNeed)
+		const auto requiredCrew = base->GetRequiredCrew();
+		if (any_of(requiredCrew.begin(), requiredCrew.end(), [base](const pair<const uint, uint>& required) { return base->HasMarketItem(required.first) < required.second; }))
 		{
 			PrintUserCmdText(client, L"WARNING, CREW COUNT TOO LOW");
 		}
 		PrintUserCmdText(client, L"Crew: %u onboard", crewItemCount);
+		if (requiredCrew.size() > 1 || requiredCrew.at(set_base_crew_type) != base->base_level * 200)
+		{
+			PrintUserCmdText(client, L"Required crew:");
+			for (const auto& required : requiredCrew)
+			{
+				const GoodInfo* good = GoodList::find_by_id(required.first);
+				if (good) PrintUserCmdText(client, L"|    %ls: %u/%u", HkGetWStringFromIDS(good->iIDSName).c_str(), base->HasMarketItem(required.first), required.second);
+			}
+		}
 
 		uint populationCount = 0;
 		for (uint hash : humanCargoList)

@@ -17,6 +17,7 @@
 #include <unordered_set>
 #include <algorithm>
 #include <cctype>
+#include <cerrno>
 #include <cstdlib>
 #include <random>
 #include <vector>
@@ -67,7 +68,7 @@ struct stPityRecipient {
 
 struct stAccountPityState {
 	string filePath;
-	unordered_map<uint, float> lootFailures;
+	unordered_map<uint, double> lootFailures;
 	bool dirty = false;
 };
 
@@ -103,8 +104,11 @@ int iLoadedNPCDropClasses = 0;
 void LoadSettingsNPCDrops(void);
 
 constexpr float DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE = 0.01f;
+constexpr float DEFAULT_LOOT_DROP_HARD_PITY_PERCENT = 200.0f;
 bool set_bLootDropPityEnabled = false;
 float set_fLootDropPityChanceScale = DEFAULT_LOOT_DROP_PITY_CHANCE_SCALE;
+bool set_bLootDropGroupScaleBaseChance = true;
+float set_fLootDropHardPityPercent = DEFAULT_LOOT_DROP_HARD_PITY_PERCENT;
 bool set_bLootControllerLogEnabled = true;
 unordered_map<uint, stManagedLootProperties> mapManagedLootProperties;
 unordered_map<uint, string> mapShipArchetypeNicknames;
@@ -425,7 +429,7 @@ stAccountPityState& GetLootDropPityState(const string& accountDirectory)
 	IniGetSection(state.filePath, "LootDropPity", values);
 	for (const auto& value : values)
 	{
-		float failures = static_cast<float>(atof(value.scValue.c_str()));
+		double failures = atof(value.scValue.c_str());
 		if (failures > 0.0f && isfinite(failures))
 			state.lootFailures[CreateID(value.scKey.c_str())] = failures;
 	}
@@ -438,7 +442,7 @@ void FlushLootDropPityState(stAccountPityState& state)
 	if (!state.dirty)
 		return;
 
-	vector<pair<string, float>> values;
+	vector<pair<string, double>> values;
 	values.reserve(state.lootFailures.size());
 	for (const auto& score : state.lootFailures)
 	{
@@ -446,7 +450,7 @@ void FlushLootDropPityState(stAccountPityState& state)
 		if (properties != mapManagedLootProperties.end() && score.second > 0.0f)
 			values.emplace_back(properties->second.nickname, score.second);
 	}
-	std::sort(values.begin(), values.end(), [](const pair<string, float>& left, const pair<string, float>& right) {
+	std::sort(values.begin(), values.end(), [](const pair<string, double>& left, const pair<string, double>& right) {
 		return left.first < right.first;
 	});
 	string section;
@@ -531,6 +535,40 @@ void LoadSettingsLootDropPity()
 		set_bLootControllerLogEnabled = logEnabledValid ? logEnabledValue == 1 : true;
 		if (!logEnabledValid)
 			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] log_enabled=\"%s\"; using default 1.\n", stows(logEnabledSetting).c_str());
+	}
+	string groupScaleSetting = IniGetS(pluginConfig, "LootDropPity", "group_scale_base_chance", "");
+	bool groupScaleDefaulted = groupScaleSetting.empty();
+	bool groupScaleValid = true;
+	set_bLootDropGroupScaleBaseChance = true;
+	if (!groupScaleDefaulted)
+	{
+		char* settingEnd = nullptr;
+		long groupScaleValue = strtol(groupScaleSetting.c_str(), &settingEnd, 10);
+		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
+			settingEnd++;
+		groupScaleValid = settingEnd != groupScaleSetting.c_str() && settingEnd && !*settingEnd && (groupScaleValue == 0 || groupScaleValue == 1);
+		if (groupScaleValid)
+			set_bLootDropGroupScaleBaseChance = groupScaleValue == 1;
+		else
+			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] group_scale_base_chance=\"%s\"; using default 1.\n", stows(groupScaleSetting).c_str());
+	}
+	string hardPitySetting = IniGetS(pluginConfig, "LootDropPity", "hard_pity_percent", "");
+	bool hardPityDefaulted = hardPitySetting.empty();
+	bool hardPityValid = true;
+	set_fLootDropHardPityPercent = DEFAULT_LOOT_DROP_HARD_PITY_PERCENT;
+	if (!hardPityDefaulted)
+	{
+		char* settingEnd = nullptr;
+		errno = 0;
+		float hardPityValue = strtof(hardPitySetting.c_str(), &settingEnd);
+		bool hardPityInRange = errno != ERANGE;
+		while (settingEnd && *settingEnd && isspace(static_cast<unsigned char>(*settingEnd)))
+			settingEnd++;
+		hardPityValid = hardPityInRange && settingEnd != hardPitySetting.c_str() && settingEnd && !*settingEnd && isfinite(hardPityValue) && hardPityValue >= 0.0f;
+		if (hardPityValid)
+			set_fLootDropHardPityPercent = hardPityValue;
+		else
+			ConPrint(L"PVECONTROLLER: Invalid [LootDropPity] hard_pity_percent=\"%s\"; using default 200.\n", stows(hardPitySetting).c_str());
 	}
 	mapManagedLootProperties.clear();
 	mapShipArchetypeNicknames.clear();
@@ -634,6 +672,11 @@ void LoadSettingsLootDropPity()
 		chanceScaleDefaulted ? L"default; chance_scale missing" : chanceScaleValid ? L"configured" : L"invalid; disabled",
 		set_bLootControllerLogEnabled ? 1 : 0,
 		logEnabledDefaulted ? L"default" : logEnabledValid ? L"configured" : L"invalid; default used");
+	ConPrint(L"PVECONTROLLER: Loot scaling settings: group_scale_base_chance=%u (%s), hard_pity_percent=%.6f (%s; 0 disables).\n",
+		set_bLootDropGroupScaleBaseChance ? 1 : 0,
+		groupScaleDefaulted ? L"default" : groupScaleValid ? L"configured" : L"invalid; default used",
+		set_fLootDropHardPityPercent,
+		hardPityDefaulted ? L"default" : hardPityValid ? L"configured" : L"invalid; default used");
 	ConPrint(L"PVECONTROLLER: Loot event file logging is %s at flhook_logs/lootcontroller.log; per-event console output is %s.\n",
 		set_bLootControllerLogEnabled ? L"enabled" : L"disabled",
 		set_iPluginDebug >= PLUGIN_DEBUG_CONSOLE ? L"enabled" : L"disabled");
@@ -669,7 +712,7 @@ void NPCBountyPayout(uint iClientID, int cash) {
 	
 }
 
-float GetLootDropPityScore(const string& accountDirectory, uint itemId)
+double GetLootDropPityScore(const string& accountDirectory, uint itemId)
 {
 	stAccountPityState& state = GetLootDropPityState(accountDirectory);
 	auto score = state.lootFailures.find(itemId);
@@ -766,7 +809,7 @@ void ProcessManagedNPCLootDrops(CShip* ship, uint killerClientId, const vector<s
 	uint shipArchetypeId = ship->archetype->iArchID;
 	string shipNickname = GetShipArchetypeNickname(shipArchetypeId);
 	string systemNickname = GetSystemNickname(ship->system);
-	float progressIncrement = 0.0f;
+	double progressIncrement = 0.0;
 	for (const auto& recipient : recipients)
 		progressIncrement += recipient.weight;
 
@@ -778,22 +821,27 @@ void ProcessManagedNPCLootDrops(CShip* ship, uint killerClientId, const vector<s
 		uint rollCount = min(lootCargo.second, properties.maximumDropNPC);
 		if (!rollCount)
 			continue;
+		float baseChanceScale = set_bLootDropGroupScaleBaseChance && !recipients.empty() ? static_cast<float>(progressIncrement) : 1.0f;
+		float scaledBaseChance = max(0.0f, min(1.0f, properties.baseChance * baseChanceScale));
 		for (uint rollIndex = 1; rollIndex <= rollCount; rollIndex++)
 		{
-			float combinedFailures = 0.0f;
+			double combinedFailures = 0.0;
 			for (const auto& recipient : recipients)
 				combinedFailures += GetLootDropPityScore(recipient.accountDirectory, itemId);
 			float conditionalPityChance = 0.0f;
 			if (!recipients.empty())
 			{
 				if (combinedFailures > 0.0f && set_fLootDropPityChanceScale > 0.0f)
-					conditionalPityChance = 1.0f - powf(1.0f - properties.baseChance, combinedFailures * set_fLootDropPityChanceScale);
+					conditionalPityChance = 1.0f - powf(1.0f - properties.baseChance, static_cast<float>(combinedFailures * set_fLootDropPityChanceScale));
 				conditionalPityChance = max(0.0f, min(1.0f, conditionalPityChance));
 			}
-			float totalChance = 1.0f - (1.0f - properties.baseChance) * (1.0f - conditionalPityChance);
-			if (totalChance >= 0.99f)
+			float totalChance = 1.0f - (1.0f - scaledBaseChance) * (1.0f - conditionalPityChance);
+			float nextHardPityPercent = static_cast<float>(properties.baseChance * (combinedFailures + progressIncrement) * 100.0);
+			bool hardPity = !recipients.empty() && set_fLootDropHardPityPercent > 0.0f
+				&& nextHardPityPercent >= set_fLootDropHardPityPercent;
+			if (hardPity || totalChance >= 0.99f)
 				totalChance = 1.0f;
-			float pityAddedChance = totalChance - properties.baseChance;
+			float pityAddedChance = totalChance - scaledBaseChance;
 			float roll = static_cast<float>(rand()) / (static_cast<float>(RAND_MAX) + 1.0f);
 
 			if (roll < totalChance)
@@ -803,32 +851,32 @@ void ProcessManagedNPCLootDrops(CShip* ship, uint killerClientId, const vector<s
 				{
 					ResetLootDropPityScore(recipients, itemId);
 					LootControllerLog(false,
-						"event=npc_drop killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress_before=%.3f progress_after=0.000 loot_object=%u",
+						"event=npc_drop killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f base_chance_scale=%.3f scaled_base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f hard_pity=%u roll=%.4f progress_before=%.3f progress_after=0.000 loot_object=%u",
 						killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
-						properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures, lootId);
+						properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, baseChanceScale, scaledBaseChance, pityAddedChance, totalChance, hardPity ? 1 : 0, roll, combinedFailures, lootId);
 					continue;
 				}
 				LootControllerLog(true,
-					"event=npc_drop_failed killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress=%.3f",
+					"event=npc_drop_failed killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u count=1 base_chance=%.4f base_chance_scale=%.3f scaled_base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f hard_pity=%u roll=%.4f progress=%.3f",
 					killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
-					properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures);
+					properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, baseChanceScale, scaledBaseChance, pityAddedChance, totalChance, hardPity ? 1 : 0, roll, combinedFailures);
 				continue;
 			}
 
 			if (recipients.empty())
 			{
 				LootControllerLog(false,
-					"event=npc_miss_no_recipients killer=\"%s\" recipients=\"none\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f pity_added_chance=0.0000 total_chance=%.4f roll=%.4f",
+					"event=npc_miss_no_recipients killer=\"%s\" recipients=\"none\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f base_chance_scale=%.3f scaled_base_chance=%.4f pity_added_chance=0.0000 total_chance=%.4f hard_pity=0 roll=%.4f",
 					killerName.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(), properties.nickname.c_str(),
-					rollIndex, rollCount, properties.baseChance, totalChance, roll);
+					rollIndex, rollCount, properties.baseChance, baseChanceScale, scaledBaseChance, totalChance, roll);
 				continue;
 			}
 
 			IncrementLootDropPityScore(recipients, itemId);
 			LootControllerLog(false,
-				"event=npc_miss killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f roll=%.4f progress_before=%.3f progress_after=%.3f",
+				"event=npc_miss killer=\"%s\" recipients=\"%s\" npc_ship=\"%s\" npc_object=%u npc_arch=0x%08X system=\"%s\" loot=\"%s\" unit=%u units=%u base_chance=%.4f base_chance_scale=%.3f scaled_base_chance=%.4f pity_added_chance=%.4f total_chance=%.4f hard_pity=%u roll=%.4f progress_before=%.3f progress_after=%.3f",
 				killerName.c_str(), recipientDescription.c_str(), shipNickname.c_str(), ship->id, shipArchetypeId, systemNickname.c_str(),
-				properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, pityAddedChance, totalChance, roll, combinedFailures,
+				properties.nickname.c_str(), rollIndex, rollCount, properties.baseChance, baseChanceScale, scaledBaseChance, pityAddedChance, totalChance, hardPity ? 1 : 0, roll, combinedFailures,
 				combinedFailures + progressIncrement);
 		}
 	}

@@ -1555,6 +1555,26 @@ __declspec(naked) void HkCb_LandNaked()
 	}
 }
 
+static int __fastcall NpcScanGetType(IObjRW* object, IObjRW* owner, uint& type)
+{
+	if (owner && !owner->is_player() && object->cobj && object->cobj->objectClass == CObject::CSOLAR_OBJECT
+		&& reinterpret_cast<CSolar*>(object->cobj)->isDynamic && spaceobj_modules.count(object->cobj->id))
+	{
+		type = 0;
+		return 0;
+	}
+	return object->get_type(type);
+}
+
+static void __declspec(naked) NpcScanGetTypeNaked()
+{
+	__asm
+	{
+		mov edx, [esp + 0xac]
+		jmp NpcScanGetType
+	}
+}
+
 static bool patched = false;
 bool shutdownBasePlugin = false;
 
@@ -1593,6 +1613,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 				WriteProcMem((char*)hModCommon + 0x995b6, patch, sizeof(patch));
 				WriteProcMem((char*)hModCommon + 0x995fc, patch, sizeof(patch));
 			}
+			{
+				byte patch[] = { 0xe8, 0, 0, 0, 0, 0x90 };
+				WriteProcMem((char*)hModCommon + 0x8778d, patch, sizeof(patch));
+				PatchCallAddr((char*)hModCommon, 0x8778d, (char*)NpcScanGetTypeNaked);
+			}
 		}
 
 		HkLoadStringDLLs();
@@ -1613,6 +1638,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 				// Unpatch the Suppress "is dockable " error message
 				byte patch[] = { 0x85, 0x86, 0xb4, 0x01, 0x00 };
 				WriteProcMem((char*)hModCommon + 0x576cb, patch, sizeof(patch));
+			}
+			{
+				byte patch[] = { 0xff, 0x92, 0x88, 0, 0, 0 };
+				WriteProcMem((char*)hModCommon + 0x8778d, patch, sizeof(patch));
 			}
 		}
 

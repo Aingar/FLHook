@@ -2744,29 +2744,15 @@ namespace PlayerCommands
 			return;
 		}
 
-		uint crewItemCount = base->HasMarketItem(set_base_crew_type);
-		const auto requiredCrew = base->GetRequiredCrew();
-		if (any_of(requiredCrew.begin(), requiredCrew.end(), [base](const pair<const uint, uint>& required) { return base->HasMarketItem(required.first) < required.second; }))
+		const auto crewCounts = base->GetCrewCounts();
+		uint64_t populationCount = 0, requiredPopulation = 0;
+		for (const auto& crew : crewCounts)
 		{
-			PrintUserCmdText(client, L"WARNING, CREW COUNT TOO LOW");
+			populationCount += crew.second.onboard;
+			requiredPopulation += crew.second.required;
+			PrintUserCmdText(client, L"%ls: %llu onboard, %llu required", CrewName(crew.first).c_str(), crew.second.onboard, crew.second.required);
 		}
-		PrintUserCmdText(client, L"Crew: %u onboard", crewItemCount);
-		if (requiredCrew.size() > 1 || requiredCrew.at(set_base_crew_type) != base->base_level * 200)
-		{
-			PrintUserCmdText(client, L"Required crew:");
-			for (const auto& required : requiredCrew)
-			{
-				const GoodInfo* good = GoodList::find_by_id(required.first);
-				if (good) PrintUserCmdText(client, L"|    %ls: %u/%u", HkGetWStringFromIDS(good->iIDSName).c_str(), base->HasMarketItem(required.first), required.second);
-			}
-		}
-
-		uint populationCount = 0;
-		for (uint hash : humanCargoList)
-		{
-			populationCount += base->HasMarketItem(hash);
-		}
-		PrintUserCmdText(client, L"Total population: %u onboard", populationCount);
+		PrintUserCmdText(client, L"Total population: %llu onboard, %llu required", populationCount, requiredPopulation);
 		const auto projected = ProjectedUpkeep(base, BuildCongestionSnapshot());
 		PrintUserCmdText(client, L"Projected daily upkeep:");
 		PrintUserCmdText(client, L"|    Repairs: %ls", projected.repairs.c_str());

@@ -28,7 +28,14 @@ wstring StorageModule::GetInfo(bool xml)
 	if (type == TYPE_STORAGE_CUSTOM)
 	{
 		const auto recipe = recipeMap.find(CreateID(moduleNickname.c_str()));
-		return recipe == recipeMap.end() ? L"Unknown storage module" : recipe->second.infotext;
+		wstring info = recipe == recipeMap.end() ? L"Unknown storage module" : recipe->second.infotext;
+		if (xml)
+		{
+			info = XMLText(info);
+			const wstring staffing = GetActiveCrewInfo();
+			if (!staffing.empty()) info += L"</TEXT><PARA/><TEXT>      " + XMLText(staffing);
+		}
+		return info;
 	}
 	return L"Cargo Storage";
 }

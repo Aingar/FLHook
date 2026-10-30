@@ -42,22 +42,22 @@ wstring FactoryModule::GetInfo(bool xml)
 
 
 	wstring openLine;
-	wstring start;
-	wstring end;
 	if (xml)
 	{
 		openLine = L"</TEXT><PARA/><TEXT>      ";
-		start = L"<TEXT>";
-		end = L"</TEXT>";
 	}
 	else
 	{
 		openLine = L"\n - ";
-		start = L"";
-		end = L"";
 	}
 
-	info += start + recipeMap[factoryNickname].infotext;
+	const auto text = [xml](const wstring& value) { return xml ? XMLText(value) : value; };
+	info += text(recipeMap[factoryNickname].infotext);
+	if (xml)
+	{
+		const wstring staffing = GetActiveCrewInfo();
+		if (!staffing.empty()) info += openLine + XMLText(staffing);
+	}
 
 	if (!build_queue.empty())
 	{
@@ -65,12 +65,11 @@ wstring FactoryModule::GetInfo(bool xml)
 	}
 	if (!active_recipe.nickname)
 	{
-		if (!errorMessage.empty()) info += openLine + errorMessage;
-		info += end;
+		if (!errorMessage.empty()) info += openLine + text(errorMessage);
 		return info;
 	}
 
-	info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
+	info += openLine + L"Crafting " + Status + text(active_recipe.infotext) + L". Waiting for:";
 
 	float volumeSum = 0;
 
@@ -110,7 +109,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(good)) + L" in stock]";
+			info += itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName)) + L" [" + itows(base->HasMarketItem(good)) + L" in stock]";
 		}
 		dynamicSum /= i.size();
 		volumeSum += dynamicSum;
@@ -143,7 +142,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(itemId)) + L" in stock]";
+			info += text(HkGetWStringFromIDS(gi->iIDSName)) + L" [" + itows(base->HasMarketItem(itemId)) + L" in stock]";
 		}
 		dynVolumeSum /= i.items.size();
 		volumeSum += i.sharedAmount * dynVolumeSum;
@@ -163,7 +162,7 @@ wstring FactoryModule::GetInfo(bool xml)
 		{
 			continue;
 		}
-		info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		info += openLine + L"- " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 		if (quantity > 0)
 		{
 			uint currStock = base->HasMarketItem(good);
@@ -201,7 +200,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 			}
 		}
 	}
@@ -216,18 +215,21 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 			}
 		}
 	}
 
 	if (!errorMessage.empty())
 	{
-		info += L"<TRA data=\"0x0000FF00\" mask=\"-1\"/>" + openLine + errorMessage + end + L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
+		if (xml)
+			info += openLine + L"</TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>" + XMLText(errorMessage) + L"</TEXT><TRA data=\"0xE6C68400\" mask=\"-1\"/><TEXT>";
+		else
+			info += openLine + errorMessage;
 	}
 	else
 	{
-		info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate) * 60) + end;
+		info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate) * 60);
 	}
 
 	return info;

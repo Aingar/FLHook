@@ -1445,6 +1445,61 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	damageTakenMap[charname] += incoming_damage;
 }
 
+wstring CrewName(uint good)
+{
+	const GoodInfo* info = GoodList::find_by_id(good);
+	const wstring name = info ? HkGetWStringFromIDS(info->iIDSName) : L"";
+	return name.empty() ? L"Unknown (" + to_wstring(good) + L")" : name;
+}
+
+map<uint, uint64_t> Module::GetActiveCrew() const
+{
+	map<uint, uint64_t> required;
+	if (type != TYPE_FACTORY && type != TYPE_STORAGE_CUSTOM) return required;
+	for (const auto& item : crew)
+		if (item.second) required[item.first] += item.second;
+	if (type == TYPE_FACTORY)
+	{
+		const auto& active = static_cast<const FactoryModule*>(this)->active_recipe;
+		if (active.nickname)
+			for (const auto& item : active.catalyst_workforce)
+				if (item.second) required[item.first] += item.second;
+	}
+	return required;
+}
+
+wstring Module::GetActiveCrewInfo() const
+{
+	const auto required = GetActiveCrew();
+	if (required.empty())
+		return type == TYPE_FACTORY && static_cast<const FactoryModule*>(this)->active_recipe.nickname ? L"Active crew: 0" : L"";
+	wstring text = L"Active crew: ";
+	for (const auto& item : required)
+	{
+		if (item.first != required.begin()->first) text += L", ";
+		text += to_wstring(item.second) + L"x " + CrewName(item.first);
+	}
+	return text;
+}
+
+map<uint, CrewCount> PlayerBase::GetCrewCounts()
+{
+	map<uint, CrewCount> counts;
+	counts[set_base_crew_type].required = static_cast<uint64_t>(base_level) * 200;
+	for (const Module* module : modules)
+		if (module)
+			for (const auto& required : module->GetActiveCrew())
+				counts[required.first].required += required.second;
+	for (uint good : humanCargoList)
+	{
+		const uint onboard = HasMarketItem(good);
+		if (onboard) counts[good].onboard = onboard;
+	}
+	for (auto& count : counts)
+		count.second.onboard = HasMarketItem(count.first);
+	return counts;
+}
+
 map<uint, uint> PlayerBase::GetRequiredCrew() const
 {
 	map<uint, uint> required;

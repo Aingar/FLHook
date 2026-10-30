@@ -145,7 +145,15 @@ struct NEWS_ITEM
 	wstring text;
 };
 
+struct CrewCount
+{
+	uint64_t onboard = 0;
+	uint64_t required = 0;
+};
+
 class PlayerBase;
+
+wstring CrewName(uint good);
 
 class Module
 {
@@ -163,6 +171,9 @@ public:
 	static const int TYPE_REARMAMENT = 11;
 	static const int TYPE_STORAGE_CUSTOM = 12;
 
+
+	map<uint, uint64_t> GetActiveCrew() const;
+	wstring GetActiveCrewInfo() const;
 
 	Module(uint the_type) : type(the_type){}
 	virtual ~Module() {}
@@ -375,6 +386,7 @@ public:
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
 	map<uint, uint> GetRequiredCrew() const;
+	map<uint, CrewCount> GetCrewCounts();
 	bool IsDefaultAffiliation();
 
 	static void GenerateHashFile();

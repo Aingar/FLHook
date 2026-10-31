@@ -213,9 +213,13 @@ void PlayerBase::Timer(uint curr_time)
 	}
 	if ((curr_time % set_tick_time) == 0 && logic)
 	{
+		const auto requiredCrew = GetRequiredCrew();
 		failed_update_counter++;
 		reservedCatalystMap.clear();
-		reservedCatalystMap[set_base_crew_type] = base_level * 200;
+		for (const auto& required : requiredCrew)
+		{
+			reservedCatalystMap[required.first] = required.second;
+		}
 	}
 	if ((curr_time % 60) == 0 && !invulnerable)
 	{
@@ -1128,31 +1132,43 @@ void PlayerBase::ChangeMoney(INT64 the_money)
 
 int PlayerBase::GetRemainingCargoSpace()
 {
+	const uint capacity = (std::min)(storage_space, static_cast<uint>((numeric_limits<int>::max)()));
 	uint used = 0;
 	for (auto i = market_items.begin(); i != market_items.end(); ++i)
 	{
-		float vol, mass;
+		float vol = 0, mass = 0;
 		pub::GetGoodProperties(i->first, vol, mass);
-		used += (uint)((float)i->second.quantity * vol);
+		const double amount = trunc(static_cast<float>(i->second.quantity) * vol);
+		if (!isfinite(amount) || amount < 0 || amount >= capacity - used)
+		{
+			return 0;
+		}
+		used += static_cast<uint>(amount);
 	}
 
-	if (used > storage_space)
+	return static_cast<int>(capacity - used);
+}
+
+uint PlayerBase::CalculateCargoSpace(const Module* excluded) const
+{
+	int64_t total = 0;
+	for (const Module* mod : modules)
+	{
+		if (mod && mod != excluded)
+		{
+			total += mod->cargoSpace;
+		}
+	}
+	if (total <= 0)
 	{
 		return 0;
 	}
-	return storage_space - used;
+	return static_cast<uint>((std::min)(total, static_cast<int64_t>((numeric_limits<int>::max)())));
 }
 
 void PlayerBase::RecalculateCargoSpace()
 {
-	storage_space = 0;
-	for (Module* mod : modules)
-	{
-		if (mod)
-		{
-			storage_space += mod->cargoSpace;
-		}
-	}
+	storage_space = CalculateCargoSpace();
 }
 
 string PlayerBase::CreateBaseNickname(const string& basename)
@@ -1418,6 +1434,114 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	}
 
 	damageTakenMap[charname] += incoming_damage;
+}
+
+wstring CrewName(uint good)
+{
+	const GoodInfo* info = GoodList::find_by_id(good);
+	const wstring name = info ? HkGetWStringFromIDS(info->iIDSName) : L"";
+	return name.empty() ? L"Unknown (" + to_wstring(good) + L")" : name;
+}
+
+map<uint, uint64_t> Module::GetActiveCrew() const
+{
+	map<uint, uint64_t> required;
+	if (type != TYPE_FACTORY && type != TYPE_STORAGE_CUSTOM)
+	{
+		return required;
+	}
+	for (const auto& item : crew)
+	{
+		if (item.second)
+		{
+			required[item.first] += item.second;
+		}
+	}
+	if (type == TYPE_FACTORY)
+	{
+		const auto& active = static_cast<const FactoryModule*>(this)->active_recipe;
+		if (active.nickname)
+		{
+			for (const auto& item : active.catalyst_workforce)
+			{
+				if (item.second)
+				{
+					required[item.first] += item.second;
+				}
+			}
+		}
+	}
+	return required;
+}
+
+wstring Module::GetActiveCrewInfo() const
+{
+	const auto required = GetActiveCrew();
+	if (required.empty())
+	{
+		return type == TYPE_FACTORY && static_cast<const FactoryModule*>(this)->active_recipe.nickname ? L"Active crew: 0" : L"";
+	}
+	wstring text = L"Active crew: ";
+	for (const auto& item : required)
+	{
+		if (item.first != required.begin()->first)
+		{
+			text += L", ";
+		}
+		text += to_wstring(item.second) + L"x " + CrewName(item.first);
+	}
+	return text;
+}
+
+map<uint, CrewCount> PlayerBase::GetCrewCounts()
+{
+	map<uint, CrewCount> counts;
+	counts[set_base_crew_type].required = static_cast<uint64_t>(base_level) * 200;
+	for (const Module* module : modules)
+	{
+		if (module)
+		{
+			for (const auto& required : module->GetActiveCrew())
+			{
+				counts[required.first].required += required.second;
+			}
+		}
+	}
+	for (uint good : humanCargoList)
+	{
+		const uint onboard = HasMarketItem(good);
+		if (onboard)
+		{
+			counts[good].onboard = onboard;
+		}
+	}
+	for (auto& count : counts)
+	{
+		count.second.onboard = HasMarketItem(count.first);
+	}
+	return counts;
+}
+
+map<uint, uint> PlayerBase::GetRequiredCrew() const
+{
+	map<uint, uint> required;
+	required[set_base_crew_type] = base_level * 200;
+	for (const Module* module : modules)
+	{
+		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM))
+		{
+			continue;
+		}
+		for (const auto& item : module->crew)
+		{
+			if (item.second > (numeric_limits<uint>::max)() - required[item.first])
+			{
+				throw runtime_error("module crew total exceeds the supported amount");
+			}
+			required[item.first] += item.second;
+		}
+	}
+	return required;
 }
 
 bool PlayerBase::FeedCrew(uint crewId, uint count)

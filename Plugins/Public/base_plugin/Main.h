@@ -756,7 +756,7 @@ extern unordered_map<uint, uint> core_upgrade_storage;
 
 // Map of ingame hash to info
 extern unordered_map<uint, class PlayerBase*> player_bases;
-extern unordered_map<uint, PlayerBase*>::iterator baseSaveIterator;
+extern size_t baseSaveIndex;
 
 extern int set_plugin_debug;
 extern int set_plugin_debug_special;

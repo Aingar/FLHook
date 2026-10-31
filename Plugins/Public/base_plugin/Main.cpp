@@ -31,7 +31,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
-unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
+size_t baseSaveIndex = 0;
 
 vector<ScheduledRespawn> basesToRespawn;
 
@@ -1350,6 +1350,52 @@ void RebuildCSolarSystemList()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static void RunBaseMaintenance(uint curr_time)
+{
+	vector<uint> ids;
+	ids.reserve(player_bases.size());
+	for (const auto& entry : player_bases)
+	{
+		ids.push_back(entry.first);
+	}
+	for (uint id : ids)
+	{
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end())
+		{
+			continue;
+		}
+		found->second->Timer(curr_time);
+	}
+	if (ids.empty())
+	{
+		baseSaveIndex = 0;
+		return;
+	}
+	baseSaveIndex %= ids.size();
+	for (size_t checked = 0; checked < ids.size(); ++checked)
+	{
+		const uint id = ids[baseSaveIndex];
+		baseSaveIndex = (baseSaveIndex + 1) % ids.size();
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end())
+		{
+			continue;
+		}
+		PlayerBase* base = found->second;
+		if (base->logic == 1 || base->invulnerable == 0)
+		{
+			if (base->pinned_item_updated && base->baseCSolar)
+			{
+				base->UpdateBaseInfoText();
+				base->pinned_item_updated = false;
+			}
+			base->Save();
+			break;
+		}
+	}
+}
+
 void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1416,35 +1462,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	for (auto& iter : player_bases)
-	{
-		PlayerBase* base = iter.second;
-		base->Timer(curr_time);
-	}
-
-	if (!player_bases.empty())
-	{
-		if (baseSaveIterator == player_bases.end())
-		{
-			baseSaveIterator = player_bases.begin();
-		}
-		bool saveSuccessful = false;
-		while (!saveSuccessful && baseSaveIterator != player_bases.end())
-		{
-			auto& pb = baseSaveIterator->second;
-			if (pb->logic == 1 || pb->invulnerable == 0)
-			{
-				if (pb->pinned_item_updated && pb->baseCSolar)
-				{
-					pb->UpdateBaseInfoText();
-					pb->pinned_item_updated = false;
-				}
-				pb->Save();
-				saveSuccessful = true;
-			}
-			baseSaveIterator++;
-		}
-	}
+	RunBaseMaintenance(curr_time);
 
 	if ((curr_time % set_export_cooldown) == 0)
 	{

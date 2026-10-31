@@ -238,6 +238,7 @@ void PlayerBase::Timer(uint curr_time)
 			}
 		}
 	}
+	ApplyModuleReplacements(this);
 	if (curr_time % set_tick_time == 0 && logic)
 	{
 		failed_update_counter = 0;
@@ -896,6 +897,7 @@ void PlayerBase::Load()
 
 		ini.close();
 	}
+	ApplyModuleReplacements(this);
 }
 
 void PlayerBase::Save()

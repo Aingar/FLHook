@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Main.h"
+#include <memory>
 
 struct RecipeTables
 {
@@ -12,6 +13,7 @@ struct RecipeTables
 	unordered_map<wstring, map<uint, RECIPE>> craftListNumberModuleMap;
 	unordered_set<wstring> buildingCraftLists;
 	unordered_set<uint> moduleIds;
+	unordered_map<uint, uint> replacements;
 
 	void ExchangeWithLiveTables()
 	{
@@ -44,13 +46,27 @@ struct PreparedModuleProperties
 
 struct PreparedBaseRecipes
 {
+	PreparedBaseRecipes() = default;
+	PreparedBaseRecipes(PreparedBaseRecipes&&) = default;
+	PreparedBaseRecipes& operator=(PreparedBaseRecipes&&) = default;
+
 	PlayerBase* base;
+	vector<Module*> modules;
+	vector<unique_ptr<Module>> owned;
+	vector<Module*> retired;
+	vector<pair<BuildModule*, RECIPE>> builds;
+
 	vector<PreparedModuleProperties> properties;
 	set<wstring> lists;
 	unordered_map<wstring, FactoryModule*> factories;
 
 	void ApplyToBase()
 	{
+		for (auto& build : builds)
+		{
+			swap(build.first->active_recipe, build.second);
+		}
+		base->modules.swap(modules);
 		for (auto& next : properties)
 		{
 			next.module->cargoSpace = next.cargoSpace;
@@ -58,8 +74,18 @@ struct PreparedBaseRecipes
 		}
 		base->availableCraftList.swap(lists);
 		base->craftTypeTofactoryModuleMap.swap(factories);
+		for (auto& module : owned)
+		{
+			module.release();
+		}
+		for (Module* module : retired)
+		{
+			delete module;
+		}
 		base->RecalculateCargoSpace();
 	}
 };
 
 vector<PreparedBaseRecipes> PrepareRecipeReload(const RecipeTables& preparedTables);
+
+void ResolveModuleReplacements(RecipeTables& preparedTables);

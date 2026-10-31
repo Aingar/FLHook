@@ -2722,8 +2722,29 @@ namespace PlayerCommands
 		}
 	}
 
-	void GetNecessitiesStatus(uint client, const wstring& args)
+	void GetNecessitiesStatus(uint client, const wstring&)
 	{
+		uint ship = 0;
+		pub::Player::GetShip(client, ship);
+		if (ship)
+		{
+			if (!SpaceSuppliesEnabled())
+			{
+				PrintUserCmdText(client, L"ERR Supplies forecasts in space are disabled");
+				return;
+			}
+			uint system = 0;
+			pub::Player::GetSystem(client, system);
+			PrintUserCmdText(client, L"Projected daily upkeep:");
+
+			for (const auto& quote : ProjectedSystemUpkeep(system))
+			{
+				PrintUserCmdText(client, L"|    Core %u:", quote.first);
+				PrintUserCmdText(client, L"|      Repairs: %ls", quote.second.repairs.c_str());
+				PrintUserCmdText(client, L"|      Additional upkeep: %ls", quote.second.additional.c_str());
+			}
+			return;
+		}
 		// Check that this player is in a player controlled base
 		PlayerBase* base = GetPlayerBaseForClient(client);
 		if (!base)
@@ -2748,6 +2769,10 @@ namespace PlayerCommands
 			PrintUserCmdText(client, L"%ls: %llu onboard, %llu required", CrewName(crew.first).c_str(), crew.second.onboard, crew.second.required);
 		}
 		PrintUserCmdText(client, L"Total population: %llu onboard, %llu required", populationCount, requiredPopulation);
+		const auto projected = ProjectedUpkeep(base, BuildCongestionSnapshot());
+		PrintUserCmdText(client, L"Projected daily upkeep:");
+		PrintUserCmdText(client, L"|    Repairs: %ls", projected.repairs.c_str());
+		PrintUserCmdText(client, L"|    Additional upkeep: %ls", projected.additional.c_str());
 
 		PrintUserCmdText(client, L"Crew supplies:");
 		for (uint item : set_base_crew_consumption_items)
@@ -3041,17 +3066,17 @@ namespace PlayerCommands
 
 	void BaseTestDeploy(uint client, const wstring& args)
 	{
+		uint systemId;
+		pub::Player::GetSystem(client, systemId);
+		const wstring policyError = ConstructionPolicyError(systemId);
+		if (!policyError.empty())
+		{
+			PrintUserCmdText(client, L"%ls", policyError.c_str());
+			return;
+		}
 		if (!enableDistanceCheck)
 		{
 			PrintUserCmdText(client, L"Bases can be deployed anywhere!");
-			return;
-		}
-
-		uint systemId;
-		pub::Player::GetSystem(client, systemId);
-		if (bannedSystemList.count(systemId))
-		{
-			PrintUserCmdText(client, L"ERR Deploying base in this system is not possible");
 			return;
 		}
 
@@ -3122,9 +3147,10 @@ namespace PlayerCommands
 
 		uint systemId;
 		pub::Player::GetSystem(client, systemId);
-		if (bannedSystemList.count(systemId))
+		const wstring policyError = ConstructionPolicyError(systemId);
+		if (!policyError.empty())
 		{
-			PrintUserCmdText(client, L"ERR Deploying base in this system is not possible");
+			PrintUserCmdText(client, L"%ls", policyError.c_str());
 			return;
 		}
 

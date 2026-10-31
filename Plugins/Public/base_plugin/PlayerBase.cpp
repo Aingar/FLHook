@@ -221,13 +221,17 @@ void PlayerBase::Timer(uint curr_time)
 	{
 		this->CheckVulnerabilityWindow(curr_time);
 	}
-	for (Module* pobModule : modules)
+	const size_t moduleCount = modules.size();
+	for (size_t i = 0; i < moduleCount && i < modules.size(); ++i)
 	{
+		Module* pobModule = modules[i];
 		if (pobModule)
 		{
 			bool is_deleted = pobModule->Timer(curr_time);
 			if (is_deleted)
-				break;
+			{
+				return;
+			}
 		}
 	}
 	if (curr_time % set_tick_time == 0 && logic)

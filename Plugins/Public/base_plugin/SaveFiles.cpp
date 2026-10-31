@@ -54,7 +54,7 @@ void DeleteBase(PlayerBase* base, bool moveFile)
 	}
 
 	player_bases.erase(base->base);
-	baseSaveIterator = player_bases.begin();
+	baseSaveIndex = 0;
 	delete base;
 }
 

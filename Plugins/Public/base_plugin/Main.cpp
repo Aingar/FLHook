@@ -1358,6 +1358,7 @@ static void RunBaseMaintenance(uint curr_time)
 	{
 		ids.push_back(entry.first);
 	}
+	unordered_set<uint> failed;
 	for (uint id : ids)
 	{
 		const auto found = player_bases.find(id);
@@ -1365,7 +1366,15 @@ static void RunBaseMaintenance(uint curr_time)
 		{
 			continue;
 		}
-		found->second->Timer(curr_time);
+		try
+		{
+			found->second->Timer(curr_time);
+		}
+		catch (const exception& e)
+		{
+			failed.insert(id);
+			ConPrint(L"BASE maintenance failed for %u: %ls\n", id, stows(e.what()).c_str());
+		}
 	}
 	if (ids.empty())
 	{
@@ -1377,6 +1386,10 @@ static void RunBaseMaintenance(uint curr_time)
 	{
 		const uint id = ids[baseSaveIndex];
 		baseSaveIndex = (baseSaveIndex + 1) % ids.size();
+		if (failed.count(id))
+		{
+			continue;
+		}
 		const auto found = player_bases.find(id);
 		if (found == player_bases.end())
 		{

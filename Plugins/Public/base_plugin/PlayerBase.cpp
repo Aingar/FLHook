@@ -213,9 +213,13 @@ void PlayerBase::Timer(uint curr_time)
 	}
 	if ((curr_time % set_tick_time) == 0 && logic)
 	{
+		const auto requiredCrew = GetRequiredCrew();
 		failed_update_counter++;
 		reservedCatalystMap.clear();
-		reservedCatalystMap[set_base_crew_type] = base_level * 200;
+		for (const auto& required : requiredCrew)
+		{
+			reservedCatalystMap[required.first] = required.second;
+		}
 	}
 	if ((curr_time % 60) == 0 && !invulnerable)
 	{
@@ -1126,33 +1130,57 @@ void PlayerBase::ChangeMoney(INT64 the_money)
 	}
 }
 
-int PlayerBase::GetRemainingCargoSpace()
+uint PlayerBase::GetRemainingCargoSpace()
 {
-	uint used = 0;
+	float used = 0;
 	for (auto i = market_items.begin(); i != market_items.end(); ++i)
 	{
-		float vol, mass;
+		float vol = 0, mass = 0;
 		pub::GetGoodProperties(i->first, vol, mass);
-		used += (uint)((float)i->second.quantity * vol);
+		const float amount = static_cast<float>(i->second.quantity) * vol;
+		if (!isfinite(amount) || amount < 0)
+		{
+			return 0;
+		}
+		used += amount;
+		if (used >= storage_space)
+		{
+			return 0;
+		}
 	}
 
-	if (used > storage_space)
+	return storage_space - static_cast<uint>(ceil(used));
+}
+
+uint PlayerBase::CalculateCargoSpace(const Module* excluded) const
+{
+	uint total = 0;
+	for (const Module* mod : modules)
 	{
-		return 0;
+		if (!mod || mod == excluded)
+		{
+			continue;
+		}
+		if (mod->cargoSpace < 0)
+		{
+			return 0;
+		}
+		const uint capacity = mod->cargoSpace;
+		if (capacity > (numeric_limits<uint>::max)() - total)
+		{
+			total = (numeric_limits<uint>::max)();
+		}
+		else
+		{
+			total += capacity;
+		}
 	}
-	return storage_space - used;
+	return total;
 }
 
 void PlayerBase::RecalculateCargoSpace()
 {
-	storage_space = 0;
-	for (Module* mod : modules)
-	{
-		if (mod)
-		{
-			storage_space += mod->cargoSpace;
-		}
-	}
+	storage_space = CalculateCargoSpace();
 }
 
 string PlayerBase::CreateBaseNickname(const string& basename)
@@ -1424,6 +1452,134 @@ void PlayerBase::SpaceObjDamaged(uint space_obj, uint attacking_space_obj, float
 	}
 
 	damageTakenMap[charname] += incoming_damage;
+}
+
+wstring CrewName(uint good)
+{
+	const GoodInfo* info = GoodList::find_by_id(good);
+	const wstring name = info ? HkGetWStringFromIDS(info->iIDSName) : L"";
+	return name.empty() ? L"Unknown (" + to_wstring(good) + L")" : name;
+}
+
+unordered_map<uint, uint> Module::GetActiveCrew() const
+{
+	unordered_map<uint, uint> required;
+	if (type != TYPE_FACTORY && type != TYPE_STORAGE_CUSTOM)
+	{
+		return required;
+	}
+	for (const auto& item : crew)
+	{
+		if (item.second)
+		{
+			required[item.first] += item.second;
+		}
+	}
+	if (type != TYPE_FACTORY)
+	{
+		return required;
+	}
+	const auto& active = static_cast<const FactoryModule*>(this)->active_recipe;
+	if (!active.nickname)
+	{
+		return required;
+	}
+	for (const auto& item : active.catalyst_workforce)
+	{
+		if (!item.second)
+		{
+			continue;
+		}
+		if (item.second > (numeric_limits<uint>::max)() - required[item.first])
+		{
+			throw runtime_error("active module crew total exceeds the supported amount");
+		}
+		required[item.first] += item.second;
+	}
+	return required;
+}
+
+wstring Module::GetActiveCrewInfo() const
+{
+	const auto required = GetActiveCrew();
+	if (required.empty())
+	{
+		return type == TYPE_FACTORY && static_cast<const FactoryModule*>(this)->active_recipe.nickname ? L"Active crew: 0" : L"";
+	}
+	wstring text = L"Active crew: ";
+	for (const auto& item : required)
+	{
+		if (item.first != required.begin()->first)
+		{
+			text += L", ";
+		}
+		text += to_wstring(item.second) + L"x " + CrewName(item.first);
+	}
+	return text;
+}
+
+unordered_map<uint, CrewCount> PlayerBase::GetCrewCounts()
+{
+	unordered_map<uint, CrewCount> counts;
+	if (base_level > (numeric_limits<uint>::max)() / 200)
+	{
+		throw runtime_error("core crew total exceeds the supported amount");
+	}
+	counts[set_base_crew_type].required = base_level * 200;
+	for (const Module* module : modules)
+	{
+		if (!module)
+		{
+			continue;
+		}
+		for (const auto& required : module->GetActiveCrew())
+		{
+			if (required.second > (numeric_limits<uint>::max)() - counts[required.first].required)
+			{
+				throw runtime_error("base crew total exceeds the supported amount");
+			}
+			counts[required.first].required += required.second;
+		}
+	}
+	for (uint good : humanCargoList)
+	{
+		const uint onboard = HasMarketItem(good);
+		if (onboard)
+		{
+			counts[good].onboard = onboard;
+		}
+	}
+	for (auto& count : counts)
+	{
+		count.second.onboard = HasMarketItem(count.first);
+	}
+	return counts;
+}
+
+unordered_map<uint, uint> PlayerBase::GetRequiredCrew() const
+{
+	unordered_map<uint, uint> required;
+	if (base_level > (numeric_limits<uint>::max)() / 200)
+	{
+		throw runtime_error("core crew total exceeds the supported amount");
+	}
+	required[set_base_crew_type] = base_level * 200;
+	for (const Module* module : modules)
+	{
+		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM))
+		{
+			continue;
+		}
+		for (const auto& item : module->crew)
+		{
+			if (item.second > (numeric_limits<uint>::max)() - required[item.first])
+			{
+				throw runtime_error("module crew total exceeds the supported amount");
+			}
+			required[item.first] += item.second;
+		}
+	}
+	return required;
 }
 
 bool PlayerBase::FeedCrew(uint crewId, uint count)

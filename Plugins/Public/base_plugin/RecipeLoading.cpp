@@ -1,4 +1,5 @@
 #include "Main.h"
+#include <limits>
 
 void AddFactoryRecipeToMaps(const RECIPE& recipe)
 {
@@ -14,7 +15,10 @@ void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_typ
 
 	for (const wstring& craftType : craft_types)
 	{
-		factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(ToLower(craftType));
+		if (recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
+		{
+			factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(ToLower(craftType));
+		}
 	}
 	recipeMap[recipe.nickname] = recipe;
 	moduleNameRecipeMap[recipeNameKey] = recipe;
@@ -51,8 +55,9 @@ void LoadRecipes()
 			{
 				RECIPE recipe;
 				vector<wstring> craft_types;
+				bool validCrew = true;
 				wstring build_type;
-				uint recipe_number;
+				uint recipe_number = 0;
 				while (ini.read_value())
 				{
 					if (ini.is_value("nickname"))
@@ -150,6 +155,29 @@ void LoadRecipes()
 					{
 						recipe.moduleCargoStorage = ini.get_value_int(0);
 					}
+					else if (ini.is_value("crew"))
+					{
+						try
+						{
+							if (ini.get_num_parameters() != 2)
+							{
+								throw runtime_error("crew needs an item and amount");
+							}
+							const uint good = CreateID(ini.get_value_string(0));
+							const int amount = ini.get_value_int(1);
+							if (!GoodList_get()->find_by_name(ini.get_value_string(0)) || !humanCargoList.count(good)
+								|| amount <= 0 || static_cast<uint>(amount) > (numeric_limits<uint>::max)() - recipe.moduleCrew[good])
+							{
+								throw runtime_error("crew must be a configured human cargo item with a positive amount");
+							}
+							recipe.moduleCrew[good] += static_cast<uint>(amount);
+						}
+						catch (const exception& e)
+						{
+							validCrew = false;
+							ConPrint(L"BASE ERROR Invalid module crew at line %d: %ls\n", ini.get_line_num(), stows(e.what()).c_str());
+						}
+					}
 					else if (ini.is_value("affiliation_bonus"))
 					{
 						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
@@ -158,6 +186,19 @@ void LoadRecipes()
 					{
 						recipe.restricted = ini.get_value_bool(0);
 					}
+				}
+				if (recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM && recipe.moduleCargoStorage > static_cast<uint>((numeric_limits<int>::max)()))
+				{
+					ConPrint(L"BASE ERROR Invalid cargo capacity for module: %ls\n", stows(recipe.nicknameString).c_str());
+					continue;
+				}
+				if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
+				{
+					recipe.moduleCrew.clear();
+				}
+				else if (!validCrew)
+				{
+					continue;
 				}
 				AddModuleRecipeToMaps(recipe, craft_types, build_type, recipe_number);
 			}

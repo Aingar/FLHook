@@ -321,17 +321,28 @@ bool CoreModule::Timer(uint time)
 
 	// Humans use commodity_oxygen, commodity_water. Consume these for
 	// the crew or kill 10 crew off and repeat this every 12 hours.
+	const auto requiredCrew = base->GetRequiredCrew();
 	if (base->logic && time % set_crew_check_frequency == 0)
 	{
 		base->fed_workers.clear();
 		if (dont_eat || set_holiday_mode)
 		{
 			base->isCrewSupplied = true;
-			base->fed_workers[set_base_crew_type] = base->base_level * 200;
+			for (const auto& required : requiredCrew)
+			{
+				base->fed_workers[required.first] = required.second;
+			}
 		}
 		else
 		{
-			base->isCrewSupplied = base->FeedCrew(set_base_crew_type, base->base_level * 200);
+			base->isCrewSupplied = true;
+			for (const auto& required : requiredCrew)
+			{
+				if (!base->FeedCrew(required.first, required.second))
+				{
+					base->isCrewSupplied = false;
+				}
+			}
 		}
 	}
 
@@ -350,14 +361,24 @@ bool CoreModule::Timer(uint time)
 		return false;
 	}
 
-	uint number_of_crew = base->HasMarketItem(set_base_crew_type);
-	bool isCrewSufficient = number_of_crew >= (base->base_level * 200) && base->fed_workers[set_base_crew_type] >= (base->base_level * 200);
-	if (base->isCrewSupplied && !isCrewSufficient)
+	bool isCrewSufficient = true;
+	for (const auto& required : requiredCrew)
 	{
-		int missingCrew = (base->base_level * 200) - base->fed_workers[set_base_crew_type];
-		if (missingCrew > 0)
+		const uint fed = base->fed_workers[required.first];
+		if (base->isCrewSupplied && fed < required.second)
 		{
-			isCrewSufficient = base->FeedCrew(set_base_crew_type, missingCrew);
+			if (dont_eat)
+			{
+				base->fed_workers[required.first] = required.second;
+			}
+			else
+			{
+				base->FeedCrew(required.first, required.second - fed);
+			}
+		}
+		if (base->HasMarketItem(required.first) < required.second || base->fed_workers[required.first] < required.second)
+		{
+			isCrewSufficient = false;
 		}
 	}
 

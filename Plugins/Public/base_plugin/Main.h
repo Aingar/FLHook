@@ -68,6 +68,7 @@ struct RECIPE
 	uint reqlevel = 0;
 	unordered_map<uint, float> affiliationBonus;
 	uint moduleCargoStorage = 0;
+	unordered_map<uint, uint> moduleCrew;
 };
 
 struct BASE_VULNERABILITY_WINDOW {
@@ -139,13 +140,22 @@ struct NEWS_ITEM
 	wstring text;
 };
 
+struct CrewCount
+{
+	uint onboard = 0;
+	uint required = 0;
+};
+
 class PlayerBase;
+
+wstring CrewName(uint good);
 
 class Module
 {
 public:
 	int type;
 	int cargoSpace = 0;
+	unordered_map<uint, uint> crew;
 	static const int TYPE_BUILD = 0;
 	static const int TYPE_CORE = 1;
 	static const int TYPE_FACTORY = 2;
@@ -154,7 +164,11 @@ public:
 	static const int TYPE_DEFENSE_2 = 9;
 	static const int TYPE_DEFENSE_3 = 10;
 	static const int TYPE_REARMAMENT = 11;
+	static const int TYPE_STORAGE_CUSTOM = 12;
 
+
+	unordered_map<uint, uint> GetActiveCrew() const;
+	wstring GetActiveCrewInfo() const;
 
 	Module(uint the_type) : type(the_type){}
 	virtual ~Module() {}
@@ -209,8 +223,10 @@ class StorageModule : public Module
 {
 public:
 	PlayerBase* base;
+	string moduleNickname;
 
 	StorageModule(PlayerBase* the_base);
+	StorageModule(PlayerBase* the_base, uint nickname);
 	~StorageModule();
 	wstring GetInfo(bool xml);
 
@@ -353,11 +369,14 @@ public:
 	bool AddMarketGood(uint good, uint quantity);
 	void RemoveMarketGood(uint good, uint quantity);
 	void ChangeMoney(INT64 quantity);
-	int GetRemainingCargoSpace();
+	uint GetRemainingCargoSpace();
+	uint CalculateCargoSpace(const Module* excluded = nullptr) const;
 	void RecalculateCargoSpace();
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
+	unordered_map<uint, uint> GetRequiredCrew() const;
+	unordered_map<uint, CrewCount> GetCrewCounts();
 	bool IsDefaultAffiliation();
 
 	static void GenerateHashFile();
@@ -560,7 +579,7 @@ public:
 	// if true, the base was repaired or is able to be repaired
 	bool isCrewSupplied;
 
-	map<uint, int> reservedCatalystMap;
+	unordered_map<uint, uint> reservedCatalystMap;
 
 	// The state of the shield
 	bool isShieldOn;
@@ -783,6 +802,7 @@ struct REPAIR_ITEM
 	uint quantity;
 };
 extern vector<REPAIR_ITEM> set_base_repair_items;
+
 
 extern uint set_base_crew_type;
 

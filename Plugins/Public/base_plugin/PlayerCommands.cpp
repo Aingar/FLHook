@@ -1752,9 +1752,11 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (base->GetRemainingCargoSpace() < base->modules[index]->cargoSpace)
+		const uint remainingCapacity = base->CalculateCargoSpace(base->modules[index]);
+		const uint lostCapacity = base->storage_space > remainingCapacity ? base->storage_space - remainingCapacity : 0;
+		if (base->GetRemainingCargoSpace() < lostCapacity)
 		{
-			PrintUserCmdText(client, L"ERR Need %d free space to destroy this module", base->modules[index]->cargoSpace);
+			PrintUserCmdText(client, L"ERR Need %u free space to destroy this module", lostCapacity);
 			return;
 		}
 
@@ -2684,20 +2686,15 @@ namespace PlayerCommands
 			return;
 		}
 
-		uint crewItemCount = base->HasMarketItem(set_base_crew_type);
-		uint crewItemNeed = base->base_level * 200;
-		if (crewItemCount < crewItemNeed)
+		const auto crewCounts = base->GetCrewCounts();
+		uint populationCount = 0, requiredPopulation = 0;
+		for (const auto& crew : crewCounts)
 		{
-			PrintUserCmdText(client, L"WARNING, CREW COUNT TOO LOW");
+			populationCount += crew.second.onboard;
+			requiredPopulation += crew.second.required;
+			PrintUserCmdText(client, L"%ls: %u onboard, %u required", CrewName(crew.first).c_str(), crew.second.onboard, crew.second.required);
 		}
-		PrintUserCmdText(client, L"Crew: %u onboard", crewItemCount);
-
-		uint populationCount = 0;
-		for (uint hash : humanCargoList)
-		{
-			populationCount += base->HasMarketItem(hash);
-		}
-		PrintUserCmdText(client, L"Total population: %u onboard", populationCount);
+		PrintUserCmdText(client, L"Total population: %u onboard, %u required", populationCount, requiredPopulation);
 
 		PrintUserCmdText(client, L"Crew supplies:");
 		for (uint item : set_base_crew_consumption_items)
@@ -2723,7 +2720,9 @@ namespace PlayerCommands
 		{
 			foodCount += base->HasMarketItem(item);
 			if (base->market_items.count(item))
+			{
 				maxFoodCount += base->market_items[item].max_stock;
+			}
 		}
 		PrintUserCmdText(client, L"|    Food: %u/%u", foodCount, maxFoodCount);
 

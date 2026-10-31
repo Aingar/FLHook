@@ -400,6 +400,10 @@ bool BuildModule::Timer(uint time)
 				base->modules[i] = new StorageModule(base);
 				base->RecalculateCargoSpace();
 				break;
+			case Module::TYPE_STORAGE_CUSTOM:
+				base->modules[i] = new StorageModule(base, active_recipe.nickname);
+				base->RecalculateCargoSpace();
+				break;
 			case Module::TYPE_DEFENSE_1:
 				base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_1);
 				break;

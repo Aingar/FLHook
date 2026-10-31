@@ -535,6 +535,7 @@ void LoadSettingsActual()
 	INI_Reader ini;
 	if (ini.open(cfg_file.c_str(), false))
 	{
+		bannedSystemList.clear();
 		while (ini.read_header())
 		{
 			if (ini.is_header("general"))
@@ -739,7 +740,10 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("banned_system"))
 					{
-						bannedSystemList.insert(CreateID(ini.get_value_string(0)));
+						if (ini.get_num_parameters() == 1 && *ini.get_value_string(0))
+						{
+							bannedSystemList.insert(CreateID(ToLower(ini.get_value_string(0)).c_str()));
+						}
 					}
 					else if (ini.is_value("randomize_hyperspace_hub_days"))
 					{
@@ -952,6 +956,11 @@ void LoadSettingsActual()
 	}
 
 	PlayerBase::GenerateHashFile();
+	string congestionError;
+	if (!ReloadCongestion(congestionError, true))
+	{
+		ConPrint(L"BASE %ls\n", stows(congestionError).c_str());
+	}
 
 	// loadHyperspaceHubConfig is weekday where 0 = sunday, 6 = saturday
 	// if it's today, randomize appropriate 'jump hole' POBs
@@ -1155,6 +1164,7 @@ void HkTimerCheckKick()
 
 	if (curr_time % set_tick_time == 0)
 	{
+		maintenancePressure = BuildCongestionSnapshot();
 		RebuildCSolarSystemList();
 
 		ULARGE_INTEGER freeSpace;
@@ -2701,6 +2711,22 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		if (LoadRecipes(error, true))
 		{
 			cmd->Print(L"OK Module and item recipes reloaded\n");
+		}
+		else
+		{
+			cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		}
+		return true;
+	}
+
+	if (IS_CMD("basereloadcongestion"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (ReloadCongestion(error))
+		{
+			cmd->Print(L"OK Congestion and prohibited systems reloaded\n");
 		}
 		else
 		{

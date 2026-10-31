@@ -228,52 +228,18 @@ void CoreModule::RepairDamage()
 	{
 		return;
 	}
-
-	if (base->preferred_repair)
+	if (base->base_health >= base->max_base_health)
 	{
-		if (base->base_health >= base->max_base_health)
-			return;
-
-		uint count = 1;
-		for (auto& repair : set_base_repair_items)
-		{
-			if (repair.good == base->preferred_repair)
-			{
-				count = repair.quantity;
-				break;
-			}
-		}
-
-		if (base->disabled_repair.count(base->preferred_repair))
-		{
-			goto exitFav;
-		}
-
-		if (base->HasMarketItem(base->preferred_repair) >= count)
-		{
-			base->RemoveMarketGood(base->preferred_repair, count);
-			base->base_health += repair_per_repair_cycle * base->base_level;
-			baseHealthChanged = true;
-		}
+		return;
 	}
 
-exitFav:
-
 	// The bigger the base the more damage can be repaired.
-	for (REPAIR_ITEM& item : set_base_repair_items)
+	for (const auto& item : OrderedRepairMaterials(base))
 	{
-		if (item.good == base->preferred_repair)
-		{
-			continue;
-		}
-
-		if (base->disabled_repair.count(item.good))
-		{
-			continue;
-		}
-
 		if (base->base_health >= base->max_base_health)
+		{
 			return;
+		}
 
 		if (base->HasMarketItem(item.good) >= item.quantity)
 		{
@@ -347,6 +313,10 @@ bool CoreModule::Timer(uint time)
 	{
 		return false;
 	}
+	if (dont_rust || !base->logic || base->invulnerable)
+	{
+		congestionCarry = 0;
+	}
 
 	if (!space_obj)
 	{
@@ -392,10 +362,37 @@ bool CoreModule::Timer(uint time)
 		base->base_health -= damage_taken;
 		baseHealthChanged = true;
 	}
+	bool congestionUnpaid = false;
+	try
+	{
+		const double daily = CongestionDaily(base, maintenancePressure);
+		if (daily == 0)
+		{
+			congestionCarry = 0;
+		}
+		const double due = Upkeep::Accrue(daily, set_tick_time, congestionCarry);
+		const double unpaid = due < 1 ? 0 : Upkeep::Pay(due, OrderedRepairMaterials(base),
+			[this](uint good) { return base->HasMarketItem(good); },
+			[this](uint good, uint quantity) { base->RemoveMarketGood(good, quantity); });
+		if (unpaid > 0)
+		{
+			const double damage = unpaid * CongestionDamagePerBundle();
+			base->base_health -= static_cast<float>((std::min)(static_cast<double>((std::max)(0.0f, base->base_health)), damage));
+			baseHealthChanged = true;
+			congestionUnpaid = true;
+		}
+	}
+	catch (const exception& e)
+	{
+		congestionCarry = 0;
+		ConPrint(L"BASE congestion unavailable for %ls: %ls\n", base->basename.c_str(), stows(e.what()).c_str());
+	}
+	intendedRepairDaily = Upkeep::Intended(base->max_base_health - base->base_health,
+		static_cast<double>(repair_per_repair_cycle) * base->base_level, set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
 
 	// Repair damage if we have sufficient crew on the base.
 
-	if (isCrewSufficient)
+	if (isCrewSufficient && !congestionUnpaid)
 	{
 		RepairDamage();
 	}
@@ -421,6 +418,7 @@ bool CoreModule::Timer(uint time)
 			solarObj->applyDamageList(&dmgList);
 		}
 	}
+	RefreshUpkeepStatus(base, maintenancePressure);
 
 	return false;
 }

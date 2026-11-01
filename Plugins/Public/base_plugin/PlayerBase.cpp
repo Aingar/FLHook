@@ -1130,6 +1130,32 @@ void PlayerBase::ChangeMoney(INT64 the_money)
 	}
 }
 
+void PlayerBase::RebuildCraftingAccess()
+{
+	set<wstring> lists;
+	unordered_map<wstring, FactoryModule*> factories;
+	for (Module* module : modules)
+	{
+		if (!module || module->type != Module::TYPE_FACTORY)
+		{
+			continue;
+		}
+		auto* factory = static_cast<FactoryModule*>(module);
+		const auto groups = factoryNicknameToCraftTypeMap.find(factory->factoryNickname);
+		if (groups == factoryNicknameToCraftTypeMap.end())
+		{
+			continue;
+		}
+		for (const auto& group : groups->second)
+		{
+			lists.insert(group);
+			factories[group] = factory;
+		}
+	}
+	availableCraftList.swap(lists);
+	craftTypeTofactoryModuleMap.swap(factories);
+}
+
 uint PlayerBase::GetRemainingCargoSpace()
 {
 	float used = 0;

@@ -121,8 +121,8 @@ L"<TEXT>Can be changed once every 30 days.</TEXT>"
 
 namespace PlayerCommands
 {
-	static map<wstring, vector<wstring>> modules_recipe_map;
-	static map<wstring, vector<wstring>> factory_recipe_map;
+	static unordered_map<wstring, vector<wstring>> modules_recipe_map;
+	static unordered_map<wstring, vector<wstring>> factory_recipe_map;
 
 	//pre-generating crafting lists as they will probably be used quite a bit.
 	//paying with memory to save on processing.
@@ -159,17 +159,19 @@ namespace PlayerCommands
 
 	void PopulateHelpMenus()
 	{
-		modules_recipe_map.clear();
-		factory_recipe_map.clear();
+		unordered_map<wstring, vector<wstring>> modules;
+		unordered_map<wstring, vector<wstring>> factories;
 
 		for (const auto& buildType : buildingCraftLists)
 		{
-			modules_recipe_map[buildType] = GenerateModuleHelpMenu(buildType);
+			modules[buildType] = GenerateModuleHelpMenu(buildType);
 		}
 		for (const auto& craftType : recipeCraftTypeNameMap)
 		{
-			factory_recipe_map[craftType.first] = GenerateFactoryHelpMenu(craftType.first);
+			factories[craftType.first] = GenerateFactoryHelpMenu(craftType.first);
 		}
+		modules_recipe_map.swap(modules);
+		factory_recipe_map.swap(factories);
 	}
 
 	bool checkBaseAdminAccess(PlayerBase* base, uint client)
@@ -1727,6 +1729,7 @@ namespace PlayerCommands
 		Module* tempModulePtr = base->modules[index1];
 		base->modules[index1] = base->modules[index2];
 		base->modules[index2] = tempModulePtr;
+		base->RebuildCraftingAccess();
 		base->Save();
 	}
 
@@ -1796,6 +1799,7 @@ namespace PlayerCommands
 			delete base->modules[index];
 			base->modules[index] = nullptr;
 		}
+		base->RebuildCraftingAccess();
 		base->RecalculateCargoSpace();
 		base->Save();
 		PrintUserCmdText(client, L"OK Module destroyed");
@@ -1825,12 +1829,6 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (base->availableCraftList.empty())
-		{
-			PrintUserCmdText(client, L"ERR no factories found");
-			return;
-		}
-
 		wstring& cmd = GetParam(args, ' ', 1);
 		wstring& craftList = GetParam(args, ' ', 2);
 		wstring& craftNameNr = GetParamToEnd(args, ' ', 3);
@@ -1843,13 +1841,22 @@ namespace PlayerCommands
 		if (cmd == L"stopall")
 		{
 			FactoryModule::StopAllProduction(base);
+			base->Save();
 			PrintUserCmdText(client, L"OK Factories stopped");
 			return;
 		}
 		if (cmd == L"clearall")
 		{
 			FactoryModule::ClearAllProductionQueues(base);
+			base->Save();
 			PrintUserCmdText(client, L"OK Craft queues cleared");
+			return;
+		}
+
+		const bool control = cmd == L"stop" || cmd == L"pause" || cmd == L"resume";
+		if (base->availableCraftList.empty() && !control)
+		{
+			PrintUserCmdText(client, L"ERR no factories found");
 			return;
 		}
 
@@ -1887,7 +1894,34 @@ namespace PlayerCommands
 		}
 
 		bool selectedValidCraftList = base->availableCraftList.count(craftList);
-		const RECIPE* recipe = FactoryModule::GetFactoryProductRecipe(craftList, craftNameNr);
+		FactoryModule* factory = nullptr;
+		const RECIPE* recipe = nullptr;
+		if (control)
+		{
+			const bool numeric = !craftNameNr.empty() && all_of(craftNameNr.begin(), craftNameNr.end(), [](wchar_t c) { return c >= L'0' && c <= L'9'; });
+			const uint shortcut = numeric ? ToUInt(craftNameNr) : 0;
+			for (Module* module : base->modules)
+			{
+				auto* candidate = dynamic_cast<FactoryModule*>(module);
+				if (!candidate || !candidate->active_recipe.nickname)
+				{
+					continue;
+				}
+				const auto& active = candidate->active_recipe;
+				if (active.craft_type != craftList || (ToLower(active.infotext) != ToLower(craftNameNr)
+					&& (!numeric || active.shortcut_number != shortcut)))
+				{
+					continue;
+				}
+				factory = candidate;
+				recipe = &active;
+				break;
+			}
+		}
+		if (!recipe)
+		{
+			recipe = FactoryModule::GetFactoryProductRecipe(craftList, craftNameNr);
+		}
 
 		if (cmd != L"stop" && cmd != L"start" && cmd != L"pause" && cmd != L"resume" && cmd != L"info")
 		{
@@ -1895,7 +1929,7 @@ namespace PlayerCommands
 			return;
 		}
 
-		if (!selectedValidCraftList)
+		if (!selectedValidCraftList && !control)
 		{
 			PrintUserCmdText(client, L"ERR Invalid or unavailable craft list, for a list of valid craft lists use '/craft list'");
 			return;
@@ -2045,7 +2079,7 @@ namespace PlayerCommands
 				PrintUserCmdText(client, L"ERR This recipe is not available for this base's affiliation");
 				return;
 			}
-			FactoryModule* factory = base->craftTypeTofactoryModuleMap[recipe->craft_type];
+			factory = base->craftTypeTofactoryModuleMap[recipe->craft_type];
 			if (!factory)
 			{
 				PrintUserCmdText(client, L"ERR Impossible factory error, contact staff");
@@ -2063,8 +2097,23 @@ namespace PlayerCommands
 			return;
 		}
 
-		FactoryModule* factory;
-		factory = FactoryModule::FindModuleByProductInProduction(base, recipe->nickname);
+		if (!factory)
+		{
+			factory = FactoryModule::FindModuleByProductInProduction(base, recipe->nickname);
+		}
+		if (!factory)
+		{
+			for (Module* module : base->modules)
+			{
+				auto* candidate = dynamic_cast<FactoryModule*>(module);
+				if (candidate && !candidate->active_recipe.nickname
+					&& find(candidate->build_queue.begin(), candidate->build_queue.end(), recipe->nickname) != candidate->build_queue.end())
+				{
+					factory = candidate;
+					break;
+				}
+			}
+		}
 		if (!factory)
 		{
 			PrintUserCmdText(client, L"ERR item is not being produced");
@@ -2080,7 +2129,9 @@ namespace PlayerCommands
 		else if (cmd == L"pause")
 		{
 			if (factory->ToggleQueuePaused(true))
+			{
 				PrintUserCmdText(client, L"OK Build queue paused");
+			}
 			else
 			{
 				PrintUserCmdText(client, L"ERR Build queue is already paused");
@@ -2090,7 +2141,9 @@ namespace PlayerCommands
 		else if (cmd == L"resume")
 		{
 			if (factory->ToggleQueuePaused(false))
+			{
 				PrintUserCmdText(client, L"OK Build queue resumed");
+			}
 			else
 			{
 				PrintUserCmdText(client, L"ERR Build queue is already ongoing");

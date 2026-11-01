@@ -94,7 +94,7 @@ unordered_map<uint, RECIPE> recipeMap;
 
 /// Maps of shortcut numbers to recipes to construct item.
 unordered_map<wstring, map<uint, RECIPE>> recipeCraftTypeNumberMap;
-unordered_map<wstring, map<wstring, RECIPE>> recipeCraftTypeNameMap;
+unordered_map<wstring, unordered_map<wstring, RECIPE>> recipeCraftTypeNameMap;
 unordered_map<uint, vector<wstring>> factoryNicknameToCraftTypeMap;
 unordered_map<wstring, RECIPE> moduleNameRecipeMap;
 unordered_map<wstring, map<uint, RECIPE>> craftListNumberModuleMap;
@@ -907,7 +907,12 @@ void LoadSettingsActual()
 		ini.close();
 	}
 
-	LoadRecipes();
+	string recipeError;
+	if (!LoadRecipes(recipeError))
+	{
+		ConPrint(L"BASE ERROR %ls\n", stows(recipeError).c_str());
+		return;
+	}
 
 	char datapath[MAX_PATH];
 	GetUserDataPath(datapath);
@@ -2688,6 +2693,21 @@ bool HasSRPAccess(uint client, uint baseId)
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (IS_CMD("basereloadrecipes"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (LoadRecipes(error, true))
+		{
+			cmd->Print(L"OK Module and item recipes reloaded\n");
+		}
+		else
+		{
+			cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		}
+		return true;
+	}
 
 	if (args.find(L"setdebugspecial") == 0)
 	{

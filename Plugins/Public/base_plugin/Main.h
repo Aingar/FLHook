@@ -308,6 +308,7 @@ public:
 	wstring GetInfo(bool xml);
 	void LoadState(INI_Reader& ini);
 	void SaveState(FILE* file);
+	bool CanStartRecipe(uint product);
 	void SetActiveRecipe(uint product, bool resetAmassedCookingRate);
 	bool Timer(uint time);
 	bool TryConsume(float volumeToProcess);
@@ -372,6 +373,7 @@ public:
 	uint GetRemainingCargoSpace();
 	uint CalculateCargoSpace(const Module* excluded = nullptr) const;
 	void RecalculateCargoSpace();
+	void RebuildCraftingAccess();
 	uint HasMarketItem(uint good);
 	uint HasFedWorkerItem(uint good);
 	bool FeedCrew(uint crewId, uint count);
@@ -786,11 +788,11 @@ extern int set_plugin_debug_special;
 
 /// Global recipe map
 extern unordered_map<uint, RECIPE> recipeMap;
-void LoadRecipes();
-void ValidateItem(const char* goodName);
+bool LoadRecipes(string& error, bool live = false);
+
 /// Maps of shortcut numbers to recipes to construct item.
 extern unordered_map<wstring, map<uint, RECIPE>> recipeCraftTypeNumberMap;
-extern unordered_map<wstring, map<wstring, RECIPE>> recipeCraftTypeNameMap;
+extern unordered_map<wstring, unordered_map<wstring, RECIPE>> recipeCraftTypeNameMap;
 extern unordered_map<uint, vector<wstring>> factoryNicknameToCraftTypeMap;
 extern unordered_map<wstring, RECIPE> moduleNameRecipeMap;
 extern unordered_map<wstring, map<uint, RECIPE>> craftListNumberModuleMap;

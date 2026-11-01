@@ -1,6 +1,7 @@
 #ifndef __MAIN_H__
 #define __MAIN_H__ 1
 
+#include "Upkeep.h"
 #include <windows.h>
 #include <stdio.h>
 #include <string>
@@ -185,6 +186,13 @@ public:
 
 };
 
+struct UpkeepProjection
+{
+	wstring repairs;
+	wstring additional;
+	wstring total;
+};
+
 class CoreModule : public Module
 {
 public:
@@ -201,6 +209,9 @@ public:
 
 	bool baseHealthChanged;
 	bool undergoingDestruction;
+	double congestionCarry = 0;
+	float intendedRepairDaily = -1;
+	wstring lastUpkeepText;
 
 	CoreModule(PlayerBase* the_base);
 	~CoreModule();
@@ -647,8 +658,8 @@ void SendResetMarketOverride(uint client);
 void SendMarketGoodUpdated(PlayerBase* base, uint good, MARKET_ITEM& item);
 void SendMarketGoodSync(PlayerBase* base, uint client);
 wstring UIntToPrettyStr(uint value);
-void SendBaseStatus(uint client, PlayerBase* base);
-void SendBaseStatus(PlayerBase* base);
+void SendBaseStatus(uint client, PlayerBase* base, const UpkeepProjection* upkeep = nullptr);
+void SendBaseStatus(PlayerBase* base, const UpkeepProjection* upkeep = nullptr);
 void ForceLaunch(uint client);
 void SendBaseIDSList(uint client, uint solarId, uint ids);
 
@@ -740,7 +751,7 @@ namespace PlayerCommands
 	void Bank(uint client, const wstring& args);
 	void Shop(uint client, const wstring& args);
 	void BaseSwapModule(uint client, const wstring& args);
-	void GetNecessitiesStatus(uint client, const wstring& args);
+	void GetNecessitiesStatus(uint client);
 	bool CheckSolarDistances(uint client, uint systemID, Vector pos);
 	void BaseSetVulnerabilityWindow(uint client, const wstring& args);
 	void SetPrefFood(uint client, const wstring& cmd);
@@ -806,6 +817,20 @@ struct REPAIR_ITEM
 };
 extern vector<REPAIR_ITEM> set_base_repair_items;
 
+using CongestionTotals = unordered_map<uint, float>;
+extern CongestionTotals maintenancePressure;
+vector<Upkeep::Material> RepairMaterials();
+vector<REPAIR_ITEM> OrderedRepairMaterials(PlayerBase* base);
+vector<uint> ConfiguredCoreLevels();
+CongestionTotals BuildCongestionSnapshot(const Upkeep::Policy* policy = nullptr);
+float CongestionDaily(PlayerBase* base, const CongestionTotals& totals);
+float CongestionDamagePerBundle();
+UpkeepProjection ProjectedUpkeep(PlayerBase* base, const CongestionTotals& totals);
+void RefreshUpkeepStatus(PlayerBase* base, const CongestionTotals& totals);
+bool SpaceSuppliesEnabled();
+vector<pair<uint, UpkeepProjection>> ProjectedSystemUpkeep(uint system);
+wstring ConstructionPolicyError(uint system);
+bool ReloadCongestion(string& error, bool fullLoad = false);
 
 extern uint set_base_crew_type;
 

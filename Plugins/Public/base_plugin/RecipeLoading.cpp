@@ -268,11 +268,25 @@ bool LoadRecipes(string& error, bool live)
 			}
 			RECIPE recipe;
 			vector<wstring> craft_types;
+			string replacement;
+			bool replacementOnly = true;
 			wstring build_type;
 			uint recipe_number = 0;
 			while (ini.read_value())
 			{
 				ValidateRecipeValue(ini, true);
+				if (!ini.is_value("nickname") && !ini.is_value("replace_with"))
+				{
+					replacementOnly = false;
+				}
+				if (ini.is_value("replace_with"))
+				{
+					if (ini.get_num_parameters() != 1 || !replacement.empty() || !*ini.get_value_string(0))
+					{
+						throw runtime_error("replace_with needs one module nickname");
+					}
+					replacement = ini.get_value_string(0);
+				}
 				if (ReadCommonRecipeValue(ini, recipe, true))
 				{
 					continue;
@@ -310,6 +324,14 @@ bool LoadRecipes(string& error, bool live)
 				}
 			}
 
+			if (!replacement.empty())
+			{
+				if (recipe.nicknameString.empty() || !replacementOnly || !preparedTables.replacements.emplace(recipe.nickname, CreateID(replacement.c_str())).second)
+				{
+					throw runtime_error("replacement block needs only a unique nickname and replace_with");
+				}
+				continue;
+			}
 			if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
 			{
 				recipe.moduleCrew.clear();
@@ -324,6 +346,7 @@ bool LoadRecipes(string& error, bool live)
 		ini.close();
 
 
+		ResolveModuleReplacements(preparedTables);
 		file = cfg_fileitems;
 		if (preparedTables.moduleIds.empty())
 		{

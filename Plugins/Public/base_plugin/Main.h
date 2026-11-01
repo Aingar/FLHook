@@ -789,6 +789,7 @@ extern int set_plugin_debug_special;
 /// Global recipe map
 extern unordered_map<uint, RECIPE> recipeMap;
 bool LoadRecipes(string& error, bool live = false);
+void ApplyModuleReplacements(PlayerBase* base);
 
 /// Maps of shortcut numbers to recipes to construct item.
 extern unordered_map<wstring, map<uint, RECIPE>> recipeCraftTypeNumberMap;

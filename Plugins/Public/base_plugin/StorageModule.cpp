@@ -56,7 +56,7 @@ void StorageModule::LoadState(INI_Reader& ini)
 		cargoSpace = 0;
 		crew.clear();
 		const auto recipe = recipeMap.find(CreateID(moduleNickname.c_str()));
-		if (recipe != recipeMap.end() && recipe->second.shortcut_number == TYPE_STORAGE_CUSTOM)
+		if (recipe != recipeMap.end() && (recipe->second.shortcut_number == TYPE_STORAGE_CUSTOM || recipe->second.shortcut_number == TYPE_FACTORY))
 		{
 			cargoSpace = recipe->second.moduleCargoStorage;
 			crew = recipe->second.moduleCrew;

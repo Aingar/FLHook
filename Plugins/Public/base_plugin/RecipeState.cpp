@@ -13,6 +13,52 @@ static uint ModuleRecipeId(Module* module)
 	return 0;
 }
 
+static bool ShouldReplaceModule(Module* module, const RECIPE& recipe)
+{
+	return (module->type != static_cast<int>(recipe.shortcut_number) || ModuleRecipeId(module) != recipe.nickname)
+		&& !(module->type == Module::TYPE_FACTORY && recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM
+			&& static_cast<FactoryModule*>(module)->active_recipe.nickname);
+}
+
+static unique_ptr<Module> ConvertedModule(PlayerBase* base, Module* module, const RECIPE& recipe)
+{
+	if (!ShouldReplaceModule(module, recipe))
+	{
+		return nullptr;
+	}
+	unique_ptr<Module> replacement;
+	if (recipe.shortcut_number == Module::TYPE_FACTORY)
+	{
+		unique_ptr<FactoryModule> factory(new FactoryModule(base));
+		factory->factoryNickname = recipe.nickname;
+		if (module->type == Module::TYPE_FACTORY)
+		{
+			const auto* previous = static_cast<FactoryModule*>(module);
+			factory->active_recipe = previous->active_recipe;
+			factory->amassedCookingRate = previous->amassedCookingRate;
+			factory->build_queue = previous->build_queue;
+			factory->Paused = previous->Paused;
+			factory->sufficientCatalysts = previous->sufficientCatalysts;
+			factory->errorMessage = previous->errorMessage;
+		}
+		replacement = move(factory);
+	}
+	else if (recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM)
+	{
+		unique_ptr<StorageModule> storage(new StorageModule(base));
+		storage->type = Module::TYPE_STORAGE_CUSTOM;
+		storage->moduleNickname = recipe.nicknameString;
+		replacement = move(storage);
+	}
+	else
+	{
+		throw runtime_error("replacement must be a factory or repeatable storage module");
+	}
+	replacement->cargoSpace = recipe.moduleCargoStorage;
+	replacement->crew = recipe.moduleCrew;
+	return replacement;
+}
+
 static void ValidateBaseRecipes(PlayerBase* base, const RecipeTables& preparedTables)
 {
 	for (Module* module : base->modules)
@@ -24,7 +70,8 @@ static void ValidateBaseRecipes(PlayerBase* base, const RecipeTables& preparedTa
 		if (module->type == Module::TYPE_BUILD)
 		{
 			const RECIPE& active = static_cast<BuildModule*>(module)->active_recipe;
-			if (active.nickname && preparedTables.RequireRecipe(active.nickname, true).shortcut_number != active.shortcut_number)
+			if (active.nickname && preparedTables.RequireRecipe(active.nickname, true).shortcut_number != active.shortcut_number
+				&& !preparedTables.replacements.count(active.nickname))
 			{
 				throw runtime_error("cannot change the class of a module under construction");
 			}
@@ -33,9 +80,11 @@ static void ValidateBaseRecipes(PlayerBase* base, const RecipeTables& preparedTa
 		{
 			const uint id = ModuleRecipeId(module);
 			const RECIPE& definition = preparedTables.RequireRecipe(id, true);
-			if (definition.shortcut_number != static_cast<uint>(module->type))
+			if (definition.shortcut_number != static_cast<uint>(module->type) && !preparedTables.replacements.count(id)
+				&& !(module->type == Module::TYPE_FACTORY && definition.shortcut_number == Module::TYPE_STORAGE_CUSTOM
+					&& ::recipeMap.count(id) && ::recipeMap.at(id).shortcut_number == Module::TYPE_STORAGE_CUSTOM))
 			{
-				throw runtime_error("cannot change an installed module's class");
+				throw runtime_error("cannot change an installed module's class without replace_with");
 			}
 			if (module->type == Module::TYPE_FACTORY && static_cast<FactoryModule*>(module)->active_recipe.nickname)
 			{
@@ -79,14 +128,32 @@ static PreparedBaseRecipes PrepareRecipeBase(PlayerBase* base, const unordered_m
 {
 	PreparedBaseRecipes next;
 	next.base = base;
-	for (Module* module : base->modules)
+	next.modules = base->modules;
+	for (size_t i = 0; i < next.modules.size(); ++i)
 	{
+		Module* module = next.modules[i];
 		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM))
 		{
 			continue;
 		}
-		const RECIPE& definition = recipes.at(ModuleRecipeId(module));
-		next.properties.push_back({ module, static_cast<int>(definition.moduleCargoStorage), definition.moduleCrew });
+		const auto recipe = recipes.find(ModuleRecipeId(module));
+		if (recipe == recipes.end() || recipe->second.nicknameString.empty())
+		{
+			continue;
+		}
+		auto replacement = ConvertedModule(base, module, recipe->second);
+		if (replacement)
+		{
+			next.modules[i] = replacement.get();
+			next.owned.push_back(move(replacement));
+			next.retired.push_back(module);
+		}
+		module = next.modules[i];
+		const RECIPE& definition = recipe->second;
+		if (module->type == static_cast<int>(definition.shortcut_number))
+		{
+			next.properties.push_back({ module, static_cast<int>(definition.moduleCargoStorage), definition.moduleCrew });
+		}
 		if (module->type != Module::TYPE_FACTORY)
 		{
 			continue;
@@ -103,8 +170,96 @@ static PreparedBaseRecipes PrepareRecipeBase(PlayerBase* base, const unordered_m
 			next.factories[group] = factory;
 		}
 	}
-	ValidatePermanentCrew(base->base_level, base->modules, next.properties);
+	ValidatePermanentCrew(base->base_level, next.modules, next.properties);
 	return next;
+}
+
+void ApplyModuleReplacements(PlayerBase* base)
+{
+	for (Module* module : base->modules)
+	{
+		if (!module || (module->type != Module::TYPE_FACTORY && module->type != Module::TYPE_STORAGE_CUSTOM))
+		{
+			continue;
+		}
+		const auto recipe = recipeMap.find(ModuleRecipeId(module));
+		if (recipe == recipeMap.end() || recipe->second.nicknameString.empty())
+		{
+			continue;
+		}
+		if (!ShouldReplaceModule(module, recipe->second))
+		{
+			continue;
+		}
+		try
+		{
+			auto next = PrepareRecipeBase(base, recipeMap, factoryNicknameToCraftTypeMap);
+			next.ApplyToBase();
+		}
+		catch (const exception& e)
+		{
+			ConPrint(L"BASE module conversion failed for %ls: %ls\n", base->basename.c_str(), stows(e.what()).c_str());
+		}
+		return;
+	}
+}
+
+void ResolveModuleReplacements(RecipeTables& preparedTables)
+{
+	for (const auto& replacement : preparedTables.replacements)
+	{
+		if (preparedTables.recipeMap.count(replacement.first))
+		{
+			throw runtime_error("replacement nickname duplicates a module recipe");
+		}
+		unordered_set<uint> visited;
+		uint target = replacement.first;
+		while (preparedTables.replacements.count(target))
+		{
+			if (!visited.insert(target).second)
+			{
+				throw runtime_error("module replacement cycle");
+			}
+			target = preparedTables.replacements.at(target);
+		}
+		const RECIPE& recipe = preparedTables.RequireRecipe(target, true);
+		if (recipe.shortcut_number != Module::TYPE_FACTORY && recipe.shortcut_number != Module::TYPE_STORAGE_CUSTOM)
+		{
+			throw runtime_error("replacement must target a factory or repeatable storage module");
+		}
+		preparedTables.recipeMap.emplace(replacement.first, recipe);
+		preparedTables.moduleIds.insert(replacement.first);
+		const auto lists = preparedTables.factoryNicknameToCraftTypeMap.find(target);
+		if (lists != preparedTables.factoryNicknameToCraftTypeMap.end())
+		{
+			preparedTables.factoryNicknameToCraftTypeMap.emplace(replacement.first, lists->second);
+		}
+	}
+}
+
+static void PrepareBuildReplacements(PreparedBaseRecipes& next, const RecipeTables& preparedTables)
+{
+	for (Module* module : next.base->modules)
+	{
+		if (!module || module->type != Module::TYPE_BUILD)
+		{
+			continue;
+		}
+		BuildModule* build = static_cast<BuildModule*>(module);
+		if (!preparedTables.replacements.count(build->active_recipe.nickname))
+		{
+			continue;
+		}
+		RECIPE active = build->active_recipe;
+		const RECIPE& target = preparedTables.RequireRecipe(active.nickname, true);
+		active.nickname = target.nickname;
+		active.nicknameString = target.nicknameString;
+		active.infotext = target.infotext;
+		active.shortcut_number = target.shortcut_number;
+		active.moduleCargoStorage = target.moduleCargoStorage;
+		active.moduleCrew = target.moduleCrew;
+		next.builds.emplace_back(build, move(active));
+	}
 }
 
 vector<PreparedBaseRecipes> PrepareRecipeReload(const RecipeTables& preparedTables)
@@ -125,7 +280,9 @@ vector<PreparedBaseRecipes> PrepareRecipeReload(const RecipeTables& preparedTabl
 			continue;
 		}
 		ValidateBaseRecipes(base, preparedTables);
-		access.push_back(PrepareRecipeBase(base, preparedTables.recipeMap, preparedTables.factoryNicknameToCraftTypeMap));
+		PreparedBaseRecipes next = PrepareRecipeBase(base, preparedTables.recipeMap, preparedTables.factoryNicknameToCraftTypeMap);
+		PrepareBuildReplacements(next, preparedTables);
+		access.push_back(move(next));
 	}
 	return access;
 }

@@ -468,7 +468,10 @@ static uint CreateWPlatformSolar(PlayerBase* base, uint iSystem, Vector position
 
 	string wplatform_nickname = base->nickname + itos(rand());
 
-	strncpy_s(si.cNickName, sizeof(si.cNickName), wplatform_nickname.c_str(), wplatform_nickname.size());
+	if (strncpy_s(si.cNickName, sizeof(si.cNickName), wplatform_nickname.c_str(), _TRUNCATE) == STRUNCATE)
+	{
+		AddLog("ERROR: defense platform nickname too long, truncated: %s", wplatform_nickname.c_str());
+	}
 
 	si.iHitPointsLeft = -1;
 

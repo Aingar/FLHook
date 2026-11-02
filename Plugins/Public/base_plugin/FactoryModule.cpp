@@ -1,7 +1,7 @@
 #include "Main.h"
 
 FactoryModule::FactoryModule(PlayerBase* the_base)
-	: Module(Module::TYPE_FACTORY), base(the_base)
+	: Module(Module::TYPE_FACTORY), base(the_base), factoryNickname(0)
 {
 	amassedCookingRate = 0;
 	active_recipe.nickname = 0;
@@ -14,6 +14,7 @@ FactoryModule::FactoryModule(PlayerBase* the_base, uint nickname)
 	amassedCookingRate = 0;
 	active_recipe.nickname = 0;
 	cargoSpace = recipeMap[nickname].moduleCargoStorage;
+	crew = recipeMap[nickname].moduleCrew;
 	for (wstring& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 	{
 		base->availableCraftList.insert(craftType);
@@ -41,22 +42,25 @@ wstring FactoryModule::GetInfo(bool xml)
 
 
 	wstring openLine;
-	wstring start;
-	wstring end;
 	if (xml)
 	{
 		openLine = L"</TEXT><PARA/><TEXT>      ";
-		start = L"<TEXT>";
-		end = L"</TEXT>";
 	}
 	else
 	{
 		openLine = L"\n - ";
-		start = L"";
-		end = L"";
 	}
 
-	info += start + recipeMap[factoryNickname].infotext;
+	const auto text = [xml](const wstring& value) { return xml ? XMLText(value) : value; };
+	info += text(recipeMap[factoryNickname].infotext);
+	if (xml)
+	{
+		const wstring staffing = GetActiveCrewInfo();
+		if (!staffing.empty())
+		{
+			info += openLine + XMLText(staffing);
+		}
+	}
 
 	if (!build_queue.empty())
 	{
@@ -64,11 +68,14 @@ wstring FactoryModule::GetInfo(bool xml)
 	}
 	if (!active_recipe.nickname)
 	{
-		info += end;
+		if (!errorMessage.empty())
+		{
+			info += openLine + text(errorMessage);
+		}
 		return info;
 	}
 
-	info += openLine + L"Crafting " + Status + active_recipe.infotext + L". Waiting for:";
+	info += openLine + L"Crafting " + Status + text(active_recipe.infotext) + L". Waiting for:";
 
 	float volumeSum = 0;
 
@@ -108,7 +115,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(good)) + L" in stock]";
+			info += itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName)) + L" [" + itows(base->HasMarketItem(good)) + L" in stock]";
 		}
 		dynamicSum /= i.size();
 		volumeSum += dynamicSum;
@@ -141,7 +148,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			{
 				continue;
 			}
-			info += HkGetWStringFromIDS(gi->iIDSName) + L" [" + itows(base->HasMarketItem(itemId)) + L" in stock]";
+			info += text(HkGetWStringFromIDS(gi->iIDSName)) + L" [" + itows(base->HasMarketItem(itemId)) + L" in stock]";
 		}
 		dynVolumeSum /= i.items.size();
 		volumeSum += i.sharedAmount * dynVolumeSum;
@@ -161,7 +168,7 @@ wstring FactoryModule::GetInfo(bool xml)
 		{
 			continue;
 		}
-		info += openLine + L"- " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+		info += openLine + L"- " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 		if (quantity > 0)
 		{
 			uint currStock = base->HasMarketItem(good);
@@ -199,7 +206,7 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 			}
 		}
 	}
@@ -214,18 +221,25 @@ wstring FactoryModule::GetInfo(bool xml)
 			const GoodInfo* gi = GoodList::find_by_id(good);
 			if (gi)
 			{
-				info += openLine + L" - " + itows(quantity) + L"x " + HkGetWStringFromIDS(gi->iIDSName);
+				info += openLine + L" - " + itows(quantity) + L"x " + text(HkGetWStringFromIDS(gi->iIDSName));
 			}
 		}
 	}
 
 	if (!errorMessage.empty())
 	{
-		info += L"<TRA data=\"0x0000FF00\" mask=\"-1\"/>" + openLine + errorMessage + end + L"<TRA data=\"0xE6C68400\" mask=\"-1\"/>";
+		if (xml)
+		{
+			info += openLine + L"</TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>" + XMLText(errorMessage) + L"</TEXT><TRA data=\"0xE6C68400\" mask=\"-1\"/><TEXT>";
+		}
+		else
+		{
+			info += openLine + errorMessage;
+		}
 	}
 	else
 	{
-		info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate) * 60) + end;
+		info += openLine + L"Time until completion: " + TimeString(static_cast<uint>(volumeSum / active_recipe.cooking_rate) * 60);
 	}
 
 	return info;
@@ -407,6 +421,10 @@ bool FactoryModule::Timer(uint time)
 	// Get the next item to make from the build queue.
 	if (!active_recipe.nickname && !build_queue.empty())
 	{
+		if (Paused || !CanStartRecipe(build_queue.front()))
+		{
+			return false;
+		}
 		SetActiveRecipe(build_queue.front(), true);
 		build_queue.pop_front();
 	}
@@ -440,21 +458,25 @@ bool FactoryModule::Timer(uint time)
 	for (const auto& workers : active_recipe.catalyst_workforce)
 	{
 		uint good = workers.first;
-		int quantityNeeded = workers.second;
-
-		int currentlyFed = base->HasFedWorkerItem(good);
-		int currentlyOnBase = base->HasMarketItem(good);
-
-		int effectiveCrewCount = min(currentlyFed, currentlyOnBase);
-		int availableWorkingCrew = (effectiveCrewCount - base->reservedCatalystMap[good]);
-		if (availableWorkingCrew >= quantityNeeded)
+		uint quantityNeeded = workers.second;
+		uint currentlyFed = base->HasFedWorkerItem(good);
+		uint currentlyOnBase = base->HasMarketItem(good);
+		uint reserved = base->reservedCatalystMap[good];
+		if (reserved > currentlyOnBase || quantityNeeded > currentlyOnBase - reserved)
+		{
+			errorMessage = L"Unable to feed crew to handle this module";
+			sufficientCatalysts = false;
+			return false;
+		}
+		quantityNeeded += reserved;
+		uint effectiveCrewCount = min(currentlyFed, currentlyOnBase);
+		if (effectiveCrewCount >= quantityNeeded)
 		{
 			continue;
 		}
 		
-		int availableToBeFed = currentlyOnBase - currentlyFed;
-		int missingAmount = -(availableWorkingCrew - quantityNeeded);
-		if (availableToBeFed < missingAmount || !base->FeedCrew(good, missingAmount))
+		uint missingAmount = quantityNeeded - effectiveCrewCount;
+		if (!base->FeedCrew(good, missingAmount))
 		{
 			errorMessage = L"Unable to feed crew to handle this module";
 			sufficientCatalysts = false;
@@ -527,20 +549,27 @@ bool FactoryModule::Timer(uint time)
 		}
 	}
 
+	const uint completed = active_recipe.nickname;
+	const bool loop = active_recipe.loop_production;
+	active_recipe.nickname = 0;
 	if (!build_queue.empty())
 	{
-		// Load next item in the queue
-		SetActiveRecipe(build_queue.front(), true);
-		build_queue.pop_front();
+		if (CanStartRecipe(build_queue.front()))
+		{
+			SetActiveRecipe(build_queue.front(), true);
+			build_queue.pop_front();
+		}
 	}
-	else if (active_recipe.loop_production)
+	else if (loop)
 	{
-		// If recipe is set to automatically loop, refresh the recipe data
-		SetActiveRecipe(active_recipe.nickname, false);
-	}
-	else
-	{
-		active_recipe.nickname = 0;
+		if (CanStartRecipe(completed))
+		{
+			SetActiveRecipe(completed, false);
+		}
+		else
+		{
+			build_queue.push_front(completed);
+		}
 	}
 
 	return false;
@@ -560,6 +589,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			factoryNickname = CreateID(ini.get_value_string(0));
 
 			cargoSpace = recipeMap[factoryNickname].moduleCargoStorage;
+			crew = recipeMap[factoryNickname].moduleCrew;
 			for (auto& craftType : factoryNicknameToCraftTypeMap[factoryNickname])
 			{
 				base->availableCraftList.insert(craftType);
@@ -572,6 +602,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 			if (activeRecipeNickname)
 			{
 				SetActiveRecipe(activeRecipeNickname, true);
+				active_recipe.credit_cost = 0;
 				active_recipe.consumed_items.clear();
 				active_recipe.dynamic_consumed_items.clear();
 				active_recipe.dynamic_consumed_items_alt.clear();
@@ -641,10 +672,7 @@ void FactoryModule::LoadState(INI_Reader& ini)
 		}
 		else if (ini.is_value("build_queue"))
 		{
-			if (active_recipe.nickname)
-			{
-				build_queue.emplace_back(ini.get_value_int(0));
-			}
+			build_queue.emplace_back(ini.get_value_int(0));
 		}
 		else if (ini.is_value("produced"))
 		{
@@ -664,12 +692,14 @@ void FactoryModule::SaveState(FILE* file)
 {
 	fprintf(file, "[FactoryModule]\n");
 	fprintf(file, "type = %s\n", recipeMap[factoryNickname].nicknameString.c_str());
+	fprintf(file, "paused = %d\n", Paused);
 	if (active_recipe.nickname)
 	{
 		fprintf(file, "nickname = %u\n", active_recipe.nickname);
-		fprintf(file, "paused = %d\n", Paused);
 		if (active_recipe.credit_cost)
+		{
 			fprintf(file, "credit_cost = %u\n", active_recipe.credit_cost);
+		}
 		for (auto& i : active_recipe.consumed_items)
 		{
 			if (i.second)
@@ -715,14 +745,37 @@ void FactoryModule::SaveState(FILE* file)
 	}
 }
 
+bool FactoryModule::CanStartRecipe(uint product)
+{
+	const auto recipe = recipeMap.find(product);
+	const auto lists = factoryNicknameToCraftTypeMap.find(factoryNickname);
+	if (recipe == recipeMap.end() || (recipe->second.produced_items.empty() && recipe->second.affiliation_produced_items.empty())
+		|| lists == factoryNicknameToCraftTypeMap.end()
+		|| find(lists->second.begin(), lists->second.end(), recipe->second.craft_type) == lists->second.end()
+		|| recipe->second.reqlevel > base->base_level
+		|| (recipe->second.restricted && !recipe->second.affiliationBonus.count(base->affiliation)))
+	{
+		errorMessage = L"Next recipe is no longer available in this factory";
+		return false;
+	}
+	errorMessage.clear();
+	return true;
+}
+
 void FactoryModule::SetActiveRecipe(uint product, bool resetAmassedCookingRate)
 {
+	const auto recipe = recipeMap.find(product);
+	if (recipe == recipeMap.end())
+	{
+		active_recipe.nickname = 0;
+		return;
+	}
 	if (resetAmassedCookingRate)
 	{
 		amassedCookingRate = 0;
 	}
 
-	active_recipe = RECIPE(recipeMap[product]);
+	active_recipe = recipe->second;
 	if (active_recipe.affiliationBonus.count(base->affiliation))
 	{
 		float productionModifier = active_recipe.affiliationBonus.at(base->affiliation);
@@ -773,7 +826,11 @@ void FactoryModule::SetActiveRecipe(uint product, bool resetAmassedCookingRate)
 
 bool FactoryModule::AddToQueue(uint product)
 {
-	if (!active_recipe.nickname)
+	if (!CanStartRecipe(product))
+	{
+		return false;
+	}
+	if (!active_recipe.nickname && build_queue.empty())
 	{
 		SetActiveRecipe(product, true);
 		return true;
@@ -792,12 +849,17 @@ bool FactoryModule::AddToQueue(uint product)
 bool FactoryModule::ClearQueue()
 {
 	build_queue.clear();
+	if (!active_recipe.nickname)
+	{
+		errorMessage.clear();
+	}
 	return true;
 }
 
 void FactoryModule::ClearRecipe()
 {
 	active_recipe.nickname = 0;
+	errorMessage.clear();
 }
 
 bool FactoryModule::ToggleQueuePaused(bool NewState)
@@ -855,13 +917,23 @@ const RECIPE* FactoryModule::GetFactoryProductRecipe(wstring& craftType, wstring
 {
 	product = ToLower(product);
 	int shortcut_number = ToInt(product);
-	if (recipeCraftTypeNumberMap[craftType].count(shortcut_number))
+	const auto numbers = recipeCraftTypeNumberMap.find(craftType);
+	if (numbers != recipeCraftTypeNumberMap.end())
 	{
-		return &recipeCraftTypeNumberMap[craftType][shortcut_number];
+		const auto recipe = numbers->second.find(shortcut_number);
+		if (recipe != numbers->second.end())
+		{
+			return &recipe->second;
+		}
 	}
-	else if (recipeCraftTypeNameMap[craftType].count(product))
+	const auto names = recipeCraftTypeNameMap.find(craftType);
+	if (names != recipeCraftTypeNameMap.end())
 	{
-		return &recipeCraftTypeNameMap[craftType][product];
+		const auto recipe = names->second.find(product);
+		if (recipe != names->second.end())
+		{
+			return &recipe->second;
+		}
 	}
 	return nullptr;
 }

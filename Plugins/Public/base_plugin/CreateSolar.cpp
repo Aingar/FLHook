@@ -39,7 +39,10 @@ void CreateSolar::CreateSolarCallout(SPAWN_SOLAR_STRUCT* info)
 	si.costume.accessories = 0;
 	si.iVoiceID = CreateID("atc_leg_m01");
 	si.baseId = info->destSystem;
-	strncpy_s(si.cNickName, sizeof(si.cNickName), info->nickname.c_str(), info->nickname.size());
+	if (strncpy_s(si.cNickName, sizeof(si.cNickName), info->nickname.c_str(), _TRUNCATE) == STRUNCATE)
+	{
+		AddLog("ERROR: solar nickname too long, truncated: %s", info->nickname.c_str());
+	}
 
 	if (info->solar_ids && !info->overwrittenName.empty())
 	{

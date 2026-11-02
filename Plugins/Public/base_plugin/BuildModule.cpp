@@ -330,10 +330,14 @@ bool BuildModule::Timer(uint time)
 {
 
 	if ((time % set_tick_time) != 0 || base->IsDefaultAffiliation())
+	{
 		return false;
+	}
 
 	if (Paused || (!base->isCrewSupplied && !set_holiday_mode))
+	{
 		return false;
+	}
 
 	if (active_recipe.credit_cost)
 	{
@@ -384,7 +388,9 @@ bool BuildModule::Timer(uint time)
 
 				base->base_level++;
 				if (base->base_level > 4)
+				{
 					base->base_level = 4;
+				}
 				base->SetupDefaults();
 
 				// Clear the build module slot.
@@ -400,6 +406,9 @@ bool BuildModule::Timer(uint time)
 				base->modules[i] = new StorageModule(base);
 				base->RecalculateCargoSpace();
 				break;
+			case Module::TYPE_STORAGE_CUSTOM:
+				base->modules[i] = new StorageModule(base, active_recipe.nickname);
+				break;
 			case Module::TYPE_DEFENSE_1:
 				base->modules[i] = new DefenseModule(base, Module::TYPE_DEFENSE_1);
 				break;
@@ -414,7 +423,6 @@ bool BuildModule::Timer(uint time)
 				if (factoryNicknameToCraftTypeMap.count(active_recipe.nickname))
 				{
 					base->modules[i] = new FactoryModule(base, active_recipe.nickname);
-					base->RecalculateCargoSpace();
 					break;
 				}
 				base->modules[i] = nullptr;
@@ -422,6 +430,13 @@ bool BuildModule::Timer(uint time)
 			 default:
 				base->modules[i] = nullptr;
 			}
+			if (base->modules[i] && (active_recipe.shortcut_number == Module::TYPE_FACTORY || active_recipe.shortcut_number == Module::TYPE_STORAGE_CUSTOM))
+			{
+				base->modules[i]->cargoSpace = active_recipe.moduleCargoStorage;
+				base->modules[i]->crew = active_recipe.moduleCrew;
+				base->RecalculateCargoSpace();
+			}
+			base->RebuildCraftingAccess();
 			base->Save();
 			return false;
 		}

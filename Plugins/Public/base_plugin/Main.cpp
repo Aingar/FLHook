@@ -31,7 +31,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
-unordered_map<uint, PlayerBase*>::iterator baseSaveIterator = player_bases.begin();
+size_t baseSaveIndex = 0;
 
 vector<ScheduledRespawn> basesToRespawn;
 
@@ -94,14 +94,14 @@ unordered_map<uint, RECIPE> recipeMap;
 
 /// Maps of shortcut numbers to recipes to construct item.
 unordered_map<wstring, map<uint, RECIPE>> recipeCraftTypeNumberMap;
-unordered_map<wstring, map<wstring, RECIPE>> recipeCraftTypeNameMap;
+unordered_map<wstring, unordered_map<wstring, RECIPE>> recipeCraftTypeNameMap;
 unordered_map<uint, vector<wstring>> factoryNicknameToCraftTypeMap;
 unordered_map<wstring, RECIPE> moduleNameRecipeMap;
 unordered_map<wstring, map<uint, RECIPE>> craftListNumberModuleMap;
 unordered_set<wstring> buildingCraftLists;
 
-void AddFactoryRecipeToMaps(const RECIPE& recipe);
-void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number);
+
+
 
 /// Map of space obj IDs to base modules to speed up damage algorithms.
 unordered_map<uint, Module*> spaceobj_modules;
@@ -476,316 +476,7 @@ void ValidateItem(const char* goodName)
 	}
 }
 
-void LoadRecipes()
-{
 
-	char szCurDir[MAX_PATH];
-	GetCurrentDirectory(sizeof(szCurDir), szCurDir);
-
-	recipeMap.clear();
-	recipeCraftTypeNumberMap.clear();
-	recipeCraftTypeNameMap.clear();
-	factoryNicknameToCraftTypeMap.clear();
-	moduleNameRecipeMap.clear();
-	craftListNumberModuleMap.clear();
-
-	string cfg_fileitems = string(szCurDir) + R"(\flhook_plugins\base_recipe_items.cfg)";
-	string cfg_filemodules = string(szCurDir) + R"(\flhook_plugins\base_recipe_modules.cfg)";
-
-	INI_Reader ini;
-
-	if (ini.open(cfg_filemodules.c_str(), false))
-	{
-		while (ini.read_header())
-		{
-			if (ini.is_header("recipe"))
-			{
-				RECIPE recipe;
-				vector<wstring> craft_types;
-				wstring build_type;
-				uint recipe_number;
-				while (ini.read_value())
-				{
-					if (ini.is_value("nickname"))
-					{
-						recipe.nickname = CreateID(ini.get_value_string(0));
-						recipe.nicknameString = ini.get_value_string(0);
-					}
-					else if (ini.is_value("infotext"))
-					{
-						recipe.infotext = stows(ini.get_value_string(0));
-					}
-					else if (ini.is_value("craft_list"))
-					{
-						craft_types.emplace_back(stows(ToLower(ini.get_value_string(0))));
-					}
-					else if (ini.is_value("build_type"))
-					{
-						build_type = stows(ToLower(ini.get_value_string(0)));
-					}
-					else if (ini.is_value("recipe_number"))
-					{
-						recipe_number = ini.get_value_int(0);
-					}
-					else if (ini.is_value("module_class"))
-					{
-						recipe.shortcut_number = ini.get_value_int(0);
-					}
-					else if (ini.is_value("cooking_rate"))
-					{
-						recipe.cooking_rate = ini.get_value_float(0);
-					}
-					else if (ini.is_value("credit_cost"))
-					{
-						recipe.credit_cost = ini.get_value_int(0);
-					}
-					else if (ini.is_value("consumed"))
-					{
-						ValidateItem(ini.get_value_string(0));
-						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
-					}
-					else if (ini.is_value("consumed_dynamic"))
-					{
-						int counter = 0;
-						vector<pair<uint, uint>> vector;
-						string itemName;
-						do
-						{
-							itemName = ini.get_value_string(counter * 2);
-							int amount = ini.get_value_int(counter * 2 + 1);
-							if (!itemName.empty())
-							{
-								ValidateItem(itemName.c_str());
-								vector.push_back({ CreateID(itemName.c_str()), amount });
-							}
-							counter++;
-						} while (!itemName.empty());
-						recipe.dynamic_consumed_items.push_back(vector);
-					}
-					else if (ini.is_value("consumed_dynamic_alt"))
-					{
-						DYNAMIC_ITEM items;
-						items.sharedAmount = ini.get_value_int(0);
-						string itemName;
-						int counter = 1;
-						do
-						{
-							itemName = ini.get_value_string(counter);
-							if (!itemName.empty())
-							{
-								ValidateItem(itemName.c_str());
-								items.items.push_back(CreateID(itemName.c_str()));
-							}
-							counter++;
-						} while (!itemName.empty());
-						recipe.dynamic_consumed_items_alt.push_back(items);
-					}
-					else if (ini.is_value("catalyst"))
-					{
-						ValidateItem(ini.get_value_string(0));
-						uint cargoHash = CreateID(ini.get_value_string(0));
-						if (humanCargoList.count(cargoHash))
-						{
-							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
-						}
-						else
-						{
-							recipe.catalyst_items.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
-						}
-					}
-					else if (ini.is_value("reqlevel"))
-					{
-						recipe.reqlevel = ini.get_value_int(0);
-					}
-					else if (ini.is_value("cargo_storage"))
-					{
-						recipe.moduleCargoStorage = ini.get_value_int(0);
-					}
-					else if (ini.is_value("affiliation_bonus"))
-					{
-						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
-					}
-					else if (ini.is_value("restricted"))
-					{
-						recipe.restricted = ini.get_value_bool(0);
-					}
-				}
-				AddModuleRecipeToMaps(recipe, craft_types, build_type, recipe_number);
-			}
-		}
-		ini.close();
-	}
-
-	if (ini.open(cfg_fileitems.c_str(), false))
-	{
-		while (ini.read_header())
-		{
-			if (ini.is_header("recipe"))
-			{
-				RECIPE recipe;
-				while (ini.read_value())
-				{
-					if (ini.is_value("nickname"))
-					{
-						recipe.nickname = CreateID(ini.get_value_string(0));
-						recipe.nicknameString = ini.get_value_string(0);
-					}
-					else if (ini.is_value("produced_item"))
-					{
-						ValidateItem(ini.get_value_string(0));
-						int goodAmount = ini.get_value_int(1);
-						if (!goodAmount)
-						{
-							ConPrint(L"Error: no amount or zero specified in a recipe %ls\n", stows(recipe.nicknameString).c_str());
-							continue;
-						}
-						recipe.produced_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
-					}
-					else if (ini.is_value("produced_affiliation"))
-					{
-						unordered_map<uint, pair<uint, uint>> itemMap;
-						ValidateItem(ini.get_value_string(0));
-						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
-						int counter = 0;
-
-						string factionName;
-						do
-						{
-							factionName = ini.get_value_string(counter * 3 + 2);
-							string commodityName = ini.get_value_string(counter * 3 + 3);
-							int amount = ini.get_value_int(counter * 3 + 4);
-							if (!factionName.empty())
-							{
-								ValidateItem(commodityName.c_str());
-								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
-							}
-							counter++;
-						} while (!factionName.empty());
-
-						recipe.affiliation_produced_items.push_back(itemMap);
-					}
-					else if (ini.is_value("loop_production"))
-					{
-						recipe.loop_production = ini.get_value_int(0);
-					}
-					else if (ini.is_value("shortcut_number"))
-					{
-						recipe.shortcut_number = ini.get_value_int(0);
-					}
-					else if (ini.is_value("craft_type"))
-					{
-						recipe.craft_type = stows(ToLower(ini.get_value_string(0)));
-					}
-					else if (ini.is_value("infotext"))
-					{
-						recipe.infotext = stows(ini.get_value_string());
-					}
-					else if (ini.is_value("cooking_rate"))
-					{
-						recipe.cooking_rate = ini.get_value_float(0);
-					}
-					else if (ini.is_value("credit_cost"))
-					{
-						recipe.credit_cost = ini.get_value_int(0);
-					}
-					else if (ini.is_value("consumed"))
-					{
-						ValidateItem(ini.get_value_string(0));
-						recipe.consumed_items.emplace_back(make_pair(CreateID(ini.get_value_string(0)), ini.get_value_int(1)));
-					}
-					else if (ini.is_value("consumed_dynamic"))
-					{
-						int counter = 0;
-						vector<pair<uint, uint>> vector;
-						string itemName;
-						do
-						{
-							itemName = ini.get_value_string(counter * 2);
-							int amount = ini.get_value_int(counter * 2 + 1);
-							if (!itemName.empty())
-							{
-								ValidateItem(itemName.c_str());
-								vector.push_back({ CreateID(itemName.c_str()), amount });
-							}
-							counter++;
-						} while (!itemName.empty());
-						recipe.dynamic_consumed_items.push_back(vector);
-					}
-					else if (ini.is_value("consumed_dynamic_alt"))
-					{
-						DYNAMIC_ITEM items;
-						items.sharedAmount = ini.get_value_int(0);
-						string itemName;
-						int counter = 1;
-						do
-						{
-							itemName = ini.get_value_string(counter);
-							if (!itemName.empty())
-							{
-								ValidateItem(itemName.c_str());
-								items.items.push_back(CreateID(itemName.c_str()));
-							}
-							counter++;
-						} while (!itemName.empty());
-						recipe.dynamic_consumed_items_alt.push_back(items);
-					}
-					else if (ini.is_value("consumed_affiliation"))
-					{
-						unordered_map<uint, pair<uint, uint>> itemMap;
-						ValidateItem(ini.get_value_string(0));
-						itemMap[0] = { CreateID(ini.get_value_string(0)), ini.get_value_int(1) };
-						int counter = 0;
-
-						string factionName;
-						do
-						{
-							factionName = ini.get_value_string(counter * 3 + 2);
-							string commodityName = ini.get_value_string(counter * 3 + 3);
-							int amount = ini.get_value_int(counter * 3 + 4);
-							if (!factionName.empty())
-							{
-								ValidateItem(commodityName.c_str());
-								itemMap[MakeId(factionName.c_str())] = { CreateID(commodityName.c_str()), amount };
-							}
-							counter++;
-						} while (!factionName.empty());
-
-						recipe.affiliation_consumed_items.push_back(itemMap);
-					}
-					else if (ini.is_value("catalyst"))
-					{
-						ValidateItem(ini.get_value_string(0));
-						uint cargoHash = CreateID(ini.get_value_string(0));
-						if (humanCargoList.count(cargoHash))
-						{
-							recipe.catalyst_workforce.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
-						}
-						else
-						{
-							recipe.catalyst_items.emplace_back(make_pair(cargoHash, ini.get_value_int(1)));
-						}
-					}
-					else if (ini.is_value("reqlevel"))
-					{
-						recipe.reqlevel = ini.get_value_int(0);
-					}
-					else if (ini.is_value("affiliation_bonus"))
-					{
-						recipe.affiliationBonus[MakeId(ini.get_value_string(0))] = ini.get_value_float(1);
-					}
-					else if (ini.is_value("restricted"))
-					{
-						recipe.restricted = ini.get_value_bool(0);
-					}
-				}
-				AddFactoryRecipeToMaps(recipe);
-			}
-		}
-		ini.close();
-	}
-
-	PlayerCommands::PopulateHelpMenus();
-}
 
 /// Load the configuration
 void LoadSettingsActual()
@@ -1216,7 +907,12 @@ void LoadSettingsActual()
 		ini.close();
 	}
 
-	LoadRecipes();
+	string recipeError;
+	if (!LoadRecipes(recipeError))
+	{
+		ConPrint(L"BASE ERROR %ls\n", stows(recipeError).c_str());
+		return;
+	}
 
 	char datapath[MAX_PATH];
 	GetUserDataPath(datapath);
@@ -1350,6 +1046,65 @@ void RebuildCSolarSystemList()
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+static void RunBaseMaintenance(uint curr_time)
+{
+	vector<uint> ids;
+	ids.reserve(player_bases.size());
+	for (const auto& entry : player_bases)
+	{
+		ids.push_back(entry.first);
+	}
+	unordered_set<uint> failed;
+	for (uint id : ids)
+	{
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end())
+		{
+			continue;
+		}
+		try
+		{
+			found->second->Timer(curr_time);
+		}
+		catch (const exception& e)
+		{
+			failed.insert(id);
+			ConPrint(L"BASE maintenance failed for %u: %ls\n", id, stows(e.what()).c_str());
+		}
+	}
+	if (ids.empty())
+	{
+		baseSaveIndex = 0;
+		return;
+	}
+	baseSaveIndex %= ids.size();
+	for (size_t checked = 0; checked < ids.size(); ++checked)
+	{
+		const uint id = ids[baseSaveIndex];
+		baseSaveIndex = (baseSaveIndex + 1) % ids.size();
+		if (failed.count(id))
+		{
+			continue;
+		}
+		const auto found = player_bases.find(id);
+		if (found == player_bases.end())
+		{
+			continue;
+		}
+		PlayerBase* base = found->second;
+		if (base->logic == 1 || base->invulnerable == 0)
+		{
+			if (base->pinned_item_updated && base->baseCSolar)
+			{
+				base->UpdateBaseInfoText();
+				base->pinned_item_updated = false;
+			}
+			base->Save();
+			break;
+		}
+	}
+}
+
 void HkTimerCheckKick()
 {
 	returncode = DEFAULT_RETURNCODE;
@@ -1416,35 +1171,7 @@ void HkTimerCheckKick()
 		}
 	}
 
-	for (auto& iter : player_bases)
-	{
-		PlayerBase* base = iter.second;
-		base->Timer(curr_time);
-	}
-
-	if (!player_bases.empty())
-	{
-		if (baseSaveIterator == player_bases.end())
-		{
-			baseSaveIterator = player_bases.begin();
-		}
-		bool saveSuccessful = false;
-		while (!saveSuccessful && baseSaveIterator != player_bases.end())
-		{
-			auto& pb = baseSaveIterator->second;
-			if (pb->logic == 1 || pb->invulnerable == 0)
-			{
-				if (pb->pinned_item_updated && pb->baseCSolar)
-				{
-					pb->UpdateBaseInfoText();
-					pb->pinned_item_updated = false;
-				}
-				pb->Save();
-				saveSuccessful = true;
-			}
-			baseSaveIterator++;
-		}
-	}
+	RunBaseMaintenance(curr_time);
 
 	if ((curr_time % set_export_cooldown) == 0)
 	{
@@ -1555,6 +1282,26 @@ __declspec(naked) void HkCb_LandNaked()
 	}
 }
 
+static int __fastcall NpcScanGetType(IObjRW* object, IObjRW* owner, uint& type)
+{
+	if (owner && !owner->is_player() && object->cobj && object->cobj->objectClass == CObject::CSOLAR_OBJECT
+		&& reinterpret_cast<CSolar*>(object->cobj)->isDynamic && spaceobj_modules.count(object->cobj->id))
+	{
+		type = 0;
+		return 0;
+	}
+	return object->get_type(type);
+}
+
+static void __declspec(naked) NpcScanGetTypeNaked()
+{
+	__asm
+	{
+		mov edx, [esp + 0xac]
+		jmp NpcScanGetType
+	}
+}
+
 static bool patched = false;
 bool shutdownBasePlugin = false;
 
@@ -1593,6 +1340,11 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 				WriteProcMem((char*)hModCommon + 0x995b6, patch, sizeof(patch));
 				WriteProcMem((char*)hModCommon + 0x995fc, patch, sizeof(patch));
 			}
+			{
+				byte patch[] = { 0xe8, 0, 0, 0, 0, 0x90 };
+				WriteProcMem((char*)hModCommon + 0x8778d, patch, sizeof(patch));
+				PatchCallAddr((char*)hModCommon, 0x8778d, (char*)NpcScanGetTypeNaked);
+			}
 		}
 
 		HkLoadStringDLLs();
@@ -1613,6 +1365,10 @@ BOOL WINAPI DllMain(HINSTANCE hinstDLL, DWORD fdwReason, LPVOID lpvReserved)
 				// Unpatch the Suppress "is dockable " error message
 				byte patch[] = { 0x85, 0x86, 0xb4, 0x01, 0x00 };
 				WriteProcMem((char*)hModCommon + 0x576cb, patch, sizeof(patch));
+			}
+			{
+				byte patch[] = { 0xff, 0x92, 0x88, 0, 0, 0 };
+				WriteProcMem((char*)hModCommon + 0x8778d, patch, sizeof(patch));
 			}
 		}
 
@@ -2937,6 +2693,21 @@ bool HasSRPAccess(uint client, uint baseId)
 bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 {
 	returncode = DEFAULT_RETURNCODE;
+	if (IS_CMD("basereloadrecipes"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (LoadRecipes(error, true))
+		{
+			cmd->Print(L"OK Module and item recipes reloaded\n");
+		}
+		else
+		{
+			cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		}
+		return true;
+	}
 
 	if (args.find(L"setdebugspecial") == 0)
 	{
@@ -3397,6 +3168,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 			PrintUserCmdText(client, L"%s", usage.c_str());
 			return true;
 		}
+		if (PlayerBase::IsBaseNameTooLong(basename))
+		{
+			PrintUserCmdText(client, L"ERR Name too long");
+			return true;
+		}
 
 
 
@@ -3503,6 +3279,11 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 		{
 			PrintUserCmdText(client, L"ERR No name");
 			PrintUserCmdText(client, L"Usage: .basecreate <password> <archtype> <loadout> <type> <name>");
+			return true;
+		}
+		if (PlayerBase::IsBaseNameTooLong(basename))
+		{
+			PrintUserCmdText(client, L"ERR Name too long");
 			return true;
 		}
 
@@ -4020,30 +3801,9 @@ void Plugin_Communication_CallBack(PLUGIN_MESSAGE msg, void* data)
 	return;
 }
 
-void AddFactoryRecipeToMaps(const RECIPE& recipe)
-{
-	wstring recipeNameKey = ToLower(recipe.infotext);
-	recipeMap[recipe.nickname] = recipe;
-	recipeCraftTypeNumberMap[recipe.craft_type][recipe.shortcut_number] = recipe;
-	recipeCraftTypeNameMap[recipe.craft_type][recipeNameKey] = recipe;
-}
 
-void AddModuleRecipeToMaps(const RECIPE& recipe, const vector<wstring> craft_types, const wstring& build_type, uint recipe_number)
-{
-	wstring recipeNameKey = ToLower(recipe.infotext);
 
-	for (const wstring& craftType : craft_types)
-	{
-		factoryNicknameToCraftTypeMap[recipe.nickname].emplace_back(ToLower(craftType));
-	}
-	recipeMap[recipe.nickname] = recipe;
-	moduleNameRecipeMap[recipeNameKey] = recipe;
-	if (!build_type.empty())
-	{
-		craftListNumberModuleMap[build_type][recipe_number] = recipe;
-		buildingCraftLists.insert(build_type);
-	}
-}
+
 
 void PopUpDialogue(uint client, uint buttonPressed)
 {

@@ -151,6 +151,8 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
     <ClCompile Include="Jumper.cpp" />
     <ClCompile Include="Logs.cpp" />
     <ClCompile Include="Main.cpp" />
+    <ClCompile Include="RecipeState.cpp" />
+    <ClCompile Include="RecipeLoading.cpp" />
     <ClCompile Include="PlayerBase.cpp" />
     <ClCompile Include="PlayerCommands.cpp" />
     <ClCompile Include="RearmamentModule.cpp" />
@@ -159,6 +161,7 @@ copy /Y $(OutDir)$(TargetName).pdb  $(DISCOHOOK_COPY_PATH)flhook_plugins\
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Main.h" />
+    <ClInclude Include="RecipeLoading.h" />
     <ClInclude Include="minijson_writer.hpp" />
   </ItemGroup>
   <ItemGroup>

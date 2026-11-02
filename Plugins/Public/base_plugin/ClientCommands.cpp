@@ -237,13 +237,15 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	{
 		base_status += L"<TEXT>Hit Points: Indestructible</TEXT><PARA/>";
 	}
-	uint population = 0;
-	for (uint hash : humanCargoList)
+	const auto crewCounts = base->GetCrewCounts();
+	uint population = 0, requiredPopulation = 0;
+	for (const auto& crew : crewCounts)
 	{
-		population += base->HasMarketItem(hash);
+		population += crew.second.onboard;
+		requiredPopulation += crew.second.required;
+		base_status += L"<TEXT>" + XMLText(CrewName(crew.first)) + L": " + to_wstring(crew.second.onboard) + L" onboard, " + to_wstring(crew.second.required) + L" required</TEXT><PARA/>";
 	}
-	base_status += L"<TEXT>Crew: " + Int64ToPrettyStr((INT64)base->HasMarketItem(set_base_crew_type)) + L"</TEXT><PARA/>";
-	base_status += L"<TEXT>Total population: " + Int64ToPrettyStr((INT64)population) + L"</TEXT><PARA/>";
+	base_status += L"<TEXT>Total population: " + to_wstring(population) + L" onboard, " + to_wstring(requiredPopulation) + L" required</TEXT><PARA/>";
 
 	if (single_vulnerability_window)
 	{
@@ -264,7 +266,7 @@ void SendBaseStatus(uint client, PlayerBase* base)
 	{
 		base_status += L"<TEXT>Crew Status: ALL I WANT FOR CHRISTMAS IS YOU</TEXT><PARA/>";
 	}
-	else if (base->HasMarketItem(set_base_crew_type) < base->base_level * 200)
+	else if (any_of(crewCounts.begin(), crewCounts.end(), [](const pair<const uint, CrewCount>& crew) { return crew.second.onboard < crew.second.required; }))
 	{
 		base_status += L"<TEXT>Crew Status: </TEXT><TRA data=\"0x0000FF00\" mask=\"-1\"/><TEXT>Insufficient crew onboard</TEXT><PARA/><TRA data=\"0xE6C68400\" mask=\"-1\"/>";
 	}

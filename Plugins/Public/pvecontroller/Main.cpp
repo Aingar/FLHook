@@ -12,6 +12,7 @@
 #include <time.h>
 #include <math.h>
 #include <list>
+#include <limits>
 #include <map>
 #include <unordered_map>
 #include <unordered_set>
@@ -456,7 +457,9 @@ void FlushLootDropPityState(stAccountPityState& state)
 	string section;
 	for (const auto& value : values)
 	{
-		section += value.first + "=" + to_string(value.second);
+		char failures[32];
+		sprintf_s(failures, "%.*g", numeric_limits<double>::max_digits10, value.second);
+		section += value.first + "=" + failures;
 		section.push_back('\0');
 	}
 	if (!section.empty())

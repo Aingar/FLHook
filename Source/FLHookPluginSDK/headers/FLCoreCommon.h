@@ -1442,7 +1442,14 @@ public:
 
 struct IMPORT DamageEntry
 {
-	enum SubObjFate;
+	enum SubObjFate
+	{
+		Alive = 0,
+		Destroyed = 1,
+		Debris = 2,
+		Disappear = 3,
+		Loot = 4
+	};
 
 	DamageEntry(void);
 	struct DamageEntry & operator=(struct DamageEntry const &);

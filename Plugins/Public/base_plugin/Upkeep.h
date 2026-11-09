@@ -39,7 +39,7 @@ namespace Upkeep
 		std::unordered_set<std::string> countedTypes = { "legacy" };
 		Settings defaults;
 		std::unordered_map<Id, Settings> systems;
-		std::unordered_map<Id, float> weights = { {1, 0}, {2, 1}, {3, 3}, {4, 5}, {5, 10} };
+		std::unordered_map<Id, float> weights = { {1, 0.f}, {2, 1.f}, {3, 3.f}, {4, 5.f}, {5, 10.f} };
 		std::vector<Segment> curve = { {0, 0, 10.0f / 3, 0}, {3, 10, 15.0f / 7, 0}, {10, 25, 6.25f, 0.125f} };
 	};
 

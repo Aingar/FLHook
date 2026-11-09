@@ -177,7 +177,7 @@ UpkeepProjection ProjectedUpkeep(PlayerBase* base, const CongestionTotals& total
 		if (repair < 0)
 		{
 			const float deficit = base->max_base_health - base->base_health + (core->dont_rust ? 0 : set_damage_per_tick);
-			repair = Upkeep::Intended(deficit, repair_per_repair_cycle * base->base_level, set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
+			repair = Upkeep::Intended(deficit, static_cast<float>(repair_per_repair_cycle * base->base_level), set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
 		}
 		return FormatUpkeepProjection(repair, CongestionDaily(base, totals));
 	}
@@ -208,7 +208,7 @@ vector<pair<uint, UpkeepProjection>> ProjectedSystemUpkeep(uint system)
 		UpkeepProjection text = { L"Unavailable", L"Unavailable", L"Unavailable" };
 		try
 		{
-			float ordinary = Upkeep::Maintenance(set_damage_per_tick, repair_per_repair_cycle * level, set_base_repair_items.size(), Upkeep::WearInterval(set_tick_time, set_damage_tick_time), set_tick_time);
+			float ordinary = Upkeep::Maintenance(set_damage_per_tick, static_cast<float>(repair_per_repair_cycle * level), set_base_repair_items.size(), Upkeep::WearInterval(set_tick_time, set_damage_tick_time), static_cast<float>(set_tick_time));
 			float extra = 0;
 			if (congestionState->policy.enabled && type != mapArchs.end() && Upkeep::Contributes(congestionState->policy, "legacy", type->second.invulnerable != 0, type->second.logic != 0))
 			{
@@ -560,7 +560,7 @@ bool ReloadCongestion(string& error, bool fullLoad)
 				throw runtime_error("first repair bundle must have positive volume");
 			}
 			const float interval = Upkeep::WearInterval(set_tick_time, set_damage_tick_time);
-			const float maintenance = Upkeep::Maintenance(set_damage_per_tick, repair_per_repair_cycle, set_base_repair_items.size(), interval, set_tick_time);
+			const float maintenance = Upkeep::Maintenance(set_damage_per_tick, static_cast<float>(repair_per_repair_cycle), set_base_repair_items.size(), interval, static_cast<float>(set_tick_time));
 			if (!isfinite(maintenance) || maintenance <= 0)
 			{
 				throw runtime_error("Core 1 wear has no usable repair reference");
@@ -569,9 +569,9 @@ bool ReloadCongestion(string& error, bool fullLoad)
 			auto checks = totals;
 			for (const auto& entry : systems)
 			{
-				checks.emplace(entry.first, 0);
+				checks.emplace(entry.first, 0.f);
 			}
-			checks.emplace(0, 0);
+			checks.emplace(0, 0.f);
 			for (const auto& total : checks)
 			{
 				if (!isfinite(total.second))

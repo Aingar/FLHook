@@ -410,7 +410,7 @@ bool CoreModule::Timer(uint time)
 		ConPrint(L"BASE congestion unavailable for %ls: %ls\n", base->basename.c_str(), stows(e.what()).c_str());
 	}
 	intendedRepairDaily = Upkeep::Intended(base->max_base_health - base->base_health,
-		repair_per_repair_cycle * base->base_level, set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
+		static_cast<float>(repair_per_repair_cycle * base->base_level), set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
 
 	// Repair damage if we have sufficient crew on the base.
 

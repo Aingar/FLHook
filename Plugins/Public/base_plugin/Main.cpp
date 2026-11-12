@@ -31,6 +31,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
+PlayerBase* BASE_NOT_FOUND = reinterpret_cast<PlayerBase*>(-1);
 size_t baseSaveIndex = 0;
 
 vector<ScheduledRespawn> basesToRespawn;
@@ -136,6 +137,7 @@ uint set_tick_time = 16;
 uint repair_per_repair_cycle = 60000;
 
 uint base_access_entry_limit = 20;
+uint base_access_entry_limit_name = 80;
 
 int defense_platform_activation_offset = 30;
 
@@ -535,6 +537,7 @@ void LoadSettingsActual()
 	INI_Reader ini;
 	if (ini.open(cfg_file.c_str(), false))
 	{
+		bannedSystemList.clear();
 		while (ini.read_header())
 		{
 			if (ini.is_header("general"))
@@ -739,7 +742,14 @@ void LoadSettingsActual()
 					}
 					else if (ini.is_value("banned_system"))
 					{
-						bannedSystemList.insert(CreateID(ini.get_value_string(0)));
+						if (ini.get_num_parameters() == 1 && *ini.get_value_string(0))
+						{
+							bannedSystemList.insert(CreateID(ini.get_value_string(0)));
+						}
+						else
+						{
+							ConPrint(L"BASE ERROR Invalid banned_system at base.cfg:%d\n", ini.get_line_num());
+						}
 					}
 					else if (ini.is_value("randomize_hyperspace_hub_days"))
 					{
@@ -952,6 +962,11 @@ void LoadSettingsActual()
 	}
 
 	PlayerBase::GenerateHashFile();
+	string congestionError;
+	if (!ReloadCongestion(congestionError, true))
+	{
+		ConPrint(L"BASE %ls\n", stows(congestionError).c_str());
+	}
 
 	// loadHyperspaceHubConfig is weekday where 0 = sunday, 6 = saturday
 	// if it's today, randomize appropriate 'jump hole' POBs
@@ -1155,6 +1170,7 @@ void HkTimerCheckKick()
 
 	if (curr_time % set_tick_time == 0)
 	{
+		maintenancePressure = BuildCongestionSnapshot();
 		RebuildCSolarSystemList();
 
 		ULARGE_INTEGER freeSpace;
@@ -1475,7 +1491,7 @@ bool UserCmd_Process(uint client, const wstring& args)
 	}
 	else if (args.find(L"/base supplies") == 0)
 	{
-		PlayerCommands::GetNecessitiesStatus(client, args);
+		PlayerCommands::GetNecessitiesStatus(client);
 		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		return true;
 	}
@@ -1957,25 +1973,24 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 	if (!cd.player_base)
 		return;
 
-	player_launch_base = GetPlayerBase(cd.player_base);
-	if (!player_launch_base)
-	{
-		return;
-	}
-
-	auto pobListIter = POBSolarsBySystemMap.find(player_launch_base->system);
+	auto pobListIter = POBSolarsBySystemMap.find(Players[client].iSystemID);
 	if (pobListIter == POBSolarsBySystemMap.end())
 	{
 		return;
 	}
 
+	player_launch_base = GetPlayerBase(cd.player_base);
 	for (auto& solar : pobListIter->second)
 	{
-		if (solar == player_launch_base->baseCSolar)
+		if (player_launch_base && solar == player_launch_base->baseCSolar)
 		{
 			continue;
 		}
 		solar->dockTargetId2 = 0;
+	}
+	if (player_launch_base == 0)
+	{
+		player_launch_base = BASE_NOT_FOUND;
 	}
 	cd.player_base = 0;
 }
@@ -2057,7 +2072,22 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		return;
 	}
 
-	if (player_launch_base)
+	if (player_launch_base == BASE_NOT_FOUND)
+	{
+		char system_nick[1024];
+		pub::GetSystemNickname(system_nick, sizeof(system_nick), Players[client].iSystemID);
+
+		char proxy_base_nick[1024];
+		sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
+
+		uint proxy_base = CreateID(proxy_base_nick);
+		for (auto& solar : POBSolarsBySystemMap[Players[client].iSystemID])
+		{
+			solar->dockTargetId2 = proxy_base;
+		}
+		player_launch_base = nullptr;
+	}
+	else if (player_launch_base)
 	{
 		if (Players[client].iSystemID != player_launch_base->system)
 		{
@@ -2141,7 +2171,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 	}
 
 	auto banIter = base->purchase_banned_items.find(gsi.iArchID);
-	if ( banIter != base->purchase_banned_items.end())
+	if (banIter != base->purchase_banned_items.end())
 	{
 		PrintUserCmdText(client, L"ERR: %s", banIter->second.c_str());
 		clients[client].reverse_sell = true;
@@ -2696,11 +2726,27 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	if (IS_CMD("basereloadrecipes"))
 	{
 		RIGHT_CHECK(RIGHT_BASES)
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		string error;
 		if (LoadRecipes(error, true))
 		{
 			cmd->Print(L"OK Module and item recipes reloaded\n");
+		}
+		else
+		{
+			cmd->Print(L"ERR %ls\n", stows(error).c_str());
+		}
+		return true;
+	}
+
+	if (IS_CMD("basereloadcongestion"))
+	{
+		RIGHT_CHECK(RIGHT_BASES)
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+		string error;
+		if (ReloadCongestion(error))
+		{
+			cmd->Print(L"OK Congestion and prohibited systems reloaded\n");
 		}
 		else
 		{

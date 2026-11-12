@@ -1283,6 +1283,29 @@ void PlayerLaunch_After(unsigned int shipId, unsigned int iClientID)
 		{
 			pub::SpaceObj::SetRelativeHealth(cship->id, maxAllowedHp / cship->shiparch()->fHitPoints);
 		}
+
+		CEShieldGenerator* shieldgen = nullptr;
+		CEquipTraverser tr(EquipmentClass::ShieldGenerator);
+		float capacity = 0.f;
+		while (shieldgen = reinterpret_cast<CEShieldGenerator*>(cship->equip_manager.Traverse(tr)))
+		{
+			capacity += shieldgen->ShieldGenArch()->fMaxCapacity;
+		}
+
+		if (capacity <= 0.f)
+		{
+			CEShield* shield = reinterpret_cast<CEShield*>(cship->equip_manager.FindFirst(EquipmentClass::Shield));
+			if (shield)
+			{
+				auto shipObj = HkGetInspectObj(cship->id);
+				if (shipObj)
+				{
+					DamageList dmg;
+					shipObj->cequip_death(shield, DamageEntry::SubObjFate::Destroyed, &dmg);
+					shipObj->applyDamageList(&dmg);
+				}
+			}
+		}
 	}
 
 	equipUpdateVector.push_back({ iClientID, 0 });

@@ -31,6 +31,7 @@ unordered_map<uint, CLIENT_DATA> clients;
 // Bases
 unordered_map<uint, PlayerBase*> player_bases;
 unordered_map<uint, unordered_set<CSolar*>> POBSolarsBySystemMap;
+PlayerBase* BASE_NOT_FOUND = reinterpret_cast<PlayerBase*>(-1);
 size_t baseSaveIndex = 0;
 
 vector<ScheduledRespawn> basesToRespawn;
@@ -1971,25 +1972,24 @@ void __stdcall PlayerLaunch(unsigned int ship, unsigned int client)
 	if (!cd.player_base)
 		return;
 
-	player_launch_base = GetPlayerBase(cd.player_base);
-	if (!player_launch_base)
-	{
-		return;
-	}
-
-	auto pobListIter = POBSolarsBySystemMap.find(player_launch_base->system);
+	auto pobListIter = POBSolarsBySystemMap.find(Players[client].iSystemID);
 	if (pobListIter == POBSolarsBySystemMap.end())
 	{
 		return;
 	}
 
+	player_launch_base = GetPlayerBase(cd.player_base);
 	for (auto& solar : pobListIter->second)
 	{
-		if (solar == player_launch_base->baseCSolar)
+		if (player_launch_base && solar == player_launch_base->baseCSolar)
 		{
 			continue;
 		}
 		solar->dockTargetId2 = 0;
+	}
+	if (player_launch_base == 0)
+	{
+		player_launch_base = BASE_NOT_FOUND;
 	}
 	cd.player_base = 0;
 }
@@ -2071,7 +2071,22 @@ void __stdcall PlayerLaunch_AFTER(unsigned int ship, unsigned int client)
 		return;
 	}
 
-	if (player_launch_base)
+	if (player_launch_base == BASE_NOT_FOUND)
+	{
+		char system_nick[1024];
+		pub::GetSystemNickname(system_nick, sizeof(system_nick), Players[client].iSystemID);
+
+		char proxy_base_nick[1024];
+		sprintf(proxy_base_nick, "%s_proxy_base", system_nick);
+
+		uint proxy_base = CreateID(proxy_base_nick);
+		for (auto& solar : POBSolarsBySystemMap[Players[client].iSystemID])
+		{
+			solar->dockTargetId2 = proxy_base;
+		}
+		player_launch_base = nullptr;
+	}
+	else if (player_launch_base)
 	{
 		if (Players[client].iSystemID != player_launch_base->system)
 		{
@@ -2155,7 +2170,7 @@ void __stdcall GFGoodSell(struct SGFGoodSellInfo const& gsi, unsigned int client
 	}
 
 	auto banIter = base->purchase_banned_items.find(gsi.iArchID);
-	if ( banIter != base->purchase_banned_items.end())
+	if (banIter != base->purchase_banned_items.end())
 	{
 		PrintUserCmdText(client, L"ERR: %s", banIter->second.c_str());
 		clients[client].reverse_sell = true;

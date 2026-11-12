@@ -191,6 +191,7 @@ struct UpkeepProjection
 	wstring repairs;
 	wstring additional;
 	wstring total;
+	wstring backlog = L"None";
 };
 
 class CoreModule : public Module
@@ -210,7 +211,6 @@ public:
 	bool baseHealthChanged;
 	bool undergoingDestruction;
 	double congestionCarry = 0;
-	float intendedRepairDaily = -1;
 	wstring lastUpkeepText;
 
 	CoreModule(PlayerBase* the_base);

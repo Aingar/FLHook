@@ -2773,6 +2773,7 @@ namespace PlayerCommands
 		PrintUserCmdText(client, L"Projected daily upkeep:");
 		PrintUserCmdText(client, L"|    Repairs: %ls", projected.repairs.c_str());
 		PrintUserCmdText(client, L"|    Additional upkeep: %ls", projected.additional.c_str());
+		PrintUserCmdText(client, L"Repairs to full health: %ls", projected.backlog.c_str());
 
 		PrintUserCmdText(client, L"Crew supplies:");
 		for (uint item : set_base_crew_consumption_items)

@@ -182,7 +182,7 @@ namespace Upkeep
 		return whole;
 	}
 
-	inline float Intended(float deficit, float heal, size_t alternatives)
+	inline float Backlog(float deficit, float heal, size_t alternatives)
 	{
 		if (!std::isfinite(deficit) || !std::isfinite(heal) || heal <= 0)
 		{
@@ -192,7 +192,7 @@ namespace Upkeep
 		{
 			return std::numeric_limits<float>::quiet_NaN();
 		}
-		return (std::min)(static_cast<float>(alternatives), std::ceil((std::max)(0.0f, deficit) / heal));
+		return std::ceil((std::max)(0.0f, deficit) / heal);
 	}
 
 	inline float WearInterval(Id tick, Id damageTick)

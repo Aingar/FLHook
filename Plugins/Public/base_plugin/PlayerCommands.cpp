@@ -994,10 +994,10 @@ namespace PlayerCommands
 			}
 			else if (type == L"hostile")
 			{
-				if (base->hostile_names.size() >= base_access_entry_limit)
+				if (base->hostile_names.size() >= base_access_entry_limit_name)
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
-						base_access_entry_limit, base->hostile_names.size());
+						base_access_entry_limit_name, base->hostile_names.size());
 					return false;
 				}
 				base->srp_names.erase(trimEntry);
@@ -1009,10 +1009,10 @@ namespace PlayerCommands
 			}
 			else if (type == L"nodock")
 			{
-				if (base->nodock_names.size() >= base_access_entry_limit)
+				if (base->nodock_names.size() >= base_access_entry_limit_name)
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
-						base_access_entry_limit, base->nodock_names.size());
+						base_access_entry_limit_name, base->nodock_names.size());
 					return false;
 				}
 				base->srp_names.erase(trimEntry);
@@ -1024,10 +1024,10 @@ namespace PlayerCommands
 			}
 			else if (type == L"whitelist")
 			{
-				if (base->ally_names.size() >= base_access_entry_limit)
+				if (base->ally_names.size() >= base_access_entry_limit_name)
 				{
 					PrintUserCmdText(client, L"ERR: Unable to add entry, max entries: %u, current entries: %u",
-						base_access_entry_limit, base->ally_names.size());
+						base_access_entry_limit_name, base->ally_names.size());
 					return false;
 				}
 				base->srp_names.erase(trimEntry);

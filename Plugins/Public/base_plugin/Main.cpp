@@ -137,6 +137,7 @@ uint set_tick_time = 16;
 uint repair_per_repair_cycle = 60000;
 
 uint base_access_entry_limit = 20;
+uint base_access_entry_limit_name = 80;
 
 int defense_platform_activation_offset = 30;
 
@@ -2725,7 +2726,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	if (IS_CMD("basereloadrecipes"))
 	{
 		RIGHT_CHECK(RIGHT_BASES)
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		string error;
 		if (LoadRecipes(error, true))
 		{
@@ -2741,7 +2742,7 @@ bool ExecuteCommandString_Callback(CCmds* cmd, const wstring& args)
 	if (IS_CMD("basereloadcongestion"))
 	{
 		RIGHT_CHECK(RIGHT_BASES)
-		returncode = SKIPPLUGINS_NOFUNCTIONCALL;
+			returncode = SKIPPLUGINS_NOFUNCTIONCALL;
 		string error;
 		if (ReloadCongestion(error))
 		{

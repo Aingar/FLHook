@@ -945,6 +945,7 @@ struct ScheduledRespawn
 extern vector<ScheduledRespawn> basesToRespawn;
 
 extern uint base_access_entry_limit;
+extern uint base_access_entry_limit_name;
 
 extern unordered_map<uint, std::pair<uint, Costume>> factionCostumeMap;
 

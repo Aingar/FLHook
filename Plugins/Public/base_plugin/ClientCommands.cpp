@@ -248,6 +248,10 @@ void SendBaseStatus(uint client, PlayerBase* base, const UpkeepProjection* upkee
 	base_status += L"<TEXT>Total population: " + to_wstring(population) + L" onboard, " + to_wstring(requiredPopulation) + L" required</TEXT><PARA/>";
 	const auto projected = upkeep ? *upkeep : ProjectedUpkeep(base, BuildCongestionSnapshot());
 	base_status += L"<TEXT>Daily upkeep: " + XMLText(projected.total) + L"</TEXT><PARA/>";
+	if (projected.backlog != L"None")
+	{
+		base_status += L"<TEXT>Repairs to full health: " + XMLText(projected.backlog) + L"</TEXT><PARA/>";
+	}
 
 	if (single_vulnerability_window)
 	{

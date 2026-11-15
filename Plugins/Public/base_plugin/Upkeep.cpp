@@ -166,24 +166,23 @@ UpkeepProjection ProjectedUpkeep(PlayerBase* base, const CongestionTotals& total
 	{
 		if (set_holiday_mode || (!base->logic && base->invulnerable == 1))
 		{
-			return { L"0", L"None", L"0" };
+			return { L"0", L"None", L"0", L"None" };
 		}
 		CoreModule* core = !base->modules.empty() && base->modules[0] && base->modules[0]->type == Module::TYPE_CORE ? static_cast<CoreModule*>(base->modules[0]) : nullptr;
 		if (!core || !set_tick_time)
 		{
-			return { L"Unavailable", L"Unavailable", L"Unavailable" };
+			return { L"Unavailable", L"Unavailable", L"Unavailable", L"Unavailable" };
 		}
-		float repair = core->intendedRepairDaily;
-		if (repair < 0)
-		{
-			const float deficit = base->max_base_health - base->base_health + (core->dont_rust ? 0 : set_damage_per_tick);
-			repair = Upkeep::Intended(deficit, static_cast<float>(repair_per_repair_cycle * base->base_level), set_base_repair_items.size()) * Upkeep::Day / set_tick_time;
-		}
-		return FormatUpkeepProjection(repair, CongestionDaily(base, totals));
+		const float heal = static_cast<float>(repair_per_repair_cycle * base->base_level);
+		const float repair = core->dont_rust ? 0 : Upkeep::Maintenance(set_damage_per_tick, heal, set_base_repair_items.size(),
+			Upkeep::WearInterval(set_tick_time, set_damage_tick_time), static_cast<float>(set_tick_time));
+		auto text = FormatUpkeepProjection(repair, CongestionDaily(base, totals));
+		text.backlog = FormatAdditionalUpkeep(Upkeep::Backlog(base->max_base_health - base->base_health, heal, set_base_repair_items.size()));
+		return text;
 	}
 	catch (const exception&)
 	{
-		return { L"Unavailable", L"Unavailable", L"Unavailable" };
+		return { L"Unavailable", L"Unavailable", L"Unavailable", L"Unavailable" };
 	}
 }
 
@@ -268,14 +267,15 @@ void RefreshUpkeepStatus(PlayerBase* base, const CongestionTotals& totals)
 				continue;
 			}
 			UpkeepProjection upkeep = ProjectedUpkeep(base, totals);
-			if (core && core->lastUpkeepText == upkeep.total)
+			wstring shown = upkeep.total + L"|" + upkeep.backlog;
+			if (core && core->lastUpkeepText == shown)
 			{
 				return;
 			}
 			SendBaseStatus(base, &upkeep);
 			if (core)
 			{
-				core->lastUpkeepText = std::move(upkeep.total);
+				core->lastUpkeepText = std::move(shown);
 			}
 			return;
 		}
